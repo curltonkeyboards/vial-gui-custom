@@ -1171,19 +1171,45 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
             break;
 
-        case 3:  // Speed + Peak Combined - Direction Reversal
-            // Triggers on direction reversal like Mode 1
-            // OR when key reaches actuation point (uses ONLY speed, ignores peak)
-            // Velocity = 50% speed + 50% peak travel (on reversal)
-            // Velocity = 100% speed only (on actuation)
+        case 3:  // Speed + Peak Combined with Re-trigger support
+            // Initial press: trigger at actuation (speed-only) or reversal (50/50 blend)
+            // Re-trigger: after partial release, trigger at release+5% using speed-only
+            //             with max velocity scaled by release distance
             {
                 const uint8_t MIN_PEAK3 = 12;             // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD3 = 3;   // Must decrease by 3 units to count as reversal
                 const uint8_t NOTE_OFF_TRAVEL3 = 6;      // ~0.1mm - note off when below this
+                const uint8_t MIN_RETRIGGER_DIST = 6;    // Minimum re-trigger distance (~0.1mm)
 
-                // Track when key starts moving from rest (for speed calculation)
-                if (state->last_travel == 0 && travel > 0) {
+                // Calculate re-trigger threshold (5% of actuation, minimum MIN_RETRIGGER_DIST)
+                uint8_t retrigger_threshold = (midi_threshold * 5) / 100;
+                if (retrigger_threshold < MIN_RETRIGGER_DIST) retrigger_threshold = MIN_RETRIGGER_DIST;
+
+                // Full release - reset everything for fresh press
+                if (travel < NOTE_OFF_TRAVEL3) {
+                    if (state->send_on_release) {
+                        state->send_on_release = false;  // Note OFF
+                    }
+                    state->peak_travel = 0;
+                    state->velocity_captured = false;
+                    state->release_travel = 0;  // Reset for fresh press
+                    state->last_travel = travel;
+                    break;
+                }
+
+                // Track when key starts moving (from rest OR from release point for re-trigger)
+                bool started_moving = false;
+                if (state->release_travel == 0 && state->last_travel < NOTE_OFF_TRAVEL3 && travel >= NOTE_OFF_TRAVEL3) {
+                    // Starting fresh press from rest
+                    started_moving = true;
+                } else if (state->release_travel > 0 && !state->velocity_captured &&
+                           state->last_travel <= state->release_travel && travel > state->release_travel) {
+                    // Starting re-press from release point
+                    started_moving = true;
+                }
+                if (started_moving) {
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
+                    state->peak_travel = travel;
                 }
 
                 // Track peak travel during press
@@ -1191,88 +1217,102 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->peak_travel = travel;
                 }
 
-                // Actuation point reached: trigger using ONLY speed (ignore peak since it's maxed)
-                if (!state->velocity_captured && travel >= midi_threshold) {
-                    // Calculate elapsed time from start to actuation
-                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
-                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
-                    uint32_t elapsed_ms = elapsed_us / 1000;
+                // Determine if this is a re-trigger scenario
+                bool is_retrigger = (state->release_travel > 0);
 
-                    // Store travel time for GUI display
-                    state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
+                // Calculate actuation threshold and max velocity scale
+                uint8_t current_actuation;
+                uint8_t max_velocity_scale = 255;  // Default full velocity
 
-                    // Use ONLY speed component (peak is maxed, so ignore it)
-                    uint32_t speed_raw;
-                    if (elapsed_ms > 0) {
-                        if (elapsed_ms <= max_press_time) {
-                            speed_raw = 255;
-                        } else if (elapsed_ms >= min_press_time) {
-                            speed_raw = 1;
-                        } else {
-                            speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
-                            if (speed_raw < 1) speed_raw = 1;
-                        }
-                    } else {
-                        speed_raw = 255;
-                        state->travel_time_ms = 0;
+                if (is_retrigger) {
+                    // Re-trigger: actuation = release_point + 5%
+                    current_actuation = state->release_travel + retrigger_threshold;
+                    if (current_actuation > midi_threshold) current_actuation = midi_threshold;
+
+                    // Max velocity = release_distance / full_actuation
+                    // (how much we released determines max velocity we can achieve)
+                    uint16_t release_distance = midi_threshold - state->release_travel;
+                    max_velocity_scale = (release_distance * 255) / midi_threshold;
+                    if (max_velocity_scale < 1) max_velocity_scale = 1;
+                    if (max_velocity_scale > 255) max_velocity_scale = 255;
+                } else {
+                    current_actuation = midi_threshold;
+                }
+
+                // Trigger detection
+                if (!state->velocity_captured) {
+                    bool should_trigger = false;
+                    bool use_speed_only = false;
+
+                    // Check actuation threshold
+                    if (travel >= current_actuation) {
+                        should_trigger = true;
+                        use_speed_only = true;  // At actuation = speed only
+                    }
+                    // Check reversal (only for initial press, not re-triggers)
+                    else if (!is_retrigger &&
+                             state->peak_travel >= MIN_PEAK3 &&
+                             travel < state->peak_travel - REVERSAL_THRESHOLD3) {
+                        should_trigger = true;
+                        use_speed_only = false;  // Reversal = 50/50 blend
                     }
 
-                    state->raw_velocity = (uint8_t)speed_raw;
-                    state->velocity_captured = true;
-                    state->send_on_release = true;  // Note ON
+                    if (should_trigger) {
+                        // Calculate elapsed time
+                        uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
+                        uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                        uint32_t elapsed_ms = elapsed_us / 1000;
 
-                    key->base_velocity = (state->raw_velocity * 127) / 255;
-                    if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                        state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
+
+                        // Calculate speed component
+                        uint32_t speed_raw;
+                        if (elapsed_ms > 0) {
+                            if (elapsed_ms <= max_press_time) {
+                                speed_raw = 255;
+                            } else if (elapsed_ms >= min_press_time) {
+                                speed_raw = 1;
+                            } else {
+                                speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
+                                if (speed_raw < 1) speed_raw = 1;
+                            }
+                        } else {
+                            speed_raw = 255;
+                            state->travel_time_ms = 0;
+                        }
+
+                        uint32_t final_velocity;
+                        if (use_speed_only || is_retrigger) {
+                            // Speed only, scaled by max_velocity_scale
+                            final_velocity = (speed_raw * max_velocity_scale) / 255;
+                        } else {
+                            // 50/50 blend for reversal on initial press
+                            uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
+                            if (travel_raw > 255) travel_raw = 255;
+                            final_velocity = ((speed_raw * 50) + (travel_raw * 50)) / 100;
+                        }
+
+                        if (final_velocity < 1) final_velocity = 1;
+                        if (final_velocity > 255) final_velocity = 255;
+
+                        state->raw_velocity = (uint8_t)final_velocity;
+                        state->velocity_captured = true;
+                        state->send_on_release = true;  // Note ON
+
+                        key->base_velocity = (state->raw_velocity * 127) / 255;
+                        if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                    }
                 }
-                // Direction reversal detection: trigger when key starts coming back up
-                else if (!state->velocity_captured &&
-                    state->peak_travel >= MIN_PEAK3 &&
+
+                // Note OFF detection: reversal after trigger (partial release)
+                if (state->send_on_release && state->velocity_captured &&
                     travel < state->peak_travel - REVERSAL_THRESHOLD3) {
 
-                    // Calculate elapsed time from start to peak
-                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
-                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
-                    uint32_t elapsed_ms = elapsed_us / 1000;
-
-                    // Store travel time for GUI display
-                    state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
-
-                    // Calculate speed component using min/max time settings
-                    uint32_t speed_raw;
-                    if (elapsed_ms > 0) {
-                        if (elapsed_ms <= max_press_time) {
-                            speed_raw = 255;  // Fastest press = max velocity
-                        } else if (elapsed_ms >= min_press_time) {
-                            speed_raw = 1;    // Slowest press = min velocity
-                        } else {
-                            speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
-                            if (speed_raw < 1) speed_raw = 1;
-                        }
-                    } else {
-                        speed_raw = 255;  // Sub-1ms press = max speed
-                        state->travel_time_ms = 0;
-                    }
-
-                    // Calculate travel component (0-255)
-                    uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
-                    if (travel_raw > 255) travel_raw = 255;
-
-                    // Blend: 50% speed + 50% travel
-                    uint8_t blended = (uint8_t)(((uint16_t)speed_raw * 50 + travel_raw * 50) / 100);
-                    state->raw_velocity = (blended < 1) ? 1 : blended;
-                    state->velocity_captured = true;
-                    state->send_on_release = true;  // Note ON
-
-                    // Update base_velocity for RT
-                    key->base_velocity = (state->raw_velocity * 127) / 255;
-                    if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
-                }
-
-                // Note OFF when key returns close to rest
-                if (state->send_on_release && travel < NOTE_OFF_TRAVEL3) {
-                    state->send_on_release = false;
-                    state->peak_travel = 0;
+                    state->send_on_release = false;  // Note OFF
+                    state->release_travel = travel;  // Store for potential re-trigger
                     state->velocity_captured = false;
+                    state->peak_travel = travel;     // Reset peak to current
+                    // Timer will start when travel increases past release_travel
                 }
 
                 state->last_travel = travel;
