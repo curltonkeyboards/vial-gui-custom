@@ -24,6 +24,11 @@ from widgets.keyboard_widget import KeyboardWidgetSimple
 from themes import Theme
 from util import tr
 from vial_device import VialKeyboard
+from protocol.keyboard_comm import (
+    PARAM_PEAK_RETRIGGER_ENABLED, PARAM_PEAK_RETRIGGER_DISTANCE,
+    PARAM_PEAK_SPEED_RATIO, PARAM_PEAK_ACTUATION_OVERRIDE_ENABLED,
+    PARAM_PEAK_ACTUATION_OVERRIDE
+)
 
 
 # MIDI note keycode range (from keycodes_v6.py)
@@ -387,6 +392,100 @@ class VelocityTab(BasicEditor):
 
         bottom_layout.addWidget(time_group)
 
+        # Mode 3 (Speed+Peak) Settings Group
+        mode3_group = QGroupBox(tr("VelocityTab", "Mode 3 (Speed+Peak) Settings"))
+        mode3_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        mode3_layout = QVBoxLayout()
+        mode3_layout.setSpacing(10)
+        mode3_group.setLayout(mode3_layout)
+
+        # Re-trigger enable checkbox
+        self.retrigger_checkbox = QCheckBox(tr("VelocityTab", "Enable Partial Release Re-triggering"))
+        self.retrigger_checkbox.setChecked(True)
+        self.retrigger_checkbox.setToolTip(
+            "When enabled, releasing a key partially and pressing again triggers a new note.\n"
+            "The velocity is scaled by how much the key was released."
+        )
+        self.retrigger_checkbox.stateChanged.connect(self.on_mode3_setting_changed)
+        mode3_layout.addWidget(self.retrigger_checkbox)
+
+        # Re-trigger distance slider (0.2mm - 1.5mm)
+        retrigger_dist_layout = QHBoxLayout()
+        retrigger_dist_label = QLabel(tr("VelocityTab", "Re-trigger Distance:"))
+        retrigger_dist_label.setMinimumWidth(130)
+        retrigger_dist_layout.addWidget(retrigger_dist_label)
+
+        self.retrigger_dist_slider = QSlider(Qt.Horizontal)
+        self.retrigger_dist_slider.setRange(12, 90)  # 0.2mm to 1.5mm in units
+        self.retrigger_dist_slider.setValue(12)
+        self.retrigger_dist_slider.setTickPosition(QSlider.TicksBelow)
+        self.retrigger_dist_slider.setTickInterval(13)
+        self.retrigger_dist_slider.valueChanged.connect(self.on_retrigger_dist_changed)
+        retrigger_dist_layout.addWidget(self.retrigger_dist_slider)
+
+        self.retrigger_dist_value = QLabel("0.2 mm")
+        self.retrigger_dist_value.setMinimumWidth(50)
+        retrigger_dist_layout.addWidget(self.retrigger_dist_value)
+        mode3_layout.addLayout(retrigger_dist_layout)
+
+        # Speed:Peak ratio slider (0-100)
+        ratio_layout = QHBoxLayout()
+        ratio_label = QLabel(tr("VelocityTab", "Speed:Peak Ratio:"))
+        ratio_label.setMinimumWidth(130)
+        ratio_layout.addWidget(ratio_label)
+
+        self.speed_ratio_slider = QSlider(Qt.Horizontal)
+        self.speed_ratio_slider.setRange(0, 100)
+        self.speed_ratio_slider.setValue(50)
+        self.speed_ratio_slider.setTickPosition(QSlider.TicksBelow)
+        self.speed_ratio_slider.setTickInterval(25)
+        self.speed_ratio_slider.valueChanged.connect(self.on_speed_ratio_changed)
+        ratio_layout.addWidget(self.speed_ratio_slider)
+
+        self.speed_ratio_value = QLabel("50:50")
+        self.speed_ratio_value.setMinimumWidth(50)
+        ratio_layout.addWidget(self.speed_ratio_value)
+        mode3_layout.addLayout(ratio_layout)
+
+        # Actuation override checkbox and slider
+        self.actuation_override_checkbox = QCheckBox(tr("VelocityTab", "Override Per-Key Actuation"))
+        self.actuation_override_checkbox.setChecked(False)
+        self.actuation_override_checkbox.setToolTip(
+            "Override the per-key actuation point for Mode 3.\n"
+            "Useful to set a consistent trigger point across all keys."
+        )
+        self.actuation_override_checkbox.stateChanged.connect(self.on_mode3_setting_changed)
+        mode3_layout.addWidget(self.actuation_override_checkbox)
+
+        actuation_layout = QHBoxLayout()
+        actuation_label = QLabel(tr("VelocityTab", "Actuation Point:"))
+        actuation_label.setMinimumWidth(130)
+        actuation_layout.addWidget(actuation_label)
+
+        self.actuation_slider = QSlider(Qt.Horizontal)
+        self.actuation_slider.setRange(0, 240)  # 0-4mm in units (60 units per mm)
+        self.actuation_slider.setValue(120)  # 2mm default
+        self.actuation_slider.setTickPosition(QSlider.TicksBelow)
+        self.actuation_slider.setTickInterval(60)
+        self.actuation_slider.valueChanged.connect(self.on_actuation_override_changed)
+        self.actuation_slider.setEnabled(False)  # Disabled until checkbox is checked
+        actuation_layout.addWidget(self.actuation_slider)
+
+        self.actuation_value = QLabel("2.0 mm")
+        self.actuation_value.setMinimumWidth(50)
+        actuation_layout.addWidget(self.actuation_value)
+        mode3_layout.addLayout(actuation_layout)
+
+        mode3_layout.addStretch()
+
+        # Save Mode 3 settings button
+        save_mode3_btn = QPushButton(tr("VelocityTab", "Save Mode 3 Settings"))
+        save_mode3_btn.setMinimumHeight(35)
+        save_mode3_btn.clicked.connect(self.on_save_mode3_settings)
+        mode3_layout.addWidget(save_mode3_btn)
+
+        bottom_layout.addWidget(mode3_group)
+
         main_layout.addLayout(bottom_layout)
         main_layout.addStretch()
 
@@ -410,6 +509,8 @@ class VelocityTab(BasicEditor):
             self.load_velocity_curve()
             # Load velocity mode for current layer
             self.load_velocity_mode()
+            # Load Mode 3 settings
+            self.load_mode3_settings()
             # Scan for MIDI keys on current layer
             self.scan_midi_keys()
         except Exception as e:
@@ -630,3 +731,123 @@ class VelocityTab(BasicEditor):
                 tr("VelocityTab", "Save Failed"),
                 tr("VelocityTab", f"Error saving curve: {e}")
             )
+
+    def on_retrigger_dist_changed(self, value):
+        """Update re-trigger distance display and send to keyboard"""
+        mm_value = value / 60.0  # Convert units to mm (60 units per mm)
+        self.retrigger_dist_value.setText(f"{mm_value:.1f} mm")
+        # Send to keyboard immediately for real-time feedback
+        if self.keyboard:
+            self.keyboard.set_keyboard_param_single(PARAM_PEAK_RETRIGGER_DISTANCE, value)
+
+    def on_speed_ratio_changed(self, value):
+        """Update speed:peak ratio display and send to keyboard"""
+        peak_ratio = 100 - value
+        self.speed_ratio_value.setText(f"{value}:{peak_ratio}")
+        # Send to keyboard immediately for real-time feedback
+        if self.keyboard:
+            self.keyboard.set_keyboard_param_single(PARAM_PEAK_SPEED_RATIO, value)
+
+    def on_actuation_override_changed(self, value):
+        """Update actuation override display and send to keyboard"""
+        mm_value = value / 60.0  # Convert units to mm (60 units per mm)
+        self.actuation_value.setText(f"{mm_value:.1f} mm")
+        # Send to keyboard immediately for real-time feedback
+        if self.keyboard and self.actuation_override_checkbox.isChecked():
+            self.keyboard.set_keyboard_param_single(PARAM_PEAK_ACTUATION_OVERRIDE, value)
+
+    def on_mode3_setting_changed(self):
+        """Handle Mode 3 checkbox changes"""
+        if not self.keyboard:
+            return
+
+        # Handle re-trigger enable
+        if self.sender() == self.retrigger_checkbox:
+            enabled = self.retrigger_checkbox.isChecked()
+            self.keyboard.set_keyboard_param_single(PARAM_PEAK_RETRIGGER_ENABLED, 1 if enabled else 0)
+            # Enable/disable the distance slider
+            self.retrigger_dist_slider.setEnabled(enabled)
+
+        # Handle actuation override enable
+        if self.sender() == self.actuation_override_checkbox:
+            enabled = self.actuation_override_checkbox.isChecked()
+            self.keyboard.set_keyboard_param_single(PARAM_PEAK_ACTUATION_OVERRIDE_ENABLED, 1 if enabled else 0)
+            # Enable/disable the actuation slider
+            self.actuation_slider.setEnabled(enabled)
+            # Send the actuation value if enabling
+            if enabled:
+                self.keyboard.set_keyboard_param_single(
+                    PARAM_PEAK_ACTUATION_OVERRIDE, self.actuation_slider.value()
+                )
+
+    def on_save_mode3_settings(self):
+        """Save Mode 3 settings to keyboard EEPROM"""
+        if not self.keyboard:
+            return
+
+        try:
+            # Settings are sent in real-time, just need to trigger EEPROM save
+            success = self.keyboard.save_keyboard_config()
+            if success:
+                QMessageBox.information(
+                    None,
+                    tr("VelocityTab", "Settings Saved"),
+                    tr("VelocityTab", "Mode 3 settings saved to keyboard.")
+                )
+            else:
+                QMessageBox.warning(
+                    None,
+                    tr("VelocityTab", "Save Failed"),
+                    tr("VelocityTab", "Failed to save Mode 3 settings.")
+                )
+        except Exception as e:
+            QMessageBox.warning(
+                None,
+                tr("VelocityTab", "Save Failed"),
+                tr("VelocityTab", f"Error saving settings: {e}")
+            )
+
+    def load_mode3_settings(self):
+        """Load Mode 3 settings from keyboard"""
+        if not self.keyboard:
+            return
+
+        try:
+            config = self.keyboard.get_keyboard_config()
+            if config:
+                # Load re-trigger enabled
+                retrigger_enabled = config.get('peak_retrigger_enabled', True)
+                self.retrigger_checkbox.blockSignals(True)
+                self.retrigger_checkbox.setChecked(retrigger_enabled)
+                self.retrigger_checkbox.blockSignals(False)
+                self.retrigger_dist_slider.setEnabled(retrigger_enabled)
+
+                # Load re-trigger distance
+                retrigger_dist = config.get('peak_retrigger_distance', 12)
+                self.retrigger_dist_slider.blockSignals(True)
+                self.retrigger_dist_slider.setValue(retrigger_dist)
+                self.retrigger_dist_slider.blockSignals(False)
+                self.retrigger_dist_value.setText(f"{retrigger_dist / 60.0:.1f} mm")
+
+                # Load speed ratio
+                speed_ratio = config.get('peak_speed_ratio', 50)
+                self.speed_ratio_slider.blockSignals(True)
+                self.speed_ratio_slider.setValue(speed_ratio)
+                self.speed_ratio_slider.blockSignals(False)
+                self.speed_ratio_value.setText(f"{speed_ratio}:{100 - speed_ratio}")
+
+                # Load actuation override enabled
+                actuation_enabled = config.get('peak_actuation_override_enabled', False)
+                self.actuation_override_checkbox.blockSignals(True)
+                self.actuation_override_checkbox.setChecked(actuation_enabled)
+                self.actuation_override_checkbox.blockSignals(False)
+                self.actuation_slider.setEnabled(actuation_enabled)
+
+                # Load actuation override value
+                actuation_value = config.get('peak_actuation_override', 120)
+                self.actuation_slider.blockSignals(True)
+                self.actuation_slider.setValue(actuation_value)
+                self.actuation_slider.blockSignals(False)
+                self.actuation_value.setText(f"{actuation_value / 60.0:.1f} mm")
+        except Exception as e:
+            print(f"Error loading Mode 3 settings: {e}")
