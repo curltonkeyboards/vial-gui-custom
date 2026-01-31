@@ -1032,19 +1032,29 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
         case 1:  // Peak Travel - Direction Reversal
             // Triggers immediately when key starts moving back up (direction change)
+            // OR when key reaches 90% depth (bottom out = instant max velocity)
             // Velocity = how deep you pressed (peak travel)
             {
                 const uint8_t MIN_PEAK = 12;              // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD = 3;    // Must decrease by 3 units to count as reversal
                 const uint8_t NOTE_OFF_TRAVEL = 6;       // ~0.1mm - note off when below this
+                const uint8_t BOTTOM_OUT_THRESHOLD = 216; // 90% of 240 = instant trigger at max velocity
 
                 // Track peak travel during press
                 if (travel > state->peak_travel) {
                     state->peak_travel = travel;
                 }
 
+                // Bottom out detection: if key reaches 90%, trigger immediately at max velocity
+                if (!state->velocity_captured && travel >= BOTTOM_OUT_THRESHOLD) {
+                    state->raw_velocity = 255;  // Max velocity for bottom out
+                    state->velocity_captured = true;
+                    state->send_on_release = true;  // Note ON
+
+                    key->base_velocity = MAX_VELOCITY;
+                }
                 // Direction reversal detection: trigger when key starts coming back up
-                if (!state->velocity_captured &&
+                else if (!state->velocity_captured &&
                     state->peak_travel >= MIN_PEAK &&
                     travel < state->peak_travel - REVERSAL_THRESHOLD) {
 
@@ -1164,11 +1174,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
         case 3:  // Speed + Peak Combined - Direction Reversal
             // Triggers on direction reversal like Mode 1
+            // OR when key reaches 90% depth (bottom out = instant max velocity)
             // Velocity = 50% speed + 50% peak travel
             {
                 const uint8_t MIN_PEAK3 = 12;             // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD3 = 3;   // Must decrease by 3 units to count as reversal
                 const uint8_t NOTE_OFF_TRAVEL3 = 6;      // ~0.1mm - note off when below this
+                const uint8_t BOTTOM_OUT_THRESHOLD3 = 216; // 90% of 240 = instant trigger at max velocity
 
                 // Track when key starts moving from rest (for speed calculation)
                 if (state->last_travel == 0 && travel > 0) {
@@ -1180,8 +1192,16 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->peak_travel = travel;
                 }
 
+                // Bottom out detection: if key reaches 90%, trigger immediately at max velocity
+                if (!state->velocity_captured && travel >= BOTTOM_OUT_THRESHOLD3) {
+                    state->raw_velocity = 255;  // Max velocity for bottom out
+                    state->velocity_captured = true;
+                    state->send_on_release = true;  // Note ON
+
+                    key->base_velocity = MAX_VELOCITY;
+                }
                 // Direction reversal detection: trigger when key starts coming back up
-                if (!state->velocity_captured &&
+                else if (!state->velocity_captured &&
                     state->peak_travel >= MIN_PEAK3 &&
                     travel < state->peak_travel - REVERSAL_THRESHOLD3) {
 
