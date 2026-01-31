@@ -302,13 +302,7 @@ class VelocityTab(BasicEditor):
         curve_layout = QVBoxLayout()
         curve_group.setLayout(curve_layout)
 
-        # Curve editor widget
-        self.curve_editor = CurveEditorWidget(show_save_button=False)
-        self.curve_editor.setMinimumSize(300, 200)
-        self.curve_editor.curve_changed.connect(self.on_curve_changed)
-        curve_layout.addWidget(self.curve_editor)
-
-        # Curve preset selector
+        # Curve preset selector - ABOVE the curve graph
         preset_layout = QHBoxLayout()
         preset_label = QLabel(tr("VelocityTab", "Preset:"))
         preset_layout.addWidget(preset_label)
@@ -327,6 +321,12 @@ class VelocityTab(BasicEditor):
         preset_layout.addWidget(self.curve_preset_combo)
         preset_layout.addStretch()
         curve_layout.addLayout(preset_layout)
+
+        # Curve editor widget - BELOW the preset selector
+        self.curve_editor = CurveEditorWidget(show_save_button=False)
+        self.curve_editor.setMinimumSize(300, 200)
+        self.curve_editor.curve_changed.connect(self.on_curve_changed)
+        curve_layout.addWidget(self.curve_editor)
 
         # Save buttons row
         save_buttons_layout = QHBoxLayout()
@@ -977,8 +977,9 @@ class VelocityTab(BasicEditor):
         points = self.curve_editor.get_points()
 
         # Show dialog to select user slot
+        # Note: Pass None as parent since VelocityTab is a QVBoxLayout, not QWidget
         from widgets.curve_editor import SaveToUserDialog
-        dialog = SaveToUserDialog(self, [f"User {i+1}" for i in range(10)])
+        dialog = SaveToUserDialog(None, [f"User {i+1}" for i in range(10)])
         if dialog.exec_() == QDialog.Accepted:
             slot_index = dialog.get_selected_slot()
             if slot_index >= 0 and slot_index < 10:

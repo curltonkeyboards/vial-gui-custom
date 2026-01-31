@@ -1592,7 +1592,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 try:
                     response = self.usb_send(self.dev, packet, retries=1)
                     print(f"[HID Debug] Attempt {attempt+1}: response={list(response[:10]) if response and len(response) >= 10 else response}")
-                    if response and len(response) > 0 and response[5] == 1:
+                    if response and len(response) > 5 and response[5] == 1:
                         print(f"[HID Debug] Success! response[5]={response[5]}")
                         return True
                     else:
