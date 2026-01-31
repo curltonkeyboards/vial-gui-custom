@@ -1282,6 +1282,143 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // =========================================================================
+    // USER VELOCITY CURVE COMMANDS (0xD9-0xDC)
+    // These handle user-editable velocity curves for the keyboard
+    // =========================================================================
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xD9 && data[3] <= 0xDC) {
+
+        dprintf("raw_hid_receive_kb: User Curve command detected (0x%02X)\n", data[3]);
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xD9: {  // HID_CMD_USER_CURVE_SET
+                // Set user curve points and name
+                // Format: [slot(1), points[4][2](8), name[16]]
+                // data[6] = slot (0-9)
+                // data[7-14] = points (8 bytes: 4 points x 2 coords)
+                // data[15-30] = name (16 bytes)
+                // Response: response[5] = status (0x01 = success)
+                uint8_t slot = data[6];
+
+                if (slot >= 10) {
+                    response[5] = 0x00;  // Error - invalid slot
+                    dprintf("User Curve SET: Invalid slot %d\n", slot);
+                } else {
+                    // Copy points (8 bytes)
+                    memcpy(user_curves.curves[slot].points, &data[7], 8);
+
+                    // Copy name (16 bytes)
+                    memcpy(user_curves.curves[slot].name, &data[15], 15);
+                    user_curves.curves[slot].name[15] = '\0';  // Ensure null termination
+
+                    // Save to EEPROM
+                    user_curves_save();
+
+                    response[5] = 0x01;  // Success
+                    response[6] = slot;
+                    dprintf("User Curve SET: slot=%d, points=[%d,%d],[%d,%d],[%d,%d],[%d,%d]\n",
+                            slot,
+                            user_curves.curves[slot].points[0][0], user_curves.curves[slot].points[0][1],
+                            user_curves.curves[slot].points[1][0], user_curves.curves[slot].points[1][1],
+                            user_curves.curves[slot].points[2][0], user_curves.curves[slot].points[2][1],
+                            user_curves.curves[slot].points[3][0], user_curves.curves[slot].points[3][1]);
+                }
+                break;
+            }
+
+            case 0xDA: {  // HID_CMD_USER_CURVE_GET
+                // Get user curve points and name
+                // Request: data[6] = slot (0-9)
+                // Response format (matches Python keyboard_comm.py expectations):
+                //   response[5] = status (0x01 = success)
+                //   response[6] = slot
+                //   response[7-14] = points (8 bytes: 4 points x 2 coords)
+                //   response[15-30] = name (16 bytes)
+                uint8_t slot = data[6];
+
+                if (slot >= 10) {
+                    response[5] = 0x00;  // Error - invalid slot
+                    dprintf("User Curve GET: Invalid slot %d\n", slot);
+                } else {
+                    response[5] = 0x01;  // Success
+                    response[6] = slot;
+
+                    // Copy points (8 bytes) to response[7-14]
+                    memcpy(&response[7], user_curves.curves[slot].points, 8);
+
+                    // Copy name (16 bytes) to response[15-30]
+                    memcpy(&response[15], user_curves.curves[slot].name, 16);
+
+                    dprintf("User Curve GET: slot=%d, name=%s\n", slot, user_curves.curves[slot].name);
+                }
+                break;
+            }
+
+            case 0xDB: {  // HID_CMD_USER_CURVE_GET_ALL_NAMES
+                // Get all user curve names (10 slots)
+                // This sends 2 packets since 10 names x 16 bytes = 160 bytes
+                // Packet 1: slots 0-4 (5 names x 16 bytes = 80 bytes, won't fit)
+                // Instead: Send each name with slot index in multiple packets
+                // Response per packet: [status, packet_num, total_packets, slot, name[16], slot, name[16]]
+                // With 32-byte packets, we can fit 2 names per packet (2 + 1 + 1 + 16 + 16 = 36, too big)
+                // Actually: header(4) + status(1) + packet(1) + total(1) + slot(1) + name(16) = 24 bytes
+                // So 1 name per packet, 10 packets total
+
+                const uint8_t TOTAL_PACKETS = 10;
+
+                for (uint8_t pkt = 0; pkt < TOTAL_PACKETS; pkt++) {
+                    uint8_t name_response[32] = {0};
+
+                    // Header
+                    name_response[0] = HID_MANUFACTURER_ID;
+                    name_response[1] = HID_SUB_ID;
+                    name_response[2] = HID_DEVICE_ID;
+                    name_response[3] = 0xDB;
+
+                    // Metadata
+                    name_response[4] = 0x01;  // Success
+                    name_response[5] = pkt;   // Packet number (also slot number)
+                    name_response[6] = TOTAL_PACKETS;
+
+                    // Copy name (16 bytes)
+                    memcpy(&name_response[7], user_curves.curves[pkt].name, 16);
+
+                    raw_hid_send(name_response, 32);
+                }
+                return;  // Already sent responses
+            }
+
+            case 0xDC: {  // HID_CMD_USER_CURVE_RESET
+                // Reset all user curves to defaults
+                // Response: response[5] = status (0x01 = success)
+                user_curves_reset();
+                response[5] = 0x01;  // Success
+                dprintf("User Curve RESET: All curves reset to defaults\n");
+                break;
+            }
+
+            default:
+                response[5] = 0x00;  // Error - unknown command
+                break;
+        }
+
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is a Velocity Matrix Poll command (0xE5)
     // Returns velocity (0-127, after curve) and travel time (ms) for specific keys
     if (length >= 32 &&

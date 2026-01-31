@@ -46,12 +46,28 @@ extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
 #define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
 #define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
 
-// Direct HE Curve Selection (5 keycodes: 0xCCB0-0xCCB4)
-#define HE_CURVE_SOFTEST    0xCCB0
-#define HE_CURVE_SOFT       0xCCB1
-#define HE_CURVE_MEDIUM     0xCCB2
-#define HE_CURVE_HARD       0xCCB3
-#define HE_CURVE_HARDEST    0xCCB4
+// Direct HE Curve Selection - Factory curves (0xCCB0-0xCCB4)
+#define HE_CURVE_SOFTEST    0xCCB0  // Curve index 0
+#define HE_CURVE_SOFT       0xCCB1  // Curve index 1
+#define HE_CURVE_MEDIUM     0xCCB2  // Curve index 2 (Linear)
+#define HE_CURVE_HARD       0xCCB3  // Curve index 3
+#define HE_CURVE_HARDEST    0xCCB4  // Curve index 4
+
+// Additional Factory curves (0xCC79-0xCC7A)
+#define HE_CURVE_AGGRO      0xCC79  // Curve index 5
+#define HE_CURVE_DIGITAL    0xCC7A  // Curve index 6
+
+// User curve keycodes (0xCC7B-0xCC84) - 10 user-editable curves
+#define HE_CURVE_USER_1     0xCC7B  // Curve index 7
+#define HE_CURVE_USER_2     0xCC7C  // Curve index 8
+#define HE_CURVE_USER_3     0xCC7D  // Curve index 9
+#define HE_CURVE_USER_4     0xCC7E  // Curve index 10
+#define HE_CURVE_USER_5     0xCC7F  // Curve index 11
+#define HE_CURVE_USER_6     0xCC80  // Curve index 12
+#define HE_CURVE_USER_7     0xCC81  // Curve index 13
+#define HE_CURVE_USER_8     0xCC82  // Curve index 14
+#define HE_CURVE_USER_9     0xCC83  // Curve index 15
+#define HE_CURVE_USER_10    0xCC84  // Curve index 16
 
 // HE Velocity Range keycodes (combined min/max where min ≤ max) - starts at 0xCCB5
 // Base address for range keycodes (8,128 keycodes total: 127×128/2 triangular number)
@@ -11132,11 +11148,23 @@ break;
         // Update the name string with new line
         snprintf(name, sizeof(name), "CC%-3d  %d", cc_number, cc_index);
 	}
-    // Handle HE Velocity Curve keycodes
+    // Handle HE Velocity Curve keycodes (0xCCB0-0xCCB4: factory 0-4)
     else if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
         const char* curve_names[] = {"Softest", "Soft", "Medium", "Hard", "Hardest"};
         uint8_t curve_idx = keycode - HE_CURVE_SOFTEST;
         snprintf(name, sizeof(name), "HE Curve: %s", curve_names[curve_idx]);
+    }
+    // Handle additional factory curves (0xCC79-0xCC7A: Aggro, Digital)
+    else if (keycode == HE_CURVE_AGGRO) {
+        snprintf(name, sizeof(name), "HE Curve: Aggro");
+    }
+    else if (keycode == HE_CURVE_DIGITAL) {
+        snprintf(name, sizeof(name), "HE Curve: Digital");
+    }
+    // Handle user curve keycodes (0xCC7B-0xCC84: User 1-10)
+    else if (keycode >= HE_CURVE_USER_1 && keycode <= HE_CURVE_USER_10) {
+        uint8_t user_num = keycode - HE_CURVE_USER_1 + 1;  // 1-10
+        snprintf(name, sizeof(name), "HE Curve: User %d", user_num);
     }
     // Handle HE Velocity Range keycodes (min ≤ max only, 8,128 keycodes)
     else if (keycode >= HE_VEL_RANGE_BASE && keycode < HE_VEL_RANGE_BASE + 8128) {
@@ -13387,9 +13415,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // HE Velocity Curve Controls (global settings)
+    // Now supports 17 curves: 0-6 factory, 7-16 user
     if (keycode == HE_VEL_CURVE_UP) {
         if (record->event.pressed) {
-            keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 5;
+            keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 17;
             dprintf("Global HE Velocity Curve: %d\n", keyboard_settings.he_velocity_curve);
         }
         return false;
@@ -13398,7 +13427,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == HE_VEL_CURVE_DOWN) {
         if (record->event.pressed) {
             if (keyboard_settings.he_velocity_curve == 0) {
-                keyboard_settings.he_velocity_curve = 4;
+                keyboard_settings.he_velocity_curve = 16;
             } else {
                 keyboard_settings.he_velocity_curve--;
             }
@@ -13407,14 +13436,42 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // Direct HE Curve Selection - affects ALL layers
+    // Direct HE Curve Selection - Factory curves 0-4 (0xCCB0-0xCCB4)
     if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
         if (record->event.pressed) {
             uint8_t curve_value = keycode - HE_CURVE_SOFTEST;
-            // Update ALL layers
-            // Update global HE velocity curve
             keyboard_settings.he_velocity_curve = curve_value;
             dprintf("All layers HE Curve: %d\n", curve_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Direct HE Curve Selection - Aggro (curve 5) and Digital (curve 6)
+    if (keycode == HE_CURVE_AGGRO) {
+        if (record->event.pressed) {
+            keyboard_settings.he_velocity_curve = 5;
+            dprintf("All layers HE Curve: Aggro (5)\n");
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    if (keycode == HE_CURVE_DIGITAL) {
+        if (record->event.pressed) {
+            keyboard_settings.he_velocity_curve = 6;
+            dprintf("All layers HE Curve: Digital (6)\n");
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Direct HE Curve Selection - User curves 1-10 (0xCC7B-0xCC84, indices 7-16)
+    if (keycode >= HE_CURVE_USER_1 && keycode <= HE_CURVE_USER_10) {
+        if (record->event.pressed) {
+            uint8_t curve_value = 7 + (keycode - HE_CURVE_USER_1);  // 7-16
+            keyboard_settings.he_velocity_curve = curve_value;
+            dprintf("All layers HE Curve: User %d (index %d)\n", keycode - HE_CURVE_USER_1 + 1, curve_value);
             set_keylog(keycode, record);
         }
         return false;
