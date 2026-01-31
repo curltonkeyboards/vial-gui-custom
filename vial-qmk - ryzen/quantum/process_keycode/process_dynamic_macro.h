@@ -343,12 +343,6 @@ typedef struct {
     uint16_t vibrato_decay_time;          // 0-2000 (milliseconds)
     uint16_t min_press_time;              // 50-500ms (slow press threshold for min velocity)
     uint16_t max_press_time;              // 5-100ms (fast press threshold for max velocity)
-    // Mode 3 (Speed+Peak) specific settings
-    bool peak_retrigger_enabled;          // Enable/disable partial release re-triggering
-    uint8_t peak_retrigger_distance;      // Re-trigger distance in units (12-90 = 0.2mm-1.5mm)
-    uint8_t peak_speed_ratio;             // Speed:Peak ratio 0-100 (0=all peak, 100=all speed)
-    bool peak_actuation_override_enabled; // Override per-key actuation for Mode 3
-    uint8_t peak_actuation_override;      // Actuation override in units (0-240 = 0-4mm)
     // Base/Main MIDI HE Velocity curve and range
     uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - global fallback
     uint8_t he_velocity_min;              // 1-127 (minimum velocity)
@@ -374,6 +368,12 @@ typedef struct {
     uint8_t midi_in_mode;                 // MIDI IN routing mode (0=Process All, 1=Thru, 2=Clock Only, 3=Ignore)
     uint8_t usb_midi_mode;                // USB MIDI routing mode (0=Process All, 1=Thru, 2=Clock Only, 3=Ignore)
     uint8_t midi_clock_source;            // Clock source (0=Local, 1=USB, 2=MIDI IN)
+    // Mode 3 (Speed+Peak) specific settings - MUST be at end to preserve EEPROM compatibility
+    bool peak_retrigger_enabled;          // Enable/disable partial release re-triggering
+    uint8_t peak_retrigger_distance;      // Re-trigger distance in units (12-90 = 0.2mm-1.5mm)
+    uint8_t peak_speed_ratio;             // Speed:Peak ratio 0-100 (0=all peak, 100=all speed)
+    bool peak_actuation_override_enabled; // Override per-key actuation for Mode 3
+    uint8_t peak_actuation_override;      // Actuation override in units (0-240 = 0-4mm)
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;

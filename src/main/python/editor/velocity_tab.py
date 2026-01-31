@@ -27,7 +27,7 @@ from vial_device import VialKeyboard
 from protocol.keyboard_comm import (
     PARAM_PEAK_RETRIGGER_ENABLED, PARAM_PEAK_RETRIGGER_DISTANCE,
     PARAM_PEAK_SPEED_RATIO, PARAM_PEAK_ACTUATION_OVERRIDE_ENABLED,
-    PARAM_PEAK_ACTUATION_OVERRIDE
+    PARAM_PEAK_ACTUATION_OVERRIDE, PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME
 )
 
 
@@ -578,25 +578,31 @@ class VelocityTab(BasicEditor):
                     self.keyboard_widget.set_velocity(row, col, velocity)
 
     def load_time_settings(self):
-        """Load velocity time settings from keyboard"""
+        """Load velocity time settings from keyboard via get_midi_config"""
         if not self.keyboard:
             return
 
-        result = self.keyboard.get_velocity_time_settings()
-        if result:
-            self.min_time = result.get('min_time', 100)
-            self.max_time = result.get('max_time', 10)
+        try:
+            # Time settings are part of keyboard_settings, loaded via get_midi_config
+            config = self.keyboard.get_midi_config()
+            if config:
+                # These might be in the config if firmware sends them
+                # For now, use defaults if not available
+                self.min_time = config.get('min_press_time', 200)
+                self.max_time = config.get('max_press_time', 20)
 
-            # Update spinboxes without triggering valueChanged
-            self.slow_time_spin.blockSignals(True)
-            self.fast_time_spin.blockSignals(True)
-            self.slow_time_spin.setValue(self.min_time)
-            self.fast_time_spin.setValue(self.max_time)
-            self.slow_time_spin.blockSignals(False)
-            self.fast_time_spin.blockSignals(False)
+                # Update spinboxes without triggering valueChanged
+                self.slow_time_spin.blockSignals(True)
+                self.fast_time_spin.blockSignals(True)
+                self.slow_time_spin.setValue(self.min_time)
+                self.fast_time_spin.setValue(self.max_time)
+                self.slow_time_spin.blockSignals(False)
+                self.fast_time_spin.blockSignals(False)
+        except Exception as e:
+            print(f"Error loading time settings: {e}")
 
     def on_time_changed(self):
-        """Handle time setting changes"""
+        """Handle time setting changes - uses set_keyboard_param_single like keymap_editor"""
         new_min = self.slow_time_spin.value()
         new_max = self.fast_time_spin.value()
 
@@ -616,28 +622,25 @@ class VelocityTab(BasicEditor):
                 self.fast_time_spin.blockSignals(False)
                 new_max = new_min - 10
 
-        # Send to keyboard immediately for real-time feedback
+        # Send to keyboard immediately using set_keyboard_param_single (same as keymap_editor)
         if self.keyboard:
-            self.keyboard.set_velocity_time_settings(new_min, new_max)
+            # PARAM_MIN_PRESS_TIME and PARAM_MAX_PRESS_TIME are 16-bit values
+            self.keyboard.set_keyboard_param_single(PARAM_MIN_PRESS_TIME, new_min)
+            self.keyboard.set_keyboard_param_single(PARAM_MAX_PRESS_TIME, new_max)
 
     def on_save_time_settings(self):
-        """Save time settings to keyboard EEPROM"""
+        """Save time settings - settings are applied via set_keyboard_param_single"""
         if not self.keyboard:
             return
 
-        success = self.keyboard.save_velocity_time_settings()
-        if success:
-            QMessageBox.information(
-                None,
-                tr("VelocityTab", "Settings Saved"),
-                tr("VelocityTab", "Velocity time settings saved to keyboard.")
-            )
-        else:
-            QMessageBox.warning(
-                None,
-                tr("VelocityTab", "Save Failed"),
-                tr("VelocityTab", "Failed to save velocity time settings.")
-            )
+        # Settings are already applied via set_keyboard_param_single
+        # They update both the RAM variable and keyboard_settings struct
+        # To persist to EEPROM, user should save via MIDI Settings tab
+        QMessageBox.information(
+            None,
+            tr("VelocityTab", "Settings Applied"),
+            tr("VelocityTab", "Speed settings are active.\n\nTo save permanently, use 'MIDI Settings' tab → Save Settings → Save as Default.")
+        )
 
     def on_curve_changed(self):
         """Handle curve editor changes"""
@@ -781,31 +784,18 @@ class VelocityTab(BasicEditor):
                 )
 
     def on_save_mode3_settings(self):
-        """Save Mode 3 settings to keyboard EEPROM"""
+        """Save Mode 3 settings - settings are applied via set_keyboard_param_single"""
         if not self.keyboard:
             return
 
-        try:
-            # Settings are sent in real-time, just need to trigger EEPROM save
-            success = self.keyboard.save_keyboard_config()
-            if success:
-                QMessageBox.information(
-                    None,
-                    tr("VelocityTab", "Settings Saved"),
-                    tr("VelocityTab", "Mode 3 settings saved to keyboard.")
-                )
-            else:
-                QMessageBox.warning(
-                    None,
-                    tr("VelocityTab", "Save Failed"),
-                    tr("VelocityTab", "Failed to save Mode 3 settings.")
-                )
-        except Exception as e:
-            QMessageBox.warning(
-                None,
-                tr("VelocityTab", "Save Failed"),
-                tr("VelocityTab", f"Error saving settings: {e}")
-            )
+        # Settings are already applied via set_keyboard_param_single
+        # They update both the RAM variable and keyboard_settings struct
+        # To persist to EEPROM, user should save via MIDI Settings tab
+        QMessageBox.information(
+            None,
+            tr("VelocityTab", "Settings Applied"),
+            tr("VelocityTab", "Mode 3 settings are active.\n\nTo save permanently, use 'MIDI Settings' tab → Save Settings → Save as Default.")
+        )
 
     def load_mode3_settings(self):
         """Load Mode 3 settings from keyboard"""
