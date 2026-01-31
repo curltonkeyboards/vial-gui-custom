@@ -329,28 +329,16 @@ class VelocityTab(BasicEditor):
         curve_layout = QVBoxLayout()
         curve_group.setLayout(curve_layout)
 
-        # Curve editor widget
-        self.curve_editor = CurveEditorWidget(show_save_button=False)
+        # Curve editor widget - show_save_button=True enables user curve save functionality
+        self.curve_editor = CurveEditorWidget(show_save_button=True)
         self.curve_editor.setMinimumSize(300, 200)
         self.curve_editor.curve_changed.connect(self.on_curve_changed)
+        self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
+        self.curve_editor.save_to_user_requested.connect(self.on_save_to_user_curve)
         curve_layout.addWidget(self.curve_editor)
 
-        # Curve preset selector
-        preset_layout = QHBoxLayout()
-        preset_label = QLabel(tr("VelocityTab", "Preset:"))
-        preset_layout.addWidget(preset_label)
-
-        self.curve_preset_combo = ArrowComboBox()
-        for i, name in enumerate(CurveEditorWidget.FACTORY_CURVES):
-            self.curve_preset_combo.addItem(name, i)
-        self.curve_preset_combo.setCurrentIndex(2)  # Linear default
-        self.curve_preset_combo.currentIndexChanged.connect(self.on_preset_changed)
-        preset_layout.addWidget(self.curve_preset_combo)
-        preset_layout.addStretch()
-        curve_layout.addLayout(preset_layout)
-
-        # Save curve button
-        save_curve_btn = QPushButton(tr("VelocityTab", "Save Curve to Keyboard"))
+        # Save curve button (saves the selected preset index to keyboard)
+        save_curve_btn = QPushButton(tr("VelocityTab", "Apply Curve to Keyboard"))
         save_curve_btn.setMinimumHeight(30)
         save_curve_btn.clicked.connect(self.on_save_curve)
         curve_layout.addWidget(save_curve_btn)
@@ -879,59 +867,132 @@ class VelocityTab(BasicEditor):
         # would need to be sent to the keyboard
         pass
 
-    def on_preset_changed(self, index):
-        """Handle preset selection"""
-        if index >= 0 and index < len(CurveEditorWidget.FACTORY_CURVES):
-            # Load factory curve points into the curve editor
-            points = CurveEditorWidget.FACTORY_CURVE_POINTS[index]
-            self.curve_editor.set_points(points)
-
     def load_velocity_curve(self):
-        """Load current velocity curve from keyboard"""
+        """Load current velocity curve and user curve names from keyboard"""
         if not self.keyboard:
             return
 
         try:
-            # Get keyboard config which includes velocity curve
+            # Load user curve names from keyboard
+            user_curve_names = self.keyboard.get_all_user_curve_names()
+            if user_curve_names:
+                self.curve_editor.set_user_curve_names(user_curve_names)
+
+            # Get keyboard config which includes velocity curve index
             config = self.keyboard.get_keyboard_config()
             if config:
                 curve_index = config.get('he_velocity_curve', 2)  # Default to Linear (2)
-                if 0 <= curve_index < len(CurveEditorWidget.FACTORY_CURVES):
-                    self.curve_preset_combo.blockSignals(True)
-                    self.curve_preset_combo.setCurrentIndex(curve_index)
-                    self.curve_preset_combo.blockSignals(False)
-                    # Update the curve editor display
+                # Update the curve editor's preset combo
+                self.curve_editor.preset_combo.blockSignals(True)
+                if 0 <= curve_index < 7:
+                    # Factory curve
+                    self.curve_editor.preset_combo.setCurrentIndex(curve_index)
                     points = CurveEditorWidget.FACTORY_CURVE_POINTS[curve_index]
                     self.curve_editor.set_points(points)
+                elif 7 <= curve_index <= 16:
+                    # User curve - find it in the combo (after separator)
+                    # Factory curves: 0-6, separator, User curves: 7-16
+                    combo_index = curve_index + 1  # +1 for separator after factory curves
+                    if combo_index < self.curve_editor.preset_combo.count():
+                        self.curve_editor.preset_combo.setCurrentIndex(combo_index)
+                        # Load user curve points from keyboard
+                        self.on_user_curve_selected(curve_index - 7)
+                self.curve_editor.preset_combo.blockSignals(False)
         except Exception as e:
             print(f"Error loading velocity curve: {e}")
 
-    def on_save_curve(self):
-        """Save velocity curve selection to keyboard"""
+    def on_user_curve_selected(self, slot_index):
+        """Load user curve from keyboard when selected in dropdown"""
         if not self.keyboard:
             return
 
-        curve_index = self.curve_preset_combo.currentIndex()
+        try:
+            result = self.keyboard.get_user_curve(slot_index)
+            if result:
+                points = result.get('points', [[0, 0], [85, 85], [170, 170], [255, 255]])
+                # Load the points into the editor and cache them
+                self.curve_editor.load_user_curve_points(points, slot_index)
+        except Exception as e:
+            print(f"Error loading user curve {slot_index}: {e}")
+
+    def on_save_to_user_curve(self, slot_index, curve_name):
+        """Save current curve to a user slot on the keyboard"""
+        if not self.keyboard:
+            QMessageBox.warning(
+                None,
+                tr("VelocityTab", "Save Failed"),
+                tr("VelocityTab", "Keyboard not connected.")
+            )
+            return
+
+        try:
+            points = self.curve_editor.get_points()
+            success = self.keyboard.set_user_curve(slot_index, points, curve_name)
+            if success:
+                QMessageBox.information(
+                    None,
+                    tr("VelocityTab", "User Curve Saved"),
+                    tr("VelocityTab", f"Curve saved to User slot {slot_index + 1} as '{curve_name}'.")
+                )
+                # Update the user curve name in the dropdown
+                names = list(self.curve_editor.user_curve_names)
+                names[slot_index] = curve_name
+                self.curve_editor.set_user_curve_names(names)
+            else:
+                QMessageBox.warning(
+                    None,
+                    tr("VelocityTab", "Save Failed"),
+                    tr("VelocityTab", "Failed to save user curve to keyboard.")
+                )
+        except Exception as e:
+            QMessageBox.warning(
+                None,
+                tr("VelocityTab", "Save Failed"),
+                tr("VelocityTab", f"Error saving user curve: {e}")
+            )
+
+    def on_save_curve(self):
+        """Save velocity curve selection to keyboard (sets the active curve index)"""
+        if not self.keyboard:
+            return
+
+        # Get curve index from the CurveEditorWidget's preset combo
+        curve_index = self.curve_editor.preset_combo.currentData()
+
+        if curve_index == -1:
+            # Custom curve - need to save to a user slot first
+            QMessageBox.information(
+                None,
+                tr("VelocityTab", "Custom Curve"),
+                tr("VelocityTab", "To use a custom curve, save it to a User slot first using 'Save to User...'")
+            )
+            return
 
         try:
             # Use set_keyboard_param_single to set the velocity curve
             # PARAM_HE_VELOCITY_CURVE = 4 (from keyboard_comm.py constants)
             success = self.keyboard.set_keyboard_param_single(4, curve_index)
             if success:
+                # Get the curve name for display
+                if curve_index < 7:
+                    curve_name = CurveEditorWidget.FACTORY_CURVES[curve_index]
+                else:
+                    slot = curve_index - 7
+                    curve_name = self.curve_editor.user_curve_names[slot] if slot < 10 else f"User {slot + 1}"
                 QMessageBox.information(
                     None,
-                    tr("VelocityTab", "Curve Saved"),
-                    tr("VelocityTab", f"Velocity curve '{CurveEditorWidget.FACTORY_CURVES[curve_index]}' saved to keyboard.")
+                    tr("VelocityTab", "Curve Applied"),
+                    tr("VelocityTab", f"Velocity curve '{curve_name}' applied to keyboard.")
                 )
             else:
                 QMessageBox.warning(
                     None,
-                    tr("VelocityTab", "Save Failed"),
-                    tr("VelocityTab", "Failed to save velocity curve.")
+                    tr("VelocityTab", "Apply Failed"),
+                    tr("VelocityTab", "Failed to apply velocity curve.")
                 )
         except Exception as e:
             QMessageBox.warning(
                 None,
-                tr("VelocityTab", "Save Failed"),
-                tr("VelocityTab", f"Error saving curve: {e}")
+                tr("VelocityTab", "Apply Failed"),
+                tr("VelocityTab", f"Error applying curve: {e}")
             )
