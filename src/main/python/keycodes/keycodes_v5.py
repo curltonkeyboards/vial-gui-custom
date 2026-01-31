@@ -2344,12 +2344,26 @@ class keycodes_v5:
         "KS_MODIFIER": 0xCCAD,  # Key split modifier
         "TS_MODIFIER": 0xCCAE,  # Triple split modifier
 
-        # HE Velocity Curve keycodes (0xCCB0-0xCCB4)
-        "HE_CURVE_SOFTEST": 0xCCB0,
-        "HE_CURVE_SOFT": 0xCCB1,
-        "HE_CURVE_MEDIUM": 0xCCB2,
-        "HE_CURVE_HARD": 0xCCB3,
-        "HE_CURVE_HARDEST": 0xCCB4,
+        # HE Velocity Curve keycodes - Factory curves (0xCCB0-0xCCB6)
+        "HE_CURVE_SOFTEST": 0xCCB0,   # Factory curve 0
+        "HE_CURVE_SOFT": 0xCCB1,       # Factory curve 1
+        "HE_CURVE_MEDIUM": 0xCCB2,     # Factory curve 2 (Linear)
+        "HE_CURVE_HARD": 0xCCB3,       # Factory curve 3
+        "HE_CURVE_HARDEST": 0xCCB4,    # Factory curve 4
+        "HE_CURVE_AGGRO": 0xCC79,      # Factory curve 5
+        "HE_CURVE_DIGITAL": 0xCC7A,    # Factory curve 6
+
+        # HE Velocity Curve keycodes - User curves (0xCC7B-0xCC84)
+        "HE_CURVE_USER_1": 0xCC7B,     # User curve 1 (index 7)
+        "HE_CURVE_USER_2": 0xCC7C,     # User curve 2 (index 8)
+        "HE_CURVE_USER_3": 0xCC7D,     # User curve 3 (index 9)
+        "HE_CURVE_USER_4": 0xCC7E,     # User curve 4 (index 10)
+        "HE_CURVE_USER_5": 0xCC7F,     # User curve 5 (index 11)
+        "HE_CURVE_USER_6": 0xCC80,     # User curve 6 (index 12)
+        "HE_CURVE_USER_7": 0xCC81,     # User curve 7 (index 13)
+        "HE_CURVE_USER_8": 0xCC82,     # User curve 8 (index 14)
+        "HE_CURVE_USER_9": 0xCC83,     # User curve 9 (index 15)
+        "HE_CURVE_USER_10": 0xCC84,    # User curve 10 (index 16)
 
         # HE Velocity Range base (for dynamic generation, starts at 0xCCB5)
         "HE_VEL_RANGE_1_1": 0xCCB5,  # Base for range keycodes (allows min == max)

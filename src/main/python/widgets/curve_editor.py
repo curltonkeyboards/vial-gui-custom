@@ -91,77 +91,17 @@ class CurveEditorWidget(QWidget):
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Preset selector
-        preset_layout = QHBoxLayout()
-        preset_label = QLabel(tr("CurveEditor", "Preset:"))
-        self.preset_combo = QComboBox()
-
-        # Add factory curves
-        for i, name in enumerate(self.FACTORY_CURVES):
-            self.preset_combo.addItem(name, i)
-
-        # Add separator
-        self.preset_combo.insertSeparator(len(self.FACTORY_CURVES))
-
-        # Add user curves (indices 7-16)
-        for i, name in enumerate(self.user_curve_names):
-            self.preset_combo.addItem(name, 7 + i)
-
-        # Add custom option
-        self.preset_combo.insertSeparator(self.preset_combo.count())
-        self.preset_combo.addItem("Custom", -1)
-
-        self.preset_combo.currentIndexChanged.connect(self.on_preset_changed)
-
-        preset_layout.addWidget(preset_label)
-        preset_layout.addWidget(self.preset_combo, 1)
-
-        if self.show_save_button:
-            self.save_to_user_btn = QPushButton(tr("CurveEditor", "Save to User..."))
-            self.save_to_user_btn.clicked.connect(self.on_save_to_user_clicked)
-            preset_layout.addWidget(self.save_to_user_btn)
-
-        layout.addLayout(preset_layout)
-
-        # Canvas (drawing area)
+        # Canvas only - preset selector is managed externally by velocity_tab.py
         self.canvas = CurveCanvas(self, self.points, self.canvas_size, self.margin, self.grid_divisions)
         self.canvas.point_moved.connect(self.on_point_moved)
         layout.addWidget(self.canvas)
 
         self.setLayout(layout)
 
-    def on_preset_changed(self, index):
-        """Load selected preset curve"""
-        curve_index = self.preset_combo.currentData()
-
-        if curve_index == -1:
-            # Custom - don't change anything
-            return
-        elif curve_index < 7:
-            # Factory curve - load points directly
-            self.set_points(self.FACTORY_CURVE_POINTS[curve_index])
-        else:
-            # User curve (7-16) - check local cache first, then ask parent
-            slot_index = curve_index - 7  # Convert to 0-9 slot index
-            if slot_index in self.user_curves_cache:
-                # Load from local cache
-                self.load_user_curve_points(self.user_curves_cache[slot_index])
-            else:
-                # Emit signal for parent to load from keyboard
-                self.user_curve_selected.emit(slot_index)
-
     def on_point_moved(self, point_index, x, y):
         """Called when user drags a point"""
         if point_index >= 0 and point_index < 4:
             self.points[point_index] = [x, y]
-
-            # Switch to "Custom" preset
-            custom_index = self.preset_combo.findData(-1)
-            if custom_index >= 0:
-                self.preset_combo.blockSignals(True)
-                self.preset_combo.setCurrentIndex(custom_index)
-                self.preset_combo.blockSignals(False)
-
             self.curve_changed.emit(self.points)
 
     def on_save_to_user_clicked(self):
@@ -191,32 +131,6 @@ class CurveEditorWidget(QWidget):
     def get_points(self):
         """Get current curve points"""
         return [list(p) for p in self.points]  # Deep copy
-
-    def set_user_curve_names(self, names):
-        """Update user curve names in dropdown"""
-        if len(names) == 10:
-            self.user_curve_names = list(names)
-
-            # Update combo box
-            self.preset_combo.blockSignals(True)
-            for i in range(10):
-                # User curves start after factory curves + separator
-                combo_index = len(self.FACTORY_CURVES) + 1 + i
-                self.preset_combo.setItemText(combo_index, names[i])
-            self.preset_combo.blockSignals(False)
-
-    def select_curve(self, curve_index):
-        """Select a curve by index (0-16 or -1 for custom)"""
-        for i in range(self.preset_combo.count()):
-            if self.preset_combo.itemData(i) == curve_index:
-                self.preset_combo.blockSignals(True)
-                self.preset_combo.setCurrentIndex(i)
-                self.preset_combo.blockSignals(False)
-                break
-
-    def get_selected_curve_index(self):
-        """Get the currently selected curve index (0-16 or -1 for custom)"""
-        return self.preset_combo.currentData()
 
     def load_user_curve_points(self, points, slot_index=None):
         """Load user curve points without emitting curve_changed signal.

@@ -383,7 +383,7 @@ class QuickActuationWidget(QWidget):
         max_press_layout.addWidget(max_press_label)
 
         self.max_press_slider = QSlider(Qt.Horizontal)
-        self.max_press_slider.setMinimum(5)
+        self.max_press_slider.setMinimum(1)
         self.max_press_slider.setMaximum(100)
         self.max_press_slider.setValue(20)
         self.max_press_slider.valueChanged.connect(self.on_max_press_changed)
