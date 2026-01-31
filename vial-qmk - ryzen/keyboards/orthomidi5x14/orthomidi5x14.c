@@ -258,12 +258,6 @@ uint8_t vibrato_sensitivity = 100;   // 50-200 (percentage, 100=normal)
 uint16_t vibrato_decay_time = 200;   // 0-2000 (milliseconds)
 uint16_t min_press_time = 200;       // 50-500ms (slow press threshold)
 uint16_t max_press_time = 20;        // 5-100ms (fast press threshold)
-// Mode 3 (Speed+Peak) specific settings
-bool peak_retrigger_enabled = true;      // Enable partial release re-triggering
-uint8_t peak_retrigger_distance = 12;    // Re-trigger distance in units (12-90 = 0.2mm-1.5mm)
-uint8_t peak_speed_ratio = 50;           // Speed:Peak ratio 0-100 (0=all peak, 100=all speed)
-bool peak_actuation_override_enabled = false;  // Override per-key actuation for Mode 3
-uint8_t peak_actuation_override = 0;     // Actuation override in units (0-240 = 0-4mm)
 bool keysplitmodifierheld = false;
 bool triplesplitmodifierheld = false;
 bool global_edit_modifier_held = false;
@@ -2768,12 +2762,6 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
     usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
     midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
-    // Mode 3 (Speed+Peak) settings
-    peak_retrigger_enabled = keyboard_settings.peak_retrigger_enabled;
-    peak_retrigger_distance = keyboard_settings.peak_retrigger_distance;
-    peak_speed_ratio = keyboard_settings.peak_speed_ratio;
-    peak_actuation_override_enabled = keyboard_settings.peak_actuation_override_enabled;
-    peak_actuation_override = keyboard_settings.peak_actuation_override;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }

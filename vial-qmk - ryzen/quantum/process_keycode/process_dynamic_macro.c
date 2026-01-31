@@ -140,12 +140,6 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_VIBRATO_DECAY_TIME             41  // 16-bit, uses 2 bytes
 #define PARAM_MIN_PRESS_TIME                 42  // 16-bit, uses 2 bytes
 #define PARAM_MAX_PRESS_TIME                 43  // 16-bit, uses 2 bytes
-// Mode 3 (Speed+Peak) specific parameters
-#define PARAM_PEAK_RETRIGGER_ENABLED         44  // bool
-#define PARAM_PEAK_RETRIGGER_DISTANCE        45  // uint8_t (12-90 units = 0.2mm-1.5mm)
-#define PARAM_PEAK_SPEED_RATIO               46  // uint8_t (0-100)
-#define PARAM_PEAK_ACTUATION_OVERRIDE_ENABLED 47 // bool
-#define PARAM_PEAK_ACTUATION_OVERRIDE        48  // uint8_t (0-240 units = 0-4mm)
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -13038,33 +13032,6 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             keyboard_settings.max_press_time = max_press_time;
             break;
 
-        // Mode 3 (Speed+Peak) specific parameters
-        case PARAM_PEAK_RETRIGGER_ENABLED:
-            peak_retrigger_enabled = (*value_ptr != 0);
-            keyboard_settings.peak_retrigger_enabled = peak_retrigger_enabled;
-            break;
-        case PARAM_PEAK_RETRIGGER_DISTANCE:
-            peak_retrigger_distance = *value_ptr;
-            if (peak_retrigger_distance < 12) peak_retrigger_distance = 12;  // 0.2mm minimum
-            if (peak_retrigger_distance > 90) peak_retrigger_distance = 90;  // 1.5mm maximum
-            keyboard_settings.peak_retrigger_distance = peak_retrigger_distance;
-            break;
-        case PARAM_PEAK_SPEED_RATIO:
-            peak_speed_ratio = *value_ptr;
-            if (peak_speed_ratio > 100) peak_speed_ratio = 100;
-            keyboard_settings.peak_speed_ratio = peak_speed_ratio;
-            break;
-        case PARAM_PEAK_ACTUATION_OVERRIDE_ENABLED:
-            peak_actuation_override_enabled = (*value_ptr != 0);
-            keyboard_settings.peak_actuation_override_enabled = peak_actuation_override_enabled;
-            break;
-        case PARAM_PEAK_ACTUATION_OVERRIDE:
-            peak_actuation_override = *value_ptr;
-            // 0-240 units = 0-4mm (60 units per mm)
-            if (peak_actuation_override > 240) peak_actuation_override = 240;
-            keyboard_settings.peak_actuation_override = peak_actuation_override;
-            break;
-
         default:
             dprintf("HID: Unknown param_id: %d\n", param_id);
             return;
@@ -13097,9 +13064,9 @@ static void handle_get_keyboard_config(void) {
 
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
-
-    // Packet 2: Advanced settings (26 bytes - expanded for Mode 3 settings)
-    uint8_t config_packet2[26];
+    
+    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
+    uint8_t config_packet2[21];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13124,15 +13091,9 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
-    // Mode 3 (Speed+Peak) Settings
-    *ptr++ = keyboard_settings.peak_retrigger_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.peak_retrigger_distance;
-    *ptr++ = keyboard_settings.peak_speed_ratio;
-    *ptr++ = keyboard_settings.peak_actuation_override_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.peak_actuation_override;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 26);
-
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
+    
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
 
@@ -13175,12 +13136,6 @@ static void handle_reset_keyboard_config(void) {
     midi_in_mode = MIDI_ROUTE_PROCESS_ALL;
     usb_midi_mode = MIDI_ROUTE_PROCESS_ALL;
     midi_clock_source = CLOCK_SOURCE_LOCAL;
-    // Mode 3 (Speed+Peak) specific settings
-    peak_retrigger_enabled = true;
-    peak_retrigger_distance = 12;      // 0.2mm default
-    peak_speed_ratio = 50;             // 50% speed, 50% peak
-    peak_actuation_override_enabled = false;
-    peak_actuation_override = 0;
 
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
@@ -13220,12 +13175,6 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
-    // Mode 3 (Speed+Peak) settings
-    keyboard_settings.peak_retrigger_enabled = peak_retrigger_enabled;
-    keyboard_settings.peak_retrigger_distance = peak_retrigger_distance;
-    keyboard_settings.peak_speed_ratio = peak_speed_ratio;
-    keyboard_settings.peak_actuation_override_enabled = peak_actuation_override_enabled;
-    keyboard_settings.peak_actuation_override = peak_actuation_override;
 
     // Save to EEPROM
     save_keyboard_settings();
@@ -13286,9 +13235,9 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
 
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
-
-    // Packet 2: Advanced settings (26 bytes - expanded for Mode 3 settings)
-    uint8_t config_packet2[26];
+    
+    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
+    uint8_t config_packet2[21];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13313,15 +13262,9 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
-    // Mode 3 (Speed+Peak) Settings
-    *ptr++ = keyboard_settings.peak_retrigger_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.peak_retrigger_distance;
-    *ptr++ = keyboard_settings.peak_speed_ratio;
-    *ptr++ = keyboard_settings.peak_actuation_override_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.peak_actuation_override;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 26);
-
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
+    
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
     cc_sensitivity = keyboard_settings.cc_sensitivity;

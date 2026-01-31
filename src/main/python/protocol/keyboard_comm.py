@@ -105,12 +105,6 @@ PARAM_VIBRATO_SENSITIVITY = 40     # 50-200 (percentage, 100 = normal)
 PARAM_VIBRATO_DECAY_TIME = 41      # 0-2000 (milliseconds, 16-bit) - use 2-byte write
 PARAM_MIN_PRESS_TIME = 42          # 0-255 (ms) - minimum time for slow press (full velocity)
 PARAM_MAX_PRESS_TIME = 43          # 0-255 (ms) - maximum time for fast press (min velocity)
-# Mode 3 (Speed+Peak) specific parameters
-PARAM_PEAK_RETRIGGER_ENABLED = 44         # bool - enable partial release re-triggering
-PARAM_PEAK_RETRIGGER_DISTANCE = 45        # uint8 (12-90 units = 0.2mm-1.5mm)
-PARAM_PEAK_SPEED_RATIO = 46               # uint8 (0-100) - speed:peak blend ratio
-PARAM_PEAK_ACTUATION_OVERRIDE_ENABLED = 47  # bool - override per-key actuation
-PARAM_PEAK_ACTUATION_OVERRIDE = 48        # uint8 (0-240 units = 0-4mm)
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -1873,13 +1867,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "transpose_override": data[17] != 0 if len(data) > 17 else False,
                     "midi_in_mode": data[18] if len(data) > 18 else 0,
                     "usb_midi_mode": data[19] if len(data) > 19 else 0,
-                    "midi_clock_source": data[20] if len(data) > 20 else 0,
-                    # Mode 3 (Speed+Peak) Settings
-                    "peak_retrigger_enabled": data[21] != 0 if len(data) > 21 else True,
-                    "peak_retrigger_distance": data[22] if len(data) > 22 else 12,
-                    "peak_speed_ratio": data[23] if len(data) > 23 else 50,
-                    "peak_actuation_override_enabled": data[24] != 0 if len(data) > 24 else False,
-                    "peak_actuation_override": data[25] if len(data) > 25 else 120
+                    "midi_clock_source": data[20] if len(data) > 20 else 0
                 })
                 
             return config if config else None
