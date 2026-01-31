@@ -1005,6 +1005,25 @@ class LoopManager(BasicEditor):
         save_all_btn.clicked.connect(self.on_save_all_loops)
         save_layout.addWidget(save_all_btn)
 
+        # Clear All Loops button
+        clear_all_btn = QPushButton(tr("LoopManager", "Clear All Loops"))
+        clear_all_btn.setMinimumHeight(45)
+        clear_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #c0392b;
+                color: white;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #e74c3c;
+            }
+            QPushButton:pressed {
+                background-color: #922b21;
+            }
+        """)
+        clear_all_btn.clicked.connect(self.on_clear_all_loops)
+        save_layout.addWidget(clear_all_btn)
+
         save_layout.addWidget(QLabel(tr("LoopManager", "Save individual loops:")))
 
         # Individual loop save buttons (4 in a row)
@@ -1369,6 +1388,60 @@ class LoopManager(BasicEditor):
             logger.info(f"Error in on_save_loop: {e}")
             QMessageBox.critical(None, "Error", f"Failed to request loop save: {str(e)}")
             self.reset_transfer_state()
+
+    def on_clear_all_loops(self):
+        """Clear all loop content on the device"""
+        # Confirmation dialog
+        reply = QMessageBox.question(
+            None,
+            tr("LoopManager", "Clear All Loops"),
+            tr("LoopManager", "Are you sure you want to clear ALL loop content on the device?\n\nThis action cannot be undone."),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            if not self.device or not isinstance(self.device, VialKeyboard):
+                QMessageBox.warning(None, tr("LoopManager", "Error"),
+                    tr("LoopManager", "No keyboard connected"))
+                return
+
+            # Call the clear_all_loops method on the keyboard
+            success = self.device.keyboard.clear_all_loops()
+
+            if success:
+                # Clear local tracking
+                self.loop_contents.clear()
+                self.overdub_contents.clear()
+
+                # Update UI to show empty loops
+                for i in range(4):
+                    if i < len(self.main_loop_btns):
+                        self.main_loop_btns[i].setText(f"Main {i+1}\n(empty)")
+                    if i < len(self.overdub_btns):
+                        self.overdub_btns[i].setText(f"Overdub {i+1}\n(empty)")
+                        self.overdub_btns[i].setEnabled(False)
+                    # Hide clear buttons
+                    if hasattr(self, 'main_clear_btns') and i < len(self.main_clear_btns):
+                        self.main_clear_btns[i].setVisible(False)
+                    if hasattr(self, 'overdub_clear_btns') and i < len(self.overdub_clear_btns):
+                        self.overdub_clear_btns[i].setVisible(False)
+
+                QMessageBox.information(None, tr("LoopManager", "Success"),
+                    tr("LoopManager", "All loops have been cleared."))
+                logger.info("All loops cleared successfully")
+            else:
+                QMessageBox.warning(None, tr("LoopManager", "Error"),
+                    tr("LoopManager", "Failed to clear loops. Please try again."))
+                logger.error("Failed to clear all loops")
+
+        except Exception as e:
+            logger.error(f"Error clearing all loops: {e}")
+            QMessageBox.critical(None, tr("LoopManager", "Error"),
+                tr("LoopManager", f"Error clearing loops: {str(e)}"))
 
     def on_save_all_loops(self):
         """Save all loops from device to a single file"""

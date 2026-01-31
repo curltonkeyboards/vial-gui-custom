@@ -16,6 +16,7 @@ from widgets.square_button import SquareButton
 from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
 from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
+from editor.arpeggiator import DebugConsole
 from protocol.keyboard_comm import (
     PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
     PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
@@ -65,7 +66,6 @@ class QuickActuationWidget(QWidget):
         self.syncing = False
         self.current_layer = 0
         self.per_layer_enabled = False
-        self.aftertouch_per_layer_enabled = False  # Separate per-layer toggle for aftertouch
         self.trigger_settings_ref = None  # Reference to TriggerSettingsTab
 
         # Cache all layer data in memory to avoid device I/O lag
@@ -105,6 +105,17 @@ class QuickActuationWidget(QWidget):
             'triplesplit_velocity_curve': 2,
             'triplesplit_velocity_min': 1,
             'triplesplit_velocity_max': 127
+        }
+
+        # Global MIDI settings for velocity/aftertouch (not per-layer)
+        self.global_midi_settings = {
+            'velocity_mode': 2,         # 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+            'aftertouch_mode': 0,       # 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+            'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
+            'vibrato_sensitivity': 100, # 50-200 (percentage)
+            'vibrato_decay_time': 200,  # 0-2000 (milliseconds)
+            'min_press_time': 200,      # 50-500ms (slow press threshold)
+            'max_press_time': 20        # 5-100ms (fast press threshold)
         }
 
         self.setMinimumWidth(320)
@@ -284,28 +295,17 @@ class QuickActuationWidget(QWidget):
         return tab
 
     def create_advanced_tab(self):
-        """Create the Advanced tab (velocity, aftertouch settings)"""
+        """Create the Advanced tab (velocity, aftertouch settings) - GLOBAL settings"""
         tab = QWidget()
         layout = QVBoxLayout()
         layout.setSpacing(6)
         layout.setContentsMargins(10, 10, 10, 10)
         tab.setLayout(layout)
 
-        # Per-layer toggle
-        per_layer_row = QHBoxLayout()
-        self.aftertouch_per_layer_checkbox = QCheckBox(tr("QuickActuationWidget", "Enable Per-Layer Settings"))
-        self.aftertouch_per_layer_checkbox.setStyleSheet("QCheckBox { font-weight: bold; font-size: 10px; }")
-        self.aftertouch_per_layer_checkbox.stateChanged.connect(self.on_aftertouch_per_layer_toggled)
-        per_layer_row.addWidget(self.create_help_label("Enable different velocity/aftertouch settings per layer.\nWhen off, same settings apply to all layers."))
-        per_layer_row.addWidget(self.aftertouch_per_layer_checkbox)
-        per_layer_row.addStretch()
-        layout.addLayout(per_layer_row)
-
-        # Layer indicator (only visible in per-layer mode)
-        self.aftertouch_layer_label = QLabel(tr("QuickActuationWidget", "Layer 0"))
-        self.aftertouch_layer_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10px; color: #666; }")
-        self.aftertouch_layer_label.setVisible(False)
-        layout.addWidget(self.aftertouch_layer_label, alignment=Qt.AlignCenter)
+        # Global settings header
+        header_label = QLabel(tr("QuickActuationWidget", "Global MIDI Settings"))
+        header_label.setStyleSheet("QLabel { font-weight: bold; font-size: 11px; color: #333; }")
+        layout.addWidget(header_label, alignment=Qt.AlignCenter)
 
         # Separator
         line = QFrame()
@@ -343,27 +343,57 @@ class QuickActuationWidget(QWidget):
         velocity_layout.addWidget(self.velocity_combo, 1)
         layout.addLayout(velocity_layout)
 
-        # Velocity Speed Scale combo
-        vel_speed_layout = QHBoxLayout()
-        vel_speed_layout.setContentsMargins(0, 0, 0, 0)
-        vel_speed_layout.setSpacing(4)
-        vel_speed_layout.addWidget(self.create_help_label("Velocity sensitivity multiplier (1-20).\nHigher = more sensitive to key press speed."))
-        vel_speed_label = QLabel(tr("QuickActuationWidget", "Velocity Scale:"))
-        vel_speed_label.setMinimumWidth(95)
-        vel_speed_layout.addWidget(vel_speed_label)
+        # Min Press Time slider (for slow press = max velocity)
+        min_press_layout = QHBoxLayout()
+        min_press_layout.setContentsMargins(0, 0, 0, 0)
+        min_press_layout.setSpacing(4)
+        min_press_layout.addWidget(self.create_help_label(
+            "Slow press threshold (ms):\n"
+            "Keys pressed slower than this time get minimum velocity.\n"
+            "Lower = need slower press for soft notes."
+        ))
+        min_press_label = QLabel(tr("QuickActuationWidget", "Slow Press:"))
+        min_press_label.setMinimumWidth(95)
+        min_press_layout.addWidget(min_press_label)
 
-        self.vel_speed_combo = ArrowComboBox()
-        self.vel_speed_combo.setMaximumHeight(25)
-        self.vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
-        for i in range(1, 21):
-            self.vel_speed_combo.addItem(str(i), i)
-        self.vel_speed_combo.setCurrentIndex(9)
-        self.vel_speed_combo.setEditable(True)
-        self.vel_speed_combo.lineEdit().setReadOnly(True)
-        self.vel_speed_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        self.vel_speed_combo.currentIndexChanged.connect(self.on_combo_changed)
-        vel_speed_layout.addWidget(self.vel_speed_combo, 1)
-        layout.addLayout(vel_speed_layout)
+        self.min_press_slider = QSlider(Qt.Horizontal)
+        self.min_press_slider.setMinimum(50)
+        self.min_press_slider.setMaximum(500)
+        self.min_press_slider.setValue(200)
+        self.min_press_slider.valueChanged.connect(self.on_min_press_changed)
+        min_press_layout.addWidget(self.min_press_slider, 1)
+
+        self.min_press_value = QLabel("200ms")
+        self.min_press_value.setMinimumWidth(50)
+        self.min_press_value.setStyleSheet("QLabel { font-weight: bold; }")
+        min_press_layout.addWidget(self.min_press_value)
+        layout.addLayout(min_press_layout)
+
+        # Max Press Time slider (for fast press = min velocity)
+        max_press_layout = QHBoxLayout()
+        max_press_layout.setContentsMargins(0, 0, 0, 0)
+        max_press_layout.setSpacing(4)
+        max_press_layout.addWidget(self.create_help_label(
+            "Fast press threshold (ms):\n"
+            "Keys pressed faster than this time get maximum velocity.\n"
+            "Higher = need faster press for loud notes."
+        ))
+        max_press_label = QLabel(tr("QuickActuationWidget", "Fast Press:"))
+        max_press_label.setMinimumWidth(95)
+        max_press_layout.addWidget(max_press_label)
+
+        self.max_press_slider = QSlider(Qt.Horizontal)
+        self.max_press_slider.setMinimum(5)
+        self.max_press_slider.setMaximum(100)
+        self.max_press_slider.setValue(20)
+        self.max_press_slider.valueChanged.connect(self.on_max_press_changed)
+        max_press_layout.addWidget(self.max_press_slider, 1)
+
+        self.max_press_value = QLabel("20ms")
+        self.max_press_value.setMinimumWidth(50)
+        self.max_press_value.setStyleSheet("QLabel { font-weight: bold; }")
+        max_press_layout.addWidget(self.max_press_value)
+        layout.addLayout(max_press_layout)
 
         # Separator between velocity and aftertouch
         line2 = QFrame()
@@ -487,114 +517,135 @@ class QuickActuationWidget(QWidget):
         self.advanced_save_btn.clicked.connect(self.on_save_advanced)
         layout.addWidget(self.advanced_save_btn)
 
+        # Debug console for HID communication debugging
+        self.advanced_debug_console = DebugConsole("Advanced Settings Debug Console")
+        layout.addWidget(self.advanced_debug_console)
+
         return tab
 
-    def on_aftertouch_per_layer_toggled(self, state):
-        """Handle per-layer settings toggle in Advanced tab"""
-        self.aftertouch_per_layer_enabled = (state == Qt.Checked)
-        self.aftertouch_layer_label.setVisible(self.aftertouch_per_layer_enabled)
-        if self.aftertouch_per_layer_enabled:
-            self.advanced_save_btn.setText("Save to Current Layer")
-            self.aftertouch_layer_label.setText(f"Layer {self.current_layer}")
-        else:
-            self.advanced_save_btn.setText("Save Advanced Settings")
-
     def on_aftertouch_mode_changed(self, index):
-        """Handle aftertouch mode change - show/hide vibrato controls"""
+        """Handle aftertouch mode change - show/hide vibrato controls (GLOBAL)"""
         mode = self.aftertouch_mode_combo.currentData()
         is_vibrato = (mode == 4)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
-
-        # Update layer data
-        if self.aftertouch_per_layer_enabled:
-            self.layer_data[self.current_layer]['aftertouch_mode'] = mode
-        else:
-            for layer_data in self.layer_data:
-                layer_data['aftertouch_mode'] = mode
+        # Update global settings
+        self.global_midi_settings['aftertouch_mode'] = mode
 
     def on_aftertouch_cc_changed(self, index):
-        """Handle aftertouch CC change"""
+        """Handle aftertouch CC change (GLOBAL)"""
         cc = self.aftertouch_cc_combo.currentData()
-        if self.aftertouch_per_layer_enabled:
-            self.layer_data[self.current_layer]['aftertouch_cc'] = cc
-        else:
-            for layer_data in self.layer_data:
-                layer_data['aftertouch_cc'] = cc
+        self.global_midi_settings['aftertouch_cc'] = cc
 
     def on_vibrato_sensitivity_changed(self, value):
-        """Handle vibrato sensitivity slider change"""
+        """Handle vibrato sensitivity slider change (GLOBAL)"""
         self.vibrato_sens_value.setText(f"{value}%")
-        if self.aftertouch_per_layer_enabled:
-            self.layer_data[self.current_layer]['vibrato_sensitivity'] = value
-        else:
-            for layer_data in self.layer_data:
-                layer_data['vibrato_sensitivity'] = value
+        self.global_midi_settings['vibrato_sensitivity'] = value
 
     def on_vibrato_decay_changed(self, value):
-        """Handle vibrato decay slider change"""
+        """Handle vibrato decay slider change (GLOBAL)"""
         self.vibrato_decay_value.setText(f"{value}ms")
-        if self.aftertouch_per_layer_enabled:
-            self.layer_data[self.current_layer]['vibrato_decay_time'] = value
-        else:
-            for layer_data in self.layer_data:
-                layer_data['vibrato_decay_time'] = value
+        self.global_midi_settings['vibrato_decay_time'] = value
+
+    def on_min_press_changed(self, value):
+        """Handle min press time slider change (GLOBAL)"""
+        self.min_press_value.setText(f"{value}ms")
+        self.global_midi_settings['min_press_time'] = value
+
+    def on_max_press_changed(self, value):
+        """Handle max press time slider change (GLOBAL)"""
+        self.max_press_value.setText(f"{value}ms")
+        self.global_midi_settings['max_press_time'] = value
 
     def on_save_advanced(self):
-        """Save advanced settings (velocity, aftertouch) to keyboard"""
+        """Save advanced settings (velocity, aftertouch) to keyboard - GLOBAL settings"""
+        from protocol.keyboard_comm import (
+            PARAM_VELOCITY_MODE, PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
+            PARAM_VIBRATO_SENSITIVITY, PARAM_VIBRATO_DECAY_TIME,
+            PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME,
+            HID_CMD_SET_KEYBOARD_PARAM_SINGLE
+        )
+
+        # Start debug console operation
+        self.advanced_debug_console.mark_operation_start()
+        self.advanced_debug_console.log("=" * 50, "DEBUG")
+        self.advanced_debug_console.log("SAVE ADVANCED SETTINGS - Starting", "INFO")
+        self.advanced_debug_console.log("=" * 50, "DEBUG")
+
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
+                self.advanced_debug_console.log("ERROR: Device not connected", "ERROR")
+                self.advanced_debug_console.mark_operation_end(success=False)
                 raise RuntimeError("Device not connected")
 
-            if self.aftertouch_per_layer_enabled:
-                # Save only current layer
-                data = self.layer_data[self.current_layer]
-                vibrato_decay = data['vibrato_decay_time']
-                payload = bytearray([
-                    self.current_layer,
-                    data['normal'],
-                    data['midi'],
-                    data['velocity'],
-                    data['vel_speed'],
-                    0,  # flags
-                    data['aftertouch_mode'],
-                    data['aftertouch_cc'],
-                    data['vibrato_sensitivity'],
-                    vibrato_decay & 0xFF,
-                    (vibrato_decay >> 8) & 0xFF
-                ])
+            settings = self.global_midi_settings
+            kb = self.device.keyboard
 
-                if not self.device.keyboard.set_layer_actuation(payload):
-                    raise RuntimeError(f"Failed to save advanced settings for layer {self.current_layer}")
+            # Log HID command info
+            self.advanced_debug_console.log(f"HID Command: SET_KEYBOARD_PARAM_SINGLE (0x{HID_CMD_SET_KEYBOARD_PARAM_SINGLE:02X})", "DEBUG")
+            self.advanced_debug_console.log(f"Device: {self.device.desc.get('name', 'Unknown')}", "DEBUG")
+            self.advanced_debug_console.log("-" * 50, "DEBUG")
 
-                QMessageBox.information(None, "Success",
-                    f"Layer {self.current_layer} advanced settings saved!")
+            # Define parameters to save with their names and value ranges
+            params_to_save = [
+                ("VELOCITY_MODE", PARAM_VELOCITY_MODE, settings.get('velocity_mode', 2), "0-3 (Fixed/Peak/Speed/Speed+Peak)"),
+                ("AFTERTOUCH_MODE", PARAM_AFTERTOUCH_MODE, settings.get('aftertouch_mode', 0), "0-4 (Off/Reverse/Bottom/Post/Vibrato)"),
+                ("AFTERTOUCH_CC", PARAM_AFTERTOUCH_CC, settings.get('aftertouch_cc', 255), "0-127 or 255=Off"),
+                ("VIBRATO_SENSITIVITY", PARAM_VIBRATO_SENSITIVITY, settings.get('vibrato_sensitivity', 100), "50-200 (percentage)"),
+                ("VIBRATO_DECAY_TIME", PARAM_VIBRATO_DECAY_TIME, settings.get('vibrato_decay_time', 200), "0-2000ms (16-bit)"),
+                ("MIN_PRESS_TIME", PARAM_MIN_PRESS_TIME, settings.get('min_press_time', 200), "50-500ms (16-bit)"),
+                ("MAX_PRESS_TIME", PARAM_MAX_PRESS_TIME, settings.get('max_press_time', 20), "5-100ms (16-bit)"),
+            ]
+
+            failed_params = []
+            success_count = 0
+
+            for param_name, param_id, value, value_range in params_to_save:
+                self.advanced_debug_console.log(f"[{param_name}] Sending param_id={param_id}, value={value} ({value_range})", "DEBUG")
+
+                # Call the detailed version that returns debug info
+                success, debug_info = kb.set_keyboard_param_single_debug(param_id, value)
+
+                # Log the detailed debug info
+                if debug_info:
+                    self.advanced_debug_console.log(f"  TX Packet: {debug_info.get('tx_packet', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  TX Data: {debug_info.get('tx_data', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  RX Response: {debug_info.get('rx_response', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  Status byte (response[5]): {debug_info.get('status_byte', 'N/A')}", "DEBUG")
+                    self.advanced_debug_console.log(f"  Attempts: {debug_info.get('attempts', 'N/A')}", "DEBUG")
+
+                if success:
+                    self.advanced_debug_console.log(f"  -> SUCCESS", "INFO")
+                    success_count += 1
+                else:
+                    error_msg = debug_info.get('error', 'Unknown error') if debug_info else 'Unknown error'
+                    self.advanced_debug_console.log(f"  -> FAILED: {error_msg}", "ERROR")
+                    failed_params.append(f"{param_name}({param_id})={value}")
+
+                self.advanced_debug_console.log("-" * 30, "DEBUG")
+
+            # Summary
+            self.advanced_debug_console.log("=" * 50, "DEBUG")
+            self.advanced_debug_console.log(f"SAVE COMPLETE: {success_count}/{len(params_to_save)} parameters saved", "INFO")
+
+            if len(failed_params) == 0:
+                self.advanced_debug_console.log("All settings saved successfully!", "INFO")
+                self.advanced_debug_console.mark_operation_end(success=True)
+                QMessageBox.information(None, "Success", "Global MIDI settings saved!")
             else:
-                # Save to all 12 layers
-                for layer in range(12):
-                    data = self.layer_data[layer]
-                    vibrato_decay = data['vibrato_decay_time']
-                    payload = bytearray([
-                        layer,
-                        data['normal'],
-                        data['midi'],
-                        data['velocity'],
-                        data['vel_speed'],
-                        0,  # flags
-                        data['aftertouch_mode'],
-                        data['aftertouch_cc'],
-                        data['vibrato_sensitivity'],
-                        vibrato_decay & 0xFF,
-                        (vibrato_decay >> 8) & 0xFF
-                    ])
-
-                    if not self.device.keyboard.set_layer_actuation(payload):
-                        raise RuntimeError(f"Failed to save advanced settings for layer {layer}")
-
-                QMessageBox.information(None, "Success",
-                    "Advanced settings saved to all layers!")
+                self.advanced_debug_console.log(f"FAILED parameters: {failed_params}", "ERROR")
+                self.advanced_debug_console.log("", "DEBUG")
+                self.advanced_debug_console.log("TROUBLESHOOTING:", "WARN")
+                self.advanced_debug_console.log("  1. Check firmware supports HID_CMD_SET_KEYBOARD_PARAM_SINGLE (0xBD)", "WARN")
+                self.advanced_debug_console.log("  2. Verify parameter IDs are correct in firmware", "WARN")
+                self.advanced_debug_console.log("  3. Check for firmware version mismatch", "WARN")
+                self.advanced_debug_console.log("  4. status_byte=1 means success, 0 or 0xFF means error", "WARN")
+                self.advanced_debug_console.mark_operation_end(success=False)
+                raise RuntimeError(f"Failed to save: {', '.join(failed_params)}")
 
         except Exception as e:
+            self.advanced_debug_console.log(f"EXCEPTION: {str(e)}", "ERROR")
+            self.advanced_debug_console.mark_operation_end(success=False)
             QMessageBox.critical(None, "Error",
                 f"Failed to save advanced settings: {str(e)}")
 
@@ -1525,21 +1576,20 @@ class QuickActuationWidget(QWidget):
     
     def save_ui_to_memory(self):
         """Save current UI state to memory (for current layer if per-layer, all if master)"""
+        # Velocity mode is now GLOBAL
+        self.global_midi_settings['velocity_mode'] = self.velocity_combo.currentData()
+
         if self.per_layer_enabled:
-            # Update only the basic actuation keys, preserving advanced settings
+            # Update only the basic actuation keys
             self.layer_data[self.current_layer].update({
                 'normal': self.normal_slider.value(),
-                'midi': self.midi_slider.value(),
-                'velocity': self.velocity_combo.currentData(),
-                'vel_speed': self.vel_speed_combo.currentData()
+                'midi': self.midi_slider.value()
             })
         else:
             # Save to all layers (master mode)
             data = {
                 'normal': self.normal_slider.value(),
-                'midi': self.midi_slider.value(),
-                'velocity': self.velocity_combo.currentData(),
-                'vel_speed': self.vel_speed_combo.currentData()
+                'midi': self.midi_slider.value()
             }
             for i in range(12):
                 self.layer_data[i].update(data)
@@ -1547,9 +1597,9 @@ class QuickActuationWidget(QWidget):
     def load_layer_from_memory(self):
         """Load layer settings from memory cache"""
         self.syncing = True
-        
+
         data = self.layer_data[self.current_layer]
-        
+
         # Set sliders and immediately update labels
         self.normal_slider.setValue(data['normal'])
         self.normal_value_label.setText(f"{data['normal'] * 0.025:.2f}mm")
@@ -1557,15 +1607,11 @@ class QuickActuationWidget(QWidget):
         self.midi_slider.setValue(data['midi'])
         self.midi_value_label.setText(f"{data['midi'] * 0.025:.2f}mm")
 
-        # Set combos
+        # Velocity mode is now GLOBAL (loaded from global_midi_settings)
+        velocity_mode = self.global_midi_settings.get('velocity_mode', 2)
         for i in range(self.velocity_combo.count()):
-            if self.velocity_combo.itemData(i) == data['velocity']:
+            if self.velocity_combo.itemData(i) == velocity_mode:
                 self.velocity_combo.setCurrentIndex(i)
-                break
-
-        for i in range(self.vel_speed_combo.count()):
-            if self.vel_speed_combo.itemData(i) == data['vel_speed']:
-                self.vel_speed_combo.setCurrentIndex(i)
                 break
 
         self.syncing = False
@@ -1858,10 +1904,16 @@ class QuickActuationWidget(QWidget):
         self.midi_settings['triplesplit_velocity_max'] = self.triplesplit_velocity_max.value()
 
     def on_save_actuation(self):
-        """Save actuation settings - to all layers or current layer depending on mode"""
+        """Save actuation settings - to all layers or current layer depending on mode
+        NOTE: velocity_mode, aftertouch settings are now GLOBAL and saved via Advanced tab.
+        This function only saves actuation points (normal, midi) per-layer.
+        """
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
+
+            # Get global settings for backward compatibility with firmware protocol
+            global_settings = self.global_midi_settings
 
             if self.per_layer_enabled:
                 # Save to current layer only
@@ -1872,18 +1924,19 @@ class QuickActuationWidget(QWidget):
                 if data.get('midi_rapidfire_enabled', False):
                     flags |= 0x02
 
-                vibrato_decay = data.get('vibrato_decay_time', 200)
-                # New structure: 11 bytes (layer + 10 data bytes with aftertouch)
+                vibrato_decay = global_settings.get('vibrato_decay_time', 200)
+                # Protocol: 11 bytes (layer + 10 data bytes)
+                # velocity/aftertouch fields use GLOBAL settings
                 payload = bytearray([
                     self.current_layer,
                     data['normal'],
                     data['midi'],
-                    data['velocity'],
-                    data['vel_speed'],
+                    global_settings.get('velocity_mode', 2),   # GLOBAL
+                    10,  # vel_speed deprecated, use default
                     flags,
-                    data.get('aftertouch_mode', 0),
-                    data.get('aftertouch_cc', 255),
-                    data.get('vibrato_sensitivity', 100),
+                    global_settings.get('aftertouch_mode', 0),      # GLOBAL
+                    global_settings.get('aftertouch_cc', 255),      # GLOBAL
+                    global_settings.get('vibrato_sensitivity', 100), # GLOBAL
                     vibrato_decay & 0xFF,
                     (vibrato_decay >> 8) & 0xFF
                 ])
@@ -1895,6 +1948,7 @@ class QuickActuationWidget(QWidget):
                     f"Layer {self.current_layer} actuation saved successfully!")
             else:
                 # Save to all 12 layers
+                vibrato_decay = global_settings.get('vibrato_decay_time', 200)
                 for layer in range(12):
                     data = self.layer_data[layer]
                     flags = 0
@@ -1903,18 +1957,18 @@ class QuickActuationWidget(QWidget):
                     if data.get('midi_rapidfire_enabled', False):
                         flags |= 0x02
 
-                    vibrato_decay = data.get('vibrato_decay_time', 200)
-                    # New structure: 11 bytes (layer + 10 data bytes with aftertouch)
+                    # Protocol: 11 bytes (layer + 10 data bytes)
+                    # velocity/aftertouch fields use GLOBAL settings
                     payload = bytearray([
                         layer,
                         data['normal'],
                         data['midi'],
-                        data['velocity'],
-                        data['vel_speed'],
+                        global_settings.get('velocity_mode', 2),   # GLOBAL
+                        10,  # vel_speed deprecated, use default
                         flags,
-                        data.get('aftertouch_mode', 0),
-                        data.get('aftertouch_cc', 255),
-                        data.get('vibrato_sensitivity', 100),
+                        global_settings.get('aftertouch_mode', 0),      # GLOBAL
+                        global_settings.get('aftertouch_cc', 255),      # GLOBAL
+                        global_settings.get('vibrato_sensitivity', 100), # GLOBAL
                         vibrato_decay & 0xFF,
                         (vibrato_decay >> 8) & 0xFF
                     ])
@@ -2023,42 +2077,39 @@ class QuickActuationWidget(QWidget):
             # Load from memory (fast, no device I/O)
             self.load_layer_from_memory()
 
-        # Update Advanced tab layer indicator
-        if hasattr(self, 'aftertouch_layer_label'):
-            self.aftertouch_layer_label.setText(tr("QuickActuationWidget", f"Layer {layer}"))
-            if self.aftertouch_per_layer_enabled:
-                self.advanced_save_btn.setText(tr("QuickActuationWidget", f"Save to Layer {layer}"))
-                # Load advanced settings from memory
-                self.load_advanced_from_memory()
+        # Advanced tab settings are GLOBAL now, no layer-specific loading needed
 
     def load_advanced_from_memory(self):
-        """Load advanced settings (velocity, aftertouch) from memory for current layer"""
-        data = self.layer_data[self.current_layer]
+        """Load advanced settings (velocity, aftertouch) from GLOBAL settings"""
+        settings = self.global_midi_settings
 
         # Update UI without triggering callbacks
         self.velocity_combo.blockSignals(True)
-        self.vel_speed_combo.blockSignals(True)
         self.aftertouch_mode_combo.blockSignals(True)
         self.aftertouch_cc_combo.blockSignals(True)
         self.vibrato_sens_slider.blockSignals(True)
         self.vibrato_decay_slider.blockSignals(True)
+        self.min_press_slider.blockSignals(True)
+        self.max_press_slider.blockSignals(True)
 
-        # Set velocity mode
-        velocity = data.get('velocity', 2)
+        # Set velocity mode (GLOBAL)
+        velocity = settings.get('velocity_mode', 2)
         for i in range(self.velocity_combo.count()):
             if self.velocity_combo.itemData(i) == velocity:
                 self.velocity_combo.setCurrentIndex(i)
                 break
 
-        # Set velocity speed scale
-        vel_speed = data.get('vel_speed', 10)
-        for i in range(self.vel_speed_combo.count()):
-            if self.vel_speed_combo.itemData(i) == vel_speed:
-                self.vel_speed_combo.setCurrentIndex(i)
-                break
+        # Set min/max press time (GLOBAL)
+        min_press = settings.get('min_press_time', 200)
+        self.min_press_slider.setValue(min_press)
+        self.min_press_value.setText(f"{min_press}ms")
 
-        # Set aftertouch mode
-        mode = data.get('aftertouch_mode', 0)
+        max_press = settings.get('max_press_time', 20)
+        self.max_press_slider.setValue(max_press)
+        self.max_press_value.setText(f"{max_press}ms")
+
+        # Set aftertouch mode (GLOBAL)
+        mode = settings.get('aftertouch_mode', 0)
         for i in range(self.aftertouch_mode_combo.count()):
             if self.aftertouch_mode_combo.itemData(i) == mode:
                 self.aftertouch_mode_combo.setCurrentIndex(i)
@@ -2069,28 +2120,29 @@ class QuickActuationWidget(QWidget):
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
 
-        # Set aftertouch CC
-        cc = data.get('aftertouch_cc', 255)
+        # Set aftertouch CC (GLOBAL)
+        cc = settings.get('aftertouch_cc', 255)
         for i in range(self.aftertouch_cc_combo.count()):
             if self.aftertouch_cc_combo.itemData(i) == cc:
                 self.aftertouch_cc_combo.setCurrentIndex(i)
                 break
 
-        # Set vibrato settings
-        sens = data.get('vibrato_sensitivity', 100)
+        # Set vibrato settings (GLOBAL)
+        sens = settings.get('vibrato_sensitivity', 100)
         self.vibrato_sens_slider.setValue(sens)
         self.vibrato_sens_value.setText(f"{sens}%")
 
-        decay = data.get('vibrato_decay_time', 200)
+        decay = settings.get('vibrato_decay_time', 200)
         self.vibrato_decay_slider.setValue(decay)
         self.vibrato_decay_value.setText(f"{decay}ms")
 
         self.velocity_combo.blockSignals(False)
-        self.vel_speed_combo.blockSignals(False)
         self.aftertouch_mode_combo.blockSignals(False)
         self.aftertouch_cc_combo.blockSignals(False)
         self.vibrato_sens_slider.blockSignals(False)
         self.vibrato_decay_slider.blockSignals(False)
+        self.min_press_slider.blockSignals(False)
+        self.max_press_slider.blockSignals(False)
 
 
 class EncoderButton(QWidget):

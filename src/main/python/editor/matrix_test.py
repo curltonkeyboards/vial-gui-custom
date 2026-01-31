@@ -3386,8 +3386,24 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.midi_clock_source, config.get("midi_clock_source"), 0)
 
     def pack_basic_data(self, settings):
-        """Pack basic settings into 17-byte structure"""
-        data = bytearray(17)
+        """Pack basic settings into 22-byte structure
+
+        Layout:
+        - Bytes 0-3: velocity_sensitivity (uint32)
+        - Bytes 4-7: cc_sensitivity (uint32)
+        - Byte 8: global_channel
+        - Byte 9: global_transpose
+        - Byte 10: octave_number (always 0)
+        - Byte 11: transpose_number2
+        - Byte 12: octave_number2 (always 0)
+        - Byte 13: transpose_number3
+        - Byte 14: octave_number3 (always 0)
+        - Byte 15: random_velocity_modifier
+        - Bytes 16-19: oled_keyboard (uint32)
+        - Byte 20: smart_chord_light
+        - Byte 21: smart_chord_light_mode
+        """
+        data = bytearray(22)
 
         struct.pack_into('<I', data, 0, settings["velocity_sensitivity"])
         struct.pack_into('<I', data, 4, settings["cc_sensitivity"])

@@ -609,9 +609,9 @@ class VelocityTab(BasicEditor):
         curve_index = self.curve_preset_combo.currentIndex()
 
         try:
-            # Use set_keyboard_param to set the velocity curve
+            # Use set_keyboard_param_single to set the velocity curve
             # PARAM_HE_VELOCITY_CURVE = 4 (from keyboard_comm.py constants)
-            success = self.keyboard.set_keyboard_param(4, curve_index)
+            success = self.keyboard.set_keyboard_param_single(4, curve_index)
             if success:
                 QMessageBox.information(
                     None,

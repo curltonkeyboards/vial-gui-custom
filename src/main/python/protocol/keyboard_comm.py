@@ -44,9 +44,12 @@ HID_SUB_ID = 0x00
 HID_DEVICE_ID = 0x4D
 HID_PACKET_SIZE = 32
 
+# Loop Operations (0xA7)
+HID_CMD_CLEAR_ALL_LOOPS = 0xA7        # Clear all loop content
+
 # ThruLoop Commands (0xB0-0xB5)
 HID_CMD_SET_LOOP_CONFIG = 0xB0
-HID_CMD_SET_MAIN_LOOP_CCS = 0xB1  
+HID_CMD_SET_MAIN_LOOP_CCS = 0xB1
 HID_CMD_SET_OVERDUB_CCS = 0xB2
 HID_CMD_SET_NAVIGATION_CONFIG = 0xB3
 HID_CMD_GET_ALL_CONFIG = 0xB4
@@ -59,7 +62,7 @@ HID_CMD_RESET_KEYBOARD_CONFIG = 0xB8
 HID_CMD_SAVE_KEYBOARD_SLOT = 0xB9
 HID_CMD_LOAD_KEYBOARD_SLOT = 0xBA
 HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED = 0xBB
-HID_CMD_SET_KEYBOARD_PARAM_SINGLE = 0xBD  # NEW: Set individual parameter
+HID_CMD_SET_KEYBOARD_PARAM_SINGLE = 0xE8  # Set individual parameter (changed from 0xBD collision)
 
 # Parameter IDs for HID_CMD_SET_KEYBOARD_PARAM_SINGLE
 PARAM_CHANNEL_NUMBER = 0
@@ -75,8 +78,9 @@ PARAM_KEYSPLIT_HE_VELOCITY_MAX = 9
 PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE = 10
 PARAM_TRIPLESPLIT_HE_VELOCITY_MIN = 11
 PARAM_TRIPLESPLIT_HE_VELOCITY_MAX = 12
-# PARAM_AFTERTOUCH_MODE (13) and PARAM_AFTERTOUCH_CC (14) are now per-layer
-# Use set_layer_actuation() instead
+# Global MIDI Settings (velocity, aftertouch, vibrato)
+PARAM_VELOCITY_MODE = 13             # 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+PARAM_AFTERTOUCH_MODE = 14           # 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
 PARAM_BASE_SUSTAIN = 15
 PARAM_KEYSPLIT_SUSTAIN = 16
 PARAM_TRIPLESPLIT_SUSTAIN = 17
@@ -95,6 +99,12 @@ PARAM_TRANSPOSE_OVERRIDE = 35      # bool: Override transpose
 PARAM_MIDI_IN_MODE = 36            # 0=Process All, 1=Thru, 2=Clock Only, 3=Ignore
 PARAM_USB_MIDI_MODE = 37           # 0=Process All, 1=Thru, 2=Clock Only, 3=Ignore
 PARAM_MIDI_CLOCK_SOURCE = 38       # 0=Local, 1=USB, 2=MIDI IN
+# Global MIDI Settings (continued)
+PARAM_AFTERTOUCH_CC = 39           # 0-127 = CC number, 255 = off (poly AT only)
+PARAM_VIBRATO_SENSITIVITY = 40     # 50-200 (percentage, 100 = normal)
+PARAM_VIBRATO_DECAY_TIME = 41      # 0-2000 (milliseconds, 16-bit) - use 2-byte write
+PARAM_MIN_PRESS_TIME = 42          # 0-255 (ms) - minimum time for slow press (full velocity)
+PARAM_MAX_PRESS_TIME = 43          # 0-255 (ms) - maximum time for fast press (min velocity)
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -109,8 +119,8 @@ HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
 # Distance Matrix Command (0xE7)
 HID_CMD_GET_DISTANCE_MATRIX = 0xE7        # Get distance (mm) values for specific keys
 
-# Calibration Debug Command (0xE8)
-HID_CMD_CALIBRATION_DEBUG = 0xE8          # Get calibration debug values
+# Calibration Debug Command (0xD5) - moved from 0xE8 to avoid collision with SET_KEYBOARD_PARAM_SINGLE
+HID_CMD_CALIBRATION_DEBUG = 0xD5          # Get calibration debug values
 
 # Sensitivity Curve Tuning Command (0xE9)
 HID_CMD_SET_CURVE_SETTINGS = 0xE9         # Set sensitivity curve tuning parameters
@@ -865,11 +875,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             dict: {(row, col): {'rest': int, 'bottom': int, 'raw': int}} or None on error
 
         Protocol:
-            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xE8,
+            Request: [HID_MANUFACTURER_ID, HID_SUB_ID, HID_DEVICE_ID, 0xD5,
                       num_keys, row0, col0, row1, col1, ...]
             Response: [header(4), num_keys, status, rest_lo, rest_hi, bottom_lo, bottom_hi, raw_lo, raw_hi, ...]
         """
-        HID_CMD_CALIBRATION_DEBUG = 0xE8
+        HID_CMD_CALIBRATION_DEBUG = 0xD5
         try:
             if not keys or len(keys) > 4:
                 return None
@@ -1517,6 +1527,19 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         except Exception as e:
             return False
 
+    def clear_all_loops(self):
+        """Clear all loop content (equivalent to holding all macro buttons)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            packet = self._create_hid_packet(HID_CMD_CLEAR_ALL_LOOPS, 0, None)
+            data = self.usb_send(self.dev, packet, retries=20)
+            return data and len(data) > 0 and data[5] == 0
+        except Exception as e:
+            return False
+
     def set_midi_config(self, config_data):
         """Set MIDIswitch basic configuration"""
         try:
@@ -1550,6 +1573,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             if param_id in [PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY]:
                 # 4-byte parameters
                 data = bytearray([param_id]) + struct.pack('<I', value)
+            elif param_id in [PARAM_VIBRATO_DECAY_TIME, PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME]:
+                # 16-bit parameters (little-endian)
+                data = bytearray([param_id, value & 0xFF, (value >> 8) & 0xFF])
             elif param_id in [PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3]:
                 # Signed byte parameters
                 data = bytearray([param_id, value & 0xFF])
@@ -1558,27 +1584,127 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 data = bytearray([param_id, value])
 
             packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, data)
+            print(f"[HID Debug] set_keyboard_param_single: param_id={param_id}, value={value}, data={list(data)}")
+            print(f"[HID Debug] Packet (first 10 bytes): {list(packet[:10])}")
 
             # Retry logic: 4 retries with 100ms delay
             for attempt in range(5):  # 1 initial + 4 retries = 5 total attempts
                 try:
                     response = self.usb_send(self.dev, packet, retries=1)
-                    if response and len(response) > 0 and response[5] == 0:
+                    print(f"[HID Debug] Attempt {attempt+1}: response={list(response[:10]) if response and len(response) >= 10 else response}")
+                    if response and len(response) > 0 and response[5] == 1:
+                        print(f"[HID Debug] Success! response[5]={response[5]}")
                         return True
+                    else:
+                        print(f"[HID Debug] Failed: response[5]={response[5] if response and len(response) > 5 else 'N/A'}")
 
                     # If not last attempt, wait before retry
                     if attempt < 4:
                         time.sleep(0.1)  # 100ms delay
-                except Exception:
+                except Exception as e:
+                    print(f"[HID Debug] Exception on attempt {attempt+1}: {e}")
                     if attempt < 4:
                         time.sleep(0.1)
                     continue
 
             # All retries failed, return False (silent failure, UI will handle if needed)
+            print(f"[HID Debug] All retries failed for param_id={param_id}")
             return False
 
         except Exception as e:
+            print(f"[HID Debug] Exception in set_keyboard_param_single: {e}")
             return False
+
+    def set_keyboard_param_single_debug(self, param_id, value):
+        """Set individual keyboard parameter with detailed debug info
+
+        Args:
+            param_id: Parameter ID (PARAM_* constant)
+            value: Parameter value (int or bytes)
+
+        Returns:
+            tuple: (success: bool, debug_info: dict)
+                debug_info contains:
+                - tx_packet: First 15 bytes of sent packet
+                - tx_data: The data portion being sent
+                - rx_response: First 15 bytes of response
+                - status_byte: The status byte (response[5])
+                - attempts: Number of attempts made
+                - error: Error message if failed
+        """
+        debug_info = {
+            'tx_packet': None,
+            'tx_data': None,
+            'rx_response': None,
+            'status_byte': None,
+            'attempts': 0,
+            'error': None
+        }
+
+        try:
+            # Build data payload: [param_id, value_bytes...]
+            if param_id in [PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY]:
+                # 4-byte parameters
+                data = bytearray([param_id]) + struct.pack('<I', value)
+            elif param_id in [PARAM_VIBRATO_DECAY_TIME, PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME]:
+                # 16-bit parameters (little-endian)
+                data = bytearray([param_id, value & 0xFF, (value >> 8) & 0xFF])
+            elif param_id in [PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3]:
+                # Signed byte parameters
+                data = bytearray([param_id, value & 0xFF])
+            else:
+                # Standard 1-byte parameters
+                data = bytearray([param_id, value])
+
+            debug_info['tx_data'] = list(data)
+
+            packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, data)
+            debug_info['tx_packet'] = list(packet[:15])
+
+            # Retry logic: 4 retries with 100ms delay
+            last_response = None
+            for attempt in range(5):  # 1 initial + 4 retries = 5 total attempts
+                debug_info['attempts'] = attempt + 1
+                try:
+                    response = self.usb_send(self.dev, packet, retries=1)
+                    last_response = response
+
+                    if response and len(response) >= 10:
+                        debug_info['rx_response'] = list(response[:15])
+                    else:
+                        debug_info['rx_response'] = list(response) if response else None
+
+                    if response and len(response) > 5:
+                        debug_info['status_byte'] = response[5]
+                        # Interpret status byte (1 = success for this command)
+                        if response[5] == 1:
+                            return True, debug_info
+                        elif response[5] == 0:
+                            debug_info['error'] = f"Status=0: Firmware returned failure/not-ack"
+                        elif response[5] == 0xFF:
+                            debug_info['error'] = f"Status=0xFF: Command not recognized by firmware"
+                        else:
+                            debug_info['error'] = f"Status={response[5]}: Unknown error code"
+                    else:
+                        debug_info['error'] = f"Invalid response length: {len(response) if response else 0}"
+
+                    # If not last attempt, wait before retry
+                    if attempt < 4:
+                        time.sleep(0.1)  # 100ms delay
+                except Exception as e:
+                    debug_info['error'] = f"Exception on attempt {attempt+1}: {str(e)}"
+                    if attempt < 4:
+                        time.sleep(0.1)
+                    continue
+
+            # All retries failed
+            if not debug_info['error']:
+                debug_info['error'] = "All 5 attempts failed"
+            return False, debug_info
+
+        except Exception as e:
+            debug_info['error'] = f"Exception: {str(e)}"
+            return False, debug_info
 
     def save_midi_slot(self, slot, config_data):
         """Save MIDIswitch configuration to slot"""
@@ -1614,13 +1740,20 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             # Send request for keyboard config
             packet = self._create_hid_packet(HID_CMD_GET_KEYBOARD_CONFIG, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
-            
+
             if not response or len(response) == 0 or response[5] != 0:
                 return None
-            
+
             # Collect response packets using proper HID read method
+            # IMPORTANT: Initialize with the first response packet!
             packets = {}
             expected_commands = [HID_CMD_GET_KEYBOARD_CONFIG, HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED]
+
+            # Add the initial response to packets if it's valid
+            if response and len(response) >= 4 and response[0] == HID_MANUFACTURER_ID:
+                cmd = response[3]
+                if cmd in expected_commands:
+                    packets[cmd] = response
             
             # Try multiple times to collect all expected packets
             for attempt in range(20):

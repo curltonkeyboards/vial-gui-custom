@@ -61,12 +61,12 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_LOAD_CHUNK              0xA4  // was 0x05
 #define HID_CMD_LOAD_END                0xA5  // was 0x06
 #define HID_CMD_LOAD_OVERDUB_START      0xA6  // was 0x07
-// Reserved for future save/load operations: 0xA7
+#define HID_CMD_CLEAR_ALL_LOOPS         0xA7  // Clear all loop content
 
-// Request/Trigger Operations (0xA8-0xAF)
+// Request/Trigger Operations (0xA8-0xA9)
 #define HID_CMD_REQUEST_SAVE            0xA8  // was 0x10
 #define HID_CMD_TRIGGER_SAVE_ALL        0xA9  // was 0x30
-// Reserved for future request/trigger operations: 0xAA-0xAF
+// NOTE: 0xAA-0xAF now used by DKS commands below
 
 // Loop Configuration (0xB0-0xB5)
 #define HID_CMD_SET_LOOP_CONFIG         0xB0  // was 0x40
@@ -76,16 +76,15 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_GET_ALL_CONFIG          0xB4  // was 0x44
 #define HID_CMD_RESET_LOOP_CONFIG       0xB5  // was 0x45
 
-// Additional Loop Commands (0xCE+)
-#define HID_CMD_CLEAR_ALL_LOOPS         0xCE  // Clear all loop content
-
-// DKS (Dynamic Keystroke) Commands (0xE5-0xEA)
-#define HID_CMD_DKS_GET_SLOT            0xE5  // Get DKS slot configuration
-#define HID_CMD_DKS_SET_ACTION          0xE6  // Set a single DKS action
-#define HID_CMD_DKS_SAVE_EEPROM         0xE7  // Save all DKS configs to EEPROM
-#define HID_CMD_DKS_LOAD_EEPROM         0xE8  // Load all DKS configs from EEPROM
-#define HID_CMD_DKS_RESET_SLOT          0xE9  // Reset a slot to defaults
-#define HID_CMD_DKS_RESET_ALL           0xEA  // Reset all slots to defaults
+// DKS (Dynamic Keystroke) Commands (0xAA-0xAF)
+// NOTE: Moved from 0xE5-0xEA to avoid conflict with arpeggiator_hid.c handlers
+// (0xE5-0xE6 used for per-key actuation, 0xE7-0xE9 for distance/calibration/EQ)
+#define HID_CMD_DKS_GET_SLOT            0xAA  // Get DKS slot configuration
+#define HID_CMD_DKS_SET_ACTION          0xAB  // Set a single DKS action
+#define HID_CMD_DKS_SAVE_EEPROM         0xAC  // Save all DKS configs to EEPROM
+#define HID_CMD_DKS_LOAD_EEPROM         0xAD  // Load all DKS configs from EEPROM
+#define HID_CMD_DKS_RESET_SLOT          0xAE  // Reset a slot to defaults
+#define HID_CMD_DKS_RESET_ALL           0xAF  // Reset all slots to defaults
 
 // Keyboard Configuration (0xB6-0xBF)
 #define HID_CMD_SET_KEYBOARD_CONFIG         0xB6  // was 0x50
@@ -94,7 +93,9 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define HID_CMD_SAVE_KEYBOARD_SLOT          0xB9  // was 0x53
 #define HID_CMD_LOAD_KEYBOARD_SLOT          0xBA  // was 0x54
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB  // was 0x55
-#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE    0xBD  // NEW: Set individual keyboard parameter
+// DEPRECATED: This handler is superseded by arpeggiator_hid.c which handles 0xE8 for custom HID protocol
+// This define and handler are kept for reference but are never reached in the current code path
+#define HID_CMD_SET_KEYBOARD_PARAM_SINGLE    0xE8  // Set individual keyboard parameter (handled in arpeggiator_hid.c)
 
 // Parameter IDs for HID_CMD_SET_KEYBOARD_PARAM_SINGLE (1-byte parameters)
 #define PARAM_CHANNEL_NUMBER                 0
@@ -110,8 +111,9 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE  10
 #define PARAM_TRIPLESPLIT_HE_VELOCITY_MIN    11
 #define PARAM_TRIPLESPLIT_HE_VELOCITY_MAX    12
-// PARAM_AFTERTOUCH_MODE (13) and PARAM_AFTERTOUCH_CC (14) are now per-layer
-// Use set_layer_actuation() / get_layer_actuation() instead (0xCA/0xCB commands)
+// Global MIDI Velocity/Aftertouch Settings
+#define PARAM_VELOCITY_MODE                  13
+#define PARAM_AFTERTOUCH_MODE                14
 #define PARAM_BASE_SUSTAIN                   15
 #define PARAM_KEYSPLIT_SUSTAIN               16
 #define PARAM_TRIPLESPLIT_SUSTAIN            17
@@ -132,6 +134,12 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_MIDI_IN_MODE                   36
 #define PARAM_USB_MIDI_MODE                  37
 #define PARAM_MIDI_CLOCK_SOURCE              38
+// Global MIDI Settings (continued)
+#define PARAM_AFTERTOUCH_CC                  39
+#define PARAM_VIBRATO_SENSITIVITY            40
+#define PARAM_VIBRATO_DECAY_TIME             41  // 16-bit, uses 2 bytes
+#define PARAM_MIN_PRESS_TIME                 42  // 16-bit, uses 2 bytes
+#define PARAM_MAX_PRESS_TIME                 43  // 16-bit, uses 2 bytes
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -11900,7 +11908,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-		case HID_CMD_SET_LOOP_CONFIG: // 0x40
+		case HID_CMD_SET_LOOP_CONFIG: // 0xB0
 			if (length >= 12) { // Header + 8 data bytes minimum
 				handle_set_loop_config(&data[6]); // Skip header bytes
 				send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, NULL, 0); // Success
@@ -11909,7 +11917,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_SET_MAIN_LOOP_CCS: // 0x41
+		case HID_CMD_SET_MAIN_LOOP_CCS: // 0xB1
 			if (length >= 26) { // Header + 20 data bytes
 				handle_set_main_loop_ccs(&data[6]);
 				send_hid_response(HID_CMD_SET_MAIN_LOOP_CCS, macro_num, 0, NULL, 0);
@@ -11918,7 +11926,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_SET_OVERDUB_CCS: // 0x42
+		case HID_CMD_SET_OVERDUB_CCS: // 0xB2
 			if (length >= 30) { // Header + 24 data bytes (CHANGED FROM 26)
 				handle_set_overdub_ccs(&data[6]);
 				send_hid_response(HID_CMD_SET_OVERDUB_CCS, macro_num, 0, NULL, 0);
@@ -11927,7 +11935,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_SET_NAVIGATION_CONFIG: // 0x43
+		case HID_CMD_SET_NAVIGATION_CONFIG: // 0xB3
 			if (length >= 16) { // Header + 10 data bytes
 				handle_set_navigation_config(&data[6]);
 				send_hid_response(HID_CMD_SET_NAVIGATION_CONFIG, macro_num, 0, NULL, 0);
@@ -11936,21 +11944,21 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			}
 			break;
 
-		case HID_CMD_GET_ALL_CONFIG: // 0x44
+		case HID_CMD_GET_ALL_CONFIG: // 0xB4
 			handle_get_all_config(macro_num);
 			break;
 
-		case HID_CMD_RESET_LOOP_CONFIG: // 0x45
+		case HID_CMD_RESET_LOOP_CONFIG: // 0xB5
 			handle_reset_loop_config();
 			send_hid_response(HID_CMD_RESET_LOOP_CONFIG, macro_num, 0, NULL, 0);
 			break;
 
-		case HID_CMD_CLEAR_ALL_LOOPS: // 0xCE
+		case HID_CMD_CLEAR_ALL_LOOPS: // 0xA7 - Clear all loop content
 			handle_clear_all_loops();
 			send_hid_response(HID_CMD_CLEAR_ALL_LOOPS, 0, 0, NULL, 0);
 			break;
 
-		case HID_CMD_SET_KEYBOARD_CONFIG: // 0x50
+		case HID_CMD_SET_KEYBOARD_CONFIG: // 0xB6
             if (length >= 41) { // Header + 35 data bytes minimum (expanded for velocity curve/min/max)
                 handle_set_keyboard_config(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG, 0, 0, NULL, 0); // Success
@@ -11996,7 +12004,10 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_SET_KEYBOARD_PARAM_SINGLE: // 0xBD - NEW: Set individual parameter
+        // DEPRECATED: This handler is never reached - custom HID protocol (0x7D prefix) is
+        // intercepted by raw_hid_receive_kb() in arpeggiator_hid.c which handles 0xE8 directly.
+        // Kept for reference only.
+        case HID_CMD_SET_KEYBOARD_PARAM_SINGLE: // 0xE8 - Set individual parameter (DEPRECATED)
             if (length >= 7) { // Header + param_id + at least 1 byte value
                 handle_set_keyboard_param_single(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, 0, NULL, 0); // Success
@@ -12005,8 +12016,8 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        // DKS Commands
-        case HID_CMD_DKS_GET_SLOT: // 0xE5 - Get DKS slot configuration
+        // DKS Commands (0xAA-0xAF range, routed via dynamic_macro_hid_receive)
+        case HID_CMD_DKS_GET_SLOT: // 0xAA - Get DKS slot configuration
             if (length >= 7) { // Header + slot number
                 handle_dks_get_slot(&data[6]);
             } else {
@@ -12014,7 +12025,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_SET_ACTION: // 0xE6 - Set a single DKS action
+        case HID_CMD_DKS_SET_ACTION: // 0xAB - Set a single DKS action
             if (length >= 14) { // Header + slot + action data
                 handle_dks_set_action(&data[6]);
                 send_hid_response(HID_CMD_DKS_SET_ACTION, 0, 0, NULL, 0); // Success
@@ -12023,19 +12034,19 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_SAVE_EEPROM: // 0xE7 - Save all DKS configs to EEPROM
+        case HID_CMD_DKS_SAVE_EEPROM: // 0xAC - Save all DKS configs to EEPROM
             dks_save_to_eeprom();
             send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0); // Success
             break;
 
-        case HID_CMD_DKS_LOAD_EEPROM: // 0xE8 - Load all DKS configs from EEPROM
+        case HID_CMD_DKS_LOAD_EEPROM: // 0xAD - Load all DKS configs from EEPROM
             {
                 bool success = dks_load_from_eeprom();
                 send_hid_response(HID_CMD_DKS_LOAD_EEPROM, 0, success ? 0 : 1, NULL, 0);
             }
             break;
 
-        case HID_CMD_DKS_RESET_SLOT: // 0xE9 - Reset a slot to defaults
+        case HID_CMD_DKS_RESET_SLOT: // 0xAE - Reset a slot to defaults
             if (length >= 7) { // Header + slot number
                 handle_dks_reset_slot(&data[6]);
             } else {
@@ -12043,7 +12054,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_RESET_ALL: // 0xEA - Reset all slots to defaults
+        case HID_CMD_DKS_RESET_ALL: // 0xAF - Reset all slots to defaults
             dks_reset_all_slots();
             send_hid_response(HID_CMD_DKS_RESET_ALL, 0, 0, NULL, 0); // Success
             break;
@@ -12900,8 +12911,19 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_TRIPLESPLIT_HE_VELOCITY_MAX:
             keyboard_settings.triplesplit_he_velocity_max = *value_ptr;
             break;
-        // PARAM_AFTERTOUCH_MODE and PARAM_AFTERTOUCH_CC are now per-layer
-        // Use layer actuation protocol (0xCA/0xCB) instead
+
+        // Global MIDI Velocity/Aftertouch Settings
+        case PARAM_VELOCITY_MODE:
+            velocity_mode = *value_ptr;
+            if (velocity_mode > 3) velocity_mode = 0;  // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+            keyboard_settings.velocity_mode = velocity_mode;
+            break;
+        case PARAM_AFTERTOUCH_MODE:
+            aftertouch_mode = *value_ptr;
+            if (aftertouch_mode > 4) aftertouch_mode = 0;  // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+            keyboard_settings.aftertouch_mode = aftertouch_mode;
+            break;
+
         case PARAM_BASE_SUSTAIN:
             base_sustain = *value_ptr;
             keyboard_settings.base_sustain = base_sustain;
@@ -12976,6 +12998,38 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_MIDI_CLOCK_SOURCE:
             midi_clock_source = (midi_clock_source_t)(*value_ptr);
             keyboard_settings.midi_clock_source = midi_clock_source;
+            break;
+
+        // Global MIDI Settings (continued)
+        case PARAM_AFTERTOUCH_CC:
+            aftertouch_cc = *value_ptr;  // 0-127=CC number, 255=off
+            keyboard_settings.aftertouch_cc = aftertouch_cc;
+            break;
+        case PARAM_VIBRATO_SENSITIVITY:
+            vibrato_sensitivity = *value_ptr;
+            if (vibrato_sensitivity < 50) vibrato_sensitivity = 50;
+            if (vibrato_sensitivity > 200) vibrato_sensitivity = 200;
+            keyboard_settings.vibrato_sensitivity = vibrato_sensitivity;
+            break;
+        case PARAM_VIBRATO_DECAY_TIME:
+            // 16-bit value (little-endian)
+            vibrato_decay_time = value_ptr[0] | (value_ptr[1] << 8);
+            if (vibrato_decay_time > 2000) vibrato_decay_time = 2000;
+            keyboard_settings.vibrato_decay_time = vibrato_decay_time;
+            break;
+        case PARAM_MIN_PRESS_TIME:
+            // 16-bit value (little-endian) - slow press threshold
+            min_press_time = value_ptr[0] | (value_ptr[1] << 8);
+            if (min_press_time < 50) min_press_time = 50;
+            if (min_press_time > 500) min_press_time = 500;
+            keyboard_settings.min_press_time = min_press_time;
+            break;
+        case PARAM_MAX_PRESS_TIME:
+            // 16-bit value (little-endian) - fast press threshold
+            max_press_time = value_ptr[0] | (value_ptr[1] << 8);
+            if (max_press_time < 5) max_press_time = 5;
+            if (max_press_time > 100) max_press_time = 100;
+            keyboard_settings.max_press_time = max_press_time;
             break;
 
         default:

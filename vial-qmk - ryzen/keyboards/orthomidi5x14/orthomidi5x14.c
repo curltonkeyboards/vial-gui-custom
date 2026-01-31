@@ -250,6 +250,14 @@ bool channeloverride = false;
 bool velocityoverride = false;
 bool transposeoverride = false;
 bool truesustain = false;
+// Global MIDI Velocity/Aftertouch Settings
+uint8_t velocity_mode = 2;           // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak (default: Speed-based)
+uint8_t aftertouch_mode = 0;         // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
+uint8_t vibrato_sensitivity = 100;   // 50-200 (percentage, 100=normal)
+uint16_t vibrato_decay_time = 200;   // 0-2000 (milliseconds)
+uint16_t min_press_time = 200;       // 50-500ms (slow press threshold)
+uint16_t max_press_time = 20;        // 5-100ms (fast press threshold)
 bool keysplitmodifierheld = false;
 bool triplesplitmodifierheld = false;
 bool global_edit_modifier_held = false;
@@ -488,9 +496,10 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col) {
     // This is the velocity calculated from peak travel, speed, or combined
     raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    // If raw_velocity is 0 (shouldn't happen - velocity should be captured before note-on),
+    // use a neutral middle value instead of travel (which would cause actuation-dependent floor)
     if (raw_value == 0) {
-        raw_value = analog_matrix_get_travel_normalized(row, col);
+        raw_value = 127;  // Neutral 50% value
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -528,9 +537,10 @@ uint8_t get_keysplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Modes 1-3: Use pre-calculated raw velocity from matrix.c
     uint8_t raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    // If raw_velocity is 0 (shouldn't happen - velocity should be captured before note-on),
+    // use a neutral middle value instead of travel (which would cause actuation-dependent floor)
     if (raw_value == 0) {
-        raw_value = analog_matrix_get_travel_normalized(row, col);
+        raw_value = 127;  // Neutral 50% value
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -568,9 +578,10 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     // Modes 1-3: Use pre-calculated raw velocity from matrix.c
     uint8_t raw_value = analog_matrix_get_velocity_raw(row, col);
 
-    // If raw_velocity is 0 (not yet captured), fall back to current travel
+    // If raw_velocity is 0 (not yet captured), use neutral 50% value
+    // Note: Using travel as fallback causes actuation-dependent velocity floor
     if (raw_value == 0) {
-        raw_value = analog_matrix_get_travel_normalized(row, col);
+        raw_value = 127;  // Neutral value instead of travel
     }
 
     // Apply curve to raw value (0-255 input, 0-255 output)
@@ -11220,12 +11231,24 @@ void oled_render_keylog(void) {
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
 
+	// ============ VELOCITY DEBUG INFO ============
+	// Show velocity mode name
+	const char* mode_names[] = {"FIX", "PEAK", "SPD", "S+P"};
+	const char* mode_name = (velocity_mode < 4) ? mode_names[velocity_mode] : "???";
 
-	if (keysplittransposestatus == 1) {snprintf(name, sizeof(name), "\n  TRA%+3d // TRA%+3d", transpose_number + octave_number, transpose_number2 + octave_number2);
-	}else if (keysplittransposestatus == 2) {snprintf(name, sizeof(name), "\n T%+3d / T%+3d  /T%+3d", transpose_number + octave_number,transpose_number2 + octave_number2 ,transpose_number3 + octave_number3);
-	}else if (keysplittransposestatus == 3) {snprintf(name, sizeof(name), "\nT%+3d/T%+3d/T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
-	}else { snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
+	// Show velocity curve (0-6 factory, 7-16 user)
+	uint8_t curve = keyboard_settings.he_velocity_curve;
+	const char* curve_names[] = {"Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"};
+
+	// First line: Mode and Curve
+	if (curve <= 6) {
+		snprintf(name, sizeof(name), "\n M:%s CRV:%d(%s)", mode_name, curve, curve_names[curve]);
+	} else {
+		snprintf(name, sizeof(name), "\n M:%s CRV:%d(User%d)", mode_name, curve, curve - 6);
 	}
+
+	// Second line: Press times (slow=min_press_time, fast=max_press_time)
+	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n SLO:%3dms FAST:%2dms", min_press_time, max_press_time);
 
 	// Get HE velocity settings from global keyboard settings (no longer per-layer)
 	uint8_t he_min = keyboard_settings.he_velocity_min;

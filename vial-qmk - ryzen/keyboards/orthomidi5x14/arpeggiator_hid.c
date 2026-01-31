@@ -765,6 +765,161 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // =========================================================================
+    // GAMING/JOYSTICK COMMANDS (0xCE-0xD2)
+    // These handle gamepad/joystick functionality for the keyboard
+    // =========================================================================
+
+    // Check if this is a gaming command (0xCE-0xD2)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xCE && data[3] <= 0xD2) {
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xCE: {  // HID_CMD_GAMING_SET_MODE
+                #ifdef JOYSTICK_ENABLE
+                gaming_mode_active = data[6] != 0;
+                gaming_settings.gaming_mode_enabled = gaming_mode_active;
+                gaming_save_settings();
+                response[5] = 0x00;  // Success
+                dprintf("Gaming mode set to: %s\n", gaming_mode_active ? "ON" : "OFF");
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xCF: {  // HID_CMD_GAMING_SET_KEY_MAP
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), control_id, row, col, enabled]
+                uint8_t control_id = data[6];
+                uint8_t row = data[7];
+                uint8_t col = data[8];
+                uint8_t enabled = data[9];
+
+                gaming_key_map_t* target = NULL;
+
+                // Map control_id to the correct structure member
+                switch (control_id) {
+                    case 0: target = &gaming_settings.ls_up; break;
+                    case 1: target = &gaming_settings.ls_down; break;
+                    case 2: target = &gaming_settings.ls_left; break;
+                    case 3: target = &gaming_settings.ls_right; break;
+                    case 4: target = &gaming_settings.rs_up; break;
+                    case 5: target = &gaming_settings.rs_down; break;
+                    case 6: target = &gaming_settings.rs_left; break;
+                    case 7: target = &gaming_settings.rs_right; break;
+                    case 8: target = &gaming_settings.lt; break;
+                    case 9: target = &gaming_settings.rt; break;
+                    default:
+                        if (control_id >= 10 && control_id < 26) {
+                            target = &gaming_settings.buttons[control_id - 10];
+                        }
+                        break;
+                }
+
+                if (target != NULL) {
+                    target->row = row;
+                    target->col = col;
+                    target->enabled = enabled;
+                    gaming_save_settings();
+                    response[5] = 0x00;  // Success
+                } else {
+                    response[5] = 0x01;  // Error - invalid control_id
+                }
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xD0: {  // HID_CMD_GAMING_SET_ANALOG_CONFIG
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
+                gaming_settings.ls_config.min_travel_mm_x10 = data[6];
+                gaming_settings.ls_config.max_travel_mm_x10 = data[7];
+                gaming_settings.rs_config.min_travel_mm_x10 = data[8];
+                gaming_settings.rs_config.max_travel_mm_x10 = data[9];
+                gaming_settings.trigger_config.min_travel_mm_x10 = data[10];
+                gaming_settings.trigger_config.max_travel_mm_x10 = data[11];
+                gaming_save_settings();
+                response[5] = 0x00;  // Success
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xD1: {  // HID_CMD_GAMING_GET_SETTINGS
+                #ifdef JOYSTICK_ENABLE
+                response[5] = 0x00;  // Success
+                response[6] = gaming_mode_active ? 1 : 0;
+                response[7] = gaming_settings.ls_config.min_travel_mm_x10;
+                response[8] = gaming_settings.ls_config.max_travel_mm_x10;
+                response[9] = gaming_settings.rs_config.min_travel_mm_x10;
+                response[10] = gaming_settings.rs_config.max_travel_mm_x10;
+                response[11] = gaming_settings.trigger_config.min_travel_mm_x10;
+                response[12] = gaming_settings.trigger_config.max_travel_mm_x10;
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xD2: {  // HID_CMD_GAMING_RESET
+                #ifdef JOYSTICK_ENABLE
+                // Reset to defaults
+                gaming_mode_active = false;
+                gaming_settings.gaming_mode_enabled = false;
+                gaming_settings.ls_config.min_travel_mm_x10 = 10;   // 1.0mm
+                gaming_settings.ls_config.max_travel_mm_x10 = 20;   // 2.0mm
+                gaming_settings.rs_config.min_travel_mm_x10 = 10;
+                gaming_settings.rs_config.max_travel_mm_x10 = 20;
+                gaming_settings.trigger_config.min_travel_mm_x10 = 10;
+                gaming_settings.trigger_config.max_travel_mm_x10 = 20;
+
+                // Clear all key mappings
+                memset(&gaming_settings.ls_up, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.ls_down, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.ls_left, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.ls_right, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_up, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_down, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_left, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rs_right, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.lt, 0, sizeof(gaming_key_map_t));
+                memset(&gaming_settings.rt, 0, sizeof(gaming_key_map_t));
+                memset(gaming_settings.buttons, 0, sizeof(gaming_settings.buttons));
+
+                gaming_save_settings();
+                response[5] = 0x00;  // Success
+                dprintf("Gaming settings reset to defaults\n");
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            default:
+                response[5] = 0x01;  // Error - unknown command
+                break;
+        }
+
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is an ADC matrix tester command (0xDF)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
@@ -810,13 +965,121 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a Calibration Debug command (0xE8)
-    // Returns calibration values (rest, bottom, raw ADC) for specific keys
+    // Check if this is a SET_KEYBOARD_PARAM_SINGLE command (0xE8)
+    // Sets individual keyboard parameters (velocity curve, velocity mode, aftertouch, etc.)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
         data[3] == 0xE8) {
+
+        dprintf("raw_hid_receive_kb: SET_KEYBOARD_PARAM_SINGLE command detected\n");
+
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = 0xE8;
+
+        // Format: [header(6), param_id, value_byte(s)...]
+        // For 16-bit params: [header(6), param_id, low_byte, high_byte]
+        uint8_t param_id = data[6];
+        uint8_t value8 = data[7];
+        uint16_t value16 = data[7] | (data[8] << 8);  // Little-endian for 16-bit params
+        bool settings_changed = false;
+        bool success = true;
+
+        switch (param_id) {
+            // Velocity curve and range parameters (update keyboard_settings)
+            case 4:  // PARAM_HE_VELOCITY_CURVE (0-16)
+                keyboard_settings.he_velocity_curve = value8;
+                he_velocity_curve = value8;  // Also update global for OLED display
+                settings_changed = true;
+                dprintf("SET param 4 (velocity_curve) = %d\n", value8);
+                break;
+            case 5:  // PARAM_HE_VELOCITY_MIN (1-127)
+                keyboard_settings.he_velocity_min = value8;
+                he_velocity_min = value8;
+                settings_changed = true;
+                dprintf("SET param 5 (velocity_min) = %d\n", value8);
+                break;
+            case 6:  // PARAM_HE_VELOCITY_MAX (1-127)
+                keyboard_settings.he_velocity_max = value8;
+                he_velocity_max = value8;
+                settings_changed = true;
+                dprintf("SET param 6 (velocity_max) = %d\n", value8);
+                break;
+
+            // Global MIDI settings (update global variables)
+            case 13:  // PARAM_VELOCITY_MODE (0-3)
+                velocity_mode = value8;
+                settings_changed = true;
+                dprintf("SET param 13 (velocity_mode) = %d\n", value8);
+                break;
+            case 14:  // PARAM_AFTERTOUCH_MODE (0-4)
+                aftertouch_mode = value8;
+                settings_changed = true;
+                dprintf("SET param 14 (aftertouch_mode) = %d\n", value8);
+                break;
+            case 39:  // PARAM_AFTERTOUCH_CC (0-127, 255=off)
+                aftertouch_cc = value8;
+                settings_changed = true;
+                dprintf("SET param 39 (aftertouch_cc) = %d\n", value8);
+                break;
+            case 40:  // PARAM_VIBRATO_SENSITIVITY (50-200)
+                vibrato_sensitivity = value8;
+                settings_changed = true;
+                dprintf("SET param 40 (vibrato_sensitivity) = %d\n", value8);
+                break;
+            case 41:  // PARAM_VIBRATO_DECAY_TIME (0-2000ms, 16-bit)
+                vibrato_decay_time = value16;
+                settings_changed = true;
+                dprintf("SET param 41 (vibrato_decay_time) = %d\n", value16);
+                break;
+            case 42:  // PARAM_MIN_PRESS_TIME (50-500ms, 16-bit)
+                min_press_time = value16;
+                keyboard_settings.min_press_time = value16;
+                settings_changed = true;
+                dprintf("SET param 42 (min_press_time) = %d\n", value16);
+                break;
+            case 43:  // PARAM_MAX_PRESS_TIME (5-100ms, 16-bit)
+                max_press_time = value16;
+                keyboard_settings.max_press_time = value16;
+                settings_changed = true;
+                dprintf("SET param 43 (max_press_time) = %d\n", value16);
+                break;
+            default:
+                success = false;
+                dprintf("SET param %d: UNKNOWN param_id\n", param_id);
+                break;
+        }
+
+        // Force refresh active_settings so changes take effect immediately
+        if (settings_changed) {
+            analog_matrix_refresh_settings();
+        }
+
+        // Response format: [header(4), status, param_id, value8]
+        response[4] = 0x00;  // Reserved
+        response[5] = success ? 0x01 : 0x00;  // Status
+        response[6] = param_id;
+        response[7] = value8;
+
+        // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // Check if this is a Calibration Debug command (0xD5) - moved from 0xE8 to avoid collision
+    // with SET_KEYBOARD_PARAM_SINGLE which also uses 0xE8
+    // Returns calibration values (rest, bottom, raw ADC) for specific keys
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] == 0xD5) {
 
         dprintf("raw_hid_receive_kb: Calibration Debug command detected\n");
 
@@ -826,7 +1089,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         response[0] = HID_MANUFACTURER_ID;
         response[1] = HID_SUB_ID;
         response[2] = HID_DEVICE_ID;
-        response[3] = 0xE8;
+        response[3] = 0xD5;
 
         // Request format: [header(4), _, num_keys, row0, col0, row1, col1, ...]
         uint8_t num_keys = data[6];
@@ -1082,8 +1345,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a Global Velocity Time Settings command (0xE6)
-    // Get or Set the global velocity_min_time and velocity_max_time settings
+    // Check if this is a Global Velocity Time Settings command (0xD4)
+    // Get or Set the global min_press_time and max_press_time settings
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
@@ -1107,40 +1370,42 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         if (sub_cmd == 0) {
             // GET: Return current settings
             response[4] = 0x01;  // Success
-            response[5] = velocity_min_time & 0xFF;
-            response[6] = (velocity_min_time >> 8) & 0xFF;
-            response[7] = velocity_max_time & 0xFF;
-            response[8] = (velocity_max_time >> 8) & 0xFF;
-            dprintf("GET Velocity Time: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+            response[5] = min_press_time & 0xFF;
+            response[6] = (min_press_time >> 8) & 0xFF;
+            response[7] = max_press_time & 0xFF;
+            response[8] = (max_press_time >> 8) & 0xFF;
+            dprintf("GET Velocity Time: min=%d, max=%d\n", min_press_time, max_press_time);
         } else if (sub_cmd == 1) {
             // SET: Update settings from request
             uint16_t new_min = data[7] | (data[8] << 8);
             uint16_t new_max = data[9] | (data[10] << 8);
 
-            // Validate ranges
-            if (new_min >= 10 && new_min <= 400 && new_max >= 5 && new_max <= 100 && new_max < new_min) {
-                velocity_min_time = new_min;
-                velocity_max_time = new_max;
+            // Validate ranges (50-500 for min, 5-100 for max)
+            if (new_min >= 50 && new_min <= 500 && new_max >= 5 && new_max <= 100 && new_max < new_min) {
+                min_press_time = new_min;
+                max_press_time = new_max;
+                keyboard_settings.min_press_time = min_press_time;
+                keyboard_settings.max_press_time = max_press_time;
                 response[4] = 0x01;  // Success
-                dprintf("SET Velocity Time: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+                dprintf("SET Velocity Time: min=%d, max=%d\n", min_press_time, max_press_time);
             } else {
                 response[4] = 0x00;  // Error - invalid values
                 dprintf("SET Velocity Time: INVALID min=%d, max=%d\n", new_min, new_max);
             }
             // Return current values
-            response[5] = velocity_min_time & 0xFF;
-            response[6] = (velocity_min_time >> 8) & 0xFF;
-            response[7] = velocity_max_time & 0xFF;
-            response[8] = (velocity_max_time >> 8) & 0xFF;
+            response[5] = min_press_time & 0xFF;
+            response[6] = (min_press_time >> 8) & 0xFF;
+            response[7] = max_press_time & 0xFF;
+            response[8] = (max_press_time >> 8) & 0xFF;
         } else if (sub_cmd == 2) {
-            // SAVE: Save current settings to EEPROM
-            velocity_time_save_to_eeprom();
+            // SAVE: Save current settings to EEPROM (via keyboard_settings)
+            save_keyboard_settings();
             response[4] = 0x01;  // Success
-            response[5] = velocity_min_time & 0xFF;
-            response[6] = (velocity_min_time >> 8) & 0xFF;
-            response[7] = velocity_max_time & 0xFF;
-            response[8] = (velocity_max_time >> 8) & 0xFF;
-            dprintf("SAVE Velocity Time to EEPROM: min=%d, max=%d\n", velocity_min_time, velocity_max_time);
+            response[5] = min_press_time & 0xFF;
+            response[6] = (min_press_time >> 8) & 0xFF;
+            response[7] = max_press_time & 0xFF;
+            response[8] = (max_press_time >> 8) & 0xFF;
+            dprintf("SAVE Velocity Time to EEPROM: min=%d, max=%d\n", min_press_time, max_press_time);
         } else {
             response[4] = 0x00;  // Error - unknown sub-command
         }
