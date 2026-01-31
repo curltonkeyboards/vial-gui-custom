@@ -1172,18 +1172,21 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             break;
 
         case 3:  // Speed + Peak Combined with Re-trigger support
-            // Initial press: trigger at actuation (speed-only) or reversal (50/50 blend)
-            // Re-trigger: after partial release, trigger at release+5% using speed-only
+            // Initial press: trigger at actuation (speed-only) or reversal (configurable blend)
+            // Re-trigger: after partial release, trigger at release+distance using speed-only
             //             with max velocity scaled by release distance
             {
                 const uint8_t MIN_PEAK3 = 12;             // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD3 = 3;   // Must decrease by 3 units to count as reversal
                 const uint8_t NOTE_OFF_TRAVEL3 = 6;      // ~0.1mm - note off when below this
-                const uint8_t MIN_RETRIGGER_DIST = 6;    // Minimum re-trigger distance (~0.1mm)
 
-                // Calculate re-trigger threshold (5% of actuation, minimum MIN_RETRIGGER_DIST)
-                uint8_t retrigger_threshold = (midi_threshold * 5) / 100;
-                if (retrigger_threshold < MIN_RETRIGGER_DIST) retrigger_threshold = MIN_RETRIGGER_DIST;
+                // Use actuation override if enabled, otherwise use per-key actuation
+                uint8_t effective_actuation = peak_actuation_override_enabled ?
+                    peak_actuation_override : midi_threshold;
+                if (effective_actuation == 0) effective_actuation = midi_threshold;  // Fallback
+
+                // Re-trigger threshold from configurable setting (0.2mm-1.5mm = 12-90 units)
+                uint8_t retrigger_threshold = peak_retrigger_distance;
 
                 // Full release - reset everything for fresh press
                 if (travel < NOTE_OFF_TRAVEL3) {
@@ -1217,26 +1220,26 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->peak_travel = travel;
                 }
 
-                // Determine if this is a re-trigger scenario
-                bool is_retrigger = (state->release_travel > 0);
+                // Determine if this is a re-trigger scenario (only if re-triggering is enabled)
+                bool is_retrigger = peak_retrigger_enabled && (state->release_travel > 0);
 
                 // Calculate actuation threshold and max velocity scale
                 uint8_t current_actuation;
                 uint8_t max_velocity_scale = 255;  // Default full velocity
 
                 if (is_retrigger) {
-                    // Re-trigger: actuation = release_point + 5%
+                    // Re-trigger: actuation = release_point + configurable distance
                     current_actuation = state->release_travel + retrigger_threshold;
-                    if (current_actuation > midi_threshold) current_actuation = midi_threshold;
+                    if (current_actuation > effective_actuation) current_actuation = effective_actuation;
 
                     // Max velocity = release_distance / full_actuation
                     // (how much we released determines max velocity we can achieve)
-                    uint16_t release_distance = midi_threshold - state->release_travel;
-                    max_velocity_scale = (release_distance * 255) / midi_threshold;
+                    uint16_t release_distance = effective_actuation - state->release_travel;
+                    max_velocity_scale = (release_distance * 255) / effective_actuation;
                     if (max_velocity_scale < 1) max_velocity_scale = 1;
                     if (max_velocity_scale > 255) max_velocity_scale = 255;
                 } else {
-                    current_actuation = midi_threshold;
+                    current_actuation = effective_actuation;
                 }
 
                 // Trigger detection
@@ -1286,10 +1289,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                             // Speed only, scaled by max_velocity_scale
                             final_velocity = (speed_raw * max_velocity_scale) / 255;
                         } else {
-                            // 50/50 blend for reversal on initial press
+                            // Configurable blend for reversal on initial press
+                            // peak_speed_ratio: 0=all peak, 100=all speed
                             uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
                             if (travel_raw > 255) travel_raw = 255;
-                            final_velocity = ((speed_raw * 50) + (travel_raw * 50)) / 100;
+                            uint8_t speed_weight = peak_speed_ratio;
+                            uint8_t peak_weight = 100 - peak_speed_ratio;
+                            final_velocity = ((speed_raw * speed_weight) + (travel_raw * peak_weight)) / 100;
                         }
 
                         if (final_velocity < 1) final_velocity = 1;
@@ -1309,7 +1315,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     travel < state->peak_travel - REVERSAL_THRESHOLD3) {
 
                     state->send_on_release = false;  // Note OFF
-                    state->release_travel = travel;  // Store for potential re-trigger
+                    // Only store release_travel if re-triggering is enabled
+                    if (peak_retrigger_enabled) {
+                        state->release_travel = travel;  // Store for potential re-trigger
+                    } else {
+                        state->release_travel = 0;  // Reset - no re-trigger
+                    }
                     state->velocity_captured = false;
                     state->peak_travel = travel;     // Reset peak to current
                     // Timer will start when travel increases past release_travel
