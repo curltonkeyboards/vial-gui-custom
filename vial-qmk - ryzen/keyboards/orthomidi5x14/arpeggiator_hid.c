@@ -1182,10 +1182,9 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
 
             // Global MIDI settings (update global variables)
-            case 13:  // PARAM_VELOCITY_MODE (0-3)
-                velocity_mode = value8;
-                settings_changed = true;
-                dprintf("SET param 13 (velocity_mode) = %d\n", value8);
+            case 13:  // PARAM_VELOCITY_MODE - DEPRECATED, fixed at 3 (Speed+Peak)
+                // Ignore velocity_mode changes - always use Speed+Peak mode
+                dprintf("SET param 13 (velocity_mode) = %d [IGNORED - fixed at mode 3]\n", value8);
                 break;
             case 14:  // PARAM_AFTERTOUCH_MODE (0-4)
                 aftertouch_mode = value8;

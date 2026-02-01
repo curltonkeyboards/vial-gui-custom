@@ -26,7 +26,7 @@ from themes import Theme
 from util import tr
 from vial_device import VialKeyboard
 from protocol.keyboard_comm import (
-    PARAM_VELOCITY_MODE, PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
+    PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
     PARAM_VIBRATO_SENSITIVITY, PARAM_VIBRATO_DECAY_TIME,
     PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME,
     HID_CMD_SET_KEYBOARD_PARAM_SINGLE
@@ -193,9 +193,9 @@ class VelocityTab(BasicEditor):
         self.current_layer = 0
         self.midi_keys = []  # List of (row, col) for MIDI keys on current layer
 
-        # Global MIDI settings (same structure as keymap_editor)
+        # Global MIDI settings
+        # Note: velocity_mode is fixed at 3 (Speed+Peak) in firmware, not configurable
         self.global_midi_settings = {
-            'velocity_mode': 2,         # 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
             'velocity_min': 1,          # 1-127 (minimum MIDI velocity)
             'velocity_max': 127,        # 1-127 (maximum MIDI velocity)
             'aftertouch_mode': 0,       # 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
@@ -407,34 +407,22 @@ class VelocityTab(BasicEditor):
         advanced_layout.setSpacing(6)
         advanced_group.setLayout(advanced_layout)
 
-        # Velocity Mode combo
+        # Velocity Mode info (fixed at Speed+Peak)
         velocity_layout = QHBoxLayout()
         velocity_layout.setContentsMargins(0, 0, 0, 0)
         velocity_layout.setSpacing(4)
         velocity_layout.addWidget(self.create_help_label(
-            "How MIDI velocity is calculated:\n"
-            "Fixed (64): Always sends velocity 64\n"
-            "Peak at Apex: Velocity based on key apex position\n"
-            "Speed-Based: Velocity based on key press speed\n"
-            "Speed + Peak: Combines speed and apex methods"
+            "Velocity mode is fixed at Speed+Peak:\n"
+            "Combines press speed and key depth for\n"
+            "the most expressive and realistic velocity response."
         ))
-        velocity_label = QLabel(tr("VelocityTab", "Velocity:"))
+        velocity_label = QLabel(tr("VelocityTab", "Velocity Mode:"))
         velocity_label.setMinimumWidth(95)
         velocity_layout.addWidget(velocity_label)
 
-        self.velocity_combo = ArrowComboBox()
-        self.velocity_combo.setMaximumHeight(25)
-        self.velocity_combo.setStyleSheet("QComboBox { padding: 0px; font-size: 10px; text-align: center; }")
-        self.velocity_combo.addItem("Fixed (64)", 0)
-        self.velocity_combo.addItem("Peak at Apex", 1)
-        self.velocity_combo.addItem("Speed-Based", 2)
-        self.velocity_combo.addItem("Speed + Peak", 3)
-        self.velocity_combo.setCurrentIndex(2)
-        self.velocity_combo.setEditable(True)
-        self.velocity_combo.lineEdit().setReadOnly(True)
-        self.velocity_combo.lineEdit().setAlignment(Qt.AlignCenter)
-        self.velocity_combo.currentIndexChanged.connect(self.on_velocity_mode_changed)
-        velocity_layout.addWidget(self.velocity_combo, 1)
+        velocity_mode_label = QLabel("Speed + Peak")
+        velocity_mode_label.setStyleSheet("QLabel { font-weight: bold; color: #88aaff; }")
+        velocity_layout.addWidget(velocity_mode_label, 1)
         advanced_layout.addLayout(velocity_layout)
 
         # Min Press Time slider (for slow press = min velocity)
@@ -708,12 +696,11 @@ class VelocityTab(BasicEditor):
             return
 
         try:
-            # Get layer actuation settings which include velocity mode
+            # Get layer actuation settings (velocity_mode is fixed at 3 in firmware)
             result = self.keyboard.get_layer_actuation(0)  # Get from layer 0 for global settings
             if result:
                 # Update global_midi_settings from device
-                velocity_mode = result.get('velocity', 2)
-                self.global_midi_settings['velocity_mode'] = velocity_mode
+                # Note: velocity_mode is fixed at Speed+Peak (3) and not configurable
                 aftertouch_mode = result.get('aftertouch_mode', 0)
                 self.global_midi_settings['aftertouch_mode'] = aftertouch_mode
                 aftertouch_cc = result.get('aftertouch_cc', 255)
@@ -733,20 +720,13 @@ class VelocityTab(BasicEditor):
         settings = self.global_midi_settings
 
         # Block signals during UI update
-        self.velocity_combo.blockSignals(True)
+        # Note: velocity_mode is fixed at Speed+Peak (3), no UI control needed
         self.aftertouch_mode_combo.blockSignals(True)
         self.aftertouch_cc_combo.blockSignals(True)
         self.vibrato_sens_slider.blockSignals(True)
         self.vibrato_decay_slider.blockSignals(True)
         self.min_press_slider.blockSignals(True)
         self.max_press_slider.blockSignals(True)
-
-        # Set velocity mode
-        velocity = settings.get('velocity_mode', 2)
-        for i in range(self.velocity_combo.count()):
-            if self.velocity_combo.itemData(i) == velocity:
-                self.velocity_combo.setCurrentIndex(i)
-                break
 
         # Set min/max press time
         min_press = settings.get('min_press_time', 200)
@@ -786,17 +766,12 @@ class VelocityTab(BasicEditor):
         self.vibrato_decay_value.setText(f"{decay}ms")
 
         # Unblock signals
-        self.velocity_combo.blockSignals(False)
         self.aftertouch_mode_combo.blockSignals(False)
         self.aftertouch_cc_combo.blockSignals(False)
         self.vibrato_sens_slider.blockSignals(False)
         self.vibrato_decay_slider.blockSignals(False)
         self.min_press_slider.blockSignals(False)
         self.max_press_slider.blockSignals(False)
-
-    def on_velocity_mode_changed(self, index):
-        """Handle velocity mode change"""
-        self.global_midi_settings['velocity_mode'] = self.velocity_combo.currentData()
 
     def on_min_press_changed(self, value):
         """Handle min press time slider change"""
@@ -853,8 +828,8 @@ class VelocityTab(BasicEditor):
             self.advanced_debug_console.log("-" * 50, "DEBUG")
 
             # Define parameters to save with their names and value ranges
+            # Note: VELOCITY_MODE is fixed at 3 (Speed+Peak) in firmware, not configurable
             params_to_save = [
-                ("VELOCITY_MODE", PARAM_VELOCITY_MODE, settings.get('velocity_mode', 2), "0-3 (Fixed/Peak/Speed/Speed+Peak)"),
                 ("AFTERTOUCH_MODE", PARAM_AFTERTOUCH_MODE, settings.get('aftertouch_mode', 0), "0-4 (Off/Reverse/Bottom/Post/Vibrato)"),
                 ("AFTERTOUCH_CC", PARAM_AFTERTOUCH_CC, settings.get('aftertouch_cc', 255), "0-127 or 255=Off"),
                 ("VIBRATO_SENSITIVITY", PARAM_VIBRATO_SENSITIVITY, settings.get('vibrato_sensitivity', 100), "50-200 (percentage)"),

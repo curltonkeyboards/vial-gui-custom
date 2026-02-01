@@ -251,7 +251,8 @@ bool velocityoverride = false;
 bool transposeoverride = false;
 bool truesustain = false;
 // Global MIDI Velocity/Aftertouch Settings
-uint8_t velocity_mode = 2;           // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak (default: Speed-based)
+// velocity_mode is fixed at 3 (Speed+Peak) - the most expressive mode
+uint8_t velocity_mode = 3;           // Fixed: Speed+Peak combined mode
 uint8_t aftertouch_mode = 0;         // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
 uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
 uint8_t vibrato_sensitivity = 100;   // 50-200 (percentage, 100=normal)
@@ -4570,7 +4571,7 @@ void velocity_preset_apply(uint8_t preset_index) {
     velocity_preset_t* preset = &user_curves.presets[slot];
 
     // Apply settings to global variables (declared in orthomidi5x14.c or process_dynamic_macro.c)
-    extern uint8_t velocity_mode;
+    // Note: velocity_mode is fixed at 3 (Speed+Peak) and not stored in presets
     extern uint8_t aftertouch_mode;
     extern uint8_t aftertouch_cc;
     extern uint8_t vibrato_sensitivity;
