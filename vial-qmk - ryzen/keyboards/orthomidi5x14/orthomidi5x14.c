@@ -4590,10 +4590,10 @@ uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
         // Factory curve - read from PROGMEM
         memcpy_P(points, FACTORY_CURVES[curve_index], 8);
     } else if (curve_index >= CURVE_USER_START && curve_index <= CURVE_USER_END) {
-        // User preset - read from RAM
+        // User preset - read from RAM (points are in base zone)
         uint8_t user_idx = curve_index - CURVE_USER_START;
         if (user_idx < 10) {
-            memcpy(points, user_curves.presets[user_idx].points, 8);
+            memcpy(points, user_curves.presets[user_idx].base.points, 8);
         } else {
             // Invalid index - use linear
             return input;
