@@ -486,7 +486,7 @@ void handle_eeprom_diag_get(uint8_t* response);
 // VELOCITY PRESET SYSTEM (Full Velocity/Curve Configuration)
 // =============================================================================
 
-// Velocity Preset (38 bytes each)
+// Velocity Preset (40 bytes each)
 // Contains curve points AND all velocity/aftertouch settings
 // When a preset is loaded, ALL these settings are applied together
 // X-axis: Time from fast_press_time to slow_press_time (ms)
@@ -504,6 +504,8 @@ typedef struct {
     uint16_t vibrato_decay;    // 2 bytes: 0-2000ms decay time
     uint8_t flags;             // 1 byte: bit 0 = actuation_override_enabled
     uint8_t actuation_point;   // 1 byte: 0-40 = 0.0-4.0mm in 0.1mm steps (only used if override enabled)
+    uint8_t speed_peak_ratio;  // 1 byte: 0-100 = ratio of speed to peak for velocity (0=all peak, 100=all speed)
+    uint8_t retrigger_distance; // 1 byte: 0=off, 5-20 = 0.5-2.0mm retrigger distance in 0.1mm steps
 } velocity_preset_t;
 
 // Velocity preset flags
@@ -512,19 +514,19 @@ typedef struct {
 // Backward compatibility alias
 typedef velocity_preset_t user_curve_t;
 
-// Global velocity presets array (10 slots × 38 bytes = 380 bytes + 2 magic = 382 bytes)
+// Global velocity presets array (10 slots × 40 bytes = 400 bytes + 2 magic = 402 bytes)
 typedef struct {
     velocity_preset_t presets[10];
-    uint16_t magic;  // 0xCF03 (CurVe3) for validation - incremented for actuation override
+    uint16_t magic;  // 0xCF04 (CurVe4) for validation - incremented for speed/peak ratio and retrigger
 } velocity_presets_t;
 
 // Backward compatibility alias
 typedef velocity_presets_t user_curves_t;
 
-// EEPROM address for velocity presets (382 bytes: 10 presets × 38 + 2 magic)
+// EEPROM address for velocity presets (402 bytes: 10 presets × 40 + 2 magic)
 #define USER_CURVES_EEPROM_ADDR 41000
 #define VELOCITY_PRESETS_EEPROM_ADDR USER_CURVES_EEPROM_ADDR
-#define USER_CURVES_MAGIC 0xCF03  // Incremented to 0xCF03 for actuation override support
+#define USER_CURVES_MAGIC 0xCF04  // Incremented to 0xCF04 for speed/peak ratio and retrigger
 #define VELOCITY_PRESETS_MAGIC USER_CURVES_MAGIC
 
 // EEPROM address for EQ sensitivity curve settings (26 bytes)

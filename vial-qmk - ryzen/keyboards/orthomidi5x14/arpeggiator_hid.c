@@ -948,7 +948,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 // Chunk 0: points[8] + name[16] = 24 bytes at data[8-31]
                 // Chunk 1: vel_min, vel_max, slow_press_lo, slow_press_hi, fast_press_lo, fast_press_hi,
                 //          aftertouch_mode, aftertouch_cc, vibrato_sens, vibrato_decay_lo, vibrato_decay_hi,
-                //          flags, actuation_point = 13 bytes
+                //          flags, actuation_point, speed_peak_ratio, retrigger_distance = 15 bytes
                 uint8_t slot = data[6];
                 uint8_t chunk_id = data[7];
 
@@ -965,7 +965,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                         response[5] = 0x01;  // Success
                         dprintf("  Chunk 0: name='%s'\n", preset->name);
                     } else if (chunk_id == 1) {
-                        // Chunk 1: velocity/time/aftertouch/actuation settings (13 bytes)
+                        // Chunk 1: velocity/time/aftertouch/actuation/ratio/retrigger settings (15 bytes)
                         preset->velocity_min = data[8];
                         preset->velocity_max = data[9];
                         preset->slow_press_time = data[10] | (data[11] << 8);
@@ -976,16 +976,20 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                         preset->vibrato_decay = data[17] | (data[18] << 8);
                         preset->flags = data[19];
                         preset->actuation_point = data[20];
+                        preset->speed_peak_ratio = data[21];
+                        preset->retrigger_distance = data[22];
 
                         // Save to EEPROM after chunk 1 (full preset received)
                         user_curves_save();
                         response[5] = 0x01;  // Success
-                        dprintf("  Chunk 1: vel=%d-%d, time=%d-%dms, AT=%d, actuation=%s(%d), saved\n",
+                        dprintf("  Chunk 1: vel=%d-%d, time=%d-%dms, AT=%d, actuation=%s(%d), ratio=%d%%, retrig=%d, saved\n",
                             preset->velocity_min, preset->velocity_max,
                             preset->fast_press_time, preset->slow_press_time,
                             preset->aftertouch_mode,
                             (preset->flags & PRESET_FLAG_ACTUATION_OVERRIDE) ? "Y" : "N",
-                            preset->actuation_point);
+                            preset->actuation_point,
+                            preset->speed_peak_ratio,
+                            preset->retrigger_distance);
                     } else {
                         response[5] = 0x00;  // Error - invalid chunk
                     }
@@ -1022,7 +1026,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                     memcpy(&chunk0[16], preset->name, 16);
                     raw_hid_send(chunk0, 32);
 
-                    // Send Chunk 1: settings (including actuation override)
+                    // Send Chunk 1: settings (including actuation override, speed/peak ratio, retrigger)
                     uint8_t chunk1[32] = {0};
                     chunk1[0] = HID_MANUFACTURER_ID;
                     chunk1[1] = HID_SUB_ID;
@@ -1045,6 +1049,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                     chunk1[18] = (preset->vibrato_decay >> 8) & 0xFF;
                     chunk1[19] = preset->flags;
                     chunk1[20] = preset->actuation_point;
+                    chunk1[21] = preset->speed_peak_ratio;
+                    chunk1[22] = preset->retrigger_distance;
                     raw_hid_send(chunk1, 32);
 
                     dprintf("  Sent 2 chunks for preset '%s'\n", preset->name);

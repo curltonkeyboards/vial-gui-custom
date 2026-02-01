@@ -205,7 +205,9 @@ class VelocityTab(BasicEditor):
             'min_press_time': 200,      # 50-500ms (slow press threshold)
             'max_press_time': 20,       # 5-100ms (fast press threshold)
             'actuation_override': False, # Override per-key actuation for MIDI keys
-            'actuation_point': 20       # 0-40 = 0.0-4.0mm in 0.1mm steps
+            'actuation_point': 20,      # 0-40 = 0.0-4.0mm in 0.1mm steps
+            'speed_peak_ratio': 50,     # 0-100 = ratio of speed to peak (0=all peak, 100=all speed)
+            'retrigger_distance': 0     # 0=off, 5-20 = 0.5-2.0mm retrigger distance
         }
 
         # Polling timer
@@ -612,6 +614,86 @@ class VelocityTab(BasicEditor):
         preset_layout.addWidget(self.actuation_point_widget)
         self.actuation_point_widget.setVisible(False)
 
+        # Separator before speed/peak ratio
+        line5 = QFrame()
+        line5.setFrameShape(QFrame.HLine)
+        line5.setFrameShadow(QFrame.Sunken)
+        preset_layout.addWidget(line5)
+
+        # Speed/Peak Ratio slider
+        ratio_layout = QHBoxLayout()
+        ratio_layout.setContentsMargins(0, 0, 0, 0)
+        ratio_layout.setSpacing(4)
+        ratio_layout.addWidget(self.create_help_label(
+            "Velocity calculation blend:\n"
+            "0% = All peak (position-based)\n"
+            "50% = Equal blend (default)\n"
+            "100% = All speed (timing-based)"
+        ))
+        ratio_label = QLabel(tr("VelocityTab", "Speed/Peak:"))
+        ratio_label.setMinimumWidth(85)
+        ratio_layout.addWidget(ratio_label)
+
+        self.speed_peak_slider = QSlider(Qt.Horizontal)
+        self.speed_peak_slider.setMinimum(0)
+        self.speed_peak_slider.setMaximum(100)
+        self.speed_peak_slider.setValue(50)  # Default 50%
+        self.speed_peak_slider.valueChanged.connect(self.on_speed_peak_changed)
+        ratio_layout.addWidget(self.speed_peak_slider, 1)
+
+        self.speed_peak_value = QLabel("50%")
+        self.speed_peak_value.setMinimumWidth(45)
+        self.speed_peak_value.setStyleSheet("QLabel { font-weight: bold; }")
+        ratio_layout.addWidget(self.speed_peak_value)
+        preset_layout.addLayout(ratio_layout)
+
+        # Retrigger checkbox
+        retrigger_layout = QHBoxLayout()
+        retrigger_layout.setContentsMargins(0, 0, 0, 0)
+        retrigger_layout.setSpacing(4)
+        retrigger_layout.addWidget(self.create_help_label(
+            "Enable note retrigger without full release.\n"
+            "Release to the retrigger point and press again\n"
+            "to send a new note-on. Velocity is capped based\n"
+            "on how far the key was released."
+        ))
+        self.retrigger_checkbox = QCheckBox(tr("VelocityTab", "Enable Retrigger"))
+        self.retrigger_checkbox.setChecked(False)
+        self.retrigger_checkbox.stateChanged.connect(self.on_retrigger_changed)
+        retrigger_layout.addWidget(self.retrigger_checkbox)
+        retrigger_layout.addStretch()
+        preset_layout.addLayout(retrigger_layout)
+
+        # Retrigger Distance slider (hidden by default)
+        self.retrigger_widget = QWidget()
+        retrigger_dist_layout = QHBoxLayout()
+        retrigger_dist_layout.setContentsMargins(0, 0, 0, 0)
+        self.retrigger_widget.setLayout(retrigger_dist_layout)
+
+        retrigger_dist_layout.addWidget(self.create_help_label(
+            "Retrigger distance from actuation point.\n"
+            "0.5mm = sensitive retrigger\n"
+            "2.0mm = requires more release"
+        ))
+        retrigger_dist_label = QLabel(tr("VelocityTab", "Retrigger:"))
+        retrigger_dist_label.setMinimumWidth(85)
+        retrigger_dist_layout.addWidget(retrigger_dist_label)
+
+        self.retrigger_slider = QSlider(Qt.Horizontal)
+        self.retrigger_slider.setMinimum(5)   # 0.5mm minimum
+        self.retrigger_slider.setMaximum(20)  # 2.0mm maximum
+        self.retrigger_slider.setValue(10)    # Default 1.0mm
+        self.retrigger_slider.valueChanged.connect(self.on_retrigger_distance_changed)
+        retrigger_dist_layout.addWidget(self.retrigger_slider, 1)
+
+        self.retrigger_value = QLabel("1.0mm")
+        self.retrigger_value.setMinimumWidth(50)
+        self.retrigger_value.setStyleSheet("QLabel { font-weight: bold; }")
+        retrigger_dist_layout.addWidget(self.retrigger_value)
+
+        preset_layout.addWidget(self.retrigger_widget)
+        self.retrigger_widget.setVisible(False)
+
         # Apply Preset button
         save_curve_btn = QPushButton(tr("VelocityTab", "Apply Preset to Keyboard"))
         save_curve_btn.setMinimumHeight(30)
@@ -853,6 +935,28 @@ class VelocityTab(BasicEditor):
         mm_value = value / 10.0  # Convert 0-40 to 0.0-4.0mm
         self.actuation_point_value.setText(f"{mm_value:.1f}mm")
         self.global_midi_settings['actuation_point'] = value
+
+    def on_speed_peak_changed(self, value):
+        """Handle speed/peak ratio slider change"""
+        self.speed_peak_value.setText(f"{value}%")
+        self.global_midi_settings['speed_peak_ratio'] = value
+
+    def on_retrigger_changed(self, state):
+        """Handle retrigger checkbox change"""
+        enabled = (state == Qt.Checked)
+        self.retrigger_widget.setVisible(enabled)
+        if enabled:
+            # When enabling, use the slider's current value
+            self.global_midi_settings['retrigger_distance'] = self.retrigger_slider.value()
+        else:
+            # When disabling, set to 0
+            self.global_midi_settings['retrigger_distance'] = 0
+
+    def on_retrigger_distance_changed(self, value):
+        """Handle retrigger distance slider change"""
+        mm_value = value / 10.0  # Convert 5-20 to 0.5-2.0mm
+        self.retrigger_value.setText(f"{mm_value:.1f}mm")
+        self.global_midi_settings['retrigger_distance'] = value
 
     def on_save_advanced(self):
         """Save advanced settings (velocity, aftertouch) to keyboard - GLOBAL settings"""
@@ -1097,12 +1201,38 @@ class VelocityTab(BasicEditor):
                 self.global_midi_settings['actuation_override'] = actuation_override
                 self.global_midi_settings['actuation_point'] = actuation_point
 
+                # Load speed/peak ratio
+                speed_peak_ratio = result.get('speed_peak_ratio', 50)
+                self.speed_peak_slider.blockSignals(True)
+                self.speed_peak_slider.setValue(speed_peak_ratio)
+                self.speed_peak_value.setText(f"{speed_peak_ratio}%")
+                self.speed_peak_slider.blockSignals(False)
+                self.global_midi_settings['speed_peak_ratio'] = speed_peak_ratio
+
+                # Load retrigger settings
+                retrigger_distance = result.get('retrigger_distance', 0)
+                retrigger_enabled = (retrigger_distance > 0)
+                self.retrigger_checkbox.blockSignals(True)
+                self.retrigger_slider.blockSignals(True)
+                self.retrigger_checkbox.setChecked(retrigger_enabled)
+                if retrigger_enabled:
+                    self.retrigger_slider.setValue(retrigger_distance)
+                    mm_value = retrigger_distance / 10.0
+                    self.retrigger_value.setText(f"{mm_value:.1f}mm")
+                else:
+                    self.retrigger_slider.setValue(10)  # Default 1.0mm when enabled
+                    self.retrigger_value.setText("1.0mm")
+                self.retrigger_widget.setVisible(retrigger_enabled)
+                self.retrigger_checkbox.blockSignals(False)
+                self.retrigger_slider.blockSignals(False)
+                self.global_midi_settings['retrigger_distance'] = retrigger_distance
+
         except Exception as e:
             print(f"Error loading user curve {slot_index}: {e}")
 
     def on_save_to_user_curve(self, slot_index, curve_name):
         """Save current velocity preset to a user slot on the keyboard.
-        This saves all preset settings: curve points, velocity range, press times, aftertouch, vibrato, actuation."""
+        This saves all preset settings: curve, velocity range, press times, aftertouch, vibrato, actuation, ratio, retrigger."""
         if not self.keyboard:
             QMessageBox.warning(
                 None,
@@ -1129,20 +1259,26 @@ class VelocityTab(BasicEditor):
                 vibrato_sensitivity=settings.get('vibrato_sensitivity', 100),
                 vibrato_decay=settings.get('vibrato_decay_time', 200),
                 actuation_override=settings.get('actuation_override', False),
-                actuation_point=settings.get('actuation_point', 20)
+                actuation_point=settings.get('actuation_point', 20),
+                speed_peak_ratio=settings.get('speed_peak_ratio', 50),
+                retrigger_distance=settings.get('retrigger_distance', 0)
             )
 
             if success:
-                actuation_info = ""
+                extra_info = ""
                 if settings.get('actuation_override', False):
                     mm_value = settings.get('actuation_point', 20) / 10.0
-                    actuation_info = f", actuation override {mm_value:.1f}mm"
+                    extra_info += f", actuation override {mm_value:.1f}mm"
+                extra_info += f", speed/peak {settings.get('speed_peak_ratio', 50)}%"
+                retrig = settings.get('retrigger_distance', 0)
+                if retrig > 0:
+                    extra_info += f", retrigger {retrig/10.0:.1f}mm"
                 QMessageBox.information(
                     None,
                     tr("VelocityTab", "Velocity Preset Saved"),
                     tr("VelocityTab", f"Preset saved to User slot {slot_index + 1} as '{curve_name}'.\n\n"
                        f"Includes: curve, velocity {settings.get('velocity_min', 1)}-{settings.get('velocity_max', 127)}, "
-                       f"press times, aftertouch, vibrato{actuation_info}.")
+                       f"press times, aftertouch, vibrato{extra_info}.")
                 )
                 # Update the user curve name in the dropdown
                 names = list(self.curve_editor.user_curve_names)

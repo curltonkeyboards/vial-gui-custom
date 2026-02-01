@@ -373,6 +373,8 @@ uint8_t he_velocity_max = 127;  // Default: 127
 // Preset actuation override (when enabled, overrides per-key actuation for MIDI keys)
 bool preset_actuation_override = false;  // If true, use preset_actuation_point for MIDI keys
 uint8_t preset_actuation_point = 20;     // 0-40 = 0.0-4.0mm in 0.1mm steps (20 = 2.0mm)
+uint8_t preset_speed_peak_ratio = 50;    // 0-100 = ratio of speed to peak (0=all peak, 100=all speed)
+uint8_t preset_retrigger_distance = 0;   // 0=off, 5-20 = 0.5-2.0mm retrigger distance
 
 // Velocity curve names for display
 __attribute__((unused)) static const char* velocity_curve_names[] = {
@@ -4558,6 +4560,12 @@ void user_curves_init(void) {
         // Default: no actuation override (use per-key settings)
         preset->flags = 0;
         preset->actuation_point = 20;  // 2.0mm default if enabled (0-40 = 0.0-4.0mm)
+
+        // Default speed/peak ratio (50% = equal blend)
+        preset->speed_peak_ratio = 50;
+
+        // Default: retrigger off
+        preset->retrigger_distance = 0;  // 0 = off, 5-20 = 0.5-2.0mm
     }
 
     user_curves.magic = USER_CURVES_MAGIC;
@@ -4607,13 +4615,21 @@ void velocity_preset_apply(uint8_t preset_index) {
     preset_actuation_override = (preset->flags & PRESET_FLAG_ACTUATION_OVERRIDE) != 0;
     preset_actuation_point = preset->actuation_point;
 
-    dprintf("Velocity preset %d '%s' applied: vel=%d-%d, time=%d-%dms, AT=%d, actuation=%s(%d)\n",
+    // Apply speed/peak ratio and retrigger settings
+    extern uint8_t preset_speed_peak_ratio;
+    extern uint8_t preset_retrigger_distance;
+    preset_speed_peak_ratio = preset->speed_peak_ratio;
+    preset_retrigger_distance = preset->retrigger_distance;
+
+    dprintf("Velocity preset %d '%s' applied: vel=%d-%d, time=%d-%dms, AT=%d, actuation=%s(%d), ratio=%d%%, retrig=%d\n",
             slot + 1, preset->name,
             preset->velocity_min, preset->velocity_max,
             preset->fast_press_time, preset->slow_press_time,
             preset->aftertouch_mode,
             preset_actuation_override ? "override" : "per-key",
-            preset->actuation_point);
+            preset->actuation_point,
+            preset->speed_peak_ratio,
+            preset->retrigger_distance);
 }
 
 // Save user curves to EEPROM
