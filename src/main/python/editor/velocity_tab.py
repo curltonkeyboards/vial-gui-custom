@@ -716,6 +716,13 @@ class VelocityTab(BasicEditor):
         self.advanced_save_btn.clicked.connect(self.on_save_advanced)
         right_layout.addWidget(self.advanced_save_btn)
 
+        # Toggle OLED debug display button
+        self.oled_debug_btn = QPushButton(tr("VelocityTab", "Toggle OLED Preset Debug"))
+        self.oled_debug_btn.setMinimumHeight(30)
+        self.oled_debug_btn.setToolTip("Show velocity preset settings on keyboard OLED")
+        self.oled_debug_btn.clicked.connect(self.on_toggle_oled_debug)
+        right_layout.addWidget(self.oled_debug_btn)
+
         # Debug console for HID communication
         self.advanced_debug_console = DebugConsole("Velocity Settings Debug Console")
         right_layout.addWidget(self.advanced_debug_console)
@@ -1296,6 +1303,22 @@ class VelocityTab(BasicEditor):
                 tr("VelocityTab", "Save Failed"),
                 tr("VelocityTab", f"Error saving velocity preset: {e}")
             )
+
+    def on_toggle_oled_debug(self):
+        """Toggle velocity preset debug display on keyboard OLED"""
+        if not self.keyboard:
+            self.advanced_debug_console.log("ERROR: Keyboard not connected", "ERROR")
+            return
+
+        try:
+            result = self.keyboard.toggle_velocity_preset_debug()
+            if result is not None:
+                state = "ON" if result else "OFF"
+                self.advanced_debug_console.log(f"OLED preset debug display: {state}", "INFO")
+            else:
+                self.advanced_debug_console.log("Failed to toggle OLED debug display", "ERROR")
+        except Exception as e:
+            self.advanced_debug_console.log(f"Error toggling OLED debug: {e}", "ERROR")
 
     def on_save_curve(self):
         """Save velocity curve selection to keyboard (sets the active curve index)"""

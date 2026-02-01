@@ -2413,6 +2413,20 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         response = self.usb_send(self.dev, packet, retries=20)
         return response and len(response) > 5 and response[5] == 0x01
 
+    def toggle_velocity_preset_debug(self):
+        """
+        Toggle velocity preset debug display on OLED.
+        Shows aftertouch, actuation override, speed/peak ratio, retrigger settings.
+
+        Returns:
+            bool: New state (True = debug mode on, False = off), or None if failed
+        """
+        packet = self._create_hid_packet(0xDD, 0, bytearray())  # HID_CMD_VELOCITY_PRESET_DEBUG_TOGGLE
+        response = self.usb_send(self.dev, packet, retries=3)
+        if response and len(response) > 6 and response[5] == 0x01:
+            return response[6] == 0x01  # Returns current state
+        return None
+
     # =========================================================================
     # GAMING RESPONSE SETTINGS
     # =========================================================================

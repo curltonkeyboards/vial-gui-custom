@@ -1088,6 +1088,18 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
             }
 
+            case 0xDD: {  // HID_CMD_VELOCITY_PRESET_DEBUG_TOGGLE
+                // Toggle velocity preset debug display on OLED
+                extern bool velocity_preset_debug_mode;
+                velocity_preset_debug_mode = !velocity_preset_debug_mode;
+                dprintf("VELOCITY_PRESET_DEBUG: %s\n", velocity_preset_debug_mode ? "ON" : "OFF");
+
+                response[4] = 0x00;  // Reserved
+                response[5] = 0x01;  // Success
+                response[6] = velocity_preset_debug_mode ? 0x01 : 0x00;  // Current state
+                break;
+            }
+
             default:
                 response[4] = 0x00;
                 response[5] = 0x00;  // Error - unknown command

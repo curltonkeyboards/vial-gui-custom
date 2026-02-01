@@ -4256,6 +4256,86 @@ void handle_eeprom_diag_get(uint8_t* response) {
 // END EEPROM DIAGNOSTIC SYSTEM
 // =============================================================================
 
+// =============================================================================
+// VELOCITY PRESET DEBUG DISPLAY
+// =============================================================================
+bool velocity_preset_debug_mode = false;
+
+void velocity_preset_display_oled(void) {
+    char buf[22];
+
+    oled_clear();
+
+    // Line 0: Title
+    oled_set_cursor(0, 0);
+    oled_write_P(PSTR("VELOCITY PRESET DBG"), false);
+
+    // Line 1: Aftertouch mode and CC
+    extern uint8_t aftertouch_mode;
+    extern uint8_t aftertouch_cc;
+    oled_set_cursor(0, 1);
+    const char* at_modes[] = {"Off", "Rev", "Bot", "Post", "Vib"};
+    const char* at_mode_str = (aftertouch_mode < 5) ? at_modes[aftertouch_mode] : "???";
+    if (aftertouch_cc == 255) {
+        snprintf(buf, 22, "AT:%s CC:PolyAT", at_mode_str);
+    } else {
+        snprintf(buf, 22, "AT:%s CC:%d", at_mode_str, aftertouch_cc);
+    }
+    oled_write(buf, false);
+
+    // Line 2: Actuation override
+    oled_set_cursor(0, 2);
+    if (preset_actuation_override) {
+        uint8_t mm_whole = preset_actuation_point / 10;
+        uint8_t mm_frac = preset_actuation_point % 10;
+        snprintf(buf, 22, "Actuation: %d.%dmm", mm_whole, mm_frac);
+    } else {
+        snprintf(buf, 22, "Actuation: per-key");
+    }
+    oled_write(buf, false);
+
+    // Line 3: Speed/Peak ratio
+    oled_set_cursor(0, 3);
+    snprintf(buf, 22, "Speed/Peak: %d%%", preset_speed_peak_ratio);
+    oled_write(buf, false);
+
+    // Line 4: Retrigger
+    oled_set_cursor(0, 4);
+    if (preset_retrigger_distance > 0) {
+        uint8_t mm_whole = preset_retrigger_distance / 10;
+        uint8_t mm_frac = preset_retrigger_distance % 10;
+        snprintf(buf, 22, "Retrigger: %d.%dmm", mm_whole, mm_frac);
+    } else {
+        snprintf(buf, 22, "Retrigger: OFF");
+    }
+    oled_write(buf, false);
+
+    // Line 5: Velocity range
+    extern uint8_t he_velocity_min;
+    extern uint8_t he_velocity_max;
+    oled_set_cursor(0, 5);
+    snprintf(buf, 22, "Vel: %d-%d", he_velocity_min, he_velocity_max);
+    oled_write(buf, false);
+
+    // Line 6: Press times
+    extern uint16_t min_press_time;
+    extern uint16_t max_press_time;
+    oled_set_cursor(0, 6);
+    snprintf(buf, 22, "Press: %d-%dms", max_press_time, min_press_time);
+    oled_write(buf, false);
+
+    // Line 7: Vibrato settings
+    extern uint8_t vibrato_sensitivity;
+    extern uint16_t vibrato_decay_time;
+    oled_set_cursor(0, 7);
+    snprintf(buf, 22, "Vib: %d%% %dms", vibrato_sensitivity, vibrato_decay_time);
+    oled_write(buf, false);
+}
+
+// =============================================================================
+// END VELOCITY PRESET DEBUG DISPLAY
+// =============================================================================
+
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
     set_custom_slot_background_mode(slot, value); 
 }
@@ -15672,6 +15752,13 @@ bool oled_task_user(void) {
     // Check if quick build is active - if so, show big number display
     if (quick_build_is_active()) {
         render_big_number(quick_build_get_current_step());
+        return false;
+    }
+
+    // Check if velocity preset debug mode is active
+    extern bool velocity_preset_debug_mode;
+    if (velocity_preset_debug_mode) {
+        velocity_preset_display_oled();
         return false;
     }
 
