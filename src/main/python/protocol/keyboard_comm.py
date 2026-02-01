@@ -2148,7 +2148,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
     def set_velocity_preset(self, slot, points, name, velocity_min=1, velocity_max=127,
                             slow_press_time=200, fast_press_time=20, aftertouch_mode=0,
-                            aftertouch_cc=255, vibrato_sensitivity=100, vibrato_decay=200):
+                            aftertouch_cc=255, vibrato_sensitivity=100, vibrato_decay=200,
+                            actuation_override=False, actuation_point=20):
         """
         Set a velocity preset slot with curve points and all associated settings.
 
@@ -2164,6 +2165,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             aftertouch_cc: CC number (0-127) or 255 for poly AT only
             vibrato_sensitivity: Percentage (50-200)
             vibrato_decay: Decay time in ms (0-2000)
+            actuation_override: Enable per-key actuation override for MIDI keys
+            actuation_point: Actuation point (0-40 = 0.0-4.0mm in 0.1mm steps)
 
         Returns:
             bool: True if successful
@@ -2197,7 +2200,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         if not response0 or len(response0) < 6 or response0[5] != 0x01:
             return False
 
-        # === Send Chunk 1: velocity/time/aftertouch settings ===
+        # === Send Chunk 1: velocity/time/aftertouch/actuation settings ===
         data1 = bytearray([slot, 1])  # slot, chunk_id=1
         data1.append(int(velocity_min) & 0xFF)
         data1.append(int(velocity_max) & 0xFF)
@@ -2210,6 +2213,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         data1.append(int(vibrato_sensitivity) & 0xFF)
         data1.append(int(vibrato_decay) & 0xFF)
         data1.append((int(vibrato_decay) >> 8) & 0xFF)
+        # Actuation override fields
+        flags = 0x01 if actuation_override else 0x00
+        data1.append(flags)
+        data1.append(int(actuation_point) & 0xFF)
 
         packet1 = self._create_hid_packet(0xD9, 0, data1)
         response1 = self.usb_send(self.dev, packet1, retries=20)
@@ -2249,7 +2256,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'aftertouch_mode': int,
                 'aftertouch_cc': int,
                 'vibrato_sensitivity': int,
-                'vibrato_decay': int
+                'vibrato_decay': int,
+                'actuation_override': bool,
+                'actuation_point': int (0-40 = 0.0-4.0mm)
             } or None
         """
         if slot < 0 or slot >= 10:
@@ -2288,7 +2297,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             response1 = bytes(self.dev.read(32, timeout_ms=500))
         except Exception:
             response1 = None
-        if not response1 or len(response1) < 19 or response1[5] != 0x01 or response1[7] != 1:
+        if not response1 or len(response1) < 21 or response1[5] != 0x01 or response1[7] != 1:
             # If chunk 1 fails, return with defaults
             return {
                 'points': points,
@@ -2300,7 +2309,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'aftertouch_mode': 0,
                 'aftertouch_cc': 255,
                 'vibrato_sensitivity': 100,
-                'vibrato_decay': 200
+                'vibrato_decay': 200,
+                'actuation_override': False,
+                'actuation_point': 20
             }
 
         # Parse settings from chunk 1
@@ -2312,6 +2323,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         aftertouch_cc = response1[15]
         vibrato_sensitivity = response1[16]
         vibrato_decay = response1[17] | (response1[18] << 8)
+        flags = response1[19]
+        actuation_point = response1[20]
 
         return {
             'points': points,
@@ -2323,7 +2336,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             'aftertouch_mode': aftertouch_mode,
             'aftertouch_cc': aftertouch_cc,
             'vibrato_sensitivity': vibrato_sensitivity,
-            'vibrato_decay': vibrato_decay
+            'vibrato_decay': vibrato_decay,
+            'actuation_override': (flags & 0x01) != 0,
+            'actuation_point': actuation_point
         }
 
     def get_user_curve(self, slot):

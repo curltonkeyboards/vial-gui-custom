@@ -203,7 +203,9 @@ class VelocityTab(BasicEditor):
             'vibrato_sensitivity': 100, # 50-200 (percentage)
             'vibrato_decay_time': 200,  # 0-2000 (milliseconds)
             'min_press_time': 200,      # 50-500ms (slow press threshold)
-            'max_press_time': 20        # 5-100ms (fast press threshold)
+            'max_press_time': 20,       # 5-100ms (fast press threshold)
+            'actuation_override': False, # Override per-key actuation for MIDI keys
+            'actuation_point': 20       # 0-40 = 0.0-4.0mm in 0.1mm steps
         }
 
         # Polling timer
@@ -558,6 +560,58 @@ class VelocityTab(BasicEditor):
         preset_layout.addWidget(self.vibrato_decay_widget)
         self.vibrato_decay_widget.setVisible(False)
 
+        # Separator before actuation override
+        line4 = QFrame()
+        line4.setFrameShape(QFrame.HLine)
+        line4.setFrameShadow(QFrame.Sunken)
+        preset_layout.addWidget(line4)
+
+        # Actuation Override checkbox
+        actuation_layout = QHBoxLayout()
+        actuation_layout.setContentsMargins(0, 0, 0, 0)
+        actuation_layout.setSpacing(4)
+        actuation_layout.addWidget(self.create_help_label(
+            "Override per-key actuation points for MIDI keys.\n"
+            "When enabled, MIDI note-on triggers at this fixed distance\n"
+            "instead of each key's individual actuation point."
+        ))
+        self.actuation_override_checkbox = QCheckBox(tr("VelocityTab", "Override MIDI actuation"))
+        self.actuation_override_checkbox.setChecked(False)
+        self.actuation_override_checkbox.stateChanged.connect(self.on_actuation_override_changed)
+        actuation_layout.addWidget(self.actuation_override_checkbox)
+        actuation_layout.addStretch()
+        preset_layout.addLayout(actuation_layout)
+
+        # Actuation Point slider (hidden by default)
+        self.actuation_point_widget = QWidget()
+        actuation_point_layout = QHBoxLayout()
+        actuation_point_layout.setContentsMargins(0, 0, 0, 0)
+        self.actuation_point_widget.setLayout(actuation_point_layout)
+
+        actuation_point_layout.addWidget(self.create_help_label(
+            "Actuation distance for MIDI note-on.\n"
+            "0.0mm = very sensitive (top of travel)\n"
+            "4.0mm = full press required"
+        ))
+        actuation_label = QLabel(tr("VelocityTab", "Actuation:"))
+        actuation_label.setMinimumWidth(85)
+        actuation_point_layout.addWidget(actuation_label)
+
+        self.actuation_point_slider = QSlider(Qt.Horizontal)
+        self.actuation_point_slider.setMinimum(0)
+        self.actuation_point_slider.setMaximum(40)  # 0-40 = 0.0-4.0mm in 0.1mm steps
+        self.actuation_point_slider.setValue(20)  # Default 2.0mm
+        self.actuation_point_slider.valueChanged.connect(self.on_actuation_point_changed)
+        actuation_point_layout.addWidget(self.actuation_point_slider, 1)
+
+        self.actuation_point_value = QLabel("2.0mm")
+        self.actuation_point_value.setMinimumWidth(50)
+        self.actuation_point_value.setStyleSheet("QLabel { font-weight: bold; }")
+        actuation_point_layout.addWidget(self.actuation_point_value)
+
+        preset_layout.addWidget(self.actuation_point_widget)
+        self.actuation_point_widget.setVisible(False)
+
         # Apply Preset button
         save_curve_btn = QPushButton(tr("VelocityTab", "Apply Preset to Keyboard"))
         save_curve_btn.setMinimumHeight(30)
@@ -788,6 +842,18 @@ class VelocityTab(BasicEditor):
         self.vibrato_decay_value.setText(f"{value}ms")
         self.global_midi_settings['vibrato_decay_time'] = value
 
+    def on_actuation_override_changed(self, state):
+        """Handle actuation override checkbox change"""
+        enabled = (state == Qt.Checked)
+        self.actuation_point_widget.setVisible(enabled)
+        self.global_midi_settings['actuation_override'] = enabled
+
+    def on_actuation_point_changed(self, value):
+        """Handle actuation point slider change"""
+        mm_value = value / 10.0  # Convert 0-40 to 0.0-4.0mm
+        self.actuation_point_value.setText(f"{mm_value:.1f}mm")
+        self.global_midi_settings['actuation_point'] = value
+
     def on_save_advanced(self):
         """Save advanced settings (velocity, aftertouch) to keyboard - GLOBAL settings"""
         # Start debug console operation
@@ -1016,12 +1082,27 @@ class VelocityTab(BasicEditor):
                 self.global_midi_settings['vibrato_sensitivity'] = vib_sens
                 self.global_midi_settings['vibrato_decay_time'] = vib_decay
 
+                # Load actuation override settings
+                actuation_override = result.get('actuation_override', False)
+                actuation_point = result.get('actuation_point', 20)
+                self.actuation_override_checkbox.blockSignals(True)
+                self.actuation_point_slider.blockSignals(True)
+                self.actuation_override_checkbox.setChecked(actuation_override)
+                self.actuation_point_slider.setValue(actuation_point)
+                mm_value = actuation_point / 10.0
+                self.actuation_point_value.setText(f"{mm_value:.1f}mm")
+                self.actuation_point_widget.setVisible(actuation_override)
+                self.actuation_override_checkbox.blockSignals(False)
+                self.actuation_point_slider.blockSignals(False)
+                self.global_midi_settings['actuation_override'] = actuation_override
+                self.global_midi_settings['actuation_point'] = actuation_point
+
         except Exception as e:
             print(f"Error loading user curve {slot_index}: {e}")
 
     def on_save_to_user_curve(self, slot_index, curve_name):
         """Save current velocity preset to a user slot on the keyboard.
-        This saves all preset settings: curve points, velocity range, press times, aftertouch, vibrato."""
+        This saves all preset settings: curve points, velocity range, press times, aftertouch, vibrato, actuation."""
         if not self.keyboard:
             QMessageBox.warning(
                 None,
@@ -1046,16 +1127,22 @@ class VelocityTab(BasicEditor):
                 aftertouch_mode=settings.get('aftertouch_mode', 0),
                 aftertouch_cc=settings.get('aftertouch_cc', 255),
                 vibrato_sensitivity=settings.get('vibrato_sensitivity', 100),
-                vibrato_decay=settings.get('vibrato_decay_time', 200)
+                vibrato_decay=settings.get('vibrato_decay_time', 200),
+                actuation_override=settings.get('actuation_override', False),
+                actuation_point=settings.get('actuation_point', 20)
             )
 
             if success:
+                actuation_info = ""
+                if settings.get('actuation_override', False):
+                    mm_value = settings.get('actuation_point', 20) / 10.0
+                    actuation_info = f", actuation override {mm_value:.1f}mm"
                 QMessageBox.information(
                     None,
                     tr("VelocityTab", "Velocity Preset Saved"),
                     tr("VelocityTab", f"Preset saved to User slot {slot_index + 1} as '{curve_name}'.\n\n"
                        f"Includes: curve, velocity {settings.get('velocity_min', 1)}-{settings.get('velocity_max', 127)}, "
-                       f"press times, aftertouch, vibrato settings.")
+                       f"press times, aftertouch, vibrato{actuation_info}.")
                 )
                 # Update the user curve name in the dropdown
                 names = list(self.curve_editor.user_curve_names)

@@ -370,6 +370,10 @@ uint8_t he_velocity_curve = 0;  // Default: Linear (curve index 0)
 uint8_t he_velocity_min = 1;    // Default: 1
 uint8_t he_velocity_max = 127;  // Default: 127
 
+// Preset actuation override (when enabled, overrides per-key actuation for MIDI keys)
+bool preset_actuation_override = false;  // If true, use preset_actuation_point for MIDI keys
+uint8_t preset_actuation_point = 20;     // 0-40 = 0.0-4.0mm in 0.1mm steps (20 = 2.0mm)
+
 // Velocity curve names for display
 __attribute__((unused)) static const char* velocity_curve_names[] = {
     "SOFTEST",
@@ -4551,7 +4555,9 @@ void user_curves_init(void) {
         preset->vibrato_sensitivity = 100;  // 100%
         preset->vibrato_decay = 200;        // 200ms
 
-        preset->reserved = 0;
+        // Default: no actuation override (use per-key settings)
+        preset->flags = 0;
+        preset->actuation_point = 20;  // 2.0mm default if enabled (0-40 = 0.0-4.0mm)
     }
 
     user_curves.magic = USER_CURVES_MAGIC;
@@ -4595,11 +4601,19 @@ void velocity_preset_apply(uint8_t preset_index) {
     vibrato_sensitivity = preset->vibrato_sensitivity;
     vibrato_decay_time = preset->vibrato_decay;
 
-    dprintf("Velocity preset %d '%s' applied: vel=%d-%d, time=%d-%dms, AT=%d\n",
+    // Apply actuation override settings
+    extern bool preset_actuation_override;
+    extern uint8_t preset_actuation_point;
+    preset_actuation_override = (preset->flags & PRESET_FLAG_ACTUATION_OVERRIDE) != 0;
+    preset_actuation_point = preset->actuation_point;
+
+    dprintf("Velocity preset %d '%s' applied: vel=%d-%d, time=%d-%dms, AT=%d, actuation=%s(%d)\n",
             slot + 1, preset->name,
             preset->velocity_min, preset->velocity_max,
             preset->fast_press_time, preset->slow_press_time,
-            preset->aftertouch_mode);
+            preset->aftertouch_mode,
+            preset_actuation_override ? "override" : "per-key",
+            preset->actuation_point);
 }
 
 // Save user curves to EEPROM
