@@ -483,39 +483,59 @@ void handle_eeprom_diag_run(uint8_t* response);
 void handle_eeprom_diag_get(uint8_t* response);
 
 // =============================================================================
-// CURVE SYSTEM (For Gaming Analog & Velocity Curves)
+// VELOCITY PRESET SYSTEM (Full Velocity/Curve Configuration)
 // =============================================================================
 
-// User-defined curve (24 bytes each)
-// Used for both gaming analog curves and per-key velocity curves
+// Velocity Preset (36 bytes each)
+// Contains curve points AND all velocity/aftertouch settings
+// When a preset is loaded, ALL these settings are applied together
+// X-axis: Time from fast_press_time to slow_press_time (ms)
+// Y-axis: Velocity from velocity_min to velocity_max
 typedef struct {
-    uint8_t points[4][2];  // 4 control points: (x, y) each 0-255
-    char name[16];         // User-friendly name (e.g., "My FPS Curve")
-} user_curve_t;
+    uint8_t points[4][2];      // 8 bytes: 4 control points (x, y) each 0-255
+    char name[16];             // 16 bytes: User-friendly name (e.g., "Piano Soft")
+    uint8_t velocity_min;      // 1 byte: Minimum MIDI velocity (1-127)
+    uint8_t velocity_max;      // 1 byte: Maximum MIDI velocity (1-127)
+    uint16_t slow_press_time;  // 2 bytes: Slow press threshold ms (50-500)
+    uint16_t fast_press_time;  // 2 bytes: Fast press threshold ms (5-100)
+    uint8_t aftertouch_mode;   // 1 byte: 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+    uint8_t aftertouch_cc;     // 1 byte: 0-127=CC number, 255=poly AT only
+    uint8_t vibrato_sensitivity; // 1 byte: 50-200 (percentage)
+    uint16_t vibrato_decay;    // 2 bytes: 0-2000ms decay time
+    uint8_t reserved;          // 1 byte: padding for alignment (36 bytes total)
+} velocity_preset_t;
 
-// Global user curves array (10 slots × 24 bytes = 240 bytes + 2 magic = 242 bytes)
+// Backward compatibility alias
+typedef velocity_preset_t user_curve_t;
+
+// Global velocity presets array (10 slots × 36 bytes = 360 bytes + 2 magic = 362 bytes)
 typedef struct {
-    user_curve_t curves[10];
-    uint16_t magic;  // 0xCF01 (CurVe1) for validation
-} user_curves_t;
+    velocity_preset_t presets[10];
+    uint16_t magic;  // 0xCF02 (CurVe2) for validation - incremented for new format
+} velocity_presets_t;
 
-// EEPROM address for user curves (242 bytes: 10 curves × 24 + 2 magic)
-// Reorganized: 41000 (was 68100 - exceeded 64KB limit!)
+// Backward compatibility alias
+typedef velocity_presets_t user_curves_t;
+
+// EEPROM address for velocity presets (362 bytes: 10 presets × 36 + 2 magic)
 #define USER_CURVES_EEPROM_ADDR 41000
-#define USER_CURVES_MAGIC 0xCF01
+#define VELOCITY_PRESETS_EEPROM_ADDR USER_CURVES_EEPROM_ADDR
+#define USER_CURVES_MAGIC 0xCF02  // Incremented from 0xCF01 to force re-init with new format
+#define VELOCITY_PRESETS_MAGIC USER_CURVES_MAGIC
 
 // EEPROM address for EQ sensitivity curve settings (26 bytes)
 // Layout: [magic(2), range_low(2), range_high(2), bands[15], scale[3], reserved(2)]
-#define EQ_CURVE_EEPROM_ADDR 41300
+#define EQ_CURVE_EEPROM_ADDR 41400  // Moved to accommodate larger preset storage
 #define EQ_CURVE_MAGIC 0xEA01
 
-extern user_curves_t user_curves;
+extern velocity_presets_t user_curves;  // Keep old name for backward compat
 
-// Curve system functions
+// Velocity preset system functions
 void user_curves_init(void);
 void user_curves_save(void);
 void user_curves_load(void);
 void user_curves_reset(void);
+void velocity_preset_apply(uint8_t preset_index);  // Apply preset settings to globals
 uint8_t apply_curve(uint8_t input, uint8_t curve_index);
 
 // Curve indices:

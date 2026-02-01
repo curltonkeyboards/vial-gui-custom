@@ -2146,14 +2146,24 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     # USER CURVE METHODS
     # =========================================================================
 
-    def set_user_curve(self, slot, points, name):
+    def set_velocity_preset(self, slot, points, name, velocity_min=1, velocity_max=127,
+                            slow_press_time=200, fast_press_time=20, aftertouch_mode=0,
+                            aftertouch_cc=255, vibrato_sensitivity=100, vibrato_decay=200):
         """
-        Set a user curve slot with custom Bezier points and name.
+        Set a velocity preset slot with curve points and all associated settings.
 
         Args:
             slot: Slot index (0-9 for User 1-10)
             points: List of 4 points [[x0,y0], [x1,y1], [x2,y2], [x3,y3]] (0-255 range)
-            name: Curve name (max 16 characters)
+            name: Preset name (max 16 characters)
+            velocity_min: Minimum MIDI velocity (1-127)
+            velocity_max: Maximum MIDI velocity (1-127)
+            slow_press_time: Slow press threshold in ms (50-500)
+            fast_press_time: Fast press threshold in ms (5-100)
+            aftertouch_mode: 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+            aftertouch_cc: CC number (0-127) or 255 for poly AT only
+            vibrato_sensitivity: Percentage (50-200)
+            vibrato_decay: Decay time in ms (0-2000)
 
         Returns:
             bool: True if successful
@@ -2164,64 +2174,170 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         if len(points) != 4 or any(len(p) != 2 for p in points):
             return False
 
-        # Firmware expects: [header(6), slot, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, name[16]]
-        # _create_hid_packet puts data at byte 6, so we send: [slot, points[8], name[16]]
-        data = bytearray([slot])
+        # Firmware uses chunked transfer (2 chunks) for expanded preset format (36 bytes)
+        # Chunk 0: slot, chunk_id=0, points[8], name[16]
+        # Chunk 1: slot, chunk_id=1, vel_min, vel_max, slow_lo, slow_hi, fast_lo, fast_hi,
+        #          at_mode, at_cc, vib_sens, vib_decay_lo, vib_decay_hi
+
+        # === Send Chunk 0: points + name ===
+        data0 = bytearray([slot, 0])  # slot, chunk_id=0
 
         # Add 4 points (8 bytes)
         for point in points:
-            data.append(int(point[0]) & 0xFF)
-            data.append(int(point[1]) & 0xFF)
+            data0.append(int(point[0]) & 0xFF)
+            data0.append(int(point[1]) & 0xFF)
 
         # Add name (16 bytes, null-padded)
         name_bytes = name.encode('utf-8')[:16]
         name_bytes += b'\x00' * (16 - len(name_bytes))
-        data.extend(name_bytes)
+        data0.extend(name_bytes)
 
-        packet = self._create_hid_packet(0xD9, 0, data)  # HID_CMD_USER_CURVE_SET
-        response = self.usb_send(self.dev, packet, retries=20)
-        return response and len(response) > 5 and response[5] == 0x01
+        packet0 = self._create_hid_packet(0xD9, 0, data0)  # HID_CMD_VELOCITY_PRESET_SET
+        response0 = self.usb_send(self.dev, packet0, retries=20)
+        if not response0 or len(response0) < 6 or response0[5] != 0x01:
+            return False
 
-    def get_user_curve(self, slot):
+        # === Send Chunk 1: velocity/time/aftertouch settings ===
+        data1 = bytearray([slot, 1])  # slot, chunk_id=1
+        data1.append(int(velocity_min) & 0xFF)
+        data1.append(int(velocity_max) & 0xFF)
+        data1.append(int(slow_press_time) & 0xFF)
+        data1.append((int(slow_press_time) >> 8) & 0xFF)
+        data1.append(int(fast_press_time) & 0xFF)
+        data1.append((int(fast_press_time) >> 8) & 0xFF)
+        data1.append(int(aftertouch_mode) & 0xFF)
+        data1.append(int(aftertouch_cc) & 0xFF)
+        data1.append(int(vibrato_sensitivity) & 0xFF)
+        data1.append(int(vibrato_decay) & 0xFF)
+        data1.append((int(vibrato_decay) >> 8) & 0xFF)
+
+        packet1 = self._create_hid_packet(0xD9, 0, data1)
+        response1 = self.usb_send(self.dev, packet1, retries=20)
+        return response1 and len(response1) > 5 and response1[5] == 0x01
+
+    def set_user_curve(self, slot, points, name, **kwargs):
         """
-        Get a user curve from the keyboard.
+        Set a user curve slot with custom Bezier points and name.
+        This is a compatibility wrapper for set_velocity_preset.
+
+        Args:
+            slot: Slot index (0-9 for User 1-10)
+            points: List of 4 points [[x0,y0], [x1,y1], [x2,y2], [x3,y3]] (0-255 range)
+            name: Curve name (max 16 characters)
+            **kwargs: Additional preset settings (velocity_min, velocity_max, etc.)
+
+        Returns:
+            bool: True if successful
+        """
+        return self.set_velocity_preset(slot, points, name, **kwargs)
+
+    def get_velocity_preset(self, slot):
+        """
+        Get a velocity preset from the keyboard with all settings.
 
         Args:
             slot: Slot index (0-9)
 
         Returns:
-            dict: {'points': [[x0,y0], ...], 'name': str} or None
+            dict: {
+                'points': [[x0,y0], ...],
+                'name': str,
+                'velocity_min': int,
+                'velocity_max': int,
+                'slow_press_time': int,
+                'fast_press_time': int,
+                'aftertouch_mode': int,
+                'aftertouch_cc': int,
+                'vibrato_sensitivity': int,
+                'vibrato_decay': int
+            } or None
         """
         if slot < 0 or slot >= 10:
             return None
 
         data = bytearray([slot])
-        packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_USER_CURVE_GET
-        response = self.usb_send(self.dev, packet, retries=3)
+        packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_VELOCITY_PRESET_GET
 
-        # Firmware response format:
-        # response[0-3] = header (0x7D, 0x00, 0x4D, 0xDA)
-        # response[4] = reserved
-        # response[5] = status (0x01 = success)
-        # response[6] = slot
-        # response[7-14] = 4 points (8 bytes)
-        # response[15-30] = name (16 bytes)
+        # Firmware sends 2 response packets for chunked transfer
+        # We need to receive both packets
 
-        if not response or len(response) < 31 or response[5] != 0x01:
+        # Receive Chunk 0: points + name
+        response0 = self.usb_send(self.dev, packet, retries=3)
+        if not response0 or len(response0) < 32 or response0[5] != 0x01:
             return None
 
-        # Parse 4 points (8 bytes starting at offset 7)
+        # Check chunk ID (should be 0)
+        if response0[7] != 0:
+            return None
+
+        # Parse points from chunk 0 (8 bytes at offset 8)
         points = []
         for i in range(4):
-            x = response[7 + i*2]
-            y = response[7 + i*2 + 1]
+            x = response0[8 + i*2]
+            y = response0[8 + i*2 + 1]
             points.append([x, y])
 
-        # Parse name (16 bytes starting at offset 15)
-        name_bytes = bytes(response[15:31])
+        # Parse name from chunk 0 (16 bytes at offset 16)
+        name_bytes = bytes(response0[16:32])
         name = name_bytes.decode('utf-8', errors='ignore').rstrip('\x00')
 
-        return {'points': points, 'name': name}
+        # Receive Chunk 1: settings
+        # The firmware automatically sends chunk 1 after chunk 0
+        # Read second packet directly from device
+        try:
+            response1 = bytes(self.dev.read(32, timeout_ms=500))
+        except Exception:
+            response1 = None
+        if not response1 or len(response1) < 19 or response1[5] != 0x01 or response1[7] != 1:
+            # If chunk 1 fails, return with defaults
+            return {
+                'points': points,
+                'name': name,
+                'velocity_min': 1,
+                'velocity_max': 127,
+                'slow_press_time': 200,
+                'fast_press_time': 20,
+                'aftertouch_mode': 0,
+                'aftertouch_cc': 255,
+                'vibrato_sensitivity': 100,
+                'vibrato_decay': 200
+            }
+
+        # Parse settings from chunk 1
+        velocity_min = response1[8]
+        velocity_max = response1[9]
+        slow_press_time = response1[10] | (response1[11] << 8)
+        fast_press_time = response1[12] | (response1[13] << 8)
+        aftertouch_mode = response1[14]
+        aftertouch_cc = response1[15]
+        vibrato_sensitivity = response1[16]
+        vibrato_decay = response1[17] | (response1[18] << 8)
+
+        return {
+            'points': points,
+            'name': name,
+            'velocity_min': velocity_min,
+            'velocity_max': velocity_max,
+            'slow_press_time': slow_press_time,
+            'fast_press_time': fast_press_time,
+            'aftertouch_mode': aftertouch_mode,
+            'aftertouch_cc': aftertouch_cc,
+            'vibrato_sensitivity': vibrato_sensitivity,
+            'vibrato_decay': vibrato_decay
+        }
+
+    def get_user_curve(self, slot):
+        """
+        Get a user curve from the keyboard.
+        This is a compatibility wrapper for get_velocity_preset.
+
+        Args:
+            slot: Slot index (0-9)
+
+        Returns:
+            dict: {'points': [[x0,y0], ...], 'name': str, ...} or None
+        """
+        return self.get_velocity_preset(slot)
 
     def get_all_user_curve_names(self):
         """

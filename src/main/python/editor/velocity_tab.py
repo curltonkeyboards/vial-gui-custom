@@ -196,6 +196,8 @@ class VelocityTab(BasicEditor):
         # Global MIDI settings (same structure as keymap_editor)
         self.global_midi_settings = {
             'velocity_mode': 2,         # 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+            'velocity_min': 1,          # 1-127 (minimum MIDI velocity)
+            'velocity_max': 127,        # 1-127 (maximum MIDI velocity)
             'aftertouch_mode': 0,       # 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
             'vibrato_sensitivity': 100, # 50-200 (percentage)
@@ -324,7 +326,7 @@ class VelocityTab(BasicEditor):
         bottom_layout.setSpacing(20)
 
         # Velocity Curve Editor Group
-        curve_group = QGroupBox(tr("VelocityTab", "Velocity Curve"))
+        curve_group = QGroupBox(tr("VelocityTab", "Velocity Preset"))
         curve_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         curve_layout = QVBoxLayout()
         curve_group.setLayout(curve_layout)
@@ -337,8 +339,61 @@ class VelocityTab(BasicEditor):
         self.curve_editor.save_to_user_requested.connect(self.on_save_to_user_curve)
         curve_layout.addWidget(self.curve_editor)
 
+        # Velocity Min/Max sliders (part of the preset)
+        vel_range_layout = QHBoxLayout()
+        vel_range_layout.setContentsMargins(0, 0, 0, 0)
+        vel_range_layout.setSpacing(10)
+
+        # Velocity Min
+        vel_min_layout = QVBoxLayout()
+        vel_min_label = QLabel(tr("VelocityTab", "Vel Min:"))
+        vel_min_label.setAlignment(Qt.AlignCenter)
+        vel_min_layout.addWidget(vel_min_label)
+
+        self.vel_min_slider = QSlider(Qt.Horizontal)
+        self.vel_min_slider.setMinimum(1)
+        self.vel_min_slider.setMaximum(127)
+        self.vel_min_slider.setValue(1)
+        self.vel_min_slider.valueChanged.connect(self.on_vel_min_changed)
+        vel_min_layout.addWidget(self.vel_min_slider)
+
+        self.vel_min_value = QLabel("1")
+        self.vel_min_value.setAlignment(Qt.AlignCenter)
+        self.vel_min_value.setStyleSheet("QLabel { font-weight: bold; }")
+        vel_min_layout.addWidget(self.vel_min_value)
+
+        vel_range_layout.addLayout(vel_min_layout)
+
+        # Velocity Max
+        vel_max_layout = QVBoxLayout()
+        vel_max_label = QLabel(tr("VelocityTab", "Vel Max:"))
+        vel_max_label.setAlignment(Qt.AlignCenter)
+        vel_max_layout.addWidget(vel_max_label)
+
+        self.vel_max_slider = QSlider(Qt.Horizontal)
+        self.vel_max_slider.setMinimum(1)
+        self.vel_max_slider.setMaximum(127)
+        self.vel_max_slider.setValue(127)
+        self.vel_max_slider.valueChanged.connect(self.on_vel_max_changed)
+        vel_max_layout.addWidget(self.vel_max_slider)
+
+        self.vel_max_value = QLabel("127")
+        self.vel_max_value.setAlignment(Qt.AlignCenter)
+        self.vel_max_value.setStyleSheet("QLabel { font-weight: bold; }")
+        vel_max_layout.addWidget(self.vel_max_value)
+
+        vel_range_layout.addLayout(vel_max_layout)
+
+        curve_layout.addLayout(vel_range_layout)
+
+        # Note about presets
+        preset_note = QLabel(tr("VelocityTab", "User presets include: curve, velocity range,\npress times, aftertouch, and vibrato settings."))
+        preset_note.setStyleSheet("color: gray; font-size: 9pt;")
+        preset_note.setAlignment(Qt.AlignCenter)
+        curve_layout.addWidget(preset_note)
+
         # Save curve button (saves the selected preset index to keyboard)
-        save_curve_btn = QPushButton(tr("VelocityTab", "Apply Curve to Keyboard"))
+        save_curve_btn = QPushButton(tr("VelocityTab", "Apply Preset to Keyboard"))
         save_curve_btn.setMinimumHeight(30)
         save_curve_btn.clicked.connect(self.on_save_curve)
         curve_layout.addWidget(save_curve_btn)
@@ -901,22 +956,115 @@ class VelocityTab(BasicEditor):
         except Exception as e:
             print(f"Error loading velocity curve: {e}")
 
+    def on_vel_min_changed(self, value):
+        """Handle velocity min slider change"""
+        self.vel_min_value.setText(str(value))
+        self.global_midi_settings['velocity_min'] = value
+        # Ensure min <= max
+        if value > self.vel_max_slider.value():
+            self.vel_max_slider.blockSignals(True)
+            self.vel_max_slider.setValue(value)
+            self.vel_max_value.setText(str(value))
+            self.global_midi_settings['velocity_max'] = value
+            self.vel_max_slider.blockSignals(False)
+
+    def on_vel_max_changed(self, value):
+        """Handle velocity max slider change"""
+        self.vel_max_value.setText(str(value))
+        self.global_midi_settings['velocity_max'] = value
+        # Ensure max >= min
+        if value < self.vel_min_slider.value():
+            self.vel_min_slider.blockSignals(True)
+            self.vel_min_slider.setValue(value)
+            self.vel_min_value.setText(str(value))
+            self.global_midi_settings['velocity_min'] = value
+            self.vel_min_slider.blockSignals(False)
+
     def on_user_curve_selected(self, slot_index):
-        """Load user curve from keyboard when selected in dropdown"""
+        """Load user curve (velocity preset) from keyboard when selected in dropdown.
+        This loads all preset settings: curve points, velocity range, press times, aftertouch, vibrato."""
         if not self.keyboard:
             return
 
         try:
+            # get_user_curve now returns full preset with all settings
             result = self.keyboard.get_user_curve(slot_index)
             if result:
+                # Load curve points into editor
                 points = result.get('points', [[0, 0], [85, 85], [170, 170], [255, 255]])
-                # Load the points into the editor and cache them
                 self.curve_editor.load_user_curve_points(points, slot_index)
+
+                # Load velocity range into sliders
+                vel_min = result.get('velocity_min', 1)
+                vel_max = result.get('velocity_max', 127)
+                self.vel_min_slider.blockSignals(True)
+                self.vel_max_slider.blockSignals(True)
+                self.vel_min_slider.setValue(vel_min)
+                self.vel_max_slider.setValue(vel_max)
+                self.vel_min_value.setText(str(vel_min))
+                self.vel_max_value.setText(str(vel_max))
+                self.vel_min_slider.blockSignals(False)
+                self.vel_max_slider.blockSignals(False)
+                self.global_midi_settings['velocity_min'] = vel_min
+                self.global_midi_settings['velocity_max'] = vel_max
+
+                # Load press times
+                slow_press = result.get('slow_press_time', 200)
+                fast_press = result.get('fast_press_time', 20)
+                self.min_press_slider.blockSignals(True)
+                self.max_press_slider.blockSignals(True)
+                self.min_press_slider.setValue(slow_press)
+                self.max_press_slider.setValue(fast_press)
+                self.min_press_value.setText(f"{slow_press}ms")
+                self.max_press_value.setText(f"{fast_press}ms")
+                self.min_press_slider.blockSignals(False)
+                self.max_press_slider.blockSignals(False)
+                self.global_midi_settings['min_press_time'] = slow_press
+                self.global_midi_settings['max_press_time'] = fast_press
+
+                # Load aftertouch settings
+                at_mode = result.get('aftertouch_mode', 0)
+                at_cc = result.get('aftertouch_cc', 255)
+                self.aftertouch_mode_combo.blockSignals(True)
+                self.aftertouch_cc_combo.blockSignals(True)
+                for i in range(self.aftertouch_mode_combo.count()):
+                    if self.aftertouch_mode_combo.itemData(i) == at_mode:
+                        self.aftertouch_mode_combo.setCurrentIndex(i)
+                        break
+                for i in range(self.aftertouch_cc_combo.count()):
+                    if self.aftertouch_cc_combo.itemData(i) == at_cc:
+                        self.aftertouch_cc_combo.setCurrentIndex(i)
+                        break
+                self.aftertouch_mode_combo.blockSignals(False)
+                self.aftertouch_cc_combo.blockSignals(False)
+                self.global_midi_settings['aftertouch_mode'] = at_mode
+                self.global_midi_settings['aftertouch_cc'] = at_cc
+
+                # Show/hide vibrato controls
+                is_vibrato = (at_mode == 4)
+                self.vibrato_sens_widget.setVisible(is_vibrato)
+                self.vibrato_decay_widget.setVisible(is_vibrato)
+
+                # Load vibrato settings
+                vib_sens = result.get('vibrato_sensitivity', 100)
+                vib_decay = result.get('vibrato_decay', 200)
+                self.vibrato_sens_slider.blockSignals(True)
+                self.vibrato_decay_slider.blockSignals(True)
+                self.vibrato_sens_slider.setValue(vib_sens)
+                self.vibrato_decay_slider.setValue(vib_decay)
+                self.vibrato_sens_value.setText(f"{vib_sens}%")
+                self.vibrato_decay_value.setText(f"{vib_decay}ms")
+                self.vibrato_sens_slider.blockSignals(False)
+                self.vibrato_decay_slider.blockSignals(False)
+                self.global_midi_settings['vibrato_sensitivity'] = vib_sens
+                self.global_midi_settings['vibrato_decay_time'] = vib_decay
+
         except Exception as e:
             print(f"Error loading user curve {slot_index}: {e}")
 
     def on_save_to_user_curve(self, slot_index, curve_name):
-        """Save current curve to a user slot on the keyboard"""
+        """Save current velocity preset to a user slot on the keyboard.
+        This saves all preset settings: curve points, velocity range, press times, aftertouch, vibrato."""
         if not self.keyboard:
             QMessageBox.warning(
                 None,
@@ -927,12 +1075,30 @@ class VelocityTab(BasicEditor):
 
         try:
             points = self.curve_editor.get_points()
-            success = self.keyboard.set_user_curve(slot_index, points, curve_name)
+            settings = self.global_midi_settings
+
+            # Use the new set_velocity_preset method with all settings
+            success = self.keyboard.set_velocity_preset(
+                slot=slot_index,
+                points=points,
+                name=curve_name,
+                velocity_min=settings.get('velocity_min', 1),
+                velocity_max=settings.get('velocity_max', 127),
+                slow_press_time=settings.get('min_press_time', 200),
+                fast_press_time=settings.get('max_press_time', 20),
+                aftertouch_mode=settings.get('aftertouch_mode', 0),
+                aftertouch_cc=settings.get('aftertouch_cc', 255),
+                vibrato_sensitivity=settings.get('vibrato_sensitivity', 100),
+                vibrato_decay=settings.get('vibrato_decay_time', 200)
+            )
+
             if success:
                 QMessageBox.information(
                     None,
-                    tr("VelocityTab", "User Curve Saved"),
-                    tr("VelocityTab", f"Curve saved to User slot {slot_index + 1} as '{curve_name}'.")
+                    tr("VelocityTab", "Velocity Preset Saved"),
+                    tr("VelocityTab", f"Preset saved to User slot {slot_index + 1} as '{curve_name}'.\n\n"
+                       f"Includes: curve, velocity {settings.get('velocity_min', 1)}-{settings.get('velocity_max', 127)}, "
+                       f"press times, aftertouch, vibrato settings.")
                 )
                 # Update the user curve name in the dropdown
                 names = list(self.curve_editor.user_curve_names)
@@ -942,13 +1108,13 @@ class VelocityTab(BasicEditor):
                 QMessageBox.warning(
                     None,
                     tr("VelocityTab", "Save Failed"),
-                    tr("VelocityTab", "Failed to save user curve to keyboard.")
+                    tr("VelocityTab", "Failed to save velocity preset to keyboard.")
                 )
         except Exception as e:
             QMessageBox.warning(
                 None,
                 tr("VelocityTab", "Save Failed"),
-                tr("VelocityTab", f"Error saving user curve: {e}")
+                tr("VelocityTab", f"Error saving velocity preset: {e}")
             )
 
     def on_save_curve(self):

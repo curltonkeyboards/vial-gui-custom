@@ -4473,10 +4473,10 @@ uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
         // Factory curve - read from PROGMEM
         memcpy_P(points, FACTORY_CURVES[curve_index], 8);
     } else if (curve_index >= CURVE_USER_START && curve_index <= CURVE_USER_END) {
-        // User curve - read from RAM
+        // User preset - read from RAM
         uint8_t user_idx = curve_index - CURVE_USER_START;
         if (user_idx < 10) {
-            memcpy(points, user_curves.curves[user_idx].points, 8);
+            memcpy(points, user_curves.presets[user_idx].points, 8);
         } else {
             // Invalid index - use linear
             return input;
@@ -4518,22 +4518,87 @@ uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
     return input;
 }
 
-// Initialize user curves with defaults (all linear)
+// Initialize velocity presets with defaults (all linear, standard settings)
 void user_curves_init(void) {
-    memset(&user_curves, 0, sizeof(user_curves_t));
+    memset(&user_curves, 0, sizeof(velocity_presets_t));
 
     for (int i = 0; i < 10; i++) {
+        velocity_preset_t* preset = &user_curves.presets[i];
+
         // Set default name
-        snprintf(user_curves.curves[i].name, 16, "User %d", i + 1);
+        snprintf(preset->name, 16, "User %d", i + 1);
 
         // Set to linear curve (0,0), (85,85), (170,170), (255,255)
-        user_curves.curves[i].points[0][0] = 0;   user_curves.curves[i].points[0][1] = 0;
-        user_curves.curves[i].points[1][0] = 85;  user_curves.curves[i].points[1][1] = 85;
-        user_curves.curves[i].points[2][0] = 170; user_curves.curves[i].points[2][1] = 170;
-        user_curves.curves[i].points[3][0] = 255; user_curves.curves[i].points[3][1] = 255;
+        preset->points[0][0] = 0;   preset->points[0][1] = 0;
+        preset->points[1][0] = 85;  preset->points[1][1] = 85;
+        preset->points[2][0] = 170; preset->points[2][1] = 170;
+        preset->points[3][0] = 255; preset->points[3][1] = 255;
+
+        // Default velocity range (full range)
+        preset->velocity_min = 1;
+        preset->velocity_max = 127;
+
+        // Default time settings
+        preset->slow_press_time = 200;  // 200ms for soft notes
+        preset->fast_press_time = 20;   // 20ms for loud notes
+
+        // Default aftertouch (off)
+        preset->aftertouch_mode = 0;    // Off
+        preset->aftertouch_cc = 255;    // Poly AT only
+
+        // Default vibrato settings
+        preset->vibrato_sensitivity = 100;  // 100%
+        preset->vibrato_decay = 200;        // 200ms
+
+        preset->reserved = 0;
     }
 
     user_curves.magic = USER_CURVES_MAGIC;
+}
+
+// Apply velocity preset settings to global variables
+// Called when user selects a preset from the GUI or loads from EEPROM
+void velocity_preset_apply(uint8_t preset_index) {
+    // Only apply user presets (7-16), not factory curves (0-6)
+    if (preset_index < CURVE_USER_START || preset_index > CURVE_USER_END) {
+        return;
+    }
+
+    uint8_t slot = preset_index - CURVE_USER_START;  // Convert to 0-9 index
+    if (slot >= 10) return;
+
+    velocity_preset_t* preset = &user_curves.presets[slot];
+
+    // Apply settings to global variables (declared in orthomidi5x14.c or process_dynamic_macro.c)
+    extern uint8_t velocity_mode;
+    extern uint8_t aftertouch_mode;
+    extern uint8_t aftertouch_cc;
+    extern uint8_t vibrato_sensitivity;
+    extern uint16_t vibrato_decay_time;
+    extern uint16_t min_press_time;
+    extern uint16_t max_press_time;
+    extern uint8_t he_velocity_min;
+    extern uint8_t he_velocity_max;
+
+    // Apply velocity settings
+    he_velocity_min = preset->velocity_min;
+    he_velocity_max = preset->velocity_max;
+    min_press_time = preset->slow_press_time;
+    max_press_time = preset->fast_press_time;
+
+    // Apply aftertouch settings
+    aftertouch_mode = preset->aftertouch_mode;
+    aftertouch_cc = preset->aftertouch_cc;
+
+    // Apply vibrato settings
+    vibrato_sensitivity = preset->vibrato_sensitivity;
+    vibrato_decay_time = preset->vibrato_decay;
+
+    dprintf("Velocity preset %d '%s' applied: vel=%d-%d, time=%d-%dms, AT=%d\n",
+            slot + 1, preset->name,
+            preset->velocity_min, preset->velocity_max,
+            preset->fast_press_time, preset->slow_press_time,
+            preset->aftertouch_mode);
 }
 
 // Save user curves to EEPROM
@@ -11244,7 +11309,16 @@ void oled_render_keylog(void) {
 	if (curve <= 6) {
 		snprintf(name, sizeof(name), "\n M:%s CRV:%d(%s)", mode_name, curve, curve_names[curve]);
 	} else {
-		snprintf(name, sizeof(name), "\n M:%s CRV:%d(User%d)", mode_name, curve, curve - 6);
+		// Show user preset name (truncated to fit display)
+		uint8_t slot = curve - CURVE_USER_START;  // Convert to 0-9 index
+		if (slot < 10 && user_curves.presets[slot].name[0] != '\0') {
+			char preset_name[9];
+			strncpy(preset_name, user_curves.presets[slot].name, 8);
+			preset_name[8] = '\0';
+			snprintf(name, sizeof(name), "\n M:%s CRV:%s", mode_name, preset_name);
+		} else {
+			snprintf(name, sizeof(name), "\n M:%s CRV:User%d", mode_name, curve - 6);
+		}
 	}
 
 	// Second line: Press times (slow=min_press_time, fast=max_press_time)
