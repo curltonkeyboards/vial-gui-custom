@@ -700,11 +700,11 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			uint8_t slot = msg[2];
 			if (slot < 10) {
 				// Copy 4 points (8 bytes)
-				memcpy(user_curves.curves[slot].points, &msg[3], 8);
+				memcpy(user_curves.presets[slot].points, &msg[3], 8);
 
 				// Copy name (16 bytes) - msg[11] to msg[26]
-				memcpy(user_curves.curves[slot].name, &msg[11], 16);
-				user_curves.curves[slot].name[15] = '\0';  // Ensure null termination
+				memcpy(user_curves.presets[slot].name, &msg[11], 16);
+				user_curves.presets[slot].name[15] = '\0';  // Ensure null termination
 
 				user_curves_save();
 				msg[0] = 0x01; // Success
@@ -724,10 +724,10 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				msg[1] = slot;
 
 				// Copy 4 points (8 bytes)
-				memcpy(&msg[2], user_curves.curves[slot].points, 8);
+				memcpy(&msg[2], user_curves.presets[slot].points, 8);
 
 				// Copy name (16 bytes)
-				memcpy(&msg[10], user_curves.curves[slot].name, 16);
+				memcpy(&msg[10], user_curves.presets[slot].name, 16);
 			} else {
 				msg[0] = 0x00; // Error - invalid slot
 			}
@@ -742,7 +742,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 			// Return all 10 curve names (truncated to 10 chars each = 100 bytes total)
 			for (int i = 0; i < 10; i++) {
-				memcpy(&msg[1 + i*10], user_curves.curves[i].name, 10);
+				memcpy(&msg[1 + i*10], user_curves.presets[i].name, 10);
 			}
 			break;
 		}
