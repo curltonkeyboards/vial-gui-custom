@@ -116,13 +116,13 @@ class TravelBarWidget(QWidget):
         painter.setPen(QPen(bar_border, 2))
         painter.drawRect(margin, bar_y, width - 2 * margin, bar_height)
 
-        # Draw 0mm and 2.5mm labels
+        # Draw 0mm and 4.0mm labels
         painter.setPen(text_color)
         font = QFont()
         font.setPointSize(9)
         painter.setFont(font)
         painter.drawText(margin - 10, bar_y + bar_height + 20, "0.0mm")
-        painter.drawText(width - margin - 35, bar_y + bar_height + 20, "2.5mm")
+        painter.drawText(width - margin - 35, bar_y + bar_height + 20, "4.0mm")
 
         # Draw press actuation points (theme press color, above bar)
         for actuation, enabled in self.press_actuations:
@@ -247,7 +247,7 @@ class VerticalTravelBarWidget(QWidget):
         self.rapidfire_mode = False     # Flag to enable rapidfire visualization mode
         self.deadzone_top = 0           # Top deadzone value (0-20, representing 0-0.5mm)
         self.deadzone_bottom = 0        # Bottom deadzone value (0-20, representing 0-0.5mm)
-        self.actuation_point = 60       # First activation point (0-100, representing 0-2.5mm)
+        self.actuation_point = 60       # First activation point (0-100, representing 0-4.0mm)
 
         # Dragging state
         self.dragging = False
@@ -377,7 +377,7 @@ class VerticalTravelBarWidget(QWidget):
             rapidfire_mode: If True, show relative to actuation point with first activation line
             deadzone_top: Top deadzone value (0-20, 0-0.5mm from top, internally inverted)
             deadzone_bottom: Bottom deadzone value (0-20, 0-0.5mm from bottom)
-            actuation_point: First activation point (0-100, 0-2.5mm)
+            actuation_point: First activation point (0-100, 0-4.0mm)
         """
         self.press_actuations = press_points
         self.release_actuations = release_points
@@ -543,13 +543,13 @@ class VerticalTravelBarWidget(QWidget):
             painter.setPen(palette.color(QPalette.HighlightedText))  # Use theme highlighted text for first activation label
             painter.drawText(label_x, actuation_y + 3, label_text)
         else:
-            # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
+            # Draw 0mm and 4.0mm labels (top and bottom) for normal mode
             painter.setPen(text_color)
             font = QFont()
             font.setPointSize(9)
             painter.setFont(font)
             painter.drawText(bar_x + bar_width // 2 - 15, margin_top - 10, "0.0mm")
-            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "2.5mm")
+            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "4.0mm")
 
         # Draw press and release actuation points
         if self.rapidfire_mode:
@@ -566,7 +566,7 @@ class VerticalTravelBarWidget(QWidget):
                     continue
 
                 # Release is upward from actuation point
-                # actuation is sensitivity in 0-100 (representing 0-2.5mm distance)
+                # actuation is sensitivity in 0-100 (representing 0-4.0mm distance)
                 y = actuation_y - int((actuation / 100.0) * bar_height)
                 release_y = y
 
@@ -633,7 +633,7 @@ class VerticalTravelBarWidget(QWidget):
                     continue
 
                 # Press is downward from release point
-                # actuation is sensitivity in 0-100 (representing 0-2.5mm distance)
+                # actuation is sensitivity in 0-100 (representing 0-4.0mm distance)
                 y = release_y + int((actuation / 100.0) * bar_height)
 
                 # Draw line to left

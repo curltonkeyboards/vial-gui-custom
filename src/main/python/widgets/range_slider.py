@@ -459,9 +459,10 @@ class TriggerSlider(MultiHandleSlider):
     def __init__(self, minimum=0, maximum=100, parent=None):
         super().__init__(num_handles=3, minimum=minimum, maximum=maximum, parent=parent)
 
-        # Set default values: bottom=4 (0.1mm), actuation=60 (1.5mm), top=96 (which is 4 from right = 0.1mm)
+        # Set default values: bottom=4 (0.16mm), actuation=50 (2.0mm), top=96 (which is 4 from right = 0.16mm)
         # Internal representation: [deadzone_bottom, actuation, 100 - deadzone_top]
-        self.values = [4, 60, 96]  # 96 = 100 - 4
+        # Note: 0-100 range represents 0-4.0mm full key travel
+        self.values = [4, 50, 96]  # 96 = 100 - 4
 
         # Store the actual user-facing deadzone_top value (inverted)
         self._user_deadzone_top = 4

@@ -45,8 +45,8 @@ uint8_t triplesplit_he_velocity_max;   // 1-127 (maximum velocity)
 **Current Structure (after overhaul):**
 ```c
 typedef struct {
-    uint8_t normal_actuation;      // 0-100 (0-2.5mm)
-    uint8_t midi_actuation;        // 0-100 (0-2.5mm)
+    uint8_t normal_actuation;      // 0-100 (0-4.0mm)
+    uint8_t midi_actuation;        // 0-100 (0-4.0mm)
     uint8_t velocity_mode;         // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
     uint8_t velocity_speed_scale;  // 1-20 (velocity scale multiplier)
     uint8_t flags;                 // Bit 2: use_fixed_velocity
@@ -80,13 +80,13 @@ typedef struct {
 } layer_key_actuations_t;
 
 typedef struct {
-    uint8_t actuation;              // 0-100 (0-2.5mm)
-    uint8_t deadzone_top;           // 0-100 (0-2.5mm)
-    uint8_t deadzone_bottom;        // 0-100 (0-2.5mm)
+    uint8_t actuation;              // 0-100 (0-4.0mm)
+    uint8_t deadzone_top;           // 0-100 (0-4.0mm)
+    uint8_t deadzone_bottom;        // 0-100 (0-4.0mm)
     uint8_t velocity_curve;         // 0-4
     uint8_t flags;                  // Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve
-    uint8_t rapidfire_press_sens;   // 0-100 (0-2.5mm)
-    uint8_t rapidfire_release_sens; // 0-100 (0-2.5mm)
+    uint8_t rapidfire_press_sens;   // 0-100 (0-4.0mm)
+    uint8_t rapidfire_release_sens; // 0-100 (0-4.0mm)
     int8_t  rapidfire_velocity_mod; // -64 to +64
 } per_key_actuation_t;
 ```

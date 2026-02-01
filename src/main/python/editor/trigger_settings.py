@@ -57,7 +57,7 @@ class TriggerVisualizerWidget(QWidget):
         self.rapidfire_mode = False     # Flag to enable rapidfire visualization mode
         self.deadzone_top = 0           # Top deadzone value (0-20, representing 0-0.5mm)
         self.deadzone_bottom = 0        # Bottom deadzone value (0-20, representing 0-0.5mm)
-        self.actuation_point = 60       # First activation point (0-100, representing 0-2.5mm)
+        self.actuation_point = 60       # First activation point (0-100, representing 0-4.0mm)
 
         # Label mode for trigger settings
         self.label_mode = self.LABEL_MODE_GLOBAL
@@ -89,7 +89,7 @@ class TriggerVisualizerWidget(QWidget):
             rapidfire_mode: If True, show relative to actuation point with first activation line
             deadzone_top: Top deadzone value (0-20, 0-0.5mm from top, internally inverted)
             deadzone_bottom: Bottom deadzone value (0-20, 0-0.5mm from bottom)
-            actuation_point: First activation point (0-100, 0-2.5mm)
+            actuation_point: First activation point (0-100, 0-4.0mm)
         """
         self.press_actuations = press_points
         self.release_actuations = release_points
@@ -405,13 +405,13 @@ class TriggerVisualizerWidget(QWidget):
             painter.setPen(palette.color(QPalette.HighlightedText))
             painter.drawText(label_x, actuation_y + 3, label_text)
         else:
-            # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
+            # Draw 0mm and 4.0mm labels (top and bottom) for normal mode
             painter.setPen(text_color)
             font = QFont()
             font.setPointSize(9)
             painter.setFont(font)
             painter.drawText(bar_x + bar_width // 2 - 15, margin_top - 10, "0.0mm")
-            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "2.5mm")
+            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "4.0mm")
 
         # Draw press and release actuation points
         if self.rapidfire_mode:
@@ -433,7 +433,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(release_color)
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 100.0) * 4.0
 
                 font_label = QFont()
                 font_label.setPointSize(9)
@@ -489,7 +489,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(press_color)
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 100.0) * 4.0
 
                 font_label = QFont()
                 font_label.setPointSize(9)
@@ -550,7 +550,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(press_color)
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 100.0) * 4.0
 
                 font_label = QFont()
                 font_label.setPointSize(9)
@@ -619,7 +619,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(release_color)
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 100.0) * 4.0
 
                 font_label = QFont()
                 font_label.setPointSize(9)
@@ -690,13 +690,13 @@ class TriggerSettingsTab(BasicEditor):
             layer_keys = []
             for _ in range(70):
                 layer_keys.append({
-                    'actuation': 60,                    # 0-100 = 0-2.5mm, default 1.5mm (60/40 = 1.5)
-                    'deadzone_top': 4,                  # 0-20 = 0-0.5mm, default 0.1mm (4/40 = 0.1) - FROM RIGHT
-                    'deadzone_bottom': 4,               # 0-20 = 0-0.5mm, default 0.1mm (4/40 = 0.1) - FROM LEFT
+                    'actuation': 50,                    # 0-100 = 0-4.0mm, default 2.0mm (50% of 4mm)
+                    'deadzone_top': 4,                  # 0-20 = 0-0.5mm, default 0.1mm - FROM RIGHT
+                    'deadzone_bottom': 4,               # 0-20 = 0-0.5mm, default 0.1mm - FROM LEFT
                     'velocity_curve': 0,                # 0-16 (0-6: Factory curves, 7-16: User curves), default Linear
                     'flags': 0,                         # Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve, Bit 2: continuous_rt
-                    'rapidfire_press_sens': 4,          # 1-100 = 0.025-2.5mm, default 0.1mm (4/40 = 0.1) - FROM LEFT
-                    'rapidfire_release_sens': 4,        # 1-100 = 0.025-2.5mm, default 0.1mm (4/40 = 0.1) - FROM RIGHT
+                    'rapidfire_press_sens': 4,          # 1-100 = 0-4.0mm, default 0.16mm - FROM LEFT
+                    'rapidfire_release_sens': 4,        # 1-100 = 0-4.0mm, default 0.16mm - FROM RIGHT
                     'rapidfire_velocity_mod': 0         # -64 to +64, default 0
                 })
             self.per_key_values.append(layer_keys)
@@ -912,7 +912,7 @@ class TriggerSettingsTab(BasicEditor):
         # Normal Keys TriggerSlider (combines deadzone min, actuation, deadzone max)
         self.global_normal_slider = TriggerSlider(minimum=0, maximum=100)
         self.global_normal_slider.set_deadzone_bottom(4)  # 0.1mm default
-        self.global_normal_slider.set_actuation(80)       # 2.0mm default
+        self.global_normal_slider.set_actuation(50)       # 2.0mm default (50% of 4mm)
         self.global_normal_slider.set_deadzone_top(4)     # 0.1mm default
         self.global_normal_slider.deadzoneBottomChanged.connect(self.on_global_normal_dz_min_changed)
         self.global_normal_slider.actuationChanged.connect(self.on_global_normal_changed)
@@ -949,7 +949,7 @@ class TriggerSettingsTab(BasicEditor):
         # MIDI Keys TriggerSlider (combines deadzone min, actuation, deadzone max)
         self.global_midi_slider = TriggerSlider(minimum=0, maximum=100)
         self.global_midi_slider.set_deadzone_bottom(4)  # 0.1mm default
-        self.global_midi_slider.set_actuation(80)       # 2.0mm default
+        self.global_midi_slider.set_actuation(50)       # 2.0mm default (50% of 4mm)
         self.global_midi_slider.set_deadzone_top(4)     # 0.1mm default
         self.global_midi_slider.deadzoneBottomChanged.connect(self.on_global_midi_dz_min_changed)
         self.global_midi_slider.actuationChanged.connect(self.on_global_midi_changed)
@@ -991,7 +991,7 @@ class TriggerSettingsTab(BasicEditor):
         actuation_container = QVBoxLayout()
         actuation_title = QLabel("Actuation")
         actuation_title.setStyleSheet("QLabel { color: gray; font-size: 7pt; }")
-        self.actuation_value_label = QLabel("1.5mm")
+        self.actuation_value_label = QLabel("2.0mm")
         self.actuation_value_label.setStyleSheet("QLabel { font-weight: bold; font-size: 10pt; color: palette(highlight); }")
         actuation_container.addWidget(actuation_title, 0, Qt.AlignCenter)
         actuation_container.addWidget(self.actuation_value_label, 0, Qt.AlignCenter)
@@ -1744,7 +1744,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def value_to_mm(self, value):
         """Convert 0-100 value to millimeters string"""
-        mm = (value / 40.0)  # 0-100 maps to 0-2.5mm (100/40 = 2.5)
+        mm = (value / 100.0) * 4.0  # 0-100 maps to 0-4.0mm (full key travel)
         return f"{mm:.2f}mm"
 
     def on_global_normal_changed(self, value):
@@ -2670,10 +2670,10 @@ class TriggerSettingsTab(BasicEditor):
         if not self.valid() or not self.keyboard:
             return
 
-        # Safe defaults: 1.5mm actuation (60), 0.1mm deadzones (4)
-        DEFAULT_ACTUATION = 60  # 1.5mm (60/40 = 1.5)
-        DEFAULT_DEADZONE = 4   # 0.1mm (4/40 = 0.1)
-        MIN_ACTUATION = 8      # 0.2mm minimum to prevent keyboard crash
+        # Safe defaults: 2.0mm actuation (50), 0.1mm deadzones (4)
+        DEFAULT_ACTUATION = 50  # 2.0mm (50% of 4mm full travel)
+        DEFAULT_DEADZONE = 4   # 0.1mm
+        MIN_ACTUATION = 5      # 0.2mm minimum to prevent keyboard crash
 
         # Get current layer actuation values (use as source for all layers)
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
@@ -3023,7 +3023,7 @@ class TriggerSettingsTab(BasicEditor):
         ret = QMessageBox.question(
             self.widget(),
             tr("TriggerSettings", "Reset All"),
-            tr("TriggerSettings", "Reset all per-key actuations to default (1.5mm)?"),
+            tr("TriggerSettings", "Reset all per-key actuations to default (2.0mm)?"),
             QMessageBox.Yes | QMessageBox.No
         )
 
@@ -3032,13 +3032,13 @@ class TriggerSettingsTab(BasicEditor):
             for layer in range(12):
                 for key_index in range(70):
                     self.per_key_values[layer][key_index] = {
-                        'actuation': 60,                    # 1.5mm
+                        'actuation': 50,                    # 2.0mm (50% of 4mm)
                         'deadzone_top': 4,                  # 0.1mm from right
                         'deadzone_bottom': 4,               # 0.1mm from left
                         'velocity_curve': 2,                # Medium
                         'flags': 0,                         # Both rapidfire and per-key velocity curve disabled
-                        'rapidfire_press_sens': 4,          # 0.1mm from left
-                        'rapidfire_release_sens': 4,        # 0.1mm from right
+                        'rapidfire_press_sens': 4,          # 0.16mm from left
+                        'rapidfire_release_sens': 4,        # 0.16mm from right
                         'rapidfire_velocity_mod': 0         # No modifier
                     }
 
@@ -3111,9 +3111,9 @@ class TriggerSettingsTab(BasicEditor):
 
         self.syncing = True
 
-        # Safe defaults: 1.5mm actuation (60)
-        DEFAULT_ACTUATION = 60  # 1.5mm (60/40 = 1.5)
-        MIN_ACTUATION = 8       # 0.2mm minimum
+        # Safe defaults: 2.0mm actuation (50)
+        DEFAULT_ACTUATION = 50  # 2.0mm (50% of 4mm full travel)
+        MIN_ACTUATION = 5       # 0.2mm minimum
 
         # Get layer to use
         layer = self.current_layer
@@ -3253,13 +3253,13 @@ class TriggerSettingsTab(BasicEditor):
                 for layer in range(12):
                     for key_index in range(70):
                         self.per_key_values[layer][key_index] = {
-                            'actuation': 80,                    # 2.0mm (80/40 = 2.0)
+                            'actuation': 50,                    # 2.0mm (50% of 4mm)
                             'deadzone_top': 4,                  # 0.1mm from right
                             'deadzone_bottom': 4,               # 0.1mm from left
                             'velocity_curve': 2,                # Medium
                             'flags': 0,                         # All disabled
-                            'rapidfire_press_sens': 4,          # 0.1mm from left
-                            'rapidfire_release_sens': 4,        # 0.1mm from right
+                            'rapidfire_press_sens': 4,          # 0.16mm from left
+                            'rapidfire_release_sens': 4,        # 0.16mm from right
                             'rapidfire_velocity_mod': 0         # No modifier
                         }
 

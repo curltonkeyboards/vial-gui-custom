@@ -3316,7 +3316,7 @@ void reset_per_key_actuations(void) {
 // with calls to:
 //   - get_key_actuation_point(layer, row, col)
 //
-// The function returns a value 0-100 representing 0-2.5mm of travel.
+// The function returns a value 0-100 representing 0-4.0mm of travel (full key travel).
 // NOTE: Firmware ALWAYS uses per-key per-layer settings now.
 // The GUI handles "apply to all keys/layers" by writing the same values.
 uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col) {
