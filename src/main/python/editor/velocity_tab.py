@@ -1130,6 +1130,11 @@ class VelocityTab(BasicEditor):
                 points = result.get('points', [[0, 0], [85, 85], [170, 170], [255, 255]])
                 self.curve_editor.load_user_curve_points(points, slot_index)
 
+                # Load and display preset name from device
+                preset_name = result.get('name', f'User {slot_index + 1}')
+                if preset_name:  # Only update if name is not empty
+                    self.curve_editor.set_user_curve_name(slot_index, preset_name)
+
                 # Load velocity range into sliders
                 vel_min = result.get('velocity_min', 1)
                 vel_max = result.get('velocity_max', 127)

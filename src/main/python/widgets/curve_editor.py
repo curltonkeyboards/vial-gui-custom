@@ -201,6 +201,17 @@ class CurveEditorWidget(QWidget):
                 self.preset_combo.setItemText(combo_index, names[i])
             self.preset_combo.blockSignals(False)
 
+    def set_user_curve_name(self, slot_index, name):
+        """Update a single user curve name in dropdown"""
+        if slot_index < 0 or slot_index >= 10:
+            return
+        self.user_curve_names[slot_index] = name
+        # User curves start after factory curves + separator
+        combo_index = len(self.FACTORY_CURVES) + 1 + slot_index
+        self.preset_combo.blockSignals(True)
+        self.preset_combo.setItemText(combo_index, name)
+        self.preset_combo.blockSignals(False)
+
     def select_curve(self, curve_index):
         """Select a curve by index (0-16 or -1 for custom)"""
         for i in range(self.preset_combo.count()):
