@@ -699,8 +699,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 			uint8_t slot = msg[2];
 			if (slot < 10) {
-				// Copy 4 points (8 bytes)
-				memcpy(user_curves.presets[slot].points, &msg[3], 8);
+				// Copy 4 points (8 bytes) - points are in base zone
+				memcpy(user_curves.presets[slot].base.points, &msg[3], 8);
 
 				// Copy name (16 bytes) - msg[11] to msg[26]
 				memcpy(user_curves.presets[slot].name, &msg[11], 16);
@@ -723,8 +723,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				msg[0] = 0x01; // Success
 				msg[1] = slot;
 
-				// Copy 4 points (8 bytes)
-				memcpy(&msg[2], user_curves.presets[slot].points, 8);
+				// Copy 4 points (8 bytes) - points are in base zone
+				memcpy(&msg[2], user_curves.presets[slot].base.points, 8);
 
 				// Copy name (16 bytes)
 				memcpy(&msg[10], user_curves.presets[slot].name, 16);
