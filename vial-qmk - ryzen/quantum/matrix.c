@@ -65,9 +65,21 @@ extern bool aftertouch_pedal_active;
 extern layer_key_actuations_t per_key_actuations[12];
 // NOTE: per_key_per_layer_enabled removed - firmware always uses per-key per-layer
 
-// Velocity preset actuation override
+// Velocity preset actuation override - BASE zone
 extern bool preset_actuation_override;
 extern uint8_t preset_actuation_point;  // 0-40 = 0.0-4.0mm
+
+// Velocity preset actuation override - KEYSPLIT zone
+extern bool keysplit_preset_actuation_override;
+extern uint8_t keysplit_preset_actuation_point;
+
+// Velocity preset actuation override - TRIPLESPLIT zone
+extern bool triplesplit_preset_actuation_override;
+extern uint8_t triplesplit_preset_actuation_point;
+
+// Keysplit velocity status (controls which zones have separate velocity)
+// 0=disabled (all zones same), 1=keysplit only, 2=triplesplit only, 3=both
+extern uint8_t keysplitvelocitystatus;
 
 // EEPROM functions from orthomidi5x14.c
 extern void load_per_key_actuations(void);
@@ -118,9 +130,15 @@ typedef struct {
 // MIDI KEY STATE (kept from orthomidi5x14)
 // ============================================================================
 
+// Zone type for keysplit/triplesplit velocity settings
+#define ZONE_TYPE_BASE        0  // Base zone (MI_* keycodes)
+#define ZONE_TYPE_KEYSPLIT    1  // Keysplit zone (MI_SPLIT_* keycodes, 0xC600-0xC647)
+#define ZONE_TYPE_TRIPLESPLIT 2  // Triplesplit zone (MI_SPLIT2_* keycodes, 0xC670-0xC6B7)
+
 typedef struct {
     bool is_midi_key;
     uint8_t note_index;
+    uint8_t zone_type;           // Zone type: ZONE_TYPE_BASE, ZONE_TYPE_KEYSPLIT, or ZONE_TYPE_TRIPLESPLIT
     bool pressed;
     bool was_pressed;
 
@@ -871,9 +889,35 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
                             &actuation_point, &rt_down, &rt_up, &flags);
 
     // Apply velocity preset actuation override if enabled (MIDI keys only)
-    // preset_actuation_point is 0-40 (0.0-4.0mm), convert to 0-255 distance scale
-    if (preset_actuation_override && midi_key_states[key_idx].is_midi_key) {
-        actuation_point = (preset_actuation_point * 255) / 40;
+    // Check zone type and keysplitvelocitystatus to determine which actuation to use
+    // keysplitvelocitystatus: 0=all same, 1=keysplit only, 2=triplesplit only, 3=both
+    if (midi_key_states[key_idx].is_midi_key) {
+        uint8_t zone = midi_key_states[key_idx].zone_type;
+        bool use_zone_actuation = false;
+        bool zone_actuation_override = false;
+        uint8_t zone_actuation_point = 0;
+
+        if (zone == ZONE_TYPE_KEYSPLIT && (keysplitvelocitystatus == 1 || keysplitvelocitystatus == 3)) {
+            // Use keysplit zone actuation
+            use_zone_actuation = true;
+            zone_actuation_override = keysplit_preset_actuation_override;
+            zone_actuation_point = keysplit_preset_actuation_point;
+        } else if (zone == ZONE_TYPE_TRIPLESPLIT && (keysplitvelocitystatus == 2 || keysplitvelocitystatus == 3)) {
+            // Use triplesplit zone actuation
+            use_zone_actuation = true;
+            zone_actuation_override = triplesplit_preset_actuation_override;
+            zone_actuation_point = triplesplit_preset_actuation_point;
+        } else {
+            // Use base zone actuation
+            zone_actuation_override = preset_actuation_override;
+            zone_actuation_point = preset_actuation_point;
+        }
+
+        // Apply the actuation override if enabled for this zone
+        // actuation_point values are 0-40 (0.0-4.0mm), convert to 0-255 distance scale
+        if (use_zone_actuation ? zone_actuation_override : preset_actuation_override) {
+            actuation_point = ((use_zone_actuation ? zone_actuation_point : preset_actuation_point) * 255) / 40;
+        }
     }
 
     // Determine reset point based on continuous mode flag
@@ -980,7 +1024,22 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
 // MIDI KEY DETECTION
 // ============================================================================
 
-static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out) {
+// Get zone type from keycode
+// Returns ZONE_TYPE_BASE, ZONE_TYPE_KEYSPLIT, or ZONE_TYPE_TRIPLESPLIT
+static uint8_t get_zone_type_from_keycode(uint16_t keycode) {
+    // Keysplit keycodes: 0xC600-0xC647
+    if (keycode >= 0xC600 && keycode <= 0xC647) {
+        return ZONE_TYPE_KEYSPLIT;
+    }
+    // Triplesplit keycodes: 0xC670-0xC6B7
+    if (keycode >= 0xC670 && keycode <= 0xC6B7) {
+        return ZONE_TYPE_TRIPLESPLIT;
+    }
+    // Everything else (including MI_* 0x7103-0x714A) is base zone
+    return ZONE_TYPE_BASE;
+}
+
+static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out, uint8_t *zone_type_out) {
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
     if (current_layer >= 12) return false;
 
@@ -995,6 +1054,9 @@ static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out)
         for (uint8_t pos = 0; pos < 6; pos++) {
             if (optimized_midi_positions[array_index][note][pos] == led_index) {
                 *note_index_out = note;
+                // Get the actual keycode to determine zone type
+                uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+                *zone_type_out = get_zone_type_from_keycode(keycode);
                 return true;
             }
         }
@@ -1458,9 +1520,11 @@ static void initialize_midi_states(void) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             uint32_t key_idx = KEY_INDEX(row, col);
             uint8_t note_index;
-            if (check_is_midi_key(row, col, &note_index)) {
+            uint8_t zone_type;
+            if (check_is_midi_key(row, col, &note_index, &zone_type)) {
                 midi_key_states[key_idx].is_midi_key = true;
                 midi_key_states[key_idx].note_index = note_index;
+                midi_key_states[key_idx].zone_type = zone_type;
             }
         }
     }

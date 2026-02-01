@@ -943,12 +943,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
         switch (cmd) {
             case 0xD9: {  // HID_CMD_VELOCITY_PRESET_SET
-                // Set velocity preset using chunked transfer
+                // Set velocity preset using chunked transfer (4 chunks for zone-based presets)
                 // Format: [header(6), slot, chunk_id, chunk_data...]
-                // Chunk 0: points[8] + name[16] = 24 bytes at data[8-31]
-                // Chunk 1: vel_min, vel_max, slow_press_lo, slow_press_hi, fast_press_lo, fast_press_hi,
-                //          aftertouch_mode, aftertouch_cc, vibrato_sens, vibrato_decay_lo, vibrato_decay_hi,
-                //          flags, actuation_point, speed_peak_ratio, retrigger_distance = 15 bytes
+                // Chunk 0: name[16] + zone_flags[1] + reserved[1] = 18 bytes
+                // Chunk 1: base zone settings (23 bytes)
+                // Chunk 2: keysplit zone settings (23 bytes)
+                // Chunk 3: triplesplit zone settings (23 bytes)
                 uint8_t slot = data[6];
                 uint8_t chunk_id = data[7];
 
@@ -958,38 +958,44 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                     velocity_preset_t* preset = &user_curves.presets[slot];
 
                     if (chunk_id == 0) {
-                        // Chunk 0: points (8 bytes) + name (16 bytes)
-                        memcpy(preset->points, &data[8], 8);
-                        memcpy(preset->name, &data[16], 16);
+                        // Chunk 0: name (16 bytes) + zone_flags (1 byte) + reserved (1 byte)
+                        memcpy(preset->name, &data[8], 16);
                         preset->name[15] = '\0';  // Ensure null termination
+                        preset->zone_flags = data[24];
+                        preset->reserved = data[25];
                         response[5] = 0x01;  // Success
-                        dprintf("  Chunk 0: name='%s'\n", preset->name);
-                    } else if (chunk_id == 1) {
-                        // Chunk 1: velocity/time/aftertouch/actuation/ratio/retrigger settings (15 bytes)
-                        preset->velocity_min = data[8];
-                        preset->velocity_max = data[9];
-                        preset->slow_press_time = data[10] | (data[11] << 8);
-                        preset->fast_press_time = data[12] | (data[13] << 8);
-                        preset->aftertouch_mode = data[14];
-                        preset->aftertouch_cc = data[15];
-                        preset->vibrato_sensitivity = data[16];
-                        preset->vibrato_decay = data[17] | (data[18] << 8);
-                        preset->flags = data[19];
-                        preset->actuation_point = data[20];
-                        preset->speed_peak_ratio = data[21];
-                        preset->retrigger_distance = data[22];
+                        dprintf("  Chunk 0: name='%s', zone_flags=0x%02X\n", preset->name, preset->zone_flags);
+                    } else if (chunk_id >= 1 && chunk_id <= 3) {
+                        // Chunk 1-3: zone settings (base, keysplit, triplesplit)
+                        zone_settings_t* zone;
+                        if (chunk_id == 1) zone = &preset->base;
+                        else if (chunk_id == 2) zone = &preset->keysplit;
+                        else zone = &preset->triplesplit;
 
-                        // Save to EEPROM after chunk 1 (full preset received)
-                        user_curves_save();
+                        // Deserialize zone settings (23 bytes)
+                        memcpy(zone->points, &data[8], 8);  // 8 bytes
+                        zone->velocity_min = data[16];
+                        zone->velocity_max = data[17];
+                        zone->slow_press_time = data[18] | (data[19] << 8);
+                        zone->fast_press_time = data[20] | (data[21] << 8);
+                        zone->aftertouch_mode = data[22];
+                        zone->aftertouch_cc = data[23];
+                        zone->vibrato_sensitivity = data[24];
+                        zone->vibrato_decay = data[25] | (data[26] << 8);
+                        zone->flags = data[27];
+                        zone->actuation_point = data[28];
+                        zone->speed_peak_ratio = data[29];
+                        zone->retrigger_distance = data[30];
+
+                        // Save to EEPROM after last chunk (chunk 3)
+                        if (chunk_id == 3) {
+                            user_curves_save();
+                            dprintf("  Saved preset to EEPROM\n");
+                        }
                         response[5] = 0x01;  // Success
-                        dprintf("  Chunk 1: vel=%d-%d, time=%d-%dms, AT=%d, actuation=%s(%d), ratio=%d%%, retrig=%d, saved\n",
-                            preset->velocity_min, preset->velocity_max,
-                            preset->fast_press_time, preset->slow_press_time,
-                            preset->aftertouch_mode,
-                            (preset->flags & PRESET_FLAG_ACTUATION_OVERRIDE) ? "Y" : "N",
-                            preset->actuation_point,
-                            preset->speed_peak_ratio,
-                            preset->retrigger_distance);
+                        dprintf("  Chunk %d: zone vel=%d-%d, time=%d-%dms\n",
+                            chunk_id, zone->velocity_min, zone->velocity_max,
+                            zone->fast_press_time, zone->slow_press_time);
                     } else {
                         response[5] = 0x00;  // Error - invalid chunk
                     }
@@ -1002,9 +1008,9 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             }
 
             case 0xDA: {  // HID_CMD_VELOCITY_PRESET_GET
-                // Get velocity preset - sends 2 response packets (chunk 0 and chunk 1)
+                // Get velocity preset - sends 4 response packets (zone-based format)
                 // Request format: [header(6), slot]
-                // Response: 2 packets with all preset data
+                // Response: 4 packets with all preset data
                 uint8_t slot = data[6];
 
                 dprintf("VELOCITY_PRESET_GET: slot=%d\n", slot);
@@ -1012,7 +1018,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 if (slot < 10) {
                     velocity_preset_t* preset = &user_curves.presets[slot];
 
-                    // Send Chunk 0: points + name
+                    // Send Chunk 0: name + zone_flags
                     uint8_t chunk0[32] = {0};
                     chunk0[0] = HID_MANUFACTURER_ID;
                     chunk0[1] = HID_SUB_ID;
@@ -1022,38 +1028,53 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                     chunk0[5] = 0x01;  // Success
                     chunk0[6] = slot;
                     chunk0[7] = 0;     // Chunk ID 0
-                    memcpy(&chunk0[8], preset->points, 8);
-                    memcpy(&chunk0[16], preset->name, 16);
+                    memcpy(&chunk0[8], preset->name, 16);
+                    chunk0[24] = preset->zone_flags;
+                    chunk0[25] = preset->reserved;
                     raw_hid_send(chunk0, 32);
 
-                    // Send Chunk 1: settings (including actuation override, speed/peak ratio, retrigger)
-                    uint8_t chunk1[32] = {0};
-                    chunk1[0] = HID_MANUFACTURER_ID;
-                    chunk1[1] = HID_SUB_ID;
-                    chunk1[2] = HID_DEVICE_ID;
-                    chunk1[3] = 0xDA;
-                    chunk1[4] = 0x00;  // Reserved
-                    chunk1[5] = 0x01;  // Success
-                    chunk1[6] = slot;
-                    chunk1[7] = 1;     // Chunk ID 1
-                    chunk1[8] = preset->velocity_min;
-                    chunk1[9] = preset->velocity_max;
-                    chunk1[10] = preset->slow_press_time & 0xFF;
-                    chunk1[11] = (preset->slow_press_time >> 8) & 0xFF;
-                    chunk1[12] = preset->fast_press_time & 0xFF;
-                    chunk1[13] = (preset->fast_press_time >> 8) & 0xFF;
-                    chunk1[14] = preset->aftertouch_mode;
-                    chunk1[15] = preset->aftertouch_cc;
-                    chunk1[16] = preset->vibrato_sensitivity;
-                    chunk1[17] = preset->vibrato_decay & 0xFF;
-                    chunk1[18] = (preset->vibrato_decay >> 8) & 0xFF;
-                    chunk1[19] = preset->flags;
-                    chunk1[20] = preset->actuation_point;
-                    chunk1[21] = preset->speed_peak_ratio;
-                    chunk1[22] = preset->retrigger_distance;
-                    raw_hid_send(chunk1, 32);
+                    // Helper macro for serializing zone settings
+                    #define SEND_ZONE_CHUNK(chunk_id, zone_ptr) do { \
+                        uint8_t chunk[32] = {0}; \
+                        chunk[0] = HID_MANUFACTURER_ID; \
+                        chunk[1] = HID_SUB_ID; \
+                        chunk[2] = HID_DEVICE_ID; \
+                        chunk[3] = 0xDA; \
+                        chunk[4] = 0x00; \
+                        chunk[5] = 0x01; \
+                        chunk[6] = slot; \
+                        chunk[7] = chunk_id; \
+                        memcpy(&chunk[8], (zone_ptr)->points, 8); \
+                        chunk[16] = (zone_ptr)->velocity_min; \
+                        chunk[17] = (zone_ptr)->velocity_max; \
+                        chunk[18] = (zone_ptr)->slow_press_time & 0xFF; \
+                        chunk[19] = ((zone_ptr)->slow_press_time >> 8) & 0xFF; \
+                        chunk[20] = (zone_ptr)->fast_press_time & 0xFF; \
+                        chunk[21] = ((zone_ptr)->fast_press_time >> 8) & 0xFF; \
+                        chunk[22] = (zone_ptr)->aftertouch_mode; \
+                        chunk[23] = (zone_ptr)->aftertouch_cc; \
+                        chunk[24] = (zone_ptr)->vibrato_sensitivity; \
+                        chunk[25] = (zone_ptr)->vibrato_decay & 0xFF; \
+                        chunk[26] = ((zone_ptr)->vibrato_decay >> 8) & 0xFF; \
+                        chunk[27] = (zone_ptr)->flags; \
+                        chunk[28] = (zone_ptr)->actuation_point; \
+                        chunk[29] = (zone_ptr)->speed_peak_ratio; \
+                        chunk[30] = (zone_ptr)->retrigger_distance; \
+                        raw_hid_send(chunk, 32); \
+                    } while(0)
 
-                    dprintf("  Sent 2 chunks for preset '%s'\n", preset->name);
+                    // Send Chunk 1: base zone
+                    SEND_ZONE_CHUNK(1, &preset->base);
+
+                    // Send Chunk 2: keysplit zone
+                    SEND_ZONE_CHUNK(2, &preset->keysplit);
+
+                    // Send Chunk 3: triplesplit zone
+                    SEND_ZONE_CHUNK(3, &preset->triplesplit);
+
+                    #undef SEND_ZONE_CHUNK
+
+                    dprintf("  Sent 4 chunks for preset '%s'\n", preset->name);
                     return;  // Already sent response packets
                 } else {
                     response[4] = 0x00;
