@@ -91,9 +91,13 @@ class CurveEditorWidget(QWidget):
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Preset selector
+        # Preset selector widget (can be hidden as a unit)
+        self.preset_selector_widget = QWidget()
         preset_layout = QHBoxLayout()
-        preset_label = QLabel(tr("CurveEditor", "Preset:"))
+        preset_layout.setContentsMargins(0, 0, 0, 0)
+        self.preset_selector_widget.setLayout(preset_layout)
+
+        self.preset_label = QLabel(tr("CurveEditor", "Preset:"))
         self.preset_combo = QComboBox()
 
         # Add factory curves
@@ -113,7 +117,7 @@ class CurveEditorWidget(QWidget):
 
         self.preset_combo.currentIndexChanged.connect(self.on_preset_changed)
 
-        preset_layout.addWidget(preset_label)
+        preset_layout.addWidget(self.preset_label)
         preset_layout.addWidget(self.preset_combo, 1)
 
         if self.show_save_button:
@@ -121,7 +125,7 @@ class CurveEditorWidget(QWidget):
             self.save_to_user_btn.clicked.connect(self.on_save_to_user_clicked)
             preset_layout.addWidget(self.save_to_user_btn)
 
-        layout.addLayout(preset_layout)
+        layout.addWidget(self.preset_selector_widget)
 
         # Canvas (drawing area)
         self.canvas = CurveCanvas(self, self.points, self.canvas_size, self.margin, self.grid_divisions)

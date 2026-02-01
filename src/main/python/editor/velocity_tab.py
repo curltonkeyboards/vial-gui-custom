@@ -19,6 +19,7 @@ from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont
 
 from widgets.combo_box import ArrowComboBox
 from widgets.curve_editor import CurveEditorWidget
+from widgets.range_slider import DualRangeSlider
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidgetSimple
 from themes import Theme
@@ -267,7 +268,7 @@ class VelocityTab(BasicEditor):
     def create_zone_controls(self, zone_name, include_curve_editor=False):
         """Create a widget containing all velocity controls for a specific zone (base/keysplit/triplesplit).
         Returns (scroll_area, controls_dict) where controls_dict has references to all control widgets.
-        If include_curve_editor=True, adds curve editor on left side (for base zone)."""
+        All zones use the same layout: curve editor on left, controls on right."""
 
         # Create scroll area to wrap the content
         scroll_area = QScrollArea()
@@ -277,78 +278,49 @@ class VelocityTab(BasicEditor):
         scroll_area.setFrameShape(QFrame.NoFrame)
 
         container = QWidget()
-
         controls = {}
 
-        if include_curve_editor:
-            # For base zone: curve editor on left, controls on right
-            main_layout = QHBoxLayout()
-            main_layout.setSpacing(10)
-            main_layout.setContentsMargins(5, 5, 5, 5)
-            container.setLayout(main_layout)
+        # All zones use same layout: curve editor on left, controls on right
+        main_layout = QHBoxLayout()
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        container.setLayout(main_layout)
 
-            # Curve editor on left side
-            controls['curve_editor'] = CurveEditorWidget(show_save_button=False)
-            controls['curve_editor'].setMinimumSize(250, 200)
-            controls['curve_editor'].setMaximumWidth(300)
-            controls['curve_editor'].setProperty('zone', zone_name)
-            main_layout.addWidget(controls['curve_editor'])
+        # Curve editor on left side (hide preset selector)
+        controls['curve_editor'] = CurveEditorWidget(show_save_button=False)
+        controls['curve_editor'].setMinimumSize(250, 200)
+        controls['curve_editor'].setMaximumWidth(300)
+        controls['curve_editor'].setProperty('zone', zone_name)
+        # Hide the preset selector widget for zone curve editors
+        controls['curve_editor'].preset_selector_widget.setVisible(False)
+        main_layout.addWidget(controls['curve_editor'])
 
-            # Controls on right side in vertical layout
-            layout = QVBoxLayout()
-            layout.setSpacing(4)
-            layout.setContentsMargins(0, 0, 0, 0)
-            controls_widget = QWidget()
-            controls_widget.setLayout(layout)
-            main_layout.addWidget(controls_widget, 1)
-        else:
-            # For keysplit/triplesplit: vertical layout with curve at bottom
-            layout = QVBoxLayout()
-            layout.setSpacing(4)
-            layout.setContentsMargins(5, 5, 5, 5)
-            container.setLayout(layout)
+        # Controls on right side in vertical layout
+        layout = QVBoxLayout()
+        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
+        controls_widget = QWidget()
+        controls_widget.setLayout(layout)
+        main_layout.addWidget(controls_widget, 1)
 
-        # Velocity Min row
-        vel_min_layout = QHBoxLayout()
-        vel_min_layout.setContentsMargins(0, 0, 0, 0)
-        vel_min_layout.setSpacing(4)
-        vel_min_label = QLabel(tr("VelocityTab", "Vel Min:"))
-        vel_min_label.setMinimumWidth(65)
-        vel_min_layout.addWidget(vel_min_label)
+        # Velocity Range (dual-handle slider)
+        vel_layout = QHBoxLayout()
+        vel_layout.setContentsMargins(0, 0, 0, 0)
+        vel_layout.setSpacing(4)
+        vel_label = QLabel(tr("VelocityTab", "Velocity Range:"))
+        vel_label.setMinimumWidth(95)
+        vel_layout.addWidget(vel_label)
 
-        controls['vel_min_slider'] = QSlider(Qt.Horizontal)
-        controls['vel_min_slider'].setMinimum(1)
-        controls['vel_min_slider'].setMaximum(127)
-        controls['vel_min_slider'].setValue(1)
-        controls['vel_min_slider'].setProperty('zone', zone_name)
-        vel_min_layout.addWidget(controls['vel_min_slider'], 1)
+        controls['velocity_range_slider'] = DualRangeSlider(minimum=1, maximum=127)
+        controls['velocity_range_slider'].setValues(1, 127)
+        controls['velocity_range_slider'].setProperty('zone', zone_name)
+        vel_layout.addWidget(controls['velocity_range_slider'], 1)
 
-        controls['vel_min_value'] = QLabel("1")
-        controls['vel_min_value'].setMinimumWidth(30)
-        controls['vel_min_value'].setStyleSheet("QLabel { font-weight: bold; }")
-        vel_min_layout.addWidget(controls['vel_min_value'])
-        layout.addLayout(vel_min_layout)
-
-        # Velocity Max row
-        vel_max_layout = QHBoxLayout()
-        vel_max_layout.setContentsMargins(0, 0, 0, 0)
-        vel_max_layout.setSpacing(4)
-        vel_max_label = QLabel(tr("VelocityTab", "Vel Max:"))
-        vel_max_label.setMinimumWidth(65)
-        vel_max_layout.addWidget(vel_max_label)
-
-        controls['vel_max_slider'] = QSlider(Qt.Horizontal)
-        controls['vel_max_slider'].setMinimum(1)
-        controls['vel_max_slider'].setMaximum(127)
-        controls['vel_max_slider'].setValue(127)
-        controls['vel_max_slider'].setProperty('zone', zone_name)
-        vel_max_layout.addWidget(controls['vel_max_slider'], 1)
-
-        controls['vel_max_value'] = QLabel("127")
-        controls['vel_max_value'].setMinimumWidth(30)
-        controls['vel_max_value'].setStyleSheet("QLabel { font-weight: bold; }")
-        vel_max_layout.addWidget(controls['vel_max_value'])
-        layout.addLayout(vel_max_layout)
+        controls['velocity_range_value'] = QLabel("1-127")
+        controls['velocity_range_value'].setMinimumWidth(50)
+        controls['velocity_range_value'].setStyleSheet("QLabel { font-weight: bold; }")
+        vel_layout.addWidget(controls['velocity_range_value'])
+        layout.addLayout(vel_layout)
 
         # Separator
         line = QFrame()
@@ -356,56 +328,29 @@ class VelocityTab(BasicEditor):
         line.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line)
 
-        # Press Time sliders
-        # Slow Press Time
-        min_press_layout = QHBoxLayout()
-        min_press_layout.setContentsMargins(0, 0, 0, 0)
-        min_press_layout.setSpacing(4)
-        min_press_layout.addWidget(self.create_help_label(
-            "Slow press threshold (ms):\n"
-            "Keys pressed slower than this get minimum velocity."
+        # Key Press ms Range (dual-handle slider)
+        press_layout = QHBoxLayout()
+        press_layout.setContentsMargins(0, 0, 0, 0)
+        press_layout.setSpacing(4)
+        press_layout.addWidget(self.create_help_label(
+            "Key press time range (ms):\n"
+            "Fast end: Keys pressed faster get max velocity\n"
+            "Slow end: Keys pressed slower get min velocity"
         ))
-        min_press_label = QLabel(tr("VelocityTab", "Slow Press:"))
-        min_press_label.setMinimumWidth(85)
-        min_press_layout.addWidget(min_press_label)
+        press_label = QLabel(tr("VelocityTab", "Key press ms:"))
+        press_label.setMinimumWidth(85)
+        press_layout.addWidget(press_label)
 
-        controls['min_press_slider'] = QSlider(Qt.Horizontal)
-        controls['min_press_slider'].setMinimum(50)
-        controls['min_press_slider'].setMaximum(500)
-        controls['min_press_slider'].setValue(200)
-        controls['min_press_slider'].setProperty('zone', zone_name)
-        min_press_layout.addWidget(controls['min_press_slider'], 1)
+        controls['press_time_range_slider'] = DualRangeSlider(minimum=2, maximum=500)
+        controls['press_time_range_slider'].setValues(20, 200)  # fast=20ms, slow=200ms
+        controls['press_time_range_slider'].setProperty('zone', zone_name)
+        press_layout.addWidget(controls['press_time_range_slider'], 1)
 
-        controls['min_press_value'] = QLabel("200ms")
-        controls['min_press_value'].setMinimumWidth(50)
-        controls['min_press_value'].setStyleSheet("QLabel { font-weight: bold; }")
-        min_press_layout.addWidget(controls['min_press_value'])
-        layout.addLayout(min_press_layout)
-
-        # Fast Press Time
-        max_press_layout = QHBoxLayout()
-        max_press_layout.setContentsMargins(0, 0, 0, 0)
-        max_press_layout.setSpacing(4)
-        max_press_layout.addWidget(self.create_help_label(
-            "Fast press threshold (ms):\n"
-            "Keys pressed faster than this get maximum velocity."
-        ))
-        max_press_label = QLabel(tr("VelocityTab", "Fast Press:"))
-        max_press_label.setMinimumWidth(85)
-        max_press_layout.addWidget(max_press_label)
-
-        controls['max_press_slider'] = QSlider(Qt.Horizontal)
-        controls['max_press_slider'].setMinimum(5)
-        controls['max_press_slider'].setMaximum(100)
-        controls['max_press_slider'].setValue(20)
-        controls['max_press_slider'].setProperty('zone', zone_name)
-        max_press_layout.addWidget(controls['max_press_slider'], 1)
-
-        controls['max_press_value'] = QLabel("20ms")
-        controls['max_press_value'].setMinimumWidth(50)
-        controls['max_press_value'].setStyleSheet("QLabel { font-weight: bold; }")
-        max_press_layout.addWidget(controls['max_press_value'])
-        layout.addLayout(max_press_layout)
+        controls['press_time_range_value'] = QLabel("20-200ms")
+        controls['press_time_range_value'].setMinimumWidth(70)
+        controls['press_time_range_value'].setStyleSheet("QLabel { font-weight: bold; }")
+        press_layout.addWidget(controls['press_time_range_value'])
+        layout.addLayout(press_layout)
 
         # Separator
         line2 = QFrame()
@@ -445,13 +390,16 @@ class VelocityTab(BasicEditor):
         mode_layout.addWidget(controls['aftertouch_mode_combo'], 1)
         layout.addLayout(mode_layout)
 
-        # Aftertouch CC
+        # Aftertouch CC (hidden when aftertouch is Off)
+        controls['aftertouch_cc_widget'] = QWidget()
         cc_layout = QHBoxLayout()
         cc_layout.setContentsMargins(0, 0, 0, 0)
         cc_layout.setSpacing(4)
+        controls['aftertouch_cc_widget'].setLayout(cc_layout)
+
         cc_layout.addWidget(self.create_help_label("MIDI CC for aftertouch.\nOff: Standard aftertouch\nCC#: Send as CC instead"))
-        cc_label = QLabel(tr("VelocityTab", "AT CC:"))
-        cc_label.setMinimumWidth(85)
+        cc_label = QLabel(tr("VelocityTab", "Aftertouch #CC:"))
+        cc_label.setMinimumWidth(95)
         cc_layout.addWidget(cc_label)
 
         controls['aftertouch_cc_combo'] = ArrowComboBox()
@@ -466,7 +414,9 @@ class VelocityTab(BasicEditor):
         controls['aftertouch_cc_combo'].setCurrentIndex(0)
         controls['aftertouch_cc_combo'].setProperty('zone', zone_name)
         cc_layout.addWidget(controls['aftertouch_cc_combo'], 1)
-        layout.addLayout(cc_layout)
+
+        layout.addWidget(controls['aftertouch_cc_widget'])
+        controls['aftertouch_cc_widget'].setVisible(False)  # Hidden when aftertouch is Off
 
         # Vibrato Sensitivity (hidden by default)
         controls['vibrato_sens_widget'] = QWidget()
@@ -652,24 +602,6 @@ class VelocityTab(BasicEditor):
         layout.addWidget(controls['retrigger_widget'])
         controls['retrigger_widget'].setVisible(False)
 
-        # Add curve editor for zone tabs (keysplit/triplesplit only)
-        # Base zone already has curve editor added in the horizontal layout above
-        if zone_name != 'base' and not include_curve_editor:
-            line5 = QFrame()
-            line5.setFrameShape(QFrame.HLine)
-            line5.setFrameShadow(QFrame.Sunken)
-            layout.addWidget(line5)
-
-            curve_label = QLabel(tr("VelocityTab", "Zone Velocity Curve:"))
-            curve_label.setStyleSheet("font-weight: bold;")
-            layout.addWidget(curve_label)
-
-            controls['curve_editor'] = CurveEditorWidget(show_save_button=False)
-            controls['curve_editor'].setMinimumSize(200, 150)
-            controls['curve_editor'].setMaximumHeight(180)
-            controls['curve_editor'].setProperty('zone', zone_name)
-            layout.addWidget(controls['curve_editor'])
-
         layout.addStretch()
 
         # Set container in scroll area and return
@@ -691,48 +623,31 @@ class VelocityTab(BasicEditor):
             else:
                 self.global_midi_settings[f'{zone_name}_zone'][key] = value
 
-        # Velocity min/max
-        def on_vel_min_changed(value):
-            controls['vel_min_value'].setText(str(value))
-            set_setting('velocity_min', value)
-            if value > controls['vel_max_slider'].value():
-                controls['vel_max_slider'].blockSignals(True)
-                controls['vel_max_slider'].setValue(value)
-                controls['vel_max_value'].setText(str(value))
-                set_setting('velocity_max', value)
-                controls['vel_max_slider'].blockSignals(False)
+        # Velocity range (dual-handle slider)
+        def on_velocity_range_changed(low, high):
+            controls['velocity_range_value'].setText(f"{low}-{high}")
+            set_setting('velocity_min', low)
+            set_setting('velocity_max', high)
 
-        def on_vel_max_changed(value):
-            controls['vel_max_value'].setText(str(value))
-            set_setting('velocity_max', value)
-            if value < controls['vel_min_slider'].value():
-                controls['vel_min_slider'].blockSignals(True)
-                controls['vel_min_slider'].setValue(value)
-                controls['vel_min_value'].setText(str(value))
-                set_setting('velocity_min', value)
-                controls['vel_min_slider'].blockSignals(False)
+        controls['velocity_range_slider'].range_changed.connect(on_velocity_range_changed)
 
-        controls['vel_min_slider'].valueChanged.connect(on_vel_min_changed)
-        controls['vel_max_slider'].valueChanged.connect(on_vel_max_changed)
+        # Press time range (dual-handle slider)
+        def on_press_time_range_changed(fast, slow):
+            controls['press_time_range_value'].setText(f"{fast}-{slow}ms")
+            set_setting('max_press_time', fast)  # fast press = max velocity
+            set_setting('min_press_time', slow)  # slow press = min velocity
 
-        # Press times
-        def on_min_press_changed(value):
-            controls['min_press_value'].setText(f"{value}ms")
-            set_setting('min_press_time', value)
-
-        def on_max_press_changed(value):
-            controls['max_press_value'].setText(f"{value}ms")
-            set_setting('max_press_time', value)
-
-        controls['min_press_slider'].valueChanged.connect(on_min_press_changed)
-        controls['max_press_slider'].valueChanged.connect(on_max_press_changed)
+        controls['press_time_range_slider'].range_changed.connect(on_press_time_range_changed)
 
         # Aftertouch mode
         def on_aftertouch_mode_changed(index):
             mode = controls['aftertouch_mode_combo'].currentData()
             is_vibrato = (mode == 4)
+            is_off = (mode == 0)
             controls['vibrato_sens_widget'].setVisible(is_vibrato)
             controls['vibrato_decay_widget'].setVisible(is_vibrato)
+            # Show aftertouch CC only when aftertouch is enabled
+            controls['aftertouch_cc_widget'].setVisible(not is_off)
             set_setting('aftertouch_mode', mode)
 
         controls['aftertouch_mode_combo'].currentIndexChanged.connect(on_aftertouch_mode_changed)
@@ -831,38 +746,21 @@ class VelocityTab(BasicEditor):
 
         # Description
         desc_label = QLabel(tr("VelocityTab",
-            "Monitor real-time MIDI velocity values for keys on each layer.\n"
-            "Select a layer to see which keys have MIDI notes and their current velocity."))
+            "Monitor real-time MIDI velocity values for keys.\n"
+            "Configure velocity curves, aftertouch, and press timing."))
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("color: gray; font-size: 9pt;")
         desc_label.setAlignment(QtCore.Qt.AlignCenter)
         main_layout.addWidget(desc_label)
 
-        # Layer selector
-        layer_container = QWidget()
-        layer_layout = QHBoxLayout()
-        layer_layout.setContentsMargins(0, 0, 0, 0)
-        layer_container.setLayout(layer_layout)
+        # Layer info label (auto-detected from keyboard)
+        self.layer_info_label = QLabel(tr("VelocityTab", "Layer: Auto"))
+        self.layer_info_label.setStyleSheet("color: #888; font-size: 9pt;")
+        self.layer_info_label.setAlignment(QtCore.Qt.AlignCenter)
+        main_layout.addWidget(self.layer_info_label)
 
-        layer_layout.addStretch()
-
-        layer_label = QLabel(tr("VelocityTab", "Layer:"))
-        layer_label.setStyleSheet("font-weight: bold;")
-        layer_layout.addWidget(layer_label)
-
-        self.layer_buttons = QButtonGroup()
-        for i in range(12):
-            btn = QRadioButton(str(i))
-            btn.setMinimumWidth(35)
-            if i == 0:
-                btn.setChecked(True)
-            self.layer_buttons.addButton(btn, i)
-            layer_layout.addWidget(btn)
-
-        self.layer_buttons.buttonClicked.connect(self.on_layer_changed)
-
-        layer_layout.addStretch()
-        main_layout.addWidget(layer_container)
+        # Store current layer (default 0, will be auto-detected)
+        self.current_layer = 0
 
         # MIDI keys info label
         self.midi_info_label = QLabel(tr("VelocityTab", "MIDI Keys: 0"))
@@ -1002,16 +900,13 @@ class VelocityTab(BasicEditor):
         self.triplesplit_tab_widget = triplesplit_widget
 
         # Create references to base zone controls for backward compatibility
-        self.vel_min_slider = base_controls['vel_min_slider']
-        self.vel_max_slider = base_controls['vel_max_slider']
-        self.vel_min_value = base_controls['vel_min_value']
-        self.vel_max_value = base_controls['vel_max_value']
-        self.min_press_slider = base_controls['min_press_slider']
-        self.max_press_slider = base_controls['max_press_slider']
-        self.min_press_value = base_controls['min_press_value']
-        self.max_press_value = base_controls['max_press_value']
+        self.velocity_range_slider = base_controls['velocity_range_slider']
+        self.velocity_range_value = base_controls['velocity_range_value']
+        self.press_time_range_slider = base_controls['press_time_range_slider']
+        self.press_time_range_value = base_controls['press_time_range_value']
         self.aftertouch_mode_combo = base_controls['aftertouch_mode_combo']
         self.aftertouch_cc_combo = base_controls['aftertouch_cc_combo']
+        self.aftertouch_cc_widget = base_controls['aftertouch_cc_widget']
         self.vibrato_sens_widget = base_controls['vibrato_sens_widget']
         self.vibrato_sens_slider = base_controls['vibrato_sens_slider']
         self.vibrato_sens_value = base_controls['vibrato_sens_value']
@@ -1086,9 +981,10 @@ class VelocityTab(BasicEditor):
         self.poll_timer.stop()
         self.keyboard_widget.clear_velocities()
 
-    def on_layer_changed(self, button):
-        """Handle layer selection change"""
-        self.current_layer = self.layer_buttons.id(button)
+    def set_layer(self, layer):
+        """Set the current layer (can be called when layer is auto-detected)"""
+        self.current_layer = layer
+        self.layer_info_label.setText(tr("VelocityTab", f"Layer: {layer}"))
         self.scan_midi_keys()
 
     def scan_midi_keys(self):
@@ -1163,22 +1059,24 @@ class VelocityTab(BasicEditor):
         settings = self.global_midi_settings
 
         # Block signals during UI update
-        # Note: velocity_mode is fixed at Speed+Peak (3), no UI control needed
+        self.velocity_range_slider.blockSignals(True)
+        self.press_time_range_slider.blockSignals(True)
         self.aftertouch_mode_combo.blockSignals(True)
         self.aftertouch_cc_combo.blockSignals(True)
         self.vibrato_sens_slider.blockSignals(True)
         self.vibrato_decay_slider.blockSignals(True)
-        self.min_press_slider.blockSignals(True)
-        self.max_press_slider.blockSignals(True)
 
-        # Set min/max press time
-        min_press = settings.get('min_press_time', 200)
-        self.min_press_slider.setValue(min_press)
-        self.min_press_value.setText(f"{min_press}ms")
+        # Set velocity range
+        vel_min = settings.get('velocity_min', 1)
+        vel_max = settings.get('velocity_max', 127)
+        self.velocity_range_slider.setValues(vel_min, vel_max)
+        self.velocity_range_value.setText(f"{vel_min}-{vel_max}")
 
-        max_press = settings.get('max_press_time', 20)
-        self.max_press_slider.setValue(max_press)
-        self.max_press_value.setText(f"{max_press}ms")
+        # Set press time range (fast=max_press, slow=min_press)
+        fast_press = settings.get('max_press_time', 20)
+        slow_press = settings.get('min_press_time', 200)
+        self.press_time_range_slider.setValues(fast_press, slow_press)
+        self.press_time_range_value.setText(f"{fast_press}-{slow_press}ms")
 
         # Set aftertouch mode
         mode = settings.get('aftertouch_mode', 0)
@@ -1187,10 +1085,12 @@ class VelocityTab(BasicEditor):
                 self.aftertouch_mode_combo.setCurrentIndex(i)
                 break
 
-        # Show/hide vibrato controls
+        # Show/hide vibrato controls and aftertouch CC
         is_vibrato = (mode == 4)
+        is_off = (mode == 0)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
+        self.aftertouch_cc_widget.setVisible(not is_off)
 
         # Set aftertouch CC
         cc = settings.get('aftertouch_cc', 255)
@@ -1209,29 +1109,21 @@ class VelocityTab(BasicEditor):
         self.vibrato_decay_value.setText(f"{decay}ms")
 
         # Unblock signals
+        self.velocity_range_slider.blockSignals(False)
+        self.press_time_range_slider.blockSignals(False)
         self.aftertouch_mode_combo.blockSignals(False)
         self.aftertouch_cc_combo.blockSignals(False)
         self.vibrato_sens_slider.blockSignals(False)
         self.vibrato_decay_slider.blockSignals(False)
-        self.min_press_slider.blockSignals(False)
-        self.max_press_slider.blockSignals(False)
-
-    def on_min_press_changed(self, value):
-        """Handle min press time slider change"""
-        self.min_press_value.setText(f"{value}ms")
-        self.global_midi_settings['min_press_time'] = value
-
-    def on_max_press_changed(self, value):
-        """Handle max press time slider change"""
-        self.max_press_value.setText(f"{value}ms")
-        self.global_midi_settings['max_press_time'] = value
 
     def on_aftertouch_mode_changed(self, index):
-        """Handle aftertouch mode change - show/hide vibrato controls"""
+        """Handle aftertouch mode change - show/hide vibrato and CC controls"""
         mode = self.aftertouch_mode_combo.currentData()
         is_vibrato = (mode == 4)
+        is_off = (mode == 0)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
+        self.aftertouch_cc_widget.setVisible(not is_off)
         self.global_midi_settings['aftertouch_mode'] = mode
 
     def on_aftertouch_cc_changed(self, index):
@@ -1339,21 +1231,17 @@ class VelocityTab(BasicEditor):
             if hasattr(control, 'blockSignals'):
                 control.blockSignals(True)
 
-        # Update velocity min/max
+        # Update velocity range
         vel_min = zone_data.get('velocity_min', 1)
         vel_max = zone_data.get('velocity_max', 127)
-        controls['vel_min_slider'].setValue(vel_min)
-        controls['vel_max_slider'].setValue(vel_max)
-        controls['vel_min_value'].setText(str(vel_min))
-        controls['vel_max_value'].setText(str(vel_max))
+        controls['velocity_range_slider'].setValues(vel_min, vel_max)
+        controls['velocity_range_value'].setText(f"{vel_min}-{vel_max}")
 
-        # Update press times
+        # Update press time range
         slow_press = zone_data.get('slow_press_time', zone_data.get('min_press_time', 200))
         fast_press = zone_data.get('fast_press_time', zone_data.get('max_press_time', 20))
-        controls['min_press_slider'].setValue(slow_press)
-        controls['max_press_slider'].setValue(fast_press)
-        controls['min_press_value'].setText(f"{slow_press}ms")
-        controls['max_press_value'].setText(f"{fast_press}ms")
+        controls['press_time_range_slider'].setValues(fast_press, slow_press)
+        controls['press_time_range_value'].setText(f"{fast_press}-{slow_press}ms")
 
         # Update aftertouch mode
         at_mode = zone_data.get('aftertouch_mode', 0)
@@ -1362,10 +1250,12 @@ class VelocityTab(BasicEditor):
                 controls['aftertouch_mode_combo'].setCurrentIndex(i)
                 break
 
-        # Show/hide vibrato controls based on mode
+        # Show/hide vibrato controls and aftertouch CC based on mode
         is_vibrato = (at_mode == 4)
+        is_off = (at_mode == 0)
         controls['vibrato_sens_widget'].setVisible(is_vibrato)
         controls['vibrato_decay_widget'].setVisible(is_vibrato)
+        controls['aftertouch_cc_widget'].setVisible(not is_off)
 
         # Update aftertouch CC
         at_cc = zone_data.get('aftertouch_cc', 255)
@@ -1519,30 +1409,6 @@ class VelocityTab(BasicEditor):
                     item.setText(curve_name)
                     self.user_curve_names[slot_index] = curve_name
 
-    def on_vel_min_changed(self, value):
-        """Handle velocity min slider change"""
-        self.vel_min_value.setText(str(value))
-        self.global_midi_settings['velocity_min'] = value
-        # Ensure min <= max
-        if value > self.vel_max_slider.value():
-            self.vel_max_slider.blockSignals(True)
-            self.vel_max_slider.setValue(value)
-            self.vel_max_value.setText(str(value))
-            self.global_midi_settings['velocity_max'] = value
-            self.vel_max_slider.blockSignals(False)
-
-    def on_vel_max_changed(self, value):
-        """Handle velocity max slider change"""
-        self.vel_max_value.setText(str(value))
-        self.global_midi_settings['velocity_max'] = value
-        # Ensure max >= min
-        if value < self.vel_min_slider.value():
-            self.vel_min_slider.blockSignals(True)
-            self.vel_min_slider.setValue(value)
-            self.vel_min_value.setText(str(value))
-            self.global_midi_settings['velocity_min'] = value
-            self.vel_min_slider.blockSignals(False)
-
     def on_user_curve_selected(self, slot_index):
         """Load user curve (velocity preset) from keyboard when selected in dropdown.
         This loads all preset settings including zone data for keysplit/triplesplit."""
@@ -1639,10 +1505,10 @@ class VelocityTab(BasicEditor):
             return None
 
         zone_data = {
-            'velocity_min': controls['vel_min_slider'].value(),
-            'velocity_max': controls['vel_max_slider'].value(),
-            'slow_press_time': controls['min_press_slider'].value(),
-            'fast_press_time': controls['max_press_slider'].value(),
+            'velocity_min': controls['velocity_range_slider'].lowValue(),
+            'velocity_max': controls['velocity_range_slider'].highValue(),
+            'slow_press_time': controls['press_time_range_slider'].highValue(),  # slow is high value
+            'fast_press_time': controls['press_time_range_slider'].lowValue(),   # fast is low value
             'aftertouch_mode': controls['aftertouch_mode_combo'].currentData(),
             'aftertouch_cc': controls['aftertouch_cc_combo'].currentData(),
             'vibrato_sensitivity': controls['vibrato_sens_slider'].value(),

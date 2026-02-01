@@ -671,3 +671,190 @@ class RapidTriggerSlider(MultiHandleSlider):
             # Minimum internal value is 51 (= 101 - 50)
             return max(51, min(new_value, self.maximum))
         return max(self.minimum, min(new_value, self.maximum))
+
+
+class DualRangeSlider(QWidget):
+    """
+    A simple dual-handle range slider for selecting min/max values.
+    Handles cannot cross each other.
+    """
+
+    range_changed = pyqtSignal(int, int)  # (low_value, high_value)
+
+    def __init__(self, minimum=0, maximum=100, parent=None):
+        super().__init__(parent)
+        self._minimum = minimum
+        self._maximum = maximum
+        self._low_value = minimum
+        self._high_value = maximum
+        self._active_handle = None  # 'low', 'high', or None
+        self._hover_handle = None
+
+        # Visual settings
+        self.handle_radius = 8
+        self.track_height = 6
+        self.margin = 15
+
+        self.setMinimumHeight(28)
+        self.setMinimumWidth(150)
+        self.setMouseTracking(True)
+
+    def minimum(self):
+        return self._minimum
+
+    def maximum(self):
+        return self._maximum
+
+    def setRange(self, minimum, maximum):
+        self._minimum = minimum
+        self._maximum = maximum
+        self._low_value = max(minimum, min(self._low_value, maximum))
+        self._high_value = max(minimum, min(self._high_value, maximum))
+        self.update()
+
+    def lowValue(self):
+        return self._low_value
+
+    def highValue(self):
+        return self._high_value
+
+    def setLowValue(self, value):
+        value = max(self._minimum, min(value, self._high_value))
+        if value != self._low_value:
+            self._low_value = value
+            self.update()
+            self.range_changed.emit(self._low_value, self._high_value)
+
+    def setHighValue(self, value):
+        value = max(self._low_value, min(value, self._maximum))
+        if value != self._high_value:
+            self._high_value = value
+            self.update()
+            self.range_changed.emit(self._low_value, self._high_value)
+
+    def setValues(self, low, high):
+        """Set both values at once"""
+        low = max(self._minimum, min(low, self._maximum))
+        high = max(self._minimum, min(high, self._maximum))
+        if low > high:
+            low, high = high, low
+        self._low_value = low
+        self._high_value = high
+        self.update()
+
+    def _value_to_x(self, value):
+        track_width = self.width() - 2 * self.margin
+        if self._maximum == self._minimum:
+            return self.margin
+        ratio = (value - self._minimum) / (self._maximum - self._minimum)
+        return int(self.margin + ratio * track_width)
+
+    def _x_to_value(self, x):
+        track_width = self.width() - 2 * self.margin
+        if track_width == 0:
+            return self._minimum
+        ratio = (x - self.margin) / track_width
+        ratio = max(0, min(1, ratio))
+        return int(self._minimum + ratio * (self._maximum - self._minimum))
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        palette = QApplication.palette()
+        track_bg = palette.color(QPalette.AlternateBase)
+        fill_color = palette.color(QPalette.Highlight)
+
+        height = self.height()
+        track_y = height // 2 - self.track_height // 2
+
+        # Draw track background
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(track_bg))
+        painter.drawRoundedRect(self.margin, track_y,
+                                self.width() - 2 * self.margin,
+                                self.track_height, 3, 3)
+
+        # Draw selected range
+        low_x = self._value_to_x(self._low_value)
+        high_x = self._value_to_x(self._high_value)
+        painter.setBrush(QBrush(fill_color))
+        painter.drawRoundedRect(low_x, track_y, high_x - low_x, self.track_height, 3, 3)
+
+        # Draw handles
+        for which, value in [('low', self._low_value), ('high', self._high_value)]:
+            x = self._value_to_x(value)
+            y = height // 2
+
+            if self._active_handle == which or self._hover_handle == which:
+                painter.setBrush(QBrush(QColor(255, 200, 100)))
+            else:
+                painter.setBrush(QBrush(palette.color(QPalette.Button)))
+
+            painter.setPen(QPen(palette.color(QPalette.Mid), 1))
+            painter.drawEllipse(QPointF(x, y), self.handle_radius, self.handle_radius)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            x, y = event.x(), event.y()
+            low_x = self._value_to_x(self._low_value)
+            high_x = self._value_to_x(self._high_value)
+            cy = self.height() // 2
+
+            # Check handles
+            dist_low = ((x - low_x) ** 2 + (y - cy) ** 2) ** 0.5
+            dist_high = ((x - high_x) ** 2 + (y - cy) ** 2) ** 0.5
+
+            if dist_low <= self.handle_radius + 5:
+                self._active_handle = 'low'
+            elif dist_high <= self.handle_radius + 5:
+                self._active_handle = 'high'
+            else:
+                # Click on track - move nearest handle
+                if abs(x - low_x) < abs(x - high_x):
+                    self._active_handle = 'low'
+                    self.setLowValue(self._x_to_value(x))
+                else:
+                    self._active_handle = 'high'
+                    self.setHighValue(self._x_to_value(x))
+            self.update()
+
+    def mouseMoveEvent(self, event):
+        if self._active_handle:
+            value = self._x_to_value(event.x())
+            if self._active_handle == 'low':
+                value = min(value, self._high_value)
+                self.setLowValue(value)
+            else:
+                value = max(value, self._low_value)
+                self.setHighValue(value)
+        else:
+            # Update hover
+            x, y = event.x(), event.y()
+            low_x = self._value_to_x(self._low_value)
+            high_x = self._value_to_x(self._high_value)
+            cy = self.height() // 2
+
+            old_hover = self._hover_handle
+            dist_low = ((x - low_x) ** 2 + (y - cy) ** 2) ** 0.5
+            dist_high = ((x - high_x) ** 2 + (y - cy) ** 2) ** 0.5
+
+            if dist_low <= self.handle_radius + 5:
+                self._hover_handle = 'low'
+            elif dist_high <= self.handle_radius + 5:
+                self._hover_handle = 'high'
+            else:
+                self._hover_handle = None
+
+            if old_hover != self._hover_handle:
+                self.update()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._active_handle = None
+            self.update()
+
+    def leaveEvent(self, event):
+        self._hover_handle = None
+        self.update()
+
