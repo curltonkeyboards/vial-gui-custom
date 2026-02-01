@@ -2032,9 +2032,9 @@ class TriggerSettingsTab(BasicEditor):
         self.trigger_slider.set_deadzone_top(settings['deadzone_top'])
 
         # Update labels
-        self.deadzone_bottom_value_label.setText(self.value_to_mm(settings['deadzone_bottom']))
+        self.deadzone_bottom_value_label.setText(self.deadzone_to_mm(settings['deadzone_bottom']))
         self.actuation_value_label.setText(self.value_to_mm(settings['actuation']))
-        self.deadzone_top_value_label.setText(self.value_to_mm(settings['deadzone_top']))
+        self.deadzone_top_value_label.setText(self.deadzone_to_mm(settings['deadzone_top']))
 
         # Load velocity curve (now supports 0-16 instead of 0-4)
         curve_index = settings.get('velocity_curve', 0)
@@ -2280,7 +2280,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def on_deadzone_top_changed(self, value):
         """Handle top deadzone slider change - applies to all selected keys"""
-        self.deadzone_top_value_label.setText(self.value_to_mm(value))
+        self.deadzone_top_value_label.setText(self.deadzone_to_mm(value))
 
         if self.syncing:
             return
@@ -2312,7 +2312,7 @@ class TriggerSettingsTab(BasicEditor):
 
     def on_deadzone_bottom_changed(self, value):
         """Handle bottom deadzone slider change - applies to all selected keys"""
-        self.deadzone_bottom_value_label.setText(self.value_to_mm(value))
+        self.deadzone_bottom_value_label.setText(self.deadzone_to_mm(value))
 
         if self.syncing:
             return

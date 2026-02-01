@@ -330,31 +330,34 @@ class VelocityTab(BasicEditor):
         bottom_layout.setSpacing(20)
 
         # =====================================================================
-        # LEFT SIDE: Velocity Preset Group (curve + all settings)
+        # LEFT SIDE: Velocity Preset Group (curve on left, settings on right)
         # =====================================================================
         preset_group = QGroupBox(tr("VelocityTab", "Velocity Preset"))
         preset_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        preset_layout = QVBoxLayout()
-        preset_layout.setSpacing(8)
-        preset_group.setLayout(preset_layout)
+        preset_main_layout = QHBoxLayout()
+        preset_main_layout.setSpacing(15)
+        preset_group.setLayout(preset_main_layout)
 
-        # Curve editor widget
+        # Curve editor widget (LEFT side)
         self.curve_editor = CurveEditorWidget(show_save_button=True)
-        self.curve_editor.setMinimumSize(300, 200)
+        self.curve_editor.setMinimumSize(280, 220)
+        self.curve_editor.setMaximumWidth(320)
         self.curve_editor.curve_changed.connect(self.on_curve_changed)
         self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
         self.curve_editor.save_to_user_requested.connect(self.on_save_to_user_curve)
-        preset_layout.addWidget(self.curve_editor)
+        preset_main_layout.addWidget(self.curve_editor)
 
-        # Velocity Min/Max sliders in horizontal layout
-        vel_range_layout = QHBoxLayout()
-        vel_range_layout.setContentsMargins(0, 0, 0, 0)
-        vel_range_layout.setSpacing(10)
+        # Controls layout (RIGHT side)
+        preset_layout = QVBoxLayout()
+        preset_layout.setSpacing(4)
+        preset_main_layout.addLayout(preset_layout, 1)
 
-        # Velocity Min
-        vel_min_layout = QVBoxLayout()
+        # Velocity Min row
+        vel_min_layout = QHBoxLayout()
+        vel_min_layout.setContentsMargins(0, 0, 0, 0)
+        vel_min_layout.setSpacing(4)
         vel_min_label = QLabel(tr("VelocityTab", "Vel Min:"))
-        vel_min_label.setAlignment(Qt.AlignCenter)
+        vel_min_label.setMinimumWidth(65)
         vel_min_layout.addWidget(vel_min_label)
 
         self.vel_min_slider = QSlider(Qt.Horizontal)
@@ -362,19 +365,20 @@ class VelocityTab(BasicEditor):
         self.vel_min_slider.setMaximum(127)
         self.vel_min_slider.setValue(1)
         self.vel_min_slider.valueChanged.connect(self.on_vel_min_changed)
-        vel_min_layout.addWidget(self.vel_min_slider)
+        vel_min_layout.addWidget(self.vel_min_slider, 1)
 
         self.vel_min_value = QLabel("1")
-        self.vel_min_value.setAlignment(Qt.AlignCenter)
+        self.vel_min_value.setMinimumWidth(30)
         self.vel_min_value.setStyleSheet("QLabel { font-weight: bold; }")
         vel_min_layout.addWidget(self.vel_min_value)
+        preset_layout.addLayout(vel_min_layout)
 
-        vel_range_layout.addLayout(vel_min_layout)
-
-        # Velocity Max
-        vel_max_layout = QVBoxLayout()
+        # Velocity Max row
+        vel_max_layout = QHBoxLayout()
+        vel_max_layout.setContentsMargins(0, 0, 0, 0)
+        vel_max_layout.setSpacing(4)
         vel_max_label = QLabel(tr("VelocityTab", "Vel Max:"))
-        vel_max_label.setAlignment(Qt.AlignCenter)
+        vel_max_label.setMinimumWidth(65)
         vel_max_layout.addWidget(vel_max_label)
 
         self.vel_max_slider = QSlider(Qt.Horizontal)
@@ -382,15 +386,13 @@ class VelocityTab(BasicEditor):
         self.vel_max_slider.setMaximum(127)
         self.vel_max_slider.setValue(127)
         self.vel_max_slider.valueChanged.connect(self.on_vel_max_changed)
-        vel_max_layout.addWidget(self.vel_max_slider)
+        vel_max_layout.addWidget(self.vel_max_slider, 1)
 
         self.vel_max_value = QLabel("127")
-        self.vel_max_value.setAlignment(Qt.AlignCenter)
+        self.vel_max_value.setMinimumWidth(30)
         self.vel_max_value.setStyleSheet("QLabel { font-weight: bold; }")
         vel_max_layout.addWidget(self.vel_max_value)
-
-        vel_range_layout.addLayout(vel_max_layout)
-        preset_layout.addLayout(vel_range_layout)
+        preset_layout.addLayout(vel_max_layout)
 
         # Separator
         line2 = QFrame()
