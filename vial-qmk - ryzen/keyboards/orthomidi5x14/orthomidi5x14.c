@@ -11409,76 +11409,52 @@ void oled_render_keylog(void) {
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
 
-	// ============ VELOCITY DEBUG INFO ============
-	// Show velocity mode name
-	const char* mode_names[] = {"FIX", "PEAK", "SPD", "S+P"};
-	const char* mode_name = (velocity_mode < 4) ? mode_names[velocity_mode] : "???";
+	// Line 1: Transposition
+	if (keysplittransposestatus == 1) {
+		snprintf(name, sizeof(name), "\n  TRA%+3d // TRA%+3d", transpose_number + octave_number, transpose_number2 + octave_number2);
+	} else if (keysplittransposestatus == 2) {
+		snprintf(name, sizeof(name), "\n T%+3d / T%+3d  /T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
+	} else if (keysplittransposestatus == 3) {
+		snprintf(name, sizeof(name), "\nT%+3d/T%+3d/T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
+	} else {
+		snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
+	}
 
-	// Show velocity curve (0-6 factory, 7-16 user)
+	// Line 2: Velocity curve name (factory or user preset name)
 	uint8_t curve = keyboard_settings.he_velocity_curve;
 	const char* curve_names[] = {"Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"};
 
-	// First line: Mode and Curve
 	if (curve <= 6) {
-		snprintf(name, sizeof(name), "\n M:%s CRV:%d(%s)", mode_name, curve, curve_names[curve]);
+		// Factory curve - show name centered
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n      %s", curve_names[curve]);
 	} else {
-		// Show user preset name (truncated to fit display)
-		uint8_t slot = curve - CURVE_USER_START;  // Convert to 0-9 index
+		// User curve - show preset name
+		uint8_t slot = curve - CURVE_USER_START;
 		if (slot < 10 && user_curves.presets[slot].name[0] != '\0') {
-			char preset_name[9];
-			strncpy(preset_name, user_curves.presets[slot].name, 8);
-			preset_name[8] = '\0';
-			snprintf(name, sizeof(name), "\n M:%s CRV:%s", mode_name, preset_name);
+			// Truncate name to fit display (max ~15 chars)
+			char preset_name[16];
+			strncpy(preset_name, user_curves.presets[slot].name, 15);
+			preset_name[15] = '\0';
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n      %s", preset_name);
 		} else {
-			snprintf(name, sizeof(name), "\n M:%s CRV:User%d", mode_name, curve - 6);
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n      User %d", slot + 1);
 		}
 	}
 
-	// Second line: Press times (slow=min_press_time, fast=max_press_time)
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n SLO:%3dms FAST:%2dms", min_press_time, max_press_time);
-
-	// Get HE velocity settings from global keyboard settings (no longer per-layer)
-	uint8_t he_min = keyboard_settings.he_velocity_min;
-	uint8_t he_max = keyboard_settings.he_velocity_max;
-
-	// Show HE velocity range for current layer
-	if (he_min == he_max) {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", he_min);
+	// Line 3: MIDI Channel (with keysplit variants)
+	if (keysplitstatus == 1) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
+	} else if (keysplitstatus == 2) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
+	} else if (keysplitstatus == 3) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
 	} else {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1));
 	}
 
-	// Show velocity preset settings (aftertouch, actuation, ratio, retrigger)
-	extern uint8_t aftertouch_mode;
-	extern uint8_t aftertouch_cc;
-	const char* at_modes[] = {"Off", "Rev", "Bot", "Pst", "Vib"};
-	const char* at_str = (aftertouch_mode < 5) ? at_modes[aftertouch_mode] : "?";
-
-	// Line: AT mode, CC, actuation override
-	if (preset_actuation_override) {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nAT:%s CC:%d ACT:%d.%d",
-			at_str, (aftertouch_cc == 255) ? 0 : aftertouch_cc,
-			preset_actuation_point / 10, preset_actuation_point % 10);
-	} else {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nAT:%s CC:%d ACT:key",
-			at_str, (aftertouch_cc == 255) ? 0 : aftertouch_cc);
-	}
-
-	// Line: Speed/Peak ratio and retrigger
-	if (preset_retrigger_distance > 0) {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nS/P:%d%% RTG:%d.%dmm",
-			preset_speed_peak_ratio,
-			preset_retrigger_distance / 10, preset_retrigger_distance % 10);
-	} else {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nS/P:%d%% RTG:OFF",
-			preset_speed_peak_ratio);
-	}
-
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n---------------------");
+	// Chord name display
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");
-	// Append the RootName, ChordName, and BassName
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
-	// Add right padding and the ending characters
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", right_padding, "");
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "- - - - - - - - - -\n");
 
