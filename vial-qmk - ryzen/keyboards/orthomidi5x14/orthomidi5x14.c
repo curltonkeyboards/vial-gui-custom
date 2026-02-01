@@ -15762,51 +15762,78 @@ bool oled_task_user(void) {
         return false;
     }
 
-    // Check if velocity preset debug mode is active
-    extern bool velocity_preset_debug_mode;
-    if (velocity_preset_debug_mode) {
-        velocity_preset_display_oled();
-        return false;
+    // Always show velocity preset settings on OLED
+    char buf[22];
+    oled_clear();
+
+    // Line 0: Aftertouch mode and CC
+    extern uint8_t aftertouch_mode;
+    extern uint8_t aftertouch_cc;
+    oled_set_cursor(0, 0);
+    const char* at_modes[] = {"Off", "Rev", "Bot", "Post", "Vib"};
+    const char* at_mode_str = (aftertouch_mode < 5) ? at_modes[aftertouch_mode] : "???";
+    if (aftertouch_cc == 255) {
+        snprintf(buf, 22, "AT:%s CC:PolyAT", at_mode_str);
+    } else {
+        snprintf(buf, 22, "AT:%s CC:%d", at_mode_str, aftertouch_cc);
     }
+    oled_write(buf, false);
 
-    // Normal display mode
-    // Buffer to store the formatted string
-    char str[22] = "";
-    char name[124] = "";  // Define `name` buffer to be used later
-    // Get the current layer and format it into `str`
-    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-    uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
-
-    if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
-	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
-    // Write the layer information to the OLED
-    oled_write(str, false);
-
-    // Display temporary mode message if active
-    if (mode_display_active) {
-        if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
-            oled_write(mode_display_msg, false);
-        } else {
-            mode_display_active = false;
-        }
+    // Line 1: Actuation override
+    oled_set_cursor(0, 1);
+    if (preset_actuation_override) {
+        uint8_t mm_whole = preset_actuation_point / 10;
+        uint8_t mm_frac = preset_actuation_point % 10;
+        snprintf(buf, 22, "Actuation: %d.%dmm", mm_whole, mm_frac);
+    } else {
+        snprintf(buf, 22, "Actuation: per-key");
     }
+    oled_write(buf, false);
 
-    // Render keylog information
-    oled_render_keylog();
-    // Add separator line to `name` and write to OLED
-    //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
-    // You only need to add the separator once, not three times.
-    oled_write(name, false);
+    // Line 2: Speed/Peak ratio
+    oled_set_cursor(0, 2);
+    snprintf(buf, 22, "Speed/Peak: %d%%", preset_speed_peak_ratio);
+    oled_write(buf, false);
 
-if (!dynamic_macro_has_activity()) {
-    led_usb_state = host_keyboard_led_state();
-        render_luna(0, 1);
-} else {
-    // Show Luna keyboard when no macros have data
-    led_usb_state = host_keyboard_led_state();
-	render_interface(0, 8);
-};
-return false;
+    // Line 3: Retrigger
+    oled_set_cursor(0, 3);
+    if (preset_retrigger_distance > 0) {
+        uint8_t mm_whole = preset_retrigger_distance / 10;
+        uint8_t mm_frac = preset_retrigger_distance % 10;
+        snprintf(buf, 22, "Retrigger: %d.%dmm", mm_whole, mm_frac);
+    } else {
+        snprintf(buf, 22, "Retrigger: OFF");
+    }
+    oled_write(buf, false);
+
+    // Line 4: Velocity range
+    extern uint8_t he_velocity_min;
+    extern uint8_t he_velocity_max;
+    oled_set_cursor(0, 4);
+    snprintf(buf, 22, "Velocity: %d-%d", he_velocity_min, he_velocity_max);
+    oled_write(buf, false);
+
+    // Line 5: Press times
+    extern uint16_t min_press_time;
+    extern uint16_t max_press_time;
+    oled_set_cursor(0, 5);
+    snprintf(buf, 22, "Press: %d-%dms", max_press_time, min_press_time);
+    oled_write(buf, false);
+
+    // Line 6: Vibrato settings
+    extern uint8_t vibrato_sensitivity;
+    extern uint16_t vibrato_decay_time;
+    oled_set_cursor(0, 6);
+    snprintf(buf, 22, "Vib: %d%% %dms", vibrato_sensitivity, vibrato_decay_time);
+    oled_write(buf, false);
+
+    // Line 7: Current velocity curve
+    extern uint8_t he_velocity_curve;
+    oled_set_cursor(0, 7);
+    snprintf(buf, 22, "Curve: %d", he_velocity_curve);
+    oled_write(buf, false);
+
+    return false;
 }
 
 void matrix_scan_user(void) {
