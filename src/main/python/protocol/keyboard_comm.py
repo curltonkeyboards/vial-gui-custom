@@ -2164,7 +2164,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         if len(points) != 4 or any(len(p) != 2 for p in points):
             return False
 
-        # Prepare data: [cmd, slot, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, name[16]]
+        # Firmware expects: [header(6), slot, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, name[16]]
+        # _create_hid_packet puts data at byte 6, so we send: [slot, points[8], name[16]]
         data = bytearray([slot])
 
         # Add 4 points (8 bytes)
@@ -2198,14 +2199,22 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_USER_CURVE_GET
         response = self.usb_send(self.dev, packet, retries=3)
 
-        if not response or len(response) < 26 or response[5] != 0x01:
+        # Firmware response format:
+        # response[0-3] = header (0x7D, 0x00, 0x4D, 0xDA)
+        # response[4] = reserved
+        # response[5] = status (0x01 = success)
+        # response[6] = slot
+        # response[7-14] = 4 points (8 bytes)
+        # response[15-30] = name (16 bytes)
+
+        if not response or len(response) < 31 or response[5] != 0x01:
             return None
 
-        # Parse response: [status, slot, p0x, p0y, ..., name[16]]
+        # Parse 4 points (8 bytes starting at offset 7)
         points = []
         for i in range(4):
             x = response[7 + i*2]
-            y = response[8 + i*2]
+            y = response[7 + i*2 + 1]
             points.append([x, y])
 
         # Parse name (16 bytes starting at offset 15)
@@ -2218,26 +2227,40 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         """
         Get all user curve names from the keyboard.
 
+        Note: Due to 32-byte HID packet limit, we can't fit 10 full names (160 bytes).
+        Instead, we load each curve's name individually when it's selected.
+        This method returns default names; actual names are loaded via get_user_curve().
+
         Returns:
-            list: 10 curve names (may be truncated to 10 chars each)
+            list: 10 curve names (defaults, actual names loaded on demand)
         """
-        packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
-        response = self.usb_send(self.dev, packet, retries=3)
+        # The 32-byte HID packet limit means we can't fit 10 x 16-char names.
+        # Just return defaults - actual names will be loaded when user selects a curve.
+        # We could fetch each curve individually here, but that's 10 HID calls which is slow.
 
-        if not response or len(response) < 106 or response[5] != 0x01:
-            # Return defaults if failed
-            return [f"User {i+1}" for i in range(10)]
+        # Try to get truncated names from firmware (2 chars each)
+        try:
+            packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
+            response = self.usb_send(self.dev, packet, retries=3)
 
-        # Parse 10 names (10 bytes each, starting at offset 6)
-        names = []
-        for i in range(10):
-            name_bytes = bytes(response[6 + i*10:6 + (i+1)*10])
-            name = name_bytes.decode('utf-8', errors='ignore').rstrip('\x00')
-            if not name:
-                name = f"User {i+1}"
-            names.append(name)
+            if response and len(response) >= 26 and response[5] == 0x01:
+                # Firmware returns 2 chars per name at response[6 + i*2]
+                names = []
+                for i in range(10):
+                    c1 = chr(response[6 + i*2]) if response[6 + i*2] >= 32 and response[6 + i*2] < 127 else ''
+                    c2 = chr(response[6 + i*2 + 1]) if response[6 + i*2 + 1] >= 32 and response[6 + i*2 + 1] < 127 else ''
+                    prefix = c1 + c2
+                    # Use truncated prefix or default name
+                    if prefix.strip():
+                        names.append(f"{prefix}... (User {i+1})")
+                    else:
+                        names.append(f"User {i+1}")
+                return names
+        except Exception:
+            pass
 
-        return names
+        # Return defaults if failed
+        return [f"User {i+1}" for i in range(10)]
 
     def reset_user_curves(self):
         """Reset all user curves to defaults (linear)."""

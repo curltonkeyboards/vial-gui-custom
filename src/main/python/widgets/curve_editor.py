@@ -434,7 +434,7 @@ class CurveCanvas(QWidget):
 
 
 class SaveToUserDialog(QDialog):
-    """Dialog for saving curve to a user slot"""
+    """Dialog for saving curve to a user slot with custom name input"""
 
     def __init__(self, parent, user_curve_names):
         super().__init__(parent)
@@ -443,6 +443,8 @@ class SaveToUserDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
+        from PyQt5.QtWidgets import QLineEdit, QFormLayout
+
         layout = QVBoxLayout()
 
         # Instructions
@@ -454,7 +456,17 @@ class SaveToUserDialog(QDialog):
         for i, name in enumerate(self.user_curve_names):
             self.list_widget.addItem(f"User {i+1}: {name}")
         self.list_widget.setCurrentRow(0)
+        self.list_widget.currentRowChanged.connect(self.on_slot_changed)
         layout.addWidget(self.list_widget)
+
+        # Name input field
+        name_layout = QFormLayout()
+        self.name_input = QLineEdit()
+        self.name_input.setMaxLength(16)
+        self.name_input.setPlaceholderText(tr("SaveToUserDialog", "Enter curve name (max 16 chars)"))
+        self.name_input.setText("User 1")  # Default name for first slot
+        name_layout.addRow(tr("SaveToUserDialog", "Curve Name:"), self.name_input)
+        layout.addLayout(name_layout)
 
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -465,11 +477,24 @@ class SaveToUserDialog(QDialog):
         self.setLayout(layout)
         self.setMinimumWidth(350)
 
+    def on_slot_changed(self, row):
+        """Update name input when slot selection changes"""
+        if row >= 0 and row < len(self.user_curve_names):
+            current_name = self.user_curve_names[row]
+            # If the current name looks like a default, suggest "User N"
+            if current_name.startswith("User ") or "... (User" in current_name:
+                self.name_input.setText(f"User {row + 1}")
+            else:
+                self.name_input.setText(current_name)
+
     def get_selected_slot(self):
         """Get selected slot index (0-9)"""
         return self.list_widget.currentRow()
 
     def get_curve_name(self):
-        """Get name for the curve (defaults to "User N")"""
-        slot = self.get_selected_slot()
-        return f"User {slot + 1}"
+        """Get name for the curve from input field"""
+        name = self.name_input.text().strip()
+        if not name:
+            slot = self.get_selected_slot()
+            return f"User {slot + 1}"
+        return name[:16]  # Truncate to 16 chars
