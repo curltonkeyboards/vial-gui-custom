@@ -456,16 +456,17 @@ class TriggerSlider(MultiHandleSlider):
     actuationChanged = pyqtSignal(int)
     deadzoneTopChanged = pyqtSignal(int)
 
-    def __init__(self, minimum=0, maximum=100, parent=None):
+    def __init__(self, minimum=0, maximum=255, parent=None):
         super().__init__(num_handles=3, minimum=minimum, maximum=maximum, parent=parent)
 
-        # Set default values: bottom=4 (0.16mm), actuation=50 (2.0mm), top=96 (which is 4 from right = 0.16mm)
-        # Internal representation: [deadzone_bottom, actuation, 100 - deadzone_top]
-        # Note: 0-100 range represents 0-4.0mm full key travel
-        self.values = [4, 50, 96]  # 96 = 100 - 4
+        # Set default values: bottom=6 (~0.1mm), actuation=127 (2.0mm), top=249 (which is 6 from right)
+        # Internal representation: [deadzone_bottom, actuation, 255 - deadzone_top]
+        # Note: 0-255 range represents 0-4.0mm full key travel
+        # Deadzones are limited to 0-51 (20% of 255) representing 0-0.8mm
+        self.values = [6, 127, 249]  # 249 = 255 - 6
 
         # Store the actual user-facing deadzone_top value (inverted)
-        self._user_deadzone_top = 4
+        self._user_deadzone_top = 6
 
         # Connect to emit individual signals
         self.valuesChanged.connect(self._on_values_changed)
@@ -475,23 +476,23 @@ class TriggerSlider(MultiHandleSlider):
         self.deadzoneBottomChanged.emit(int(values[0]))
         self.actuationChanged.emit(int(values[1]))
         # For deadzone_top, emit the inverted value (distance from right)
-        inverted_top = 100 - int(values[2])
+        inverted_top = 255 - int(values[2])
         self._user_deadzone_top = inverted_top
         self.deadzoneTopChanged.emit(inverted_top)
 
     def set_deadzone_bottom(self, value):
-        """Set deadzone bottom value (0-20)"""
+        """Set deadzone bottom value (0-51 = 20% of travel)"""
         self.set_value(0, value)
 
     def set_actuation(self, value):
-        """Set actuation point value (0-100)"""
+        """Set actuation point value (0-255)"""
         self.set_value(1, value)
 
     def set_deadzone_top(self, value):
-        """Set deadzone top value (0-20, inverted internally to 100-80)"""
+        """Set deadzone top value (0-51, inverted internally)"""
         # Convert user value (distance from top) to internal position
         self._user_deadzone_top = value
-        internal_value = 100 - value
+        internal_value = 255 - value
         self.set_value(2, internal_value)
 
     def get_deadzone_bottom(self):

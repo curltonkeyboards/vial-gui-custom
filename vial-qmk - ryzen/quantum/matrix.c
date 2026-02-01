@@ -658,9 +658,9 @@ static inline uint8_t adc_to_distance(uint16_t adc, uint16_t rest, uint16_t bott
     return adc_to_distance_corrected(adc, rest, bottom, lut_correction_strength);
 }
 
-// Convert actuation point from 0-100 scale to 0-255 distance
+// Convert actuation point from 0-255 scale to 0-255 distance (now 1:1 mapping)
 static inline uint8_t actuation_to_distance(uint8_t actuation) {
-    return (uint8_t)(((uint32_t)actuation * DISTANCE_MAX) / 100);
+    return actuation;  // Direct mapping since both use 0-255 scale
 }
 
 // Convert distance to old travel scale (for backward compatibility with DKS/MIDI)
@@ -1019,7 +1019,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // Use per-key actuation from cache (280 bytes, fits in L1 cache)
     // Cache is refreshed on layer change before this function is called
     uint8_t per_key_actuation = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
-    uint8_t midi_threshold = (per_key_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+    uint8_t midi_threshold = (per_key_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
     uint8_t analog_mode = active_settings.velocity_mode;
 
     state->was_pressed = state->pressed;
@@ -1340,7 +1340,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
         // Use per-key actuation from cache for aftertouch threshold
         uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
-        uint8_t normal_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+        uint8_t normal_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
 
         switch (active_settings.aftertouch_mode) {
             case 1:  // Reverse
@@ -1727,7 +1727,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
                 // Use per-key actuation from cache (fast, in L1 cache)
                 uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
-                uint8_t midi_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100;
+                uint8_t midi_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
 
                 switch (analog_mode) {
                     case 0:  // Fixed

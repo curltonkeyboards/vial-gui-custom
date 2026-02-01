@@ -690,13 +690,13 @@ class TriggerSettingsTab(BasicEditor):
             layer_keys = []
             for _ in range(70):
                 layer_keys.append({
-                    'actuation': 50,                    # 0-100 = 0-4.0mm, default 2.0mm (50% of 4mm)
-                    'deadzone_top': 4,                  # 0-20 = 0-0.5mm, default 0.1mm - FROM RIGHT
-                    'deadzone_bottom': 4,               # 0-20 = 0-0.5mm, default 0.1mm - FROM LEFT
+                    'actuation': 127,                   # 0-255 = 0-4.0mm, default 2.0mm (127/255 of 4mm)
+                    'deadzone_top': 6,                  # 0-51 = 0-0.8mm (20% of 4mm), default ~0.1mm - FROM RIGHT
+                    'deadzone_bottom': 6,               # 0-51 = 0-0.8mm (20% of 4mm), default ~0.1mm - FROM LEFT
                     'velocity_curve': 0,                # 0-16 (0-6: Factory curves, 7-16: User curves), default Linear
                     'flags': 0,                         # Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve, Bit 2: continuous_rt
-                    'rapidfire_press_sens': 4,          # 1-100 = 0-4.0mm, default 0.16mm - FROM LEFT
-                    'rapidfire_release_sens': 4,        # 1-100 = 0-4.0mm, default 0.16mm - FROM RIGHT
+                    'rapidfire_press_sens': 6,          # 0-255 = 0-4.0mm, default ~0.1mm - FROM LEFT
+                    'rapidfire_release_sens': 6,        # 0-255 = 0-4.0mm, default ~0.1mm - FROM RIGHT
                     'rapidfire_velocity_mod': 0         # -64 to +64, default 0
                 })
             self.per_key_values.append(layer_keys)
@@ -910,10 +910,10 @@ class TriggerSettingsTab(BasicEditor):
         global_actuation_layout.addLayout(normal_header)
 
         # Normal Keys TriggerSlider (combines deadzone min, actuation, deadzone max)
-        self.global_normal_slider = TriggerSlider(minimum=0, maximum=100)
-        self.global_normal_slider.set_deadzone_bottom(4)  # 0.1mm default
-        self.global_normal_slider.set_actuation(50)       # 2.0mm default (50% of 4mm)
-        self.global_normal_slider.set_deadzone_top(4)     # 0.1mm default
+        self.global_normal_slider = TriggerSlider(minimum=0, maximum=255)
+        self.global_normal_slider.set_deadzone_bottom(6)  # ~0.1mm default
+        self.global_normal_slider.set_actuation(127)      # 2.0mm default (127/255 of 4mm)
+        self.global_normal_slider.set_deadzone_top(6)     # ~0.1mm default
         self.global_normal_slider.deadzoneBottomChanged.connect(self.on_global_normal_dz_min_changed)
         self.global_normal_slider.actuationChanged.connect(self.on_global_normal_changed)
         self.global_normal_slider.deadzoneTopChanged.connect(self.on_global_normal_dz_max_changed)
@@ -947,10 +947,10 @@ class TriggerSettingsTab(BasicEditor):
         global_actuation_layout.addLayout(midi_header)
 
         # MIDI Keys TriggerSlider (combines deadzone min, actuation, deadzone max)
-        self.global_midi_slider = TriggerSlider(minimum=0, maximum=100)
-        self.global_midi_slider.set_deadzone_bottom(4)  # 0.1mm default
-        self.global_midi_slider.set_actuation(50)       # 2.0mm default (50% of 4mm)
-        self.global_midi_slider.set_deadzone_top(4)     # 0.1mm default
+        self.global_midi_slider = TriggerSlider(minimum=0, maximum=255)
+        self.global_midi_slider.set_deadzone_bottom(6)  # ~0.1mm default
+        self.global_midi_slider.set_actuation(127)      # 2.0mm default (127/255 of 4mm)
+        self.global_midi_slider.set_deadzone_top(6)     # ~0.1mm default
         self.global_midi_slider.deadzoneBottomChanged.connect(self.on_global_midi_dz_min_changed)
         self.global_midi_slider.actuationChanged.connect(self.on_global_midi_changed)
         self.global_midi_slider.deadzoneTopChanged.connect(self.on_global_midi_dz_max_changed)
@@ -1012,7 +1012,7 @@ class TriggerSettingsTab(BasicEditor):
         per_key_layout.addLayout(values_layout)
 
         # Combined trigger slider
-        self.trigger_slider = TriggerSlider(minimum=0, maximum=100)
+        self.trigger_slider = TriggerSlider(minimum=0, maximum=255)
         self.trigger_slider.setEnabled(False)
         self.trigger_slider.deadzoneBottomChanged.connect(self.on_deadzone_bottom_changed)
         self.trigger_slider.actuationChanged.connect(self.on_key_actuation_changed)
@@ -1097,7 +1097,7 @@ class TriggerSettingsTab(BasicEditor):
         rf_layout.addLayout(rf_values_layout)
 
         # Combined rapid trigger slider
-        self.rapid_trigger_slider = RapidTriggerSlider(minimum=1, maximum=100)
+        self.rapid_trigger_slider = RapidTriggerSlider(minimum=1, maximum=255)
         self.rapid_trigger_slider.setEnabled(False)
         self.rapid_trigger_slider.pressSensChanged.connect(self.on_rf_press_changed)
         self.rapid_trigger_slider.releaseSensChanged.connect(self.on_rf_release_changed)
@@ -1743,8 +1743,8 @@ class TriggerSettingsTab(BasicEditor):
             )
 
     def value_to_mm(self, value):
-        """Convert 0-100 value to millimeters string"""
-        mm = (value / 100.0) * 4.0  # 0-100 maps to 0-4.0mm (full key travel)
+        """Convert 0-255 value to millimeters string"""
+        mm = (value / 255.0) * 4.0  # 0-255 maps to 0-4.0mm (full key travel)
         return f"{mm:.2f}mm"
 
     def on_global_normal_changed(self, value):
@@ -1877,8 +1877,8 @@ class TriggerSettingsTab(BasicEditor):
                             self.pending_per_key_keys.add((layer, key_index))
 
     def deadzone_to_mm(self, value):
-        """Convert 0-20 deadzone value to millimeters string"""
-        mm = (value / 40.0)  # 0-20 maps to 0-0.5mm (20/40 = 0.5)
+        """Convert 0-51 deadzone value to millimeters string (20% of 4mm travel)"""
+        mm = (value / 51.0) * 0.8  # 0-51 maps to 0-0.8mm (20% of 4mm)
         return f"{mm:.2f}mm"
 
     def on_global_normal_dz_min_changed(self, value):
@@ -2671,9 +2671,9 @@ class TriggerSettingsTab(BasicEditor):
             return
 
         # Safe defaults: 2.0mm actuation (50), 0.1mm deadzones (4)
-        DEFAULT_ACTUATION = 50  # 2.0mm (50% of 4mm full travel)
-        DEFAULT_DEADZONE = 4   # 0.1mm
-        MIN_ACTUATION = 5      # 0.2mm minimum to prevent keyboard crash
+        DEFAULT_ACTUATION = 127  # 2.0mm (127/255 of 4mm full travel)
+        DEFAULT_DEADZONE = 6   # ~0.1mm (6/51 * 0.8mm)
+        MIN_ACTUATION = 13     # 0.2mm minimum to prevent keyboard crash (13/255 * 4mm)
 
         # Get current layer actuation values (use as source for all layers)
         data_source = self.pending_layer_data if self.pending_layer_data else self.layer_data
@@ -3032,13 +3032,13 @@ class TriggerSettingsTab(BasicEditor):
             for layer in range(12):
                 for key_index in range(70):
                     self.per_key_values[layer][key_index] = {
-                        'actuation': 50,                    # 2.0mm (50% of 4mm)
-                        'deadzone_top': 4,                  # 0.1mm from right
-                        'deadzone_bottom': 4,               # 0.1mm from left
+                        'actuation': 127,                   # 2.0mm (127/255 of 4mm)
+                        'deadzone_top': 6,                  # ~0.1mm from right
+                        'deadzone_bottom': 6,               # ~0.1mm from left
                         'velocity_curve': 2,                # Medium
                         'flags': 0,                         # Both rapidfire and per-key velocity curve disabled
-                        'rapidfire_press_sens': 4,          # 0.16mm from left
-                        'rapidfire_release_sens': 4,        # 0.16mm from right
+                        'rapidfire_press_sens': 6,          # ~0.1mm from left
+                        'rapidfire_release_sens': 6,        # ~0.1mm from right
                         'rapidfire_velocity_mod': 0         # No modifier
                     }
 
@@ -3112,8 +3112,8 @@ class TriggerSettingsTab(BasicEditor):
         self.syncing = True
 
         # Safe defaults: 2.0mm actuation (50)
-        DEFAULT_ACTUATION = 50  # 2.0mm (50% of 4mm full travel)
-        MIN_ACTUATION = 5       # 0.2mm minimum
+        DEFAULT_ACTUATION = 127  # 2.0mm (127/255 of 4mm full travel)
+        MIN_ACTUATION = 13      # 0.2mm minimum (13/255 * 4mm)
 
         # Get layer to use
         layer = self.current_layer
@@ -3253,13 +3253,13 @@ class TriggerSettingsTab(BasicEditor):
                 for layer in range(12):
                     for key_index in range(70):
                         self.per_key_values[layer][key_index] = {
-                            'actuation': 50,                    # 2.0mm (50% of 4mm)
-                            'deadzone_top': 4,                  # 0.1mm from right
-                            'deadzone_bottom': 4,               # 0.1mm from left
+                            'actuation': 127,                   # 2.0mm (127/255 of 4mm)
+                            'deadzone_top': 6,                  # ~0.1mm from right
+                            'deadzone_bottom': 6,               # ~0.1mm from left
                             'velocity_curve': 2,                # Medium
                             'flags': 0,                         # All disabled
-                            'rapidfire_press_sens': 4,          # 0.16mm from left
-                            'rapidfire_release_sens': 4,        # 0.16mm from right
+                            'rapidfire_press_sens': 6,          # ~0.1mm from left
+                            'rapidfire_release_sens': 6,        # ~0.1mm from right
                             'rapidfire_velocity_mod': 0         # No modifier
                         }
 
