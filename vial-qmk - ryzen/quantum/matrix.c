@@ -65,6 +65,10 @@ extern bool aftertouch_pedal_active;
 extern layer_key_actuations_t per_key_actuations[12];
 // NOTE: per_key_per_layer_enabled removed - firmware always uses per-key per-layer
 
+// Velocity preset actuation override
+extern bool preset_actuation_override;
+extern uint8_t preset_actuation_point;  // 0-40 = 0.0-4.0mm
+
 // EEPROM functions from orthomidi5x14.c
 extern void load_per_key_actuations(void);
 extern void initialize_per_key_actuations(void);
@@ -865,6 +869,12 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     uint8_t actuation_point, rt_down, rt_up, flags;
     get_key_actuation_config(key_idx, current_layer,
                             &actuation_point, &rt_down, &rt_up, &flags);
+
+    // Apply velocity preset actuation override if enabled
+    // preset_actuation_point is 0-40 (0.0-4.0mm), convert to 0-255 distance scale
+    if (preset_actuation_override) {
+        actuation_point = (preset_actuation_point * 255) / 40;
+    }
 
     // Determine reset point based on continuous mode flag
     // Continuous mode: reset only when key fully released (distance = 0)
