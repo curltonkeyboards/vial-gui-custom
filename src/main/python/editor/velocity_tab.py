@@ -12,7 +12,7 @@ This tab provides:
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QFrame, QScrollArea, QSlider, QSpinBox, QButtonGroup,
-                           QRadioButton, QMessageBox, QTabWidget)
+                           QRadioButton, QMessageBox, QTabWidget, QListWidget, QListWidgetItem)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont
@@ -21,16 +21,9 @@ from widgets.combo_box import ArrowComboBox
 from widgets.curve_editor import CurveEditorWidget
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidgetSimple
-from editor.arpeggiator import DebugConsole
 from themes import Theme
 from util import tr
 from vial_device import VialKeyboard
-from protocol.keyboard_comm import (
-    PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
-    PARAM_VIBRATO_SENSITIVITY, PARAM_VIBRATO_DECAY_TIME,
-    PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME,
-    HID_CMD_SET_KEYBOARD_PARAM_SINGLE
-)
 
 
 # MIDI note keycode range (from keycodes_v6.py)
@@ -271,16 +264,49 @@ class VelocityTab(BasicEditor):
         help_btn.setCursor(Qt.WhatsThisCursor)
         return help_btn
 
-    def create_zone_controls(self, zone_name):
+    def create_zone_controls(self, zone_name, include_curve_editor=False):
         """Create a widget containing all velocity controls for a specific zone (base/keysplit/triplesplit).
-        Returns (container_widget, controls_dict) where controls_dict has references to all control widgets."""
+        Returns (scroll_area, controls_dict) where controls_dict has references to all control widgets.
+        If include_curve_editor=True, adds curve editor on left side (for base zone)."""
+
+        # Create scroll area to wrap the content
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setFrameShape(QFrame.NoFrame)
+
         container = QWidget()
-        layout = QVBoxLayout()
-        layout.setSpacing(4)
-        layout.setContentsMargins(5, 5, 5, 5)
-        container.setLayout(layout)
 
         controls = {}
+
+        if include_curve_editor:
+            # For base zone: curve editor on left, controls on right
+            main_layout = QHBoxLayout()
+            main_layout.setSpacing(10)
+            main_layout.setContentsMargins(5, 5, 5, 5)
+            container.setLayout(main_layout)
+
+            # Curve editor on left side
+            controls['curve_editor'] = CurveEditorWidget(show_save_button=False)
+            controls['curve_editor'].setMinimumSize(250, 200)
+            controls['curve_editor'].setMaximumWidth(300)
+            controls['curve_editor'].setProperty('zone', zone_name)
+            main_layout.addWidget(controls['curve_editor'])
+
+            # Controls on right side in vertical layout
+            layout = QVBoxLayout()
+            layout.setSpacing(4)
+            layout.setContentsMargins(0, 0, 0, 0)
+            controls_widget = QWidget()
+            controls_widget.setLayout(layout)
+            main_layout.addWidget(controls_widget, 1)
+        else:
+            # For keysplit/triplesplit: vertical layout with curve at bottom
+            layout = QVBoxLayout()
+            layout.setSpacing(4)
+            layout.setContentsMargins(5, 5, 5, 5)
+            container.setLayout(layout)
 
         # Velocity Min row
         vel_min_layout = QHBoxLayout()
@@ -627,7 +653,8 @@ class VelocityTab(BasicEditor):
         controls['retrigger_widget'].setVisible(False)
 
         # Add curve editor for zone tabs (keysplit/triplesplit only)
-        if zone_name != 'base':
+        # Base zone already has curve editor added in the horizontal layout above
+        if zone_name != 'base' and not include_curve_editor:
             line5 = QFrame()
             line5.setFrameShape(QFrame.HLine)
             line5.setFrameShadow(QFrame.Sunken)
@@ -644,7 +671,10 @@ class VelocityTab(BasicEditor):
             layout.addWidget(controls['curve_editor'])
 
         layout.addStretch()
-        return container, controls
+
+        # Set container in scroll area and return
+        scroll_area.setWidget(container)
+        return scroll_area, controls
 
     def connect_zone_controls(self, controls, zone_name):
         """Connect signals for zone controls. Zone name is 'base', 'keysplit', or 'triplesplit'."""
@@ -854,30 +884,69 @@ class VelocityTab(BasicEditor):
 
         # Bottom section: Combined Velocity Preset configuration
         bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(20)
+        bottom_layout.setSpacing(15)
 
         # =====================================================================
-        # LEFT SIDE: Velocity Preset Group (curve on left, settings on right)
+        # LEFT SIDE: Scrollable Preset List
         # =====================================================================
-        preset_group = QGroupBox(tr("VelocityTab", "Velocity Preset"))
+        preset_list_group = QGroupBox(tr("VelocityTab", "Presets"))
+        preset_list_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        preset_list_group.setMaximumWidth(180)
+        preset_list_layout = QVBoxLayout()
+        preset_list_layout.setSpacing(5)
+        preset_list_group.setLayout(preset_list_layout)
+
+        # Scrollable preset list
+        self.preset_list_widget = QListWidget()
+        self.preset_list_widget.setMinimumHeight(200)
+
+        # Factory presets
+        factory_curves = ["Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"]
+        for i, name in enumerate(factory_curves):
+            item = QListWidgetItem(name)
+            item.setData(Qt.UserRole, i)  # Store curve index
+            self.preset_list_widget.addItem(item)
+
+        # Separator
+        separator_item = QListWidgetItem("─── User Presets ───")
+        separator_item.setData(Qt.UserRole, -2)  # Special value for separator
+        separator_item.setFlags(Qt.NoItemFlags)  # Non-selectable
+        self.preset_list_widget.addItem(separator_item)
+
+        # User presets (indices 7-16)
+        self.user_curve_names = ["User 1", "User 2", "User 3", "User 4", "User 5",
+                                  "User 6", "User 7", "User 8", "User 9", "User 10"]
+        for i, name in enumerate(self.user_curve_names):
+            item = QListWidgetItem(name)
+            item.setData(Qt.UserRole, 7 + i)  # Store curve index
+            self.preset_list_widget.addItem(item)
+
+        # Custom separator
+        custom_sep = QListWidgetItem("────────────")
+        custom_sep.setData(Qt.UserRole, -2)
+        custom_sep.setFlags(Qt.NoItemFlags)
+        self.preset_list_widget.addItem(custom_sep)
+
+        # Custom option
+        custom_item = QListWidgetItem("Custom")
+        custom_item.setData(Qt.UserRole, -1)
+        self.preset_list_widget.addItem(custom_item)
+
+        # Select Linear by default
+        self.preset_list_widget.setCurrentRow(2)
+        self.preset_list_widget.itemClicked.connect(self.on_preset_list_clicked)
+
+        preset_list_layout.addWidget(self.preset_list_widget)
+        bottom_layout.addWidget(preset_list_group)
+
+        # =====================================================================
+        # RIGHT SIDE: Velocity Preset Group (zone tabs with embedded curve editors)
+        # =====================================================================
+        preset_group = QGroupBox(tr("VelocityTab", "Velocity Settings"))
         preset_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        preset_main_layout = QHBoxLayout()
-        preset_main_layout.setSpacing(15)
+        preset_main_layout = QVBoxLayout()
+        preset_main_layout.setSpacing(10)
         preset_group.setLayout(preset_main_layout)
-
-        # Curve editor widget (LEFT side) - for base zone
-        self.curve_editor = CurveEditorWidget(show_save_button=True)
-        self.curve_editor.setMinimumSize(280, 220)
-        self.curve_editor.setMaximumWidth(320)
-        self.curve_editor.curve_changed.connect(self.on_curve_changed)
-        self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
-        self.curve_editor.save_to_user_requested.connect(self.on_save_to_user_curve)
-        preset_main_layout.addWidget(self.curve_editor)
-
-        # RIGHT side: Zone enable checkboxes + Tab widget for zone controls
-        right_side_layout = QVBoxLayout()
-        right_side_layout.setSpacing(8)
-        preset_main_layout.addLayout(right_side_layout, 1)
 
         # Zone enable checkboxes
         zone_enable_layout = QHBoxLayout()
@@ -894,21 +963,27 @@ class VelocityTab(BasicEditor):
         self.triplesplit_enable_checkbox.stateChanged.connect(self.on_triplesplit_enable_changed)
         zone_enable_layout.addWidget(self.triplesplit_enable_checkbox)
         zone_enable_layout.addStretch()
-        right_side_layout.addLayout(zone_enable_layout)
+        preset_main_layout.addLayout(zone_enable_layout)
 
         # Tab widget for zone settings (tabs appear when zones are enabled)
         self.zone_tab_widget = QTabWidget()
         self.zone_tab_widget.setStyleSheet("QTabWidget::pane { border: 1px solid #444; }")
-        right_side_layout.addWidget(self.zone_tab_widget)
+        self.zone_tab_widget.setMinimumHeight(350)
+        preset_main_layout.addWidget(self.zone_tab_widget, 1)
 
         # Store zone controls for easy access
         self.zone_controls = {}
 
-        # Create base zone controls (always visible)
-        base_widget, base_controls = self.create_zone_controls('base')
+        # Create base zone controls with curve editor inside (always visible)
+        base_widget, base_controls = self.create_zone_controls('base', include_curve_editor=True)
         self.zone_controls['base'] = base_controls
         self.connect_zone_controls(base_controls, 'base')
         self.zone_tab_widget.addTab(base_widget, "Basic")
+
+        # Store reference to the base curve editor
+        self.curve_editor = base_controls['curve_editor']
+        self.curve_editor.curve_changed.connect(self.on_curve_changed)
+        self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
 
         # Create keysplit zone controls (hidden initially)
         keysplit_widget, keysplit_controls = self.create_zone_controls('keysplit')
@@ -954,40 +1029,23 @@ class VelocityTab(BasicEditor):
         self.retrigger_slider = base_controls['retrigger_slider']
         self.retrigger_value = base_controls['retrigger_value']
 
-        # Apply Preset button (below tabs)
+        # Buttons row (Apply Preset + Save as preset)
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(10)
+
         save_curve_btn = QPushButton(tr("VelocityTab", "Apply Preset to Keyboard"))
-        save_curve_btn.setMinimumHeight(30)
+        save_curve_btn.setMinimumHeight(35)
         save_curve_btn.clicked.connect(self.on_save_curve)
-        right_side_layout.addWidget(save_curve_btn)
+        buttons_layout.addWidget(save_curve_btn)
 
-        bottom_layout.addWidget(preset_group)
+        self.save_as_preset_btn = QPushButton(tr("VelocityTab", "Save as Preset"))
+        self.save_as_preset_btn.setMinimumHeight(35)
+        self.save_as_preset_btn.clicked.connect(self.on_save_as_preset)
+        buttons_layout.addWidget(self.save_as_preset_btn)
 
-        # =====================================================================
-        # RIGHT SIDE: Debug Console + Save Settings
-        # =====================================================================
-        right_group = QGroupBox(tr("VelocityTab", "Save & Debug"))
-        right_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        right_layout = QVBoxLayout()
-        right_group.setLayout(right_layout)
+        preset_main_layout.addLayout(buttons_layout)
 
-        # Save all settings button
-        self.advanced_save_btn = QPushButton(tr("VelocityTab", "Save All Settings to Keyboard"))
-        self.advanced_save_btn.setMinimumHeight(35)
-        self.advanced_save_btn.clicked.connect(self.on_save_advanced)
-        right_layout.addWidget(self.advanced_save_btn)
-
-        # Toggle OLED debug display button
-        self.oled_debug_btn = QPushButton(tr("VelocityTab", "Toggle OLED Preset Debug"))
-        self.oled_debug_btn.setMinimumHeight(30)
-        self.oled_debug_btn.setToolTip("Show velocity preset settings on keyboard OLED")
-        self.oled_debug_btn.clicked.connect(self.on_toggle_oled_debug)
-        right_layout.addWidget(self.oled_debug_btn)
-
-        # Debug console for HID communication
-        self.advanced_debug_console = DebugConsole("Velocity Settings Debug Console")
-        right_layout.addWidget(self.advanced_debug_console)
-
-        bottom_layout.addWidget(right_group)
+        bottom_layout.addWidget(preset_group, 1)
 
         main_layout.addLayout(bottom_layout)
         main_layout.addStretch()
@@ -1358,89 +1416,6 @@ class VelocityTab(BasicEditor):
             if hasattr(control, 'blockSignals'):
                 control.blockSignals(False)
 
-    def on_save_advanced(self):
-        """Save advanced settings (velocity, aftertouch) to keyboard - GLOBAL settings"""
-        # Start debug console operation
-        self.advanced_debug_console.mark_operation_start()
-        self.advanced_debug_console.log("=" * 50, "DEBUG")
-        self.advanced_debug_console.log("SAVE ADVANCED SETTINGS - Starting", "INFO")
-        self.advanced_debug_console.log("=" * 50, "DEBUG")
-
-        try:
-            if not self.keyboard:
-                self.advanced_debug_console.log("ERROR: Keyboard not connected", "ERROR")
-                self.advanced_debug_console.mark_operation_end(success=False)
-                raise RuntimeError("Keyboard not connected")
-
-            settings = self.global_midi_settings
-            kb = self.keyboard
-
-            # Log HID command info
-            self.advanced_debug_console.log(f"HID Command: SET_KEYBOARD_PARAM_SINGLE (0x{HID_CMD_SET_KEYBOARD_PARAM_SINGLE:02X})", "DEBUG")
-            self.advanced_debug_console.log("-" * 50, "DEBUG")
-
-            # Define parameters to save with their names and value ranges
-            # Note: VELOCITY_MODE is fixed at 3 (Speed+Peak) in firmware, not configurable
-            params_to_save = [
-                ("AFTERTOUCH_MODE", PARAM_AFTERTOUCH_MODE, settings.get('aftertouch_mode', 0), "0-4 (Off/Reverse/Bottom/Post/Vibrato)"),
-                ("AFTERTOUCH_CC", PARAM_AFTERTOUCH_CC, settings.get('aftertouch_cc', 255), "0-127 or 255=Off"),
-                ("VIBRATO_SENSITIVITY", PARAM_VIBRATO_SENSITIVITY, settings.get('vibrato_sensitivity', 100), "50-200 (percentage)"),
-                ("VIBRATO_DECAY_TIME", PARAM_VIBRATO_DECAY_TIME, settings.get('vibrato_decay_time', 200), "0-2000ms (16-bit)"),
-                ("MIN_PRESS_TIME", PARAM_MIN_PRESS_TIME, settings.get('min_press_time', 200), "50-500ms (16-bit)"),
-                ("MAX_PRESS_TIME", PARAM_MAX_PRESS_TIME, settings.get('max_press_time', 20), "5-100ms (16-bit)"),
-            ]
-
-            failed_params = []
-            success_count = 0
-
-            for param_name, param_id, value, value_range in params_to_save:
-                self.advanced_debug_console.log(f"[{param_name}] Sending param_id={param_id}, value={value} ({value_range})", "DEBUG")
-
-                # Call the detailed version that returns debug info
-                success, debug_info = kb.set_keyboard_param_single_debug(param_id, value)
-
-                # Log the detailed debug info
-                if debug_info:
-                    self.advanced_debug_console.log(f"  TX Packet: {debug_info.get('tx_packet', 'N/A')}", "DEBUG")
-                    self.advanced_debug_console.log(f"  TX Data: {debug_info.get('tx_data', 'N/A')}", "DEBUG")
-                    self.advanced_debug_console.log(f"  RX Response: {debug_info.get('rx_response', 'N/A')}", "DEBUG")
-                    self.advanced_debug_console.log(f"  Status byte (response[5]): {debug_info.get('status_byte', 'N/A')}", "DEBUG")
-                    self.advanced_debug_console.log(f"  Attempts: {debug_info.get('attempts', 'N/A')}", "DEBUG")
-
-                if success:
-                    self.advanced_debug_console.log(f"  -> SUCCESS", "INFO")
-                    success_count += 1
-                else:
-                    error_msg = debug_info.get('error', 'Unknown error') if debug_info else 'Unknown error'
-                    self.advanced_debug_console.log(f"  -> FAILED: {error_msg}", "ERROR")
-                    failed_params.append(f"{param_name}({param_id})={value}")
-
-                self.advanced_debug_console.log("-" * 30, "DEBUG")
-
-            # Summary
-            self.advanced_debug_console.log("=" * 50, "DEBUG")
-            self.advanced_debug_console.log(f"SAVE COMPLETE: {success_count}/{len(params_to_save)} parameters saved", "INFO")
-
-            if len(failed_params) == 0:
-                self.advanced_debug_console.log("All settings saved successfully!", "INFO")
-                self.advanced_debug_console.mark_operation_end(success=True)
-                QMessageBox.information(None, "Success", "Global MIDI settings saved!")
-            else:
-                self.advanced_debug_console.log(f"FAILED parameters: {failed_params}", "ERROR")
-                self.advanced_debug_console.log("", "DEBUG")
-                self.advanced_debug_console.log("TROUBLESHOOTING:", "WARN")
-                self.advanced_debug_console.log("  1. Check firmware supports HID_CMD_SET_KEYBOARD_PARAM_SINGLE (0xE8)", "WARN")
-                self.advanced_debug_console.log("  2. Verify parameter IDs are correct in firmware", "WARN")
-                self.advanced_debug_console.log("  3. Check for firmware version mismatch", "WARN")
-                self.advanced_debug_console.log("  4. status_byte=1 means success, 0 or 0xFF means error", "WARN")
-                self.advanced_debug_console.mark_operation_end(success=False)
-                raise RuntimeError(f"Failed to save: {', '.join(failed_params)}")
-
-        except Exception as e:
-            self.advanced_debug_console.log(f"EXCEPTION: {str(e)}", "ERROR")
-            self.advanced_debug_console.mark_operation_end(success=False)
-            QMessageBox.critical(None, "Error",
-                f"Failed to save advanced settings: {str(e)}")
 
     def on_curve_changed(self):
         """Handle curve editor changes"""
@@ -1458,30 +1433,91 @@ class VelocityTab(BasicEditor):
             # Load user curve names from keyboard
             user_curve_names = self.keyboard.get_all_user_curve_names()
             if user_curve_names:
-                self.curve_editor.set_user_curve_names(user_curve_names)
+                self.update_preset_list_names(user_curve_names)
 
             # Get keyboard config which includes velocity curve index
             config = self.keyboard.get_keyboard_config()
             if config:
                 curve_index = config.get('he_velocity_curve', 2)  # Default to Linear (2)
-                # Update the curve editor's preset combo
-                self.curve_editor.preset_combo.blockSignals(True)
+                # Select the curve in the preset list
+                self.select_preset_by_index(curve_index)
                 if 0 <= curve_index < 7:
-                    # Factory curve
-                    self.curve_editor.preset_combo.setCurrentIndex(curve_index)
+                    # Factory curve - load points
                     points = CurveEditorWidget.FACTORY_CURVE_POINTS[curve_index]
                     self.curve_editor.set_points(points)
                 elif 7 <= curve_index <= 16:
-                    # User curve - find it in the combo (after separator)
-                    # Factory curves: 0-6, separator, User curves: 7-16
-                    combo_index = curve_index + 1  # +1 for separator after factory curves
-                    if combo_index < self.curve_editor.preset_combo.count():
-                        self.curve_editor.preset_combo.setCurrentIndex(combo_index)
-                        # Load user curve points from keyboard
-                        self.on_user_curve_selected(curve_index - 7)
-                self.curve_editor.preset_combo.blockSignals(False)
+                    # User curve - load from keyboard
+                    self.on_user_curve_selected(curve_index - 7)
         except Exception as e:
             print(f"Error loading velocity curve: {e}")
+
+    def update_preset_list_names(self, user_curve_names):
+        """Update user curve names in the preset list widget"""
+        if len(user_curve_names) != 10:
+            return
+        self.user_curve_names = list(user_curve_names)
+        # User presets start at row 8 (after 7 factory curves + 1 separator)
+        for i, name in enumerate(user_curve_names):
+            item = self.preset_list_widget.item(8 + i)
+            if item:
+                item.setText(name)
+
+    def select_preset_by_index(self, curve_index):
+        """Select a preset in the list by its curve index"""
+        self.preset_list_widget.blockSignals(True)
+        if 0 <= curve_index < 7:
+            # Factory curve
+            self.preset_list_widget.setCurrentRow(curve_index)
+        elif 7 <= curve_index <= 16:
+            # User curve - account for separator at row 7
+            self.preset_list_widget.setCurrentRow(8 + (curve_index - 7))
+        elif curve_index == -1:
+            # Custom - last item (after user curves and separator)
+            self.preset_list_widget.setCurrentRow(self.preset_list_widget.count() - 1)
+        self.preset_list_widget.blockSignals(False)
+
+    def get_selected_preset_index(self):
+        """Get the curve index of the currently selected preset"""
+        item = self.preset_list_widget.currentItem()
+        if item:
+            return item.data(Qt.UserRole)
+        return 2  # Default to Linear
+
+    def on_preset_list_clicked(self, item):
+        """Handle clicking on a preset in the list"""
+        curve_index = item.data(Qt.UserRole)
+
+        if curve_index == -2:
+            # Separator - do nothing
+            return
+
+        if curve_index == -1:
+            # Custom - don't change anything
+            return
+        elif curve_index < 7:
+            # Factory curve - load points directly
+            points = CurveEditorWidget.FACTORY_CURVE_POINTS[curve_index]
+            self.curve_editor.set_points(points)
+        else:
+            # User curve (7-16) - load full preset from keyboard
+            slot_index = curve_index - 7  # Convert to 0-9 slot index
+            self.on_user_curve_selected(slot_index)
+
+    def on_save_as_preset(self):
+        """Show dialog to save current settings as a user preset"""
+        from widgets.curve_editor import SaveToUserDialog
+
+        dialog = SaveToUserDialog(None, self.user_curve_names)
+        if dialog.exec_():
+            slot_index = dialog.get_selected_slot()
+            curve_name = dialog.get_curve_name()
+            if 0 <= slot_index < 10:
+                self.on_save_to_user_curve(slot_index, curve_name)
+                # Update the preset list with new name
+                item = self.preset_list_widget.item(8 + slot_index)
+                if item:
+                    item.setText(curve_name)
+                    self.user_curve_names[slot_index] = curve_name
 
     def on_vel_min_changed(self, value):
         """Handle velocity min slider change"""
@@ -1698,10 +1734,11 @@ class VelocityTab(BasicEditor):
                        f"Includes: curve, velocity {settings.get('velocity_min', 1)}-{settings.get('velocity_max', 127)}, "
                        f"press times, aftertouch, vibrato{extra_info}.")
                 )
-                # Update the user curve name in the dropdown
-                names = list(self.curve_editor.user_curve_names)
-                names[slot_index] = curve_name
-                self.curve_editor.set_user_curve_names(names)
+                # Update the user curve name in the preset list
+                self.user_curve_names[slot_index] = curve_name
+                item = self.preset_list_widget.item(8 + slot_index)
+                if item:
+                    item.setText(curve_name)
             else:
                 QMessageBox.warning(
                     None,
@@ -1715,36 +1752,20 @@ class VelocityTab(BasicEditor):
                 tr("VelocityTab", f"Error saving velocity preset: {e}")
             )
 
-    def on_toggle_oled_debug(self):
-        """Toggle velocity preset debug display on keyboard OLED"""
-        if not self.keyboard:
-            self.advanced_debug_console.log("ERROR: Keyboard not connected", "ERROR")
-            return
-
-        try:
-            result = self.keyboard.toggle_velocity_preset_debug()
-            if result is not None:
-                state = "ON" if result else "OFF"
-                self.advanced_debug_console.log(f"OLED preset debug display: {state}", "INFO")
-            else:
-                self.advanced_debug_console.log("Failed to toggle OLED debug display", "ERROR")
-        except Exception as e:
-            self.advanced_debug_console.log(f"Error toggling OLED debug: {e}", "ERROR")
-
     def on_save_curve(self):
         """Save velocity curve selection to keyboard (sets the active curve index)"""
         if not self.keyboard:
             return
 
-        # Get curve index from the CurveEditorWidget's preset combo
-        curve_index = self.curve_editor.preset_combo.currentData()
+        # Get curve index from the preset list
+        curve_index = self.get_selected_preset_index()
 
         if curve_index == -1:
             # Custom curve - need to save to a user slot first
             QMessageBox.information(
                 None,
                 tr("VelocityTab", "Custom Curve"),
-                tr("VelocityTab", "To use a custom curve, save it to a User slot first using 'Save to User...'")
+                tr("VelocityTab", "To use a custom curve, save it to a User slot first using 'Save as Preset'")
             )
             return
 
@@ -1758,7 +1779,7 @@ class VelocityTab(BasicEditor):
                     curve_name = CurveEditorWidget.FACTORY_CURVES[curve_index]
                 else:
                     slot = curve_index - 7
-                    curve_name = self.curve_editor.user_curve_names[slot] if slot < 10 else f"User {slot + 1}"
+                    curve_name = self.user_curve_names[slot] if slot < 10 else f"User {slot + 1}"
                 QMessageBox.information(
                     None,
                     tr("VelocityTab", "Curve Applied"),
