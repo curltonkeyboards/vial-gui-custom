@@ -605,10 +605,10 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     return (uint8_t)velocity;
 }
 
-// Temporary mode display variables (unused while velocity preset debug display is active)
-__attribute__((unused)) static uint32_t mode_display_timer = 0;
-__attribute__((unused)) static char mode_display_msg[64] = "";
-__attribute__((unused)) static bool mode_display_active = false;
+// Temporary mode display variables
+static uint32_t mode_display_timer = 0;
+static char mode_display_msg[64] = "";
+static bool mode_display_active = false;
 #define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
 
 // ============================================================================
@@ -7365,7 +7365,7 @@ uint32_t anim_timer = 0;
 uint8_t current_frame = 0;
 
 /* logic */
-__attribute__((unused)) static void render_luna(int LUNA_X, int LUNA_Y) {
+static void render_luna(int LUNA_X, int LUNA_Y) {
 
 // Optimized held key processing using bitmask
 uint8_t oledheldkeys[11] = {
@@ -11446,11 +11446,33 @@ void oled_render_keylog(void) {
 		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
 	}
 
-	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
-	}else if (keysplitstatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
-	}else if (keysplitstatus == 3) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
-	}else { snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1));
+	// Show velocity preset settings (aftertouch, actuation, ratio, retrigger)
+	extern uint8_t aftertouch_mode;
+	extern uint8_t aftertouch_cc;
+	const char* at_modes[] = {"Off", "Rev", "Bot", "Pst", "Vib"};
+	const char* at_str = (aftertouch_mode < 5) ? at_modes[aftertouch_mode] : "?";
+
+	// Line: AT mode, CC, actuation override
+	if (preset_actuation_override) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nAT:%s CC:%d ACT:%d.%d",
+			at_str, (aftertouch_cc == 255) ? 0 : aftertouch_cc,
+			preset_actuation_point / 10, preset_actuation_point % 10);
+	} else {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nAT:%s CC:%d ACT:key",
+			at_str, (aftertouch_cc == 255) ? 0 : aftertouch_cc);
 	}
+
+	// Line: Speed/Peak ratio and retrigger
+	if (preset_retrigger_distance > 0) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nS/P:%d%% RTG:%d.%dmm",
+			preset_speed_peak_ratio,
+			preset_retrigger_distance / 10, preset_retrigger_distance % 10);
+	} else {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nS/P:%d%% RTG:OFF",
+			preset_speed_peak_ratio);
+	}
+
+	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n---------------------");
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");
 	// Append the RootName, ChordName, and BassName
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
@@ -15762,78 +15784,44 @@ bool oled_task_user(void) {
         return false;
     }
 
-    // Always show velocity preset settings on OLED
-    char buf[22];
-    oled_clear();
+    // Normal display mode
+    // Buffer to store the formatted string
+    char str[22] = "";
+    char name[124] = "";  // Define `name` buffer to be used later
+    // Get the current layer and format it into `str`
+    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+    uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
 
-    // Line 0: Aftertouch mode and CC
-    extern uint8_t aftertouch_mode;
-    extern uint8_t aftertouch_cc;
-    oled_set_cursor(0, 0);
-    const char* at_modes[] = {"Off", "Rev", "Bot", "Post", "Vib"};
-    const char* at_mode_str = (aftertouch_mode < 5) ? at_modes[aftertouch_mode] : "???";
-    if (aftertouch_cc == 255) {
-        snprintf(buf, 22, "AT:%s CC:PolyAT", at_mode_str);
-    } else {
-        snprintf(buf, 22, "AT:%s CC:%d", at_mode_str, aftertouch_cc);
+    if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
+	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
+    // Write the layer information to the OLED
+    oled_write(str, false);
+
+    // Display temporary mode message if active
+    if (mode_display_active) {
+        if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
+            oled_write(mode_display_msg, false);
+        } else {
+            mode_display_active = false;
+        }
     }
-    oled_write(buf, false);
 
-    // Line 1: Actuation override
-    oled_set_cursor(0, 1);
-    if (preset_actuation_override) {
-        uint8_t mm_whole = preset_actuation_point / 10;
-        uint8_t mm_frac = preset_actuation_point % 10;
-        snprintf(buf, 22, "Actuation: %d.%dmm", mm_whole, mm_frac);
-    } else {
-        snprintf(buf, 22, "Actuation: per-key");
-    }
-    oled_write(buf, false);
+    // Render keylog information
+    oled_render_keylog();
+    // Add separator line to `name` and write to OLED
+    //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
+    // You only need to add the separator once, not three times.
+    oled_write(name, false);
 
-    // Line 2: Speed/Peak ratio
-    oled_set_cursor(0, 2);
-    snprintf(buf, 22, "Speed/Peak: %d%%", preset_speed_peak_ratio);
-    oled_write(buf, false);
-
-    // Line 3: Retrigger
-    oled_set_cursor(0, 3);
-    if (preset_retrigger_distance > 0) {
-        uint8_t mm_whole = preset_retrigger_distance / 10;
-        uint8_t mm_frac = preset_retrigger_distance % 10;
-        snprintf(buf, 22, "Retrigger: %d.%dmm", mm_whole, mm_frac);
-    } else {
-        snprintf(buf, 22, "Retrigger: OFF");
-    }
-    oled_write(buf, false);
-
-    // Line 4: Velocity range
-    extern uint8_t he_velocity_min;
-    extern uint8_t he_velocity_max;
-    oled_set_cursor(0, 4);
-    snprintf(buf, 22, "Velocity: %d-%d", he_velocity_min, he_velocity_max);
-    oled_write(buf, false);
-
-    // Line 5: Press times
-    extern uint16_t min_press_time;
-    extern uint16_t max_press_time;
-    oled_set_cursor(0, 5);
-    snprintf(buf, 22, "Press: %d-%dms", max_press_time, min_press_time);
-    oled_write(buf, false);
-
-    // Line 6: Vibrato settings
-    extern uint8_t vibrato_sensitivity;
-    extern uint16_t vibrato_decay_time;
-    oled_set_cursor(0, 6);
-    snprintf(buf, 22, "Vib: %d%% %dms", vibrato_sensitivity, vibrato_decay_time);
-    oled_write(buf, false);
-
-    // Line 7: Current velocity curve
-    extern uint8_t he_velocity_curve;
-    oled_set_cursor(0, 7);
-    snprintf(buf, 22, "Curve: %d", he_velocity_curve);
-    oled_write(buf, false);
-
-    return false;
+if (!dynamic_macro_has_activity()) {
+    led_usb_state = host_keyboard_led_state();
+        render_luna(0, 1);
+} else {
+    // Show Luna keyboard when no macros have data
+    led_usb_state = host_keyboard_led_state();
+	render_interface(0, 8);
+};
+return false;
 }
 
 void matrix_scan_user(void) {
