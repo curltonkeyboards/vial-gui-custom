@@ -4675,9 +4675,11 @@ void velocity_preset_apply(uint8_t preset_index) {
     extern uint8_t he_velocity_min;
     extern uint8_t he_velocity_max;
 
-    // Apply velocity settings
+    // Apply velocity settings (both global vars and keyboard_settings struct)
     he_velocity_min = preset->velocity_min;
     he_velocity_max = preset->velocity_max;
+    keyboard_settings.he_velocity_min = preset->velocity_min;
+    keyboard_settings.he_velocity_max = preset->velocity_max;
     min_press_time = preset->slow_press_time;
     max_press_time = preset->fast_press_time;
 

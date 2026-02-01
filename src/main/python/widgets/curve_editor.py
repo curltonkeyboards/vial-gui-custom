@@ -141,14 +141,10 @@ class CurveEditorWidget(QWidget):
             # Factory curve - load points directly
             self.set_points(self.FACTORY_CURVE_POINTS[curve_index])
         else:
-            # User curve (7-16) - check local cache first, then ask parent
+            # User curve (7-16) - always emit signal to load full preset from keyboard
+            # This ensures all settings (velocity, aftertouch, etc.) are reloaded, not just curve points
             slot_index = curve_index - 7  # Convert to 0-9 slot index
-            if slot_index in self.user_curves_cache:
-                # Load from local cache
-                self.load_user_curve_points(self.user_curves_cache[slot_index])
-            else:
-                # Emit signal for parent to load from keyboard
-                self.user_curve_selected.emit(slot_index)
+            self.user_curve_selected.emit(slot_index)
 
     def on_point_moved(self, point_index, x, y):
         """Called when user drags a point"""
