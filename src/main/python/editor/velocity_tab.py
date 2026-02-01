@@ -321,25 +321,28 @@ class VelocityTab(BasicEditor):
         line.setFrameShadow(QFrame.Sunken)
         main_layout.addWidget(line)
 
-        # Bottom section: Curve editor and time calibration side by side
+        # Bottom section: Combined Velocity Preset configuration
         bottom_layout = QHBoxLayout()
         bottom_layout.setSpacing(20)
 
-        # Velocity Curve Editor Group
-        curve_group = QGroupBox(tr("VelocityTab", "Velocity Preset"))
-        curve_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        curve_layout = QVBoxLayout()
-        curve_group.setLayout(curve_layout)
+        # =====================================================================
+        # LEFT SIDE: Velocity Preset Group (curve + all settings)
+        # =====================================================================
+        preset_group = QGroupBox(tr("VelocityTab", "Velocity Preset"))
+        preset_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        preset_layout = QVBoxLayout()
+        preset_layout.setSpacing(8)
+        preset_group.setLayout(preset_layout)
 
-        # Curve editor widget - show_save_button=True enables user curve save functionality
+        # Curve editor widget
         self.curve_editor = CurveEditorWidget(show_save_button=True)
         self.curve_editor.setMinimumSize(300, 200)
         self.curve_editor.curve_changed.connect(self.on_curve_changed)
         self.curve_editor.user_curve_selected.connect(self.on_user_curve_selected)
         self.curve_editor.save_to_user_requested.connect(self.on_save_to_user_curve)
-        curve_layout.addWidget(self.curve_editor)
+        preset_layout.addWidget(self.curve_editor)
 
-        # Velocity Min/Max sliders (part of the preset)
+        # Velocity Min/Max sliders in horizontal layout
         vel_range_layout = QHBoxLayout()
         vel_range_layout.setContentsMargins(0, 0, 0, 0)
         vel_range_layout.setSpacing(10)
@@ -383,59 +386,25 @@ class VelocityTab(BasicEditor):
         vel_max_layout.addWidget(self.vel_max_value)
 
         vel_range_layout.addLayout(vel_max_layout)
+        preset_layout.addLayout(vel_range_layout)
 
-        curve_layout.addLayout(vel_range_layout)
+        # Separator
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.HLine)
+        line2.setFrameShadow(QFrame.Sunken)
+        preset_layout.addWidget(line2)
 
-        # Note about presets
-        preset_note = QLabel(tr("VelocityTab", "User presets include: curve, velocity range,\npress times, aftertouch, and vibrato settings."))
-        preset_note.setStyleSheet("color: gray; font-size: 9pt;")
-        preset_note.setAlignment(Qt.AlignCenter)
-        curve_layout.addWidget(preset_note)
-
-        # Save curve button (saves the selected preset index to keyboard)
-        save_curve_btn = QPushButton(tr("VelocityTab", "Apply Preset to Keyboard"))
-        save_curve_btn.setMinimumHeight(30)
-        save_curve_btn.clicked.connect(self.on_save_curve)
-        curve_layout.addWidget(save_curve_btn)
-
-        bottom_layout.addWidget(curve_group)
-
-        # Advanced Settings Group (moved from keymap_editor)
-        advanced_group = QGroupBox(tr("VelocityTab", "Global MIDI Settings"))
-        advanced_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        advanced_layout = QVBoxLayout()
-        advanced_layout.setSpacing(6)
-        advanced_group.setLayout(advanced_layout)
-
-        # Velocity Mode info (fixed at Speed+Peak)
-        velocity_layout = QHBoxLayout()
-        velocity_layout.setContentsMargins(0, 0, 0, 0)
-        velocity_layout.setSpacing(4)
-        velocity_layout.addWidget(self.create_help_label(
-            "Velocity mode is fixed at Speed+Peak:\n"
-            "Combines press speed and key depth for\n"
-            "the most expressive and realistic velocity response."
-        ))
-        velocity_label = QLabel(tr("VelocityTab", "Velocity Mode:"))
-        velocity_label.setMinimumWidth(95)
-        velocity_layout.addWidget(velocity_label)
-
-        velocity_mode_label = QLabel("Speed + Peak")
-        velocity_mode_label.setStyleSheet("QLabel { font-weight: bold; color: #88aaff; }")
-        velocity_layout.addWidget(velocity_mode_label, 1)
-        advanced_layout.addLayout(velocity_layout)
-
-        # Min Press Time slider (for slow press = min velocity)
+        # Press Time sliders
+        # Slow Press Time
         min_press_layout = QHBoxLayout()
         min_press_layout.setContentsMargins(0, 0, 0, 0)
         min_press_layout.setSpacing(4)
         min_press_layout.addWidget(self.create_help_label(
             "Slow press threshold (ms):\n"
-            "Keys pressed slower than this time get minimum velocity.\n"
-            "Lower = need slower press for soft notes."
+            "Keys pressed slower than this get minimum velocity."
         ))
         min_press_label = QLabel(tr("VelocityTab", "Slow Press:"))
-        min_press_label.setMinimumWidth(95)
+        min_press_label.setMinimumWidth(85)
         min_press_layout.addWidget(min_press_label)
 
         self.min_press_slider = QSlider(Qt.Horizontal)
@@ -449,19 +418,18 @@ class VelocityTab(BasicEditor):
         self.min_press_value.setMinimumWidth(50)
         self.min_press_value.setStyleSheet("QLabel { font-weight: bold; }")
         min_press_layout.addWidget(self.min_press_value)
-        advanced_layout.addLayout(min_press_layout)
+        preset_layout.addLayout(min_press_layout)
 
-        # Max Press Time slider (for fast press = max velocity)
+        # Fast Press Time
         max_press_layout = QHBoxLayout()
         max_press_layout.setContentsMargins(0, 0, 0, 0)
         max_press_layout.setSpacing(4)
         max_press_layout.addWidget(self.create_help_label(
             "Fast press threshold (ms):\n"
-            "Keys pressed faster than this time get maximum velocity.\n"
-            "Higher = need faster press for loud notes."
+            "Keys pressed faster than this get maximum velocity."
         ))
         max_press_label = QLabel(tr("VelocityTab", "Fast Press:"))
-        max_press_label.setMinimumWidth(95)
+        max_press_label.setMinimumWidth(85)
         max_press_layout.addWidget(max_press_label)
 
         self.max_press_slider = QSlider(Qt.Horizontal)
@@ -475,15 +443,15 @@ class VelocityTab(BasicEditor):
         self.max_press_value.setMinimumWidth(50)
         self.max_press_value.setStyleSheet("QLabel { font-weight: bold; }")
         max_press_layout.addWidget(self.max_press_value)
-        advanced_layout.addLayout(max_press_layout)
+        preset_layout.addLayout(max_press_layout)
 
-        # Separator between velocity and aftertouch
-        line2 = QFrame()
-        line2.setFrameShape(QFrame.HLine)
-        line2.setFrameShadow(QFrame.Sunken)
-        advanced_layout.addWidget(line2)
+        # Separator
+        line3 = QFrame()
+        line3.setFrameShape(QFrame.HLine)
+        line3.setFrameShadow(QFrame.Sunken)
+        preset_layout.addWidget(line3)
 
-        # Aftertouch Mode dropdown
+        # Aftertouch Mode
         mode_layout = QHBoxLayout()
         mode_layout.setContentsMargins(0, 0, 0, 0)
         mode_layout.setSpacing(4)
@@ -492,11 +460,11 @@ class VelocityTab(BasicEditor):
             "Off: No aftertouch\n"
             "Reverse: Pressure on key release\n"
             "Bottom-Out: Pressure when fully pressed\n"
-            "Post-Actuation: Pressure after actuation point\n"
-            "Vibrato: Wiggle key for more aftertouch value"
+            "Post-Actuation: Pressure after actuation\n"
+            "Vibrato: Wiggle key for aftertouch"
         ))
-        mode_label = QLabel(tr("VelocityTab", "Aftertouch Mode:"))
-        mode_label.setMinimumWidth(95)
+        mode_label = QLabel(tr("VelocityTab", "Aftertouch:"))
+        mode_label.setMinimumWidth(85)
         mode_layout.addWidget(mode_label)
 
         self.aftertouch_mode_combo = ArrowComboBox()
@@ -513,15 +481,15 @@ class VelocityTab(BasicEditor):
         self.aftertouch_mode_combo.setCurrentIndex(0)
         self.aftertouch_mode_combo.currentIndexChanged.connect(self.on_aftertouch_mode_changed)
         mode_layout.addWidget(self.aftertouch_mode_combo, 1)
-        advanced_layout.addLayout(mode_layout)
+        preset_layout.addLayout(mode_layout)
 
-        # Aftertouch CC dropdown
+        # Aftertouch CC
         cc_layout = QHBoxLayout()
         cc_layout.setContentsMargins(0, 0, 0, 0)
         cc_layout.setSpacing(4)
-        cc_layout.addWidget(self.create_help_label("MIDI CC number to send for aftertouch.\nOff: Send standard aftertouch messages\nCC#0-127: Send specified CC instead"))
-        cc_label = QLabel(tr("VelocityTab", "Aftertouch CC:"))
-        cc_label.setMinimumWidth(95)
+        cc_layout.addWidget(self.create_help_label("MIDI CC for aftertouch.\nOff: Standard aftertouch\nCC#: Send as CC instead"))
+        cc_label = QLabel(tr("VelocityTab", "AT CC:"))
+        cc_label.setMinimumWidth(85)
         cc_layout.addWidget(cc_label)
 
         self.aftertouch_cc_combo = ArrowComboBox()
@@ -536,17 +504,17 @@ class VelocityTab(BasicEditor):
         self.aftertouch_cc_combo.setCurrentIndex(0)
         self.aftertouch_cc_combo.currentIndexChanged.connect(self.on_aftertouch_cc_changed)
         cc_layout.addWidget(self.aftertouch_cc_combo, 1)
-        advanced_layout.addLayout(cc_layout)
+        preset_layout.addLayout(cc_layout)
 
-        # Vibrato Sensitivity slider (hidden by default)
+        # Vibrato Sensitivity (hidden by default)
         self.vibrato_sens_widget = QWidget()
         sens_layout = QHBoxLayout()
         sens_layout.setContentsMargins(0, 0, 0, 0)
         self.vibrato_sens_widget.setLayout(sens_layout)
 
-        sens_layout.addWidget(self.create_help_label("Wiggle key more = more aftertouch value.\n50% = Less sensitive, 200% = Very sensitive"))
-        sens_label = QLabel(tr("VelocityTab", "Vibrato Sensitivity:"))
-        sens_label.setMinimumWidth(95)
+        sens_layout.addWidget(self.create_help_label("Wiggle sensitivity.\n50%=Less, 200%=Very sensitive"))
+        sens_label = QLabel(tr("VelocityTab", "Vib Sens:"))
+        sens_label.setMinimumWidth(85)
         sens_layout.addWidget(sens_label)
 
         self.vibrato_sens_slider = QSlider(Qt.Horizontal)
@@ -561,18 +529,18 @@ class VelocityTab(BasicEditor):
         self.vibrato_sens_value.setStyleSheet("QLabel { font-weight: bold; }")
         sens_layout.addWidget(self.vibrato_sens_value)
 
-        advanced_layout.addWidget(self.vibrato_sens_widget)
+        preset_layout.addWidget(self.vibrato_sens_widget)
         self.vibrato_sens_widget.setVisible(False)
 
-        # Vibrato Decay Time slider (hidden by default)
+        # Vibrato Decay (hidden by default)
         self.vibrato_decay_widget = QWidget()
         decay_layout = QHBoxLayout()
         decay_layout.setContentsMargins(0, 0, 0, 0)
         self.vibrato_decay_widget.setLayout(decay_layout)
 
-        decay_layout.addWidget(self.create_help_label("How long aftertouch value lasts after key wiggle stops.\n0ms = Instant decay, 2000ms = Slow decay"))
-        decay_label = QLabel(tr("VelocityTab", "Vibrato Decay:"))
-        decay_label.setMinimumWidth(95)
+        decay_layout.addWidget(self.create_help_label("How long aftertouch lasts after wiggle stops."))
+        decay_label = QLabel(tr("VelocityTab", "Vib Decay:"))
+        decay_label.setMinimumWidth(85)
         decay_layout.addWidget(decay_label)
 
         self.vibrato_decay_slider = QSlider(Qt.Horizontal)
@@ -587,22 +555,36 @@ class VelocityTab(BasicEditor):
         self.vibrato_decay_value.setStyleSheet("QLabel { font-weight: bold; }")
         decay_layout.addWidget(self.vibrato_decay_value)
 
-        advanced_layout.addWidget(self.vibrato_decay_widget)
+        preset_layout.addWidget(self.vibrato_decay_widget)
         self.vibrato_decay_widget.setVisible(False)
 
-        advanced_layout.addStretch()
+        # Apply Preset button
+        save_curve_btn = QPushButton(tr("VelocityTab", "Apply Preset to Keyboard"))
+        save_curve_btn.setMinimumHeight(30)
+        save_curve_btn.clicked.connect(self.on_save_curve)
+        preset_layout.addWidget(save_curve_btn)
 
-        # Save button
-        self.advanced_save_btn = QPushButton(tr("VelocityTab", "Save Settings"))
+        bottom_layout.addWidget(preset_group)
+
+        # =====================================================================
+        # RIGHT SIDE: Debug Console + Save Settings
+        # =====================================================================
+        right_group = QGroupBox(tr("VelocityTab", "Save & Debug"))
+        right_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        right_layout = QVBoxLayout()
+        right_group.setLayout(right_layout)
+
+        # Save all settings button
+        self.advanced_save_btn = QPushButton(tr("VelocityTab", "Save All Settings to Keyboard"))
         self.advanced_save_btn.setMinimumHeight(35)
         self.advanced_save_btn.clicked.connect(self.on_save_advanced)
-        advanced_layout.addWidget(self.advanced_save_btn)
+        right_layout.addWidget(self.advanced_save_btn)
 
-        # Debug console for HID communication debugging
+        # Debug console for HID communication
         self.advanced_debug_console = DebugConsole("Velocity Settings Debug Console")
-        advanced_layout.addWidget(self.advanced_debug_console)
+        right_layout.addWidget(self.advanced_debug_console)
 
-        bottom_layout.addWidget(advanced_group)
+        bottom_layout.addWidget(right_group)
 
         main_layout.addLayout(bottom_layout)
         main_layout.addStretch()
