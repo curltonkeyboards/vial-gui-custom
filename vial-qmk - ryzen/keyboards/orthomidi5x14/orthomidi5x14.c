@@ -605,10 +605,10 @@ uint8_t get_triplesplit_he_velocity_from_position(uint8_t row, uint8_t col) {
     return (uint8_t)velocity;
 }
 
-// Temporary mode display variables
-static uint32_t mode_display_timer = 0;
-static char mode_display_msg[64] = "";
-static bool mode_display_active = false;
+// Temporary mode display variables (unused while velocity preset debug display is active)
+__attribute__((unused)) static uint32_t mode_display_timer = 0;
+__attribute__((unused)) static char mode_display_msg[64] = "";
+__attribute__((unused)) static bool mode_display_active = false;
 #define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
 
 // ============================================================================
@@ -7365,7 +7365,7 @@ uint32_t anim_timer = 0;
 uint8_t current_frame = 0;
 
 /* logic */
-static void render_luna(int LUNA_X, int LUNA_Y) {
+__attribute__((unused)) static void render_luna(int LUNA_X, int LUNA_Y) {
 
 // Optimized held key processing using bitmask
 uint8_t oledheldkeys[11] = {
