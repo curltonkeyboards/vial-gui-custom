@@ -870,9 +870,9 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     get_key_actuation_config(key_idx, current_layer,
                             &actuation_point, &rt_down, &rt_up, &flags);
 
-    // Apply velocity preset actuation override if enabled
+    // Apply velocity preset actuation override if enabled (MIDI keys only)
     // preset_actuation_point is 0-40 (0.0-4.0mm), convert to 0-255 distance scale
-    if (preset_actuation_override) {
+    if (preset_actuation_override && midi_key_states[key_idx].is_midi_key) {
         actuation_point = (preset_actuation_point * 255) / 40;
     }
 
