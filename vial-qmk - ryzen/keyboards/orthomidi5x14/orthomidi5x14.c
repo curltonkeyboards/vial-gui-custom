@@ -13045,6 +13045,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return true;  // Continue processing the keypress
     }
 
+    // Exit velocity preset debug display mode on any keypress
+    extern bool velocity_preset_debug_mode;
+    if (velocity_preset_debug_mode && record->event.pressed) {
+        velocity_preset_debug_mode = false;
+        return true;  // Continue processing the keypress
+    }
+
     // =============================================================================
     // TOGGLE KEYS (TGL_00 - TGL_99, keycodes 0xEE00-0xEE63)
     // =============================================================================
