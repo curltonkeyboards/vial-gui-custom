@@ -110,17 +110,17 @@ class TriggerVisualizerWidget(QWidget):
         return bar_x, margin_top, margin_bottom, bar_width, bar_height
 
     def _y_to_actuation(self, y):
-        """Convert y position to actuation value (0-100)"""
+        """Convert y position to actuation value (0-255 for 4mm travel)"""
         bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
         if bar_height <= 0:
-            return 50
-        actuation = ((y - margin_top) / bar_height) * 100
-        return max(0, min(100, int(actuation)))
+            return 127  # Default to middle (2mm)
+        actuation = ((y - margin_top) / bar_height) * 255
+        return max(0, min(255, int(actuation)))
 
     def _actuation_to_y(self, actuation):
-        """Convert actuation value (0-100) to y position"""
+        """Convert actuation value (0-255 for 4mm travel) to y position"""
         bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
-        return margin_top + int((actuation / 100.0) * bar_height)
+        return margin_top + int((actuation / 255.0) * bar_height)
 
     def mousePressEvent(self, event):
         """Handle mouse press - start dragging if clicking on an actuation point"""
@@ -135,14 +135,15 @@ class TriggerVisualizerWidget(QWidget):
 
                 if self.rapidfire_mode:
                     # In rapidfire mode, press is relative to release
+                    # Sensitivity values are 1-50, each unit = 0.025mm
                     actuation_y = self._actuation_to_y(self.actuation_point)
                     # Get release position first
                     release_y = actuation_y
                     if self.release_actuations:
                         rel_actuation, rel_enabled = self.release_actuations[0]
                         if rel_enabled:
-                            release_y = actuation_y - int((rel_actuation / 100.0) * bar_height)
-                    point_y = release_y + int((actuation / 100.0) * bar_height)
+                            release_y = actuation_y - int((rel_actuation * 0.025 / 4.0) * bar_height)
+                    point_y = release_y + int((actuation * 0.025 / 4.0) * bar_height)
                 else:
                     point_y = self._actuation_to_y(actuation)
 
@@ -160,8 +161,9 @@ class TriggerVisualizerWidget(QWidget):
                     continue
 
                 if self.rapidfire_mode:
+                    # Sensitivity values are 1-50, each unit = 0.025mm
                     actuation_y = self._actuation_to_y(self.actuation_point)
-                    point_y = actuation_y - int((actuation / 100.0) * bar_height)
+                    point_y = actuation_y - int((actuation * 0.025 / 4.0) * bar_height)
                 else:
                     point_y = self._actuation_to_y(actuation)
 
@@ -184,12 +186,15 @@ class TriggerVisualizerWidget(QWidget):
 
             if self.rapidfire_mode:
                 # In rapidfire mode, calculate sensitivity relative to actuation/release point
+                # Sensitivity values are 1-50, each unit = 0.025mm, max = 1.25mm
                 actuation_y = self._actuation_to_y(self.actuation_point)
 
                 if self.drag_point_type == 'release_sens':
                     # Release is upward from actuation point
                     delta = actuation_y - y
-                    sensitivity = max(1, min(100, int((delta / bar_height) * 100)))
+                    # Convert delta to mm, then to sensitivity (1mm = 40 units since 0.025mm per unit)
+                    mm_delta = (delta / bar_height) * 4.0
+                    sensitivity = max(1, min(50, int(mm_delta / 0.025)))
                     self.releaseSensDragged.emit(sensitivity)
                 elif self.drag_point_type == 'press_sens':
                     # Press is downward from release point
@@ -197,9 +202,11 @@ class TriggerVisualizerWidget(QWidget):
                     if self.release_actuations:
                         rel_actuation, rel_enabled = self.release_actuations[0]
                         if rel_enabled:
-                            release_y = actuation_y - int((rel_actuation / 100.0) * bar_height)
+                            release_y = actuation_y - int((rel_actuation * 0.025 / 4.0) * bar_height)
                     delta = y - release_y
-                    sensitivity = max(1, min(100, int((delta / bar_height) * 100)))
+                    # Convert delta to mm, then to sensitivity
+                    mm_delta = (delta / bar_height) * 4.0
+                    sensitivity = max(1, min(50, int(mm_delta / 0.025)))
                     self.pressSensDragged.emit(sensitivity)
             else:
                 # Normal mode - direct actuation value
@@ -216,13 +223,14 @@ class TriggerVisualizerWidget(QWidget):
                 if not enabled:
                     continue
                 if self.rapidfire_mode:
+                    # Sensitivity values are 1-50, each unit = 0.025mm
                     actuation_y = self._actuation_to_y(self.actuation_point)
                     release_y = actuation_y
                     if self.release_actuations:
                         rel_actuation, rel_enabled = self.release_actuations[0]
                         if rel_enabled:
-                            release_y = actuation_y - int((rel_actuation / 100.0) * bar_height)
-                    point_y = release_y + int((actuation / 100.0) * bar_height)
+                            release_y = actuation_y - int((rel_actuation * 0.025 / 4.0) * bar_height)
+                    point_y = release_y + int((actuation * 0.025 / 4.0) * bar_height)
                 else:
                     point_y = self._actuation_to_y(actuation)
 
@@ -236,8 +244,9 @@ class TriggerVisualizerWidget(QWidget):
                     if not enabled:
                         continue
                     if self.rapidfire_mode:
+                        # Sensitivity values are 1-50, each unit = 0.025mm
                         actuation_y = self._actuation_to_y(self.actuation_point)
-                        point_y = actuation_y - int((actuation / 100.0) * bar_height)
+                        point_y = actuation_y - int((actuation * 0.025 / 4.0) * bar_height)
                     else:
                         point_y = self._actuation_to_y(actuation)
 
@@ -300,9 +309,9 @@ class TriggerVisualizerWidget(QWidget):
         # Draw deadzone fills (light grey) - shown in all modes
         deadzone_color = QColor(128, 128, 128, 80)  # Light grey with transparency
 
-        # Top deadzone
+        # Top deadzone (deadzone_bottom is 0-51, representing 0-0.8mm = 20% of 4mm)
         if self.deadzone_bottom > 0:
-            deadzone_bottom_percent = (self.deadzone_bottom / 20.0) * 12.5
+            deadzone_bottom_percent = (self.deadzone_bottom / 51.0) * 20.0  # 0-51 maps to 0-20% (0.8mm of 4mm)
             deadzone_bottom_height = int(bar_height * deadzone_bottom_percent / 100.0)
             painter.fillRect(bar_x, margin_top, bar_width, deadzone_bottom_height, deadzone_color)
 
@@ -336,9 +345,9 @@ class TriggerVisualizerWidget(QWidget):
             painter.setPen(text_color)
             painter.drawText(label_x, label_y + text_height - 4, label_text)
 
-        # Bottom deadzone
+        # Bottom deadzone (deadzone_top is 0-51, representing 0-0.8mm = 20% of 4mm)
         if self.deadzone_top > 0:
-            deadzone_top_percent = (self.deadzone_top / 20.0) * 12.5
+            deadzone_top_percent = (self.deadzone_top / 51.0) * 20.0  # 0-51 maps to 0-20% (0.8mm of 4mm)
             deadzone_top_height = int(bar_height * deadzone_top_percent / 100.0)
             deadzone_top_y = margin_top + bar_height - deadzone_top_height
             painter.fillRect(bar_x, deadzone_top_y, bar_width, deadzone_top_height, deadzone_color)
@@ -374,8 +383,8 @@ class TriggerVisualizerWidget(QWidget):
             painter.drawText(label_x, label_y + text_height - 4, label_text)
 
         if self.rapidfire_mode:
-            # Draw actuation line for "First Activation" at actual actuation point
-            actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
+            # Draw actuation line for "First Activation" at actual actuation point (0-255 range)
+            actuation_y = margin_top + int((self.actuation_point / 255.0) * bar_height)
             painter.setPen(QPen(QColor(255, 200, 0), 2, Qt.DashLine))
             painter.drawLine(bar_x, actuation_y, bar_x + bar_width, actuation_y)
 
@@ -415,16 +424,18 @@ class TriggerVisualizerWidget(QWidget):
 
         # Draw press and release actuation points
         if self.rapidfire_mode:
-            # Rapidfire mode - same as original DKS widget
-            actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
+            # Rapidfire mode - actuation_point is 0-255 (0-4mm)
+            actuation_y = margin_top + int((self.actuation_point / 255.0) * bar_height)
 
             # Draw release actuation points (theme release color, above actuation line)
+            # Sensitivity values are 1-50, each unit = 0.025mm, max = 1.25mm
             release_y = actuation_y
             for actuation, enabled in self.release_actuations:
                 if not enabled:
                     continue
 
-                y = actuation_y - int((actuation / 100.0) * bar_height)
+                # actuation is 1-50, 1 unit = 0.025mm, relative to actuation point
+                y = actuation_y - int((actuation * 0.025 / 4.0) * bar_height)
                 release_y = y
 
                 painter.setPen(QPen(release_color, 3))
@@ -433,7 +444,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(release_color)
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 4.0
+                mm_value = actuation * 0.025  # 1-50 maps to 0.025-1.25mm
 
                 font_label = QFont()
                 font_label.setPointSize(9)
@@ -477,11 +488,13 @@ class TriggerVisualizerWidget(QWidget):
                 painter.drawText(label_x, mm_y, mm_text)
 
             # Draw press actuation points (theme press color, below release line)
+            # Sensitivity values are 1-50, each unit = 0.025mm, max = 1.25mm
             for actuation, enabled in self.press_actuations:
                 if not enabled:
                     continue
 
-                y = release_y + int((actuation / 100.0) * bar_height)
+                # actuation is 1-50, 1 unit = 0.025mm, relative to release point
+                y = release_y + int((actuation * 0.025 / 4.0) * bar_height)
 
                 painter.setPen(QPen(press_color, 3))
                 painter.drawLine(bar_x - 20, y, bar_x, y)
@@ -489,7 +502,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(press_color)
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 4.0
+                mm_value = actuation * 0.025  # 1-50 maps to 0.025-1.25mm
 
                 font_label = QFont()
                 font_label.setPointSize(9)
@@ -534,6 +547,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.drawText(mm_x, mm_y, mm_text)
         else:
             # Normal mode: draw from top to bottom with custom labels
+            # Actuation values are 0-255 (0-4mm)
             font = QFont()
             font.setPointSize(9)
 
@@ -542,7 +556,8 @@ class TriggerVisualizerWidget(QWidget):
                 if not enabled:
                     continue
 
-                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+                # actuation is 0-255, representing 0-4mm
+                y = margin_top + int((actuation / 255.0) * (height - margin_top - margin_bottom))
 
                 painter.setPen(QPen(press_color, 3))
                 painter.drawLine(bar_x - 20, y, bar_x, y)
@@ -550,7 +565,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(press_color)
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 4.0
+                mm_value = (actuation / 255.0) * 4.0  # 0-255 maps to 0-4mm
 
                 font_label = QFont()
                 font_label.setPointSize(9)
@@ -607,11 +622,13 @@ class TriggerVisualizerWidget(QWidget):
                 painter.drawText(mm_x, mm_y, mm_text)
 
             # Draw release actuation points (theme release color, right side) - if any
+            # Actuation values are 0-255 (0-4mm)
             for idx, (actuation, enabled) in enumerate(self.release_actuations):
                 if not enabled:
                     continue
 
-                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+                # actuation is 0-255, representing 0-4mm
+                y = margin_top + int((actuation / 255.0) * (height - margin_top - margin_bottom))
 
                 painter.setPen(QPen(release_color, 3))
                 painter.drawLine(bar_x + bar_width, y, bar_x + bar_width + 20, y)
@@ -619,7 +636,7 @@ class TriggerVisualizerWidget(QWidget):
                 painter.setBrush(release_color)
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
-                mm_value = (actuation / 100.0) * 4.0
+                mm_value = (actuation / 255.0) * 4.0  # 0-255 maps to 0-4mm
 
                 font_label = QFont()
                 font_label.setPointSize(9)

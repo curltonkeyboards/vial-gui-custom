@@ -303,24 +303,26 @@ class VelocityTab(BasicEditor):
         controls_widget.setLayout(layout)
         main_layout.addWidget(controls_widget, 1)
 
-        # Velocity Range (dual-handle slider)
-        vel_layout = QHBoxLayout()
-        vel_layout.setContentsMargins(0, 0, 0, 0)
-        vel_layout.setSpacing(4)
+        # Velocity Range (dual-handle slider) - title and value above slider
+        vel_container = QVBoxLayout()
+        vel_container.setContentsMargins(0, 0, 0, 0)
+        vel_container.setSpacing(2)
+
+        vel_header = QHBoxLayout()
+        vel_header.setContentsMargins(0, 0, 0, 0)
         vel_label = QLabel(tr("VelocityTab", "Velocity Range:"))
-        vel_label.setMinimumWidth(95)
-        vel_layout.addWidget(vel_label)
+        vel_header.addWidget(vel_label)
+        controls['velocity_range_value'] = QLabel("1 - 127")
+        controls['velocity_range_value'].setStyleSheet("QLabel { font-weight: bold; }")
+        vel_header.addWidget(controls['velocity_range_value'])
+        vel_header.addStretch()
+        vel_container.addLayout(vel_header)
 
         controls['velocity_range_slider'] = DualRangeSlider(minimum=1, maximum=127)
         controls['velocity_range_slider'].setValues(1, 127)
         controls['velocity_range_slider'].setProperty('zone', zone_name)
-        vel_layout.addWidget(controls['velocity_range_slider'], 1)
-
-        controls['velocity_range_value'] = QLabel("1-127")
-        controls['velocity_range_value'].setMinimumWidth(50)
-        controls['velocity_range_value'].setStyleSheet("QLabel { font-weight: bold; }")
-        vel_layout.addWidget(controls['velocity_range_value'])
-        layout.addLayout(vel_layout)
+        vel_container.addWidget(controls['velocity_range_slider'])
+        layout.addLayout(vel_container)
 
         # Separator
         line = QFrame()
@@ -328,29 +330,31 @@ class VelocityTab(BasicEditor):
         line.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line)
 
-        # Key Press ms Range (dual-handle slider)
-        press_layout = QHBoxLayout()
-        press_layout.setContentsMargins(0, 0, 0, 0)
-        press_layout.setSpacing(4)
-        press_layout.addWidget(self.create_help_label(
+        # Key Press ms Range (dual-handle slider) - title and value above slider
+        press_container = QVBoxLayout()
+        press_container.setContentsMargins(0, 0, 0, 0)
+        press_container.setSpacing(2)
+
+        press_header = QHBoxLayout()
+        press_header.setContentsMargins(0, 0, 0, 0)
+        press_header.addWidget(self.create_help_label(
             "Key press time range (ms):\n"
             "Fast end: Keys pressed faster get max velocity\n"
             "Slow end: Keys pressed slower get min velocity"
         ))
-        press_label = QLabel(tr("VelocityTab", "Key press ms:"))
-        press_label.setMinimumWidth(85)
-        press_layout.addWidget(press_label)
+        press_label = QLabel(tr("VelocityTab", "Key Press range (ms):"))
+        press_header.addWidget(press_label)
+        controls['press_time_range_value'] = QLabel("20 - 200 ms")
+        controls['press_time_range_value'].setStyleSheet("QLabel { font-weight: bold; }")
+        press_header.addWidget(controls['press_time_range_value'])
+        press_header.addStretch()
+        press_container.addLayout(press_header)
 
         controls['press_time_range_slider'] = DualRangeSlider(minimum=2, maximum=500)
         controls['press_time_range_slider'].setValues(20, 200)  # fast=20ms, slow=200ms
         controls['press_time_range_slider'].setProperty('zone', zone_name)
-        press_layout.addWidget(controls['press_time_range_slider'], 1)
-
-        controls['press_time_range_value'] = QLabel("20-200ms")
-        controls['press_time_range_value'].setMinimumWidth(70)
-        controls['press_time_range_value'].setStyleSheet("QLabel { font-weight: bold; }")
-        press_layout.addWidget(controls['press_time_range_value'])
-        layout.addLayout(press_layout)
+        press_container.addWidget(controls['press_time_range_slider'])
+        layout.addLayout(press_container)
 
         # Separator
         line2 = QFrame()
@@ -625,7 +629,7 @@ class VelocityTab(BasicEditor):
 
         # Velocity range (dual-handle slider)
         def on_velocity_range_changed(low, high):
-            controls['velocity_range_value'].setText(f"{low}-{high}")
+            controls['velocity_range_value'].setText(f"{low} - {high}")
             set_setting('velocity_min', low)
             set_setting('velocity_max', high)
 
@@ -633,7 +637,7 @@ class VelocityTab(BasicEditor):
 
         # Press time range (dual-handle slider)
         def on_press_time_range_changed(fast, slow):
-            controls['press_time_range_value'].setText(f"{fast}-{slow}ms")
+            controls['press_time_range_value'].setText(f"{fast} - {slow} ms")
             set_setting('max_press_time', fast)  # fast press = max velocity
             set_setting('min_press_time', slow)  # slow press = min velocity
 
@@ -728,7 +732,7 @@ class VelocityTab(BasicEditor):
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
-        main_widget.setMinimumWidth(1000)  # Minimum 1000px width
+        main_widget.setMaximumWidth(1000)  # Maximum 1000px width
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_layout.setSpacing(15)
@@ -1070,13 +1074,13 @@ class VelocityTab(BasicEditor):
         vel_min = settings.get('velocity_min', 1)
         vel_max = settings.get('velocity_max', 127)
         self.velocity_range_slider.setValues(vel_min, vel_max)
-        self.velocity_range_value.setText(f"{vel_min}-{vel_max}")
+        self.velocity_range_value.setText(f"{vel_min} - {vel_max}")
 
         # Set press time range (fast=max_press, slow=min_press)
         fast_press = settings.get('max_press_time', 20)
         slow_press = settings.get('min_press_time', 200)
         self.press_time_range_slider.setValues(fast_press, slow_press)
-        self.press_time_range_value.setText(f"{fast_press}-{slow_press}ms")
+        self.press_time_range_value.setText(f"{fast_press} - {slow_press} ms")
 
         # Set aftertouch mode
         mode = settings.get('aftertouch_mode', 0)
@@ -1235,13 +1239,13 @@ class VelocityTab(BasicEditor):
         vel_min = zone_data.get('velocity_min', 1)
         vel_max = zone_data.get('velocity_max', 127)
         controls['velocity_range_slider'].setValues(vel_min, vel_max)
-        controls['velocity_range_value'].setText(f"{vel_min}-{vel_max}")
+        controls['velocity_range_value'].setText(f"{vel_min} - {vel_max}")
 
         # Update press time range
         slow_press = zone_data.get('slow_press_time', zone_data.get('min_press_time', 200))
         fast_press = zone_data.get('fast_press_time', zone_data.get('max_press_time', 20))
         controls['press_time_range_slider'].setValues(fast_press, slow_press)
-        controls['press_time_range_value'].setText(f"{fast_press}-{slow_press}ms")
+        controls['press_time_range_value'].setText(f"{fast_press} - {slow_press} ms")
 
         # Update aftertouch mode
         at_mode = zone_data.get('aftertouch_mode', 0)

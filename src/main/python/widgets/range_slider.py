@@ -529,20 +529,25 @@ class TriggerSlider(MultiHandleSlider):
         painter.drawLine(int(actuation_x), track_y + self.track_height + 2, int(actuation_x), track_y + self.track_height + 10)
 
     def _apply_constraints(self, handle_index, new_value):
-        """Apply constraints to handle movement"""
+        """Apply constraints to handle movement
+        Range is 0-255 representing 0-4.0mm travel
+        Deadzone max is 51 (0.8mm = 20% of travel)
+        """
+        DEADZONE_MAX = 51  # 0.8mm max deadzone (20% of 255)
+
         if handle_index == 0:  # Deadzone bottom
-            # Can go from 0 to 20 (0.5mm), but must not exceed actuation minus small gap
-            max_val = min(self.values[1] - 0.5, 20)
+            # Can go from 0 to DEADZONE_MAX, but must not exceed actuation minus gap
+            max_val = min(self.values[1] - 1, DEADZONE_MAX)
             return max(self.minimum, min(new_value, max_val))
         elif handle_index == 1:  # Actuation
-            # Must be between deadzones with small gaps for breathing room
-            min_val = max(self.values[0], 0)  # At least at deadzone bottom
-            max_val = min(self.values[2], 100)  # At most at deadzone top
+            # Must be between deadzones with gaps
+            min_val = self.values[0] + 1  # At least 1 above deadzone bottom
+            max_val = self.values[2] - 1  # At least 1 below deadzone top
             return max(min_val, min(new_value, max_val))
         elif handle_index == 2:  # Deadzone top (inverted)
-            # User value range is 0-20, internal is 100-80
-            # Must not go below actuation minus small gap
-            min_val = max(self.values[1], 80)  # 80 = 100 - 20 (max 0.5mm deadzone)
+            # Internal range is (255 - DEADZONE_MAX) to 255, i.e., 204 to 255
+            # Must not go below actuation plus gap
+            min_val = self.values[1] + 1
             return max(min_val, min(new_value, self.maximum))
 
         return new_value
@@ -693,9 +698,10 @@ class DualRangeSlider(QWidget):
         # Visual settings
         self.handle_radius = 8
         self.track_height = 6
-        self.margin = 15
+        self.margin = 20  # Increased margin for labels
+        self.show_labels = True  # Show min/max labels below handles
 
-        self.setMinimumHeight(28)
+        self.setMinimumHeight(45)  # Increased to fit labels below handles
         self.setMinimumWidth(150)
         self.setMouseTracking(True)
 
@@ -719,25 +725,31 @@ class DualRangeSlider(QWidget):
         return self._high_value
 
     def setLowValue(self, value):
-        value = max(self._minimum, min(value, self._high_value))
+        # Ensure at least 1 unit gap from high value
+        value = max(self._minimum, min(value, self._high_value - 1))
         if value != self._low_value:
             self._low_value = value
             self.update()
             self.range_changed.emit(self._low_value, self._high_value)
 
     def setHighValue(self, value):
-        value = max(self._low_value, min(value, self._maximum))
+        # Ensure at least 1 unit gap from low value
+        value = max(self._low_value + 1, min(value, self._maximum))
         if value != self._high_value:
             self._high_value = value
             self.update()
             self.range_changed.emit(self._low_value, self._high_value)
 
     def setValues(self, low, high):
-        """Set both values at once"""
-        low = max(self._minimum, min(low, self._maximum))
-        high = max(self._minimum, min(high, self._maximum))
-        if low > high:
-            low, high = high, low
+        """Set both values at once, ensuring at least 1 unit gap"""
+        low = max(self._minimum, min(low, self._maximum - 1))
+        high = max(self._minimum + 1, min(high, self._maximum))
+        if low >= high:
+            # Ensure gap of at least 1
+            high = low + 1
+            if high > self._maximum:
+                high = self._maximum
+                low = high - 1
         self._low_value = low
         self._high_value = high
         self.update()
@@ -764,9 +776,11 @@ class DualRangeSlider(QWidget):
         palette = QApplication.palette()
         track_bg = palette.color(QPalette.AlternateBase)
         fill_color = palette.color(QPalette.Highlight)
+        text_color = palette.color(QPalette.Text)
 
         height = self.height()
-        track_y = height // 2 - self.track_height // 2
+        # Adjust track position to leave room for labels below
+        track_y = 12  # Fixed position near top
 
         # Draw track background
         painter.setPen(Qt.NoPen)
@@ -782,9 +796,9 @@ class DualRangeSlider(QWidget):
         painter.drawRoundedRect(low_x, track_y, high_x - low_x, self.track_height, 3, 3)
 
         # Draw handles
+        handle_y = track_y + self.track_height // 2
         for which, value in [('low', self._low_value), ('high', self._high_value)]:
             x = self._value_to_x(value)
-            y = height // 2
 
             if self._active_handle == which or self._hover_handle == which:
                 painter.setBrush(QBrush(QColor(255, 200, 100)))
@@ -792,14 +806,38 @@ class DualRangeSlider(QWidget):
                 painter.setBrush(QBrush(palette.color(QPalette.Button)))
 
             painter.setPen(QPen(palette.color(QPalette.Mid), 1))
-            painter.drawEllipse(QPointF(x, y), self.handle_radius, self.handle_radius)
+            painter.drawEllipse(QPointF(x, handle_y), self.handle_radius, self.handle_radius)
+
+        # Draw min/max labels below handles with small arrows
+        if self.show_labels:
+            from PyQt5.QtGui import QFont, QFontMetrics
+            font = painter.font()
+            font.setPointSize(7)
+            painter.setFont(font)
+            painter.setPen(text_color)
+
+            # Label positions - below handles
+            label_y = track_y + self.track_height + self.handle_radius + 12
+
+            # Min label with up arrow
+            min_text = "▲ min"
+            fm = QFontMetrics(font)
+            min_width = fm.width(min_text)
+            painter.drawText(int(low_x - min_width // 2), int(label_y), min_text)
+
+            # Max label with up arrow
+            max_text = "▲ max"
+            max_width = fm.width(max_text)
+            painter.drawText(int(high_x - max_width // 2), int(label_y), max_text)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             x, y = event.x(), event.y()
             low_x = self._value_to_x(self._low_value)
             high_x = self._value_to_x(self._high_value)
-            cy = self.height() // 2
+            # Handle y position matches paintEvent
+            track_y = 12
+            cy = track_y + self.track_height // 2
 
             # Check handles
             dist_low = ((x - low_x) ** 2 + (y - cy) ** 2) ** 0.5
@@ -833,7 +871,9 @@ class DualRangeSlider(QWidget):
             x, y = event.x(), event.y()
             low_x = self._value_to_x(self._low_value)
             high_x = self._value_to_x(self._high_value)
-            cy = self.height() // 2
+            # Handle y position matches paintEvent
+            track_y = 12
+            cy = track_y + self.track_height // 2
 
             old_hover = self._hover_handle
             dist_low = ((x - low_x) ** 2 + (y - cy) ** 2) ** 0.5
