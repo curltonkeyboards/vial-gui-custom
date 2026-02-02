@@ -350,7 +350,7 @@ class VelocityTab(BasicEditor):
         press_header.addStretch()
         press_container.addLayout(press_header)
 
-        controls['press_time_range_slider'] = DualRangeSlider(minimum=5, maximum=500)
+        controls['press_time_range_slider'] = DualRangeSlider(minimum=1, maximum=500)
         controls['press_time_range_slider'].setValues(20, 200)  # fast=20ms, slow=200ms
         controls['press_time_range_slider'].setProperty('zone', zone_name)
         press_container.addWidget(controls['press_time_range_slider'])

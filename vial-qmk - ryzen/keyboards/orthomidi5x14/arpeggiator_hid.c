@@ -1594,8 +1594,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             uint16_t new_min = data[7] | (data[8] << 8);
             uint16_t new_max = data[9] | (data[10] << 8);
 
-            // Validate ranges (50-500 for min, 5-100 for max)
-            if (new_min >= 50 && new_min <= 500 && new_max >= 5 && new_max <= 100 && new_max < new_min) {
+            // Validate ranges (50-500 for min, 1-100 for max)
+            if (new_min >= 50 && new_min <= 500 && new_max >= 1 && new_max <= 100 && new_max < new_min) {
                 min_press_time = new_min;
                 max_press_time = new_max;
                 keyboard_settings.min_press_time = min_press_time;

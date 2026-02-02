@@ -13027,7 +13027,7 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_MAX_PRESS_TIME:
             // 16-bit value (little-endian) - fast press threshold
             max_press_time = value_ptr[0] | (value_ptr[1] << 8);
-            if (max_press_time < 5) max_press_time = 5;
+            if (max_press_time < 1) max_press_time = 1;
             if (max_press_time > 100) max_press_time = 100;
             keyboard_settings.max_press_time = max_press_time;
             break;

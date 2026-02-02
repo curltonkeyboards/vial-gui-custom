@@ -2449,16 +2449,19 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
             response = self.usb_send(self.dev, packet, retries=3)
 
-            if response and len(response) >= 26 and response[5] == 0x01:
-                # Firmware returns 2 chars per name at response[6 + i*2]
+            if response and len(response) >= 106 and response[5] == 0x01:
+                # Firmware returns 10 chars per name at response[6 + i*10]
                 names = []
                 for i in range(10):
-                    c1 = chr(response[6 + i*2]) if response[6 + i*2] >= 32 and response[6 + i*2] < 127 else ''
-                    c2 = chr(response[6 + i*2 + 1]) if response[6 + i*2 + 1] >= 32 and response[6 + i*2 + 1] < 127 else ''
-                    prefix = c1 + c2
-                    # Use truncated prefix or default name (no redundant User X suffix)
-                    if prefix.strip():
-                        names.append(f"{prefix}...")
+                    name_bytes = response[6 + i*10 : 6 + i*10 + 10]
+                    # Convert bytes to string, filtering printable chars
+                    name = ''.join(chr(b) if 32 <= b < 127 else '' for b in name_bytes).strip('\x00').strip()
+                    # Show full name if <= 20 chars, otherwise truncate with ...
+                    if name:
+                        if len(name) > 20:
+                            names.append(f"{name[:20]}...")
+                        else:
+                            names.append(name)
                     else:
                         names.append(f"User {i+1}")
                 return names
