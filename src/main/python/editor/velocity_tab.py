@@ -68,7 +68,8 @@ def is_midi_note_keycode(keycode):
 def get_midi_key_type(keycode):
     """Get the type of MIDI key: 'base', 'keysplit', 'triplesplit', or None if not a MIDI note.
 
-    This is used to determine which zone settings to apply when overriding per-key actuation.
+    NOTE: Currently unused. Firmware now handles zone-specific overrides directly.
+    Kept for potential future use or debugging.
     """
     if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
         return None
@@ -1648,22 +1649,10 @@ class VelocityTab(BasicEditor):
                 if triplesplit_enabled:
                     extra_info += ", triplesplit zone"
 
-                # Apply actuation override and retrigger to per-key actuation for MIDI keys
-                # This ensures the firmware uses these settings during matrix scan
-                base_zone_settings = {
-                    'actuation_override': settings.get('actuation_override', False),
-                    'actuation_point': settings.get('actuation_point', 20),
-                    'retrigger_distance': settings.get('retrigger_distance', 0)
-                }
-                keys_updated = self.apply_midi_override_settings(
-                    base_zone=base_zone_settings,
-                    keysplit_zone=keysplit_zone,
-                    triplesplit_zone=triplesplit_zone,
-                    keysplit_enabled=keysplit_enabled,
-                    triplesplit_enabled=triplesplit_enabled
-                )
-                if keys_updated > 0:
-                    extra_info += f", {keys_updated} keys updated"
+                # NOTE: Actuation override and retrigger are now handled directly by firmware
+                # The firmware reads zone-specific settings from the velocity preset globals
+                # (preset_actuation_override, preset_retrigger_distance, etc.) and applies
+                # them during MIDI key processing. No per-key actuation changes needed here.
 
                 QMessageBox.information(
                     None,
@@ -1738,16 +1727,20 @@ class VelocityTab(BasicEditor):
 
     def apply_midi_override_settings(self, base_zone, keysplit_zone=None, triplesplit_zone=None,
                                       keysplit_enabled=False, triplesplit_enabled=False):
-        """Apply actuation override and retrigger settings to per-key actuation for MIDI keys.
+        """DEPRECATED: Apply actuation override and retrigger settings to per-key actuation.
 
-        This ensures that override settings from the velocity preset are actually used by the
-        firmware during matrix scan, which reads from per-key actuation data.
+        NOTE: This function is no longer used. The firmware now handles zone-specific
+        actuation override and retrigger directly by reading the velocity preset globals
+        (preset_actuation_override, preset_retrigger_distance, etc.) during MIDI key
+        processing in process_midi_key_analog().
 
-        When keysplit/triplesplit are NOT enabled, base zone settings apply to ALL MIDI keys.
-        When keysplit/triplesplit ARE enabled, each zone's settings apply only to matching keys:
-          - Base MIDI keys (MI_C, etc.) -> base zone settings
-          - Keysplit keys (MI_SPLIT_C, etc.) -> keysplit zone settings
-          - Triplesplit keys (MI_SPLIT2_C, etc.) -> triplesplit zone settings
+        The MIDI retrigger feature is NOT the same as rapidfire - it allows re-triggering
+        note-on without sending note-off while above the actuation point.
+
+        Kept for reference/debugging. The original approach of writing to per-key actuation
+        was incorrect because:
+        1. Actuation override should be a runtime setting, not stored per-key
+        2. Retrigger is a MIDI-specific feature, not related to rapidfire
 
         Args:
             base_zone: Dict with base zone settings (actuation_override, actuation_point, retrigger_distance)
