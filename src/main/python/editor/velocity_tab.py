@@ -65,6 +65,54 @@ def is_midi_note_keycode(keycode):
     return MIDI_NOTE_MIN <= keycode <= MIDI_NOTE_MAX
 
 
+def get_midi_key_type(keycode):
+    """Get the type of MIDI key: 'base', 'keysplit', 'triplesplit', or None if not a MIDI note.
+
+    This is used to determine which zone settings to apply when overriding per-key actuation.
+    """
+    if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
+        return None
+
+    if isinstance(keycode, str):
+        # Check for MI_SPLIT2_ (triplesplit) first since it's longer
+        if keycode.startswith("MI_SPLIT2_"):
+            remaining = keycode[10:]
+            if remaining and remaining[0] in 'CDEFGAB':
+                return 'triplesplit'
+            return None
+
+        # Check for MI_SPLIT_ (keysplit)
+        if keycode.startswith("MI_SPLIT_"):
+            remaining = keycode[9:]
+            if remaining and remaining[0] in 'CDEFGAB':
+                return 'keysplit'
+            return None
+
+        # Check for MI_ prefix (base MIDI notes)
+        if keycode.startswith("MI_"):
+            note_prefixes = ['MI_C', 'MI_D', 'MI_E', 'MI_F', 'MI_G', 'MI_A', 'MI_B']
+            for prefix in note_prefixes:
+                if keycode.startswith(prefix):
+                    remaining = keycode[len(prefix):]
+                    if not remaining or remaining[0] in 'sS_0123456789':
+                        return 'base'
+            return None
+        return None
+
+    # Numeric keycodes - check ranges
+    # Base MIDI notes: 0x7103 - 0x714A
+    if MIDI_NOTE_MIN <= keycode <= MIDI_NOTE_MAX:
+        return 'base'
+    # Keysplit notes: 0xC600 - 0xC6FF range (MI_SPLIT_*)
+    if 0xC600 <= keycode <= 0xC6FF:
+        return 'keysplit'
+    # Triplesplit notes: 0xC700 - 0xC7FF range (MI_SPLIT2_*)
+    if 0xC700 <= keycode <= 0xC7FF:
+        return 'triplesplit'
+
+    return None
+
+
 class VelocityKeyboardWidget(KeyboardWidgetSimple):
     """Extended keyboard widget that displays velocity values on keys"""
 
@@ -1599,6 +1647,24 @@ class VelocityTab(BasicEditor):
                     extra_info += ", keysplit zone"
                 if triplesplit_enabled:
                     extra_info += ", triplesplit zone"
+
+                # Apply actuation override and retrigger to per-key actuation for MIDI keys
+                # This ensures the firmware uses these settings during matrix scan
+                base_zone_settings = {
+                    'actuation_override': settings.get('actuation_override', False),
+                    'actuation_point': settings.get('actuation_point', 20),
+                    'retrigger_distance': settings.get('retrigger_distance', 0)
+                }
+                keys_updated = self.apply_midi_override_settings(
+                    base_zone=base_zone_settings,
+                    keysplit_zone=keysplit_zone,
+                    triplesplit_zone=triplesplit_zone,
+                    keysplit_enabled=keysplit_enabled,
+                    triplesplit_enabled=triplesplit_enabled
+                )
+                if keys_updated > 0:
+                    extra_info += f", {keys_updated} keys updated"
+
                 QMessageBox.information(
                     None,
                     tr("VelocityTab", "Velocity Preset Saved"),
@@ -1669,3 +1735,106 @@ class VelocityTab(BasicEditor):
                 tr("VelocityTab", "Apply Failed"),
                 tr("VelocityTab", f"Error applying curve: {e}")
             )
+
+    def apply_midi_override_settings(self, base_zone, keysplit_zone=None, triplesplit_zone=None,
+                                      keysplit_enabled=False, triplesplit_enabled=False):
+        """Apply actuation override and retrigger settings to per-key actuation for MIDI keys.
+
+        This ensures that override settings from the velocity preset are actually used by the
+        firmware during matrix scan, which reads from per-key actuation data.
+
+        When keysplit/triplesplit are NOT enabled, base zone settings apply to ALL MIDI keys.
+        When keysplit/triplesplit ARE enabled, each zone's settings apply only to matching keys:
+          - Base MIDI keys (MI_C, etc.) -> base zone settings
+          - Keysplit keys (MI_SPLIT_C, etc.) -> keysplit zone settings
+          - Triplesplit keys (MI_SPLIT2_C, etc.) -> triplesplit zone settings
+
+        Args:
+            base_zone: Dict with base zone settings (actuation_override, actuation_point, retrigger_distance)
+            keysplit_zone: Dict with keysplit zone settings (optional)
+            triplesplit_zone: Dict with triplesplit zone settings (optional)
+            keysplit_enabled: Whether keysplit zone is enabled
+            triplesplit_enabled: Whether triplesplit zone is enabled
+
+        Returns:
+            int: Number of keys updated
+        """
+        if not self.keyboard:
+            return 0
+
+        keys_updated = 0
+
+        # Scan all layers and keys for MIDI keycodes
+        for (layer, row, col), keycode in self.keyboard.layout.items():
+            midi_type = get_midi_key_type(keycode)
+            if midi_type is None:
+                continue
+
+            # Determine which zone settings to use for this key
+            if keysplit_enabled or triplesplit_enabled:
+                # Zone-specific application: use zone settings if enabled, else use base
+                if midi_type == 'triplesplit':
+                    zone = triplesplit_zone if (triplesplit_enabled and triplesplit_zone) else base_zone
+                elif midi_type == 'keysplit':
+                    zone = keysplit_zone if (keysplit_enabled and keysplit_zone) else base_zone
+                else:
+                    zone = base_zone
+            else:
+                # No splits enabled - apply base settings to ALL MIDI keys
+                zone = base_zone
+
+            # Check if this zone has actuation override or retrigger enabled
+            actuation_override = zone.get('actuation_override', False)
+            retrigger_distance = zone.get('retrigger_distance', 0)
+
+            if not actuation_override and retrigger_distance == 0:
+                # Nothing to override for this key
+                continue
+
+            # Get current per-key settings to preserve other values
+            key_index = row * 14 + col
+            current_settings = self.keyboard.get_per_key_actuation(layer, key_index)
+            if current_settings is None:
+                # Use defaults if we can't read current settings
+                current_settings = {
+                    'actuation': 60,
+                    'deadzone_top': 4,
+                    'deadzone_bottom': 4,
+                    'velocity_curve': 2,
+                    'flags': 0,
+                    'rapidfire_press_sens': 4,
+                    'rapidfire_release_sens': 4,
+                    'rapidfire_velocity_mod': 0
+                }
+
+            # Apply actuation override
+            if actuation_override:
+                # Convert actuation_point (0-40 = 0.0-4.0mm) to per-key format (0-100 = 0-2.5mm)
+                # actuation_point / 10.0 = mm, then mm / 2.5 * 100 = per_key value
+                # Simplified: per_key = actuation_point * 4, capped at 100
+                actuation_point = zone.get('actuation_point', 20)  # Default 2.0mm
+                per_key_actuation = min(100, actuation_point * 4)
+                current_settings['actuation'] = per_key_actuation
+
+            # Apply retrigger settings using rapidfire mechanism
+            if retrigger_distance > 0:
+                # Enable rapidfire flag (bit 0)
+                current_settings['flags'] = current_settings.get('flags', 0) | 0x01
+
+                # Convert retrigger_distance (0-20 = 0-2.0mm) to rapidfire sens (0-100 = 0-2.5mm)
+                # retrigger_distance / 10.0 = mm, then mm / 2.5 * 100 = sens value
+                # Simplified: sens = retrigger_distance * 4
+                sens_value = min(100, retrigger_distance * 4)
+                current_settings['rapidfire_release_sens'] = sens_value
+                # Use same value for press sensitivity for consistent behavior
+                current_settings['rapidfire_press_sens'] = sens_value
+
+            # Write updated settings to keyboard
+            try:
+                success = self.keyboard.set_per_key_actuation(layer, key_index, current_settings)
+                if success:
+                    keys_updated += 1
+            except Exception as e:
+                print(f"Error applying override to key ({layer}, {row}, {col}): {e}")
+
+        return keys_updated
