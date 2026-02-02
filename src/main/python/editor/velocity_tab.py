@@ -350,7 +350,7 @@ class VelocityTab(BasicEditor):
         press_header.addStretch()
         press_container.addLayout(press_header)
 
-        controls['press_time_range_slider'] = DualRangeSlider(minimum=2, maximum=500)
+        controls['press_time_range_slider'] = DualRangeSlider(minimum=5, maximum=500)
         controls['press_time_range_slider'].setValues(20, 200)  # fast=20ms, slow=200ms
         controls['press_time_range_slider'].setProperty('zone', zone_name)
         press_container.addWidget(controls['press_time_range_slider'])
@@ -783,9 +783,10 @@ class VelocityTab(BasicEditor):
         line.setFrameShadow(QFrame.Sunken)
         main_layout.addWidget(line)
 
-        # Bottom section: Combined Velocity Preset configuration
+        # Bottom section: Combined Velocity Preset configuration (centered)
         bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(15)
+        bottom_layout.setSpacing(10)
+        bottom_layout.addStretch()  # Left stretch to center the group
 
         # =====================================================================
         # LEFT SIDE: Scrollable Preset List
@@ -944,7 +945,8 @@ class VelocityTab(BasicEditor):
 
         preset_main_layout.addLayout(buttons_layout)
 
-        bottom_layout.addWidget(preset_group, 1)
+        bottom_layout.addWidget(preset_group)
+        bottom_layout.addStretch()  # Right stretch to center the group
 
         main_layout.addLayout(bottom_layout)
         main_layout.addStretch()

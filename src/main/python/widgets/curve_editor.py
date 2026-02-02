@@ -492,8 +492,8 @@ class SaveToUserDialog(QDialog):
         """Update name input when slot selection changes"""
         if row >= 0 and row < len(self.user_curve_names):
             current_name = self.user_curve_names[row]
-            # If the current name looks like a default, suggest "User N"
-            if current_name.startswith("User ") or "... (User" in current_name:
+            # If the current name looks like a default (User N or XX...), suggest "User N"
+            if current_name.startswith("User ") or current_name.endswith("..."):
                 self.name_input.setText(f"User {row + 1}")
             else:
                 self.name_input.setText(current_name)

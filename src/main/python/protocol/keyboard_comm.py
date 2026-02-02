@@ -2456,9 +2456,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     c1 = chr(response[6 + i*2]) if response[6 + i*2] >= 32 and response[6 + i*2] < 127 else ''
                     c2 = chr(response[6 + i*2 + 1]) if response[6 + i*2 + 1] >= 32 and response[6 + i*2 + 1] < 127 else ''
                     prefix = c1 + c2
-                    # Use truncated prefix or default name
+                    # Use truncated prefix or default name (no redundant User X suffix)
                     if prefix.strip():
-                        names.append(f"{prefix}... (User {i+1})")
+                        names.append(f"{prefix}...")
                     else:
                         names.append(f"User {i+1}")
                 return names
