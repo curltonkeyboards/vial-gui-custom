@@ -2146,14 +2146,66 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     # USER CURVE METHODS
     # =========================================================================
 
-    def set_user_curve(self, slot, points, name):
+    def _serialize_zone_settings(self, zone):
+        """Serialize zone settings to bytes for HID transfer."""
+        data = bytearray()
+        # Points (8 bytes)
+        for point in zone.get('points', [[0,0], [85,85], [170,170], [255,255]]):
+            data.append(int(point[0]) & 0xFF)
+            data.append(int(point[1]) & 0xFF)
+        # Settings (15 bytes)
+        data.append(int(zone.get('velocity_min', 1)) & 0xFF)
+        data.append(int(zone.get('velocity_max', 127)) & 0xFF)
+        slow = int(zone.get('slow_press_time', 200))
+        data.append(slow & 0xFF)
+        data.append((slow >> 8) & 0xFF)
+        fast = int(zone.get('fast_press_time', 20))
+        data.append(fast & 0xFF)
+        data.append((fast >> 8) & 0xFF)
+        data.append(int(zone.get('aftertouch_mode', 0)) & 0xFF)
+        data.append(int(zone.get('aftertouch_cc', 255)) & 0xFF)
+        data.append(int(zone.get('vibrato_sensitivity', 100)) & 0xFF)
+        vib = int(zone.get('vibrato_decay', 200))
+        data.append(vib & 0xFF)
+        data.append((vib >> 8) & 0xFF)
+        flags = 0x01 if zone.get('actuation_override', False) else 0x00
+        data.append(flags)
+        data.append(int(zone.get('actuation_point', 20)) & 0xFF)
+        data.append(int(zone.get('speed_peak_ratio', 50)) & 0xFF)
+        data.append(int(zone.get('retrigger_distance', 0)) & 0xFF)
+        return data
+
+    def set_velocity_preset(self, slot, points, name, velocity_min=1, velocity_max=127,
+                            slow_press_time=200, fast_press_time=20, aftertouch_mode=0,
+                            aftertouch_cc=255, vibrato_sensitivity=100, vibrato_decay=200,
+                            actuation_override=False, actuation_point=20,
+                            speed_peak_ratio=50, retrigger_distance=0,
+                            keysplit_enabled=False, triplesplit_enabled=False,
+                            keysplit_zone=None, triplesplit_zone=None):
         """
-        Set a user curve slot with custom Bezier points and name.
+        Set a velocity preset slot with curve points and all associated settings.
+        Supports keysplit and triplesplit zones for independent velocity settings per keyboard region.
 
         Args:
             slot: Slot index (0-9 for User 1-10)
             points: List of 4 points [[x0,y0], [x1,y1], [x2,y2], [x3,y3]] (0-255 range)
-            name: Curve name (max 16 characters)
+            name: Preset name (max 16 characters)
+            velocity_min: Minimum MIDI velocity (1-127) for base zone
+            velocity_max: Maximum MIDI velocity (1-127) for base zone
+            slow_press_time: Slow press threshold in ms (50-500) for base zone
+            fast_press_time: Fast press threshold in ms (5-100) for base zone
+            aftertouch_mode: 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+            aftertouch_cc: CC number (0-127) or 255 for poly AT only
+            vibrato_sensitivity: Percentage (50-200)
+            vibrato_decay: Decay time in ms (0-2000)
+            actuation_override: Enable per-key actuation override for MIDI keys
+            actuation_point: Actuation point (0-40 = 0.0-4.0mm in 0.1mm steps)
+            speed_peak_ratio: Ratio of speed to peak for velocity (0-100)
+            retrigger_distance: Retrigger distance (0=off, 5-20 = 0.5-2.0mm)
+            keysplit_enabled: Enable separate keysplit zone settings
+            triplesplit_enabled: Enable separate triplesplit zone settings
+            keysplit_zone: Dict with zone settings for keysplit (same fields as base)
+            triplesplit_zone: Dict with zone settings for triplesplit (same fields as base)
 
         Returns:
             bool: True if successful
@@ -2164,86 +2216,280 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         if len(points) != 4 or any(len(p) != 2 for p in points):
             return False
 
-        # Prepare data: [cmd, slot, p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, name[16]]
-        data = bytearray([slot])
+        # Build base zone settings dict
+        base_zone = {
+            'points': points,
+            'velocity_min': velocity_min,
+            'velocity_max': velocity_max,
+            'slow_press_time': slow_press_time,
+            'fast_press_time': fast_press_time,
+            'aftertouch_mode': aftertouch_mode,
+            'aftertouch_cc': aftertouch_cc,
+            'vibrato_sensitivity': vibrato_sensitivity,
+            'vibrato_decay': vibrato_decay,
+            'actuation_override': actuation_override,
+            'actuation_point': actuation_point,
+            'speed_peak_ratio': speed_peak_ratio,
+            'retrigger_distance': retrigger_distance
+        }
 
-        # Add 4 points (8 bytes)
-        for point in points:
-            data.append(int(point[0]) & 0xFF)
-            data.append(int(point[1]) & 0xFF)
+        # Default zone settings if not provided
+        if keysplit_zone is None:
+            keysplit_zone = base_zone.copy()
+        if triplesplit_zone is None:
+            triplesplit_zone = base_zone.copy()
 
-        # Add name (16 bytes, null-padded)
+        # === Send Chunk 0: name + zone_flags ===
+        data0 = bytearray([slot, 0])  # slot, chunk_id=0
         name_bytes = name.encode('utf-8')[:16]
         name_bytes += b'\x00' * (16 - len(name_bytes))
-        data.extend(name_bytes)
+        data0.extend(name_bytes)
+        zone_flags = 0
+        if keysplit_enabled:
+            zone_flags |= 0x01
+        if triplesplit_enabled:
+            zone_flags |= 0x02
+        data0.append(zone_flags)
+        data0.append(0)  # reserved
 
-        packet = self._create_hid_packet(0xD9, 0, data)  # HID_CMD_USER_CURVE_SET
-        response = self.usb_send(self.dev, packet, retries=20)
-        return response and len(response) > 5 and response[5] == 0x01
+        packet0 = self._create_hid_packet(0xD9, 0, data0)
+        response0 = self.usb_send(self.dev, packet0, retries=20)
+        if not response0 or len(response0) < 6 or response0[5] != 0x01:
+            return False
 
-    def get_user_curve(self, slot):
+        # === Send Chunk 1: base zone settings ===
+        data1 = bytearray([slot, 1])
+        data1.extend(self._serialize_zone_settings(base_zone))
+        packet1 = self._create_hid_packet(0xD9, 0, data1)
+        response1 = self.usb_send(self.dev, packet1, retries=20)
+        if not response1 or len(response1) < 6 or response1[5] != 0x01:
+            return False
+
+        # === Send Chunk 2: keysplit zone settings ===
+        data2 = bytearray([slot, 2])
+        data2.extend(self._serialize_zone_settings(keysplit_zone))
+        packet2 = self._create_hid_packet(0xD9, 0, data2)
+        response2 = self.usb_send(self.dev, packet2, retries=20)
+        if not response2 or len(response2) < 6 or response2[5] != 0x01:
+            return False
+
+        # === Send Chunk 3: triplesplit zone settings ===
+        data3 = bytearray([slot, 3])
+        data3.extend(self._serialize_zone_settings(triplesplit_zone))
+        packet3 = self._create_hid_packet(0xD9, 0, data3)
+        response3 = self.usb_send(self.dev, packet3, retries=20)
+        return response3 and len(response3) > 5 and response3[5] == 0x01
+
+    def set_user_curve(self, slot, points, name, **kwargs):
         """
-        Get a user curve from the keyboard.
+        Set a user curve slot with custom Bezier points and name.
+        This is a compatibility wrapper for set_velocity_preset.
+
+        Args:
+            slot: Slot index (0-9 for User 1-10)
+            points: List of 4 points [[x0,y0], [x1,y1], [x2,y2], [x3,y3]] (0-255 range)
+            name: Curve name (max 16 characters)
+            **kwargs: Additional preset settings (velocity_min, velocity_max, etc.)
+
+        Returns:
+            bool: True if successful
+        """
+        return self.set_velocity_preset(slot, points, name, **kwargs)
+
+    def _deserialize_zone_settings(self, data, offset=8):
+        """Deserialize zone settings from HID response bytes."""
+        points = []
+        for i in range(4):
+            x = data[offset + i*2]
+            y = data[offset + i*2 + 1]
+            points.append([x, y])
+        return {
+            'points': points,
+            'velocity_min': data[offset + 8],
+            'velocity_max': data[offset + 9],
+            'slow_press_time': data[offset + 10] | (data[offset + 11] << 8),
+            'fast_press_time': data[offset + 12] | (data[offset + 13] << 8),
+            'aftertouch_mode': data[offset + 14],
+            'aftertouch_cc': data[offset + 15],
+            'vibrato_sensitivity': data[offset + 16],
+            'vibrato_decay': data[offset + 17] | (data[offset + 18] << 8),
+            'actuation_override': (data[offset + 19] & 0x01) != 0,
+            'actuation_point': data[offset + 20],
+            'speed_peak_ratio': data[offset + 21],
+            'retrigger_distance': data[offset + 22]
+        }
+
+    def get_velocity_preset(self, slot):
+        """
+        Get a velocity preset from the keyboard with all settings.
+        Returns zone-based settings for keysplit and triplesplit support.
 
         Args:
             slot: Slot index (0-9)
 
         Returns:
-            dict: {'points': [[x0,y0], ...], 'name': str} or None
+            dict: {
+                'name': str,
+                'keysplit_enabled': bool,
+                'triplesplit_enabled': bool,
+                'points': [[x0,y0], ...],  # Base zone points (for backward compat)
+                'velocity_min': int, 'velocity_max': int, etc (base zone settings)
+                'base': {...},  # Full base zone settings dict
+                'keysplit': {...},  # Full keysplit zone settings dict
+                'triplesplit': {...}  # Full triplesplit zone settings dict
+            } or None
         """
         if slot < 0 or slot >= 10:
             return None
 
         data = bytearray([slot])
-        packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_USER_CURVE_GET
-        response = self.usb_send(self.dev, packet, retries=3)
+        packet = self._create_hid_packet(0xDA, 0, data)  # HID_CMD_VELOCITY_PRESET_GET
 
-        if not response or len(response) < 26 or response[5] != 0x01:
+        # Firmware sends 4 response packets for zone-based format
+        # Receive Chunk 0: name + zone_flags
+        response0 = self.usb_send(self.dev, packet, retries=3)
+        if not response0 or len(response0) < 32 or response0[5] != 0x01:
             return None
 
-        # Parse response: [status, slot, p0x, p0y, ..., name[16]]
-        points = []
-        for i in range(4):
-            x = response[7 + i*2]
-            y = response[8 + i*2]
-            points.append([x, y])
+        if response0[7] != 0:
+            return None
 
-        # Parse name (16 bytes starting at offset 15)
-        name_bytes = bytes(response[15:31])
+        # Parse name from chunk 0 (16 bytes at offset 8)
+        name_bytes = bytes(response0[8:24])
         name = name_bytes.decode('utf-8', errors='ignore').rstrip('\x00')
+        zone_flags = response0[24]
+        keysplit_enabled = (zone_flags & 0x01) != 0
+        triplesplit_enabled = (zone_flags & 0x02) != 0
 
-        return {'points': points, 'name': name}
+        # Default zone settings
+        default_zone = {
+            'points': [[0, 0], [85, 85], [170, 170], [255, 255]],
+            'velocity_min': 1, 'velocity_max': 127,
+            'slow_press_time': 200, 'fast_press_time': 20,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0
+        }
+
+        # Receive Chunk 1: base zone
+        try:
+            response1 = bytes(self.dev.read(32, timeout_ms=500))
+        except Exception:
+            response1 = None
+        if response1 and len(response1) >= 31 and response1[5] == 0x01 and response1[7] == 1:
+            base_zone = self._deserialize_zone_settings(response1)
+        else:
+            base_zone = default_zone.copy()
+
+        # Receive Chunk 2: keysplit zone
+        try:
+            response2 = bytes(self.dev.read(32, timeout_ms=500))
+        except Exception:
+            response2 = None
+        if response2 and len(response2) >= 31 and response2[5] == 0x01 and response2[7] == 2:
+            keysplit_zone = self._deserialize_zone_settings(response2)
+        else:
+            keysplit_zone = default_zone.copy()
+
+        # Receive Chunk 3: triplesplit zone
+        try:
+            response3 = bytes(self.dev.read(32, timeout_ms=500))
+        except Exception:
+            response3 = None
+        if response3 and len(response3) >= 31 and response3[5] == 0x01 and response3[7] == 3:
+            triplesplit_zone = self._deserialize_zone_settings(response3)
+        else:
+            triplesplit_zone = default_zone.copy()
+
+        # Build result with backward-compatible base zone fields at top level
+        result = {
+            'name': name,
+            'keysplit_enabled': keysplit_enabled,
+            'triplesplit_enabled': triplesplit_enabled,
+            'base': base_zone,
+            'keysplit': keysplit_zone,
+            'triplesplit': triplesplit_zone
+        }
+        # Add base zone fields at top level for backward compatibility
+        result.update(base_zone)
+
+        return result
+
+    def get_user_curve(self, slot):
+        """
+        Get a user curve from the keyboard.
+        This is a compatibility wrapper for get_velocity_preset.
+
+        Args:
+            slot: Slot index (0-9)
+
+        Returns:
+            dict: {'points': [[x0,y0], ...], 'name': str, ...} or None
+        """
+        return self.get_velocity_preset(slot)
 
     def get_all_user_curve_names(self):
         """
         Get all user curve names from the keyboard.
 
+        Note: Due to 32-byte HID packet limit, we can't fit 10 full names (160 bytes).
+        Instead, we load each curve's name individually when it's selected.
+        This method returns default names; actual names are loaded via get_user_curve().
+
         Returns:
-            list: 10 curve names (may be truncated to 10 chars each)
+            list: 10 curve names (defaults, actual names loaded on demand)
         """
-        packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
-        response = self.usb_send(self.dev, packet, retries=3)
+        # The 32-byte HID packet limit means we can't fit 10 x 16-char names.
+        # Just return defaults - actual names will be loaded when user selects a curve.
+        # We could fetch each curve individually here, but that's 10 HID calls which is slow.
 
-        if not response or len(response) < 106 or response[5] != 0x01:
-            # Return defaults if failed
-            return [f"User {i+1}" for i in range(10)]
+        # Try to get truncated names from firmware (2 chars each)
+        try:
+            packet = self._create_hid_packet(0xDB, 0, bytearray())  # HID_CMD_USER_CURVE_GET_ALL
+            response = self.usb_send(self.dev, packet, retries=3)
 
-        # Parse 10 names (10 bytes each, starting at offset 6)
-        names = []
-        for i in range(10):
-            name_bytes = bytes(response[6 + i*10:6 + (i+1)*10])
-            name = name_bytes.decode('utf-8', errors='ignore').rstrip('\x00')
-            if not name:
-                name = f"User {i+1}"
-            names.append(name)
+            if response and len(response) >= 106 and response[5] == 0x01:
+                # Firmware returns 10 chars per name at response[6 + i*10]
+                names = []
+                for i in range(10):
+                    name_bytes = response[6 + i*10 : 6 + i*10 + 10]
+                    # Convert bytes to string, filtering printable chars
+                    name = ''.join(chr(b) if 32 <= b < 127 else '' for b in name_bytes).strip('\x00').strip()
+                    # Show full name if <= 20 chars, otherwise truncate with ...
+                    if name:
+                        if len(name) > 20:
+                            names.append(f"{name[:20]}...")
+                        else:
+                            names.append(name)
+                    else:
+                        names.append(f"User {i+1}")
+                return names
+        except Exception:
+            pass
 
-        return names
+        # Return defaults if failed
+        return [f"User {i+1}" for i in range(10)]
 
     def reset_user_curves(self):
         """Reset all user curves to defaults (linear)."""
         packet = self._create_hid_packet(0xDC, 0, bytearray())  # HID_CMD_USER_CURVE_RESET
         response = self.usb_send(self.dev, packet, retries=20)
         return response and len(response) > 5 and response[5] == 0x01
+
+    def toggle_velocity_preset_debug(self):
+        """
+        Toggle velocity preset debug display on OLED.
+        Shows aftertouch, actuation override, speed/peak ratio, retrigger settings.
+
+        Returns:
+            bool: New state (True = debug mode on, False = off), or None if failed
+        """
+        packet = self._create_hid_packet(0xDD, 0, bytearray())  # HID_CMD_VELOCITY_PRESET_DEBUG_TOGGLE
+        response = self.usb_send(self.dev, packet, retries=3)
+        if response and len(response) > 6 and response[5] == 0x01:
+            return response[6] == 0x01  # Returns current state
+        return None
 
     # =========================================================================
     # GAMING RESPONSE SETTINGS

@@ -959,14 +959,14 @@ typedef struct {
     per_key_actuation_t keys[70];
 } layer_key_actuations_t;
 
-// Default values
-#define DEFAULT_ACTUATION_VALUE 60              // 1.5mm
-#define DEFAULT_DEADZONE_TOP 4                  // 0.1mm
-#define DEFAULT_DEADZONE_BOTTOM 4               // 0.1mm
+// Default values (0-255 scale for actuation, 0-51 scale for deadzones = 20% of travel)
+#define DEFAULT_ACTUATION_VALUE 127             // 2.0mm (50% of 4mm = 127/255)
+#define DEFAULT_DEADZONE_TOP 6                  // ~0.1mm (6/51 * 0.8mm)
+#define DEFAULT_DEADZONE_BOTTOM 6               // ~0.1mm (6/51 * 0.8mm)
 #define DEFAULT_VELOCITY_CURVE 2                // MEDIUM (linear)
 #define DEFAULT_PER_KEY_FLAGS 0                 // All flags off (rapidfire off, use global velocity curve)
-#define DEFAULT_RAPIDFIRE_PRESS_SENS 4          // 0.1mm
-#define DEFAULT_RAPIDFIRE_RELEASE_SENS 4        // 0.1mm
+#define DEFAULT_RAPIDFIRE_PRESS_SENS 6          // ~0.1mm
+#define DEFAULT_RAPIDFIRE_RELEASE_SENS 6        // ~0.1mm
 #define DEFAULT_RAPIDFIRE_VELOCITY_MOD 0        // No offset
 
 // External declarations

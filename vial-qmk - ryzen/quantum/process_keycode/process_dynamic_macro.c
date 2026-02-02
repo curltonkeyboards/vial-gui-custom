@@ -12885,31 +12885,40 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             keyboard_settings.transpose_number3 = transpose_number3;
             break;
         case PARAM_HE_VELOCITY_CURVE:
-            keyboard_settings.he_velocity_curve = *value_ptr;
+            he_velocity_curve = *value_ptr;
+            keyboard_settings.he_velocity_curve = he_velocity_curve;
             break;
         case PARAM_HE_VELOCITY_MIN:
-            keyboard_settings.he_velocity_min = *value_ptr;
+            he_velocity_min = *value_ptr;
+            keyboard_settings.he_velocity_min = he_velocity_min;
             break;
         case PARAM_HE_VELOCITY_MAX:
-            keyboard_settings.he_velocity_max = *value_ptr;
+            he_velocity_max = *value_ptr;
+            keyboard_settings.he_velocity_max = he_velocity_max;
             break;
         case PARAM_KEYSPLIT_HE_VELOCITY_CURVE:
-            keyboard_settings.keysplit_he_velocity_curve = *value_ptr;
+            keysplit_he_velocity_curve = *value_ptr;
+            keyboard_settings.keysplit_he_velocity_curve = keysplit_he_velocity_curve;
             break;
         case PARAM_KEYSPLIT_HE_VELOCITY_MIN:
-            keyboard_settings.keysplit_he_velocity_min = *value_ptr;
+            keysplit_he_velocity_min = *value_ptr;
+            keyboard_settings.keysplit_he_velocity_min = keysplit_he_velocity_min;
             break;
         case PARAM_KEYSPLIT_HE_VELOCITY_MAX:
-            keyboard_settings.keysplit_he_velocity_max = *value_ptr;
+            keysplit_he_velocity_max = *value_ptr;
+            keyboard_settings.keysplit_he_velocity_max = keysplit_he_velocity_max;
             break;
         case PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE:
-            keyboard_settings.triplesplit_he_velocity_curve = *value_ptr;
+            triplesplit_he_velocity_curve = *value_ptr;
+            keyboard_settings.triplesplit_he_velocity_curve = triplesplit_he_velocity_curve;
             break;
         case PARAM_TRIPLESPLIT_HE_VELOCITY_MIN:
-            keyboard_settings.triplesplit_he_velocity_min = *value_ptr;
+            triplesplit_he_velocity_min = *value_ptr;
+            keyboard_settings.triplesplit_he_velocity_min = triplesplit_he_velocity_min;
             break;
         case PARAM_TRIPLESPLIT_HE_VELOCITY_MAX:
-            keyboard_settings.triplesplit_he_velocity_max = *value_ptr;
+            triplesplit_he_velocity_max = *value_ptr;
+            keyboard_settings.triplesplit_he_velocity_max = triplesplit_he_velocity_max;
             break;
 
         // Global MIDI Velocity/Aftertouch Settings
@@ -13027,7 +13036,7 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_MAX_PRESS_TIME:
             // 16-bit value (little-endian) - fast press threshold
             max_press_time = value_ptr[0] | (value_ptr[1] << 8);
-            if (max_press_time < 5) max_press_time = 5;
+            if (max_press_time < 1) max_press_time = 1;
             if (max_press_time > 100) max_press_time = 100;
             keyboard_settings.max_press_time = max_press_time;
             break;

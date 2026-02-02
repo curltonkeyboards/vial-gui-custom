@@ -116,20 +116,20 @@ class TravelBarWidget(QWidget):
         painter.setPen(QPen(bar_border, 2))
         painter.drawRect(margin, bar_y, width - 2 * margin, bar_height)
 
-        # Draw 0mm and 2.5mm labels
+        # Draw 0mm and 4.0mm labels
         painter.setPen(text_color)
         font = QFont()
         font.setPointSize(9)
         painter.setFont(font)
         painter.drawText(margin - 10, bar_y + bar_height + 20, "0.0mm")
-        painter.drawText(width - margin - 35, bar_y + bar_height + 20, "2.5mm")
+        painter.drawText(width - margin - 35, bar_y + bar_height + 20, "4.0mm")
 
         # Draw press actuation points (theme press color, above bar)
         for actuation, enabled in self.press_actuations:
             if not enabled:
                 continue
 
-            x = margin + int((actuation / 100.0) * (width - 2 * margin))
+            x = margin + int((actuation / 255.0) * (width - 2 * margin))
 
             # Draw line
             painter.setPen(QPen(press_color, 3))  # Theme press color
@@ -140,7 +140,7 @@ class TravelBarWidget(QWidget):
             painter.drawEllipse(x - 5, bar_y - 28, 10, 10)
 
             # Draw actuation value
-            mm_value = (actuation / 100.0) * 2.5
+            mm_value = (actuation / 255.0) * 4.0
             painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
@@ -153,7 +153,7 @@ class TravelBarWidget(QWidget):
             if not enabled:
                 continue
 
-            x = margin + int((actuation / 100.0) * (width - 2 * margin))
+            x = margin + int((actuation / 255.0) * (width - 2 * margin))
 
             # Draw line
             painter.setPen(QPen(release_color, 3))  # Theme release color
@@ -164,7 +164,7 @@ class TravelBarWidget(QWidget):
             painter.drawEllipse(x - 5, bar_y + bar_height + 20, 10, 10)
 
             # Draw actuation value
-            mm_value = (actuation / 100.0) * 2.5
+            mm_value = (actuation / 255.0) * 4.0
             painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
@@ -233,8 +233,8 @@ class VerticalTravelBarWidget(QWidget):
     """Vertical representation of key travel with actuation points and draggable markers"""
 
     # Signals emitted when actuation points are dragged
-    pressActuationDragged = pyqtSignal(int, int)  # (point_index, new_value 0-100)
-    releaseActuationDragged = pyqtSignal(int, int)  # (point_index, new_value 0-100)
+    pressActuationDragged = pyqtSignal(int, int)  # (point_index, new_value 0-255)
+    releaseActuationDragged = pyqtSignal(int, int)  # (point_index, new_value 0-255)
 
     def __init__(self):
         super().__init__()
@@ -247,7 +247,7 @@ class VerticalTravelBarWidget(QWidget):
         self.rapidfire_mode = False     # Flag to enable rapidfire visualization mode
         self.deadzone_top = 0           # Top deadzone value (0-20, representing 0-0.5mm)
         self.deadzone_bottom = 0        # Bottom deadzone value (0-20, representing 0-0.5mm)
-        self.actuation_point = 60       # First activation point (0-100, representing 0-2.5mm)
+        self.actuation_point = 127       # First activation point (0-255, representing 0-4.0mm)
 
         # Dragging state
         self.dragging = False
@@ -268,7 +268,7 @@ class VerticalTravelBarWidget(QWidget):
         return bar_x, margin_top, margin_bottom, bar_width, bar_height
 
     def _y_to_actuation(self, y):
-        """Convert y position to actuation value (0-100)"""
+        """Convert y position to actuation value (0-255)"""
         bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
         if bar_height <= 0:
             return 50
@@ -276,9 +276,9 @@ class VerticalTravelBarWidget(QWidget):
         return max(0, min(100, int(actuation)))
 
     def _actuation_to_y(self, actuation):
-        """Convert actuation value (0-100) to y position"""
+        """Convert actuation value (0-255) to y position"""
         bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
-        return margin_top + int((actuation / 100.0) * bar_height)
+        return margin_top + int((actuation / 255.0) * bar_height)
 
     def mousePressEvent(self, event):
         """Handle mouse press - start dragging if clicking on an actuation point"""
@@ -377,7 +377,7 @@ class VerticalTravelBarWidget(QWidget):
             rapidfire_mode: If True, show relative to actuation point with first activation line
             deadzone_top: Top deadzone value (0-20, 0-0.5mm from top, internally inverted)
             deadzone_bottom: Bottom deadzone value (0-20, 0-0.5mm from bottom)
-            actuation_point: First activation point (0-100, 0-2.5mm)
+            actuation_point: First activation point (0-255, 0-4.0mm)
         """
         self.press_actuations = press_points
         self.release_actuations = release_points
@@ -432,7 +432,7 @@ class VerticalTravelBarWidget(QWidget):
         # Convert to 0-100 range: deadzone_bottom * 5 = percentage from top
         if self.deadzone_bottom > 0:
             deadzone_bottom_percent = (self.deadzone_bottom / 20.0) * 12.5  # 0-20 maps to 0-12.5%
-            deadzone_bottom_height = int(bar_height * deadzone_bottom_percent / 100.0)
+            deadzone_bottom_height = int(bar_height * deadzone_bottom_percent / 255.0)
             painter.fillRect(bar_x, margin_top, bar_width, deadzone_bottom_height, deadzone_color)
 
             # Draw "Top Deadzone" label
@@ -471,7 +471,7 @@ class VerticalTravelBarWidget(QWidget):
         # For visualization: fill from bottom upward
         if self.deadzone_top > 0:
             deadzone_top_percent = (self.deadzone_top / 20.0) * 12.5  # 0-20 maps to 0-12.5%
-            deadzone_top_height = int(bar_height * deadzone_top_percent / 100.0)
+            deadzone_top_height = int(bar_height * deadzone_top_percent / 255.0)
             deadzone_top_y = margin_top + bar_height - deadzone_top_height
             painter.fillRect(bar_x, deadzone_top_y, bar_width, deadzone_top_height, deadzone_color)
 
@@ -509,7 +509,7 @@ class VerticalTravelBarWidget(QWidget):
         if self.rapidfire_mode:
 
             # Draw actuation line for "First Activation" at actual actuation point
-            actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
+            actuation_y = margin_top + int((self.actuation_point / 255.0) * bar_height)
             painter.setPen(QPen(QColor(255, 200, 0), 2, Qt.DashLine))  # Yellow dashed line
             painter.drawLine(bar_x, actuation_y, bar_x + bar_width, actuation_y)
 
@@ -543,13 +543,13 @@ class VerticalTravelBarWidget(QWidget):
             painter.setPen(palette.color(QPalette.HighlightedText))  # Use theme highlighted text for first activation label
             painter.drawText(label_x, actuation_y + 3, label_text)
         else:
-            # Draw 0mm and 2.5mm labels (top and bottom) for normal mode
+            # Draw 0mm and 4.0mm labels (top and bottom) for normal mode
             painter.setPen(text_color)
             font = QFont()
             font.setPointSize(9)
             painter.setFont(font)
             painter.drawText(bar_x + bar_width // 2 - 15, margin_top - 10, "0.0mm")
-            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "2.5mm")
+            painter.drawText(bar_x + bar_width // 2 - 15, height - margin_bottom + 15, "4.0mm")
 
         # Draw press and release actuation points
         if self.rapidfire_mode:
@@ -557,7 +557,7 @@ class VerticalTravelBarWidget(QWidget):
             # - Release is relative to first activation (actuation_y), going upward
             # - Press is relative to release, going downward
             bar_height = height - margin_top - margin_bottom
-            actuation_y = margin_top + int((self.actuation_point / 100.0) * bar_height)
+            actuation_y = margin_top + int((self.actuation_point / 255.0) * bar_height)
 
             # Draw release actuation points first (theme release color, above actuation line)
             release_y = actuation_y  # Default to actuation line
@@ -566,8 +566,8 @@ class VerticalTravelBarWidget(QWidget):
                     continue
 
                 # Release is upward from actuation point
-                # actuation is sensitivity in 0-100 (representing 0-2.5mm distance)
-                y = actuation_y - int((actuation / 100.0) * bar_height)
+                # actuation is sensitivity in 0-100 (representing 0-4.0mm distance)
+                y = actuation_y - int((actuation / 255.0) * bar_height)
                 release_y = y
 
                 # Draw line to right
@@ -579,7 +579,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
                 # Draw "Release Threshold" identifier and mm value with button-like styling
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 255.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -633,8 +633,8 @@ class VerticalTravelBarWidget(QWidget):
                     continue
 
                 # Press is downward from release point
-                # actuation is sensitivity in 0-100 (representing 0-2.5mm distance)
-                y = release_y + int((actuation / 100.0) * bar_height)
+                # actuation is sensitivity in 0-100 (representing 0-4.0mm distance)
+                y = release_y + int((actuation / 255.0) * bar_height)
 
                 # Draw line to left
                 painter.setPen(QPen(press_color, 3))  # Theme press color
@@ -645,7 +645,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
                 # Draw "Press Threshold" identifier and mm value with button-like styling
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 255.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -704,7 +704,7 @@ class VerticalTravelBarWidget(QWidget):
                 if not enabled:
                     continue
 
-                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+                y = margin_top + int((actuation / 255.0) * (height - margin_top - margin_bottom))
 
                 # Draw line to left
                 painter.setPen(QPen(press_color, 3))  # Theme press color
@@ -715,7 +715,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
                 # Draw identifier and mm value with button-like styling
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 255.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -770,7 +770,7 @@ class VerticalTravelBarWidget(QWidget):
                 if not enabled:
                     continue
 
-                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
+                y = margin_top + int((actuation / 255.0) * (height - margin_top - margin_bottom))
 
                 # Draw line to right
                 painter.setPen(QPen(release_color, 3))  # Theme release color
@@ -781,7 +781,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
                 # Draw identifier and mm value with button-like styling
-                mm_value = (actuation / 100.0) * 2.5
+                mm_value = (actuation / 255.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -893,7 +893,7 @@ class DKSActionEditor(QWidget):
         self.actuation_slider = QSlider(Qt.Horizontal)
         self.actuation_slider.setMinimum(0)
         self.actuation_slider.setMaximum(100)
-        self.actuation_slider.setValue(60)
+        self.actuation_slider.setValue(127)
         self.actuation_slider.setFixedWidth(70)
         self.actuation_slider.valueChanged.connect(self._update_actuation_label)
         self.actuation_slider.valueChanged.connect(self._on_changed)
@@ -925,7 +925,7 @@ class DKSActionEditor(QWidget):
     def _update_actuation_label(self):
         """Update actuation label with mm value"""
         value = self.actuation_slider.value()
-        mm = (value / 100.0) * 2.5
+        mm = (value / 255.0) * 4.0
         self.actuation_label.setText(f"{mm:.2f}mm")
 
     def _on_changed(self):

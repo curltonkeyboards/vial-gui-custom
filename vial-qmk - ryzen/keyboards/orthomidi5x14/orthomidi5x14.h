@@ -483,39 +483,81 @@ void handle_eeprom_diag_run(uint8_t* response);
 void handle_eeprom_diag_get(uint8_t* response);
 
 // =============================================================================
-// CURVE SYSTEM (For Gaming Analog & Velocity Curves)
+// VELOCITY PRESET SYSTEM (Full Velocity/Curve Configuration)
 // =============================================================================
 
-// User-defined curve (24 bytes each)
-// Used for both gaming analog curves and per-key velocity curves
+// Zone Settings (24 bytes each) - settings for a single keyboard zone (base, keysplit, or triplesplit)
+// Each zone can have its own velocity curve and all associated settings
 typedef struct {
-    uint8_t points[4][2];  // 4 control points: (x, y) each 0-255
-    char name[16];         // User-friendly name (e.g., "My FPS Curve")
-} user_curve_t;
+    uint8_t points[4][2];      // 8 bytes: 4 control points (x, y) each 0-255
+    uint8_t velocity_min;      // 1 byte: Minimum MIDI velocity (1-127)
+    uint8_t velocity_max;      // 1 byte: Maximum MIDI velocity (1-127)
+    uint16_t slow_press_time;  // 2 bytes: Slow press threshold ms (50-500)
+    uint16_t fast_press_time;  // 2 bytes: Fast press threshold ms (5-100)
+    uint8_t aftertouch_mode;   // 1 byte: 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+    uint8_t aftertouch_cc;     // 1 byte: 0-127=CC number, 255=poly AT only
+    uint8_t vibrato_sensitivity; // 1 byte: 50-200 (percentage)
+    uint16_t vibrato_decay;    // 2 bytes: 0-2000ms decay time
+    uint8_t flags;             // 1 byte: bit 0 = actuation_override_enabled for this zone
+    uint8_t actuation_point;   // 1 byte: 0-40 = 0.0-4.0mm in 0.1mm steps
+    uint8_t speed_peak_ratio;  // 1 byte: 0-100 = ratio of speed to peak for velocity
+    uint8_t retrigger_distance; // 1 byte: 0=off, 5-20 = 0.5-2.0mm retrigger distance
+} zone_settings_t;
 
-// Global user curves array (10 slots × 24 bytes = 240 bytes + 2 magic = 242 bytes)
+// Velocity Preset (90 bytes each)
+// Contains settings for base zone, plus optional keysplit and triplesplit zones
+// When a preset is loaded, zone-specific settings are applied based on keysplitvelocitystatus
 typedef struct {
-    user_curve_t curves[10];
-    uint16_t magic;  // 0xCF01 (CurVe1) for validation
-} user_curves_t;
+    char name[16];             // 16 bytes: User-friendly name (e.g., "Piano Soft")
+    uint8_t zone_flags;        // 1 byte: bit 0 = keysplit_enabled, bit 1 = triplesplit_enabled
+    uint8_t reserved;          // 1 byte: padding for alignment
+    zone_settings_t base;      // 24 bytes: Base zone settings (always used)
+    zone_settings_t keysplit;  // 24 bytes: Keysplit zone settings (used if keysplit_enabled)
+    zone_settings_t triplesplit; // 24 bytes: Triplesplit zone settings (used if triplesplit_enabled)
+} velocity_preset_t;
 
-// EEPROM address for user curves (242 bytes: 10 curves × 24 + 2 magic)
-// Reorganized: 41000 (was 68100 - exceeded 64KB limit!)
+// Zone flags in velocity_preset_t.zone_flags
+#define PRESET_ZONE_KEYSPLIT_ENABLED     0x01  // Enable separate keysplit velocity settings
+#define PRESET_ZONE_TRIPLESPLIT_ENABLED  0x02  // Enable separate triplesplit velocity settings
+
+// Zone settings flags in zone_settings_t.flags
+#define ZONE_FLAG_ACTUATION_OVERRIDE  0x01  // Override per-key actuation for this zone
+
+// Legacy flag alias for backward compatibility
+#define PRESET_FLAG_ACTUATION_OVERRIDE  ZONE_FLAG_ACTUATION_OVERRIDE
+
+// Backward compatibility alias
+typedef velocity_preset_t user_curve_t;
+
+// Global velocity presets array (10 slots × 90 bytes = 900 bytes + 2 magic = 902 bytes)
+typedef struct {
+    velocity_preset_t presets[10];
+    uint16_t magic;  // 0xCF05 for validation - incremented for keysplit/triplesplit zone support
+} velocity_presets_t;
+
+// Backward compatibility alias
+typedef velocity_presets_t user_curves_t;
+
+// EEPROM address for velocity presets (902 bytes: 10 presets × 90 + 2 magic)
 #define USER_CURVES_EEPROM_ADDR 41000
-#define USER_CURVES_MAGIC 0xCF01
+#define VELOCITY_PRESETS_EEPROM_ADDR USER_CURVES_EEPROM_ADDR
+#define USER_CURVES_MAGIC 0xCF05  // Incremented to 0xCF05 for keysplit/triplesplit zone support
+#define VELOCITY_PRESETS_MAGIC USER_CURVES_MAGIC
+#define USER_CURVES_MAGIC_V4 0xCF04  // Previous version for migration
 
 // EEPROM address for EQ sensitivity curve settings (26 bytes)
 // Layout: [magic(2), range_low(2), range_high(2), bands[15], scale[3], reserved(2)]
-#define EQ_CURVE_EEPROM_ADDR 41300
+#define EQ_CURVE_EEPROM_ADDR 42000  // Moved to accommodate larger preset storage (was 41400)
 #define EQ_CURVE_MAGIC 0xEA01
 
-extern user_curves_t user_curves;
+extern velocity_presets_t user_curves;  // Keep old name for backward compat
 
-// Curve system functions
+// Velocity preset system functions
 void user_curves_init(void);
 void user_curves_save(void);
 void user_curves_load(void);
 void user_curves_reset(void);
+void velocity_preset_apply(uint8_t preset_index);  // Apply preset settings to globals
 uint8_t apply_curve(uint8_t input, uint8_t curve_index);
 
 // Curve indices:

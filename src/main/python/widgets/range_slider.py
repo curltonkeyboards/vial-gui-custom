@@ -456,15 +456,17 @@ class TriggerSlider(MultiHandleSlider):
     actuationChanged = pyqtSignal(int)
     deadzoneTopChanged = pyqtSignal(int)
 
-    def __init__(self, minimum=0, maximum=100, parent=None):
+    def __init__(self, minimum=0, maximum=255, parent=None):
         super().__init__(num_handles=3, minimum=minimum, maximum=maximum, parent=parent)
 
-        # Set default values: bottom=4 (0.1mm), actuation=60 (1.5mm), top=96 (which is 4 from right = 0.1mm)
-        # Internal representation: [deadzone_bottom, actuation, 100 - deadzone_top]
-        self.values = [4, 60, 96]  # 96 = 100 - 4
+        # Set default values: bottom=6 (~0.1mm), actuation=127 (2.0mm), top=249 (which is 6 from right)
+        # Internal representation: [deadzone_bottom, actuation, 255 - deadzone_top]
+        # Note: 0-255 range represents 0-4.0mm full key travel
+        # Deadzones are limited to 0-51 (20% of 255) representing 0-0.8mm
+        self.values = [6, 127, 249]  # 249 = 255 - 6
 
         # Store the actual user-facing deadzone_top value (inverted)
-        self._user_deadzone_top = 4
+        self._user_deadzone_top = 6
 
         # Connect to emit individual signals
         self.valuesChanged.connect(self._on_values_changed)
@@ -474,23 +476,23 @@ class TriggerSlider(MultiHandleSlider):
         self.deadzoneBottomChanged.emit(int(values[0]))
         self.actuationChanged.emit(int(values[1]))
         # For deadzone_top, emit the inverted value (distance from right)
-        inverted_top = 100 - int(values[2])
+        inverted_top = 255 - int(values[2])
         self._user_deadzone_top = inverted_top
         self.deadzoneTopChanged.emit(inverted_top)
 
     def set_deadzone_bottom(self, value):
-        """Set deadzone bottom value (0-20)"""
+        """Set deadzone bottom value (0-51 = 20% of travel)"""
         self.set_value(0, value)
 
     def set_actuation(self, value):
-        """Set actuation point value (0-100)"""
+        """Set actuation point value (0-255)"""
         self.set_value(1, value)
 
     def set_deadzone_top(self, value):
-        """Set deadzone top value (0-20, inverted internally to 100-80)"""
+        """Set deadzone top value (0-51, inverted internally)"""
         # Convert user value (distance from top) to internal position
         self._user_deadzone_top = value
-        internal_value = 100 - value
+        internal_value = 255 - value
         self.set_value(2, internal_value)
 
     def get_deadzone_bottom(self):
@@ -527,20 +529,25 @@ class TriggerSlider(MultiHandleSlider):
         painter.drawLine(int(actuation_x), track_y + self.track_height + 2, int(actuation_x), track_y + self.track_height + 10)
 
     def _apply_constraints(self, handle_index, new_value):
-        """Apply constraints to handle movement"""
+        """Apply constraints to handle movement
+        Range is 0-255 representing 0-4.0mm travel
+        Deadzone max is 51 (0.8mm = 20% of travel)
+        """
+        DEADZONE_MAX = 51  # 0.8mm max deadzone (20% of 255)
+
         if handle_index == 0:  # Deadzone bottom
-            # Can go from 0 to 20 (0.5mm), but must not exceed actuation minus small gap
-            max_val = min(self.values[1] - 0.5, 20)
+            # Can go from 0 to DEADZONE_MAX, but must not exceed actuation minus gap
+            max_val = min(self.values[1] - 1, DEADZONE_MAX)
             return max(self.minimum, min(new_value, max_val))
         elif handle_index == 1:  # Actuation
-            # Must be between deadzones with small gaps for breathing room
-            min_val = max(self.values[0], 0)  # At least at deadzone bottom
-            max_val = min(self.values[2], 100)  # At most at deadzone top
+            # Must be between deadzones with gaps
+            min_val = self.values[0] + 1  # At least 1 above deadzone bottom
+            max_val = self.values[2] - 1  # At least 1 below deadzone top
             return max(min_val, min(new_value, max_val))
         elif handle_index == 2:  # Deadzone top (inverted)
-            # User value range is 0-20, internal is 100-80
-            # Must not go below actuation minus small gap
-            min_val = max(self.values[1], 80)  # 80 = 100 - 20 (max 0.5mm deadzone)
+            # Internal range is (255 - DEADZONE_MAX) to 255, i.e., 204 to 255
+            # Must not go below actuation plus gap, and must stay above 204 (max 0.8mm from top)
+            min_val = max(self.values[1] + 1, 255 - DEADZONE_MAX)  # At least 204 (0.8mm from top)
             return max(min_val, min(new_value, self.maximum))
 
         return new_value
@@ -669,3 +676,226 @@ class RapidTriggerSlider(MultiHandleSlider):
             # Minimum internal value is 51 (= 101 - 50)
             return max(51, min(new_value, self.maximum))
         return max(self.minimum, min(new_value, self.maximum))
+
+
+class DualRangeSlider(QWidget):
+    """
+    A simple dual-handle range slider for selecting min/max values.
+    Handles cannot cross each other.
+    """
+
+    range_changed = pyqtSignal(int, int)  # (low_value, high_value)
+
+    def __init__(self, minimum=0, maximum=100, parent=None):
+        super().__init__(parent)
+        self._minimum = minimum
+        self._maximum = maximum
+        self._low_value = minimum
+        self._high_value = maximum
+        self._active_handle = None  # 'low', 'high', or None
+        self._hover_handle = None
+
+        # Visual settings
+        self.handle_radius = 8
+        self.track_height = 6
+        self.margin = 20  # Increased margin for labels
+        self.show_labels = True  # Show min/max labels below handles
+
+        self.setMinimumHeight(45)  # Increased to fit labels below handles
+        self.setMinimumWidth(150)
+        self.setMouseTracking(True)
+
+    def minimum(self):
+        return self._minimum
+
+    def maximum(self):
+        return self._maximum
+
+    def setRange(self, minimum, maximum):
+        self._minimum = minimum
+        self._maximum = maximum
+        self._low_value = max(minimum, min(self._low_value, maximum))
+        self._high_value = max(minimum, min(self._high_value, maximum))
+        self.update()
+
+    def lowValue(self):
+        return self._low_value
+
+    def highValue(self):
+        return self._high_value
+
+    def setLowValue(self, value):
+        # Ensure at least 1 unit gap from high value
+        value = max(self._minimum, min(value, self._high_value - 1))
+        if value != self._low_value:
+            self._low_value = value
+            self.update()
+            self.range_changed.emit(self._low_value, self._high_value)
+
+    def setHighValue(self, value):
+        # Ensure at least 1 unit gap from low value
+        value = max(self._low_value + 1, min(value, self._maximum))
+        if value != self._high_value:
+            self._high_value = value
+            self.update()
+            self.range_changed.emit(self._low_value, self._high_value)
+
+    def setValues(self, low, high):
+        """Set both values at once, ensuring at least 1 unit gap"""
+        low = max(self._minimum, min(low, self._maximum - 1))
+        high = max(self._minimum + 1, min(high, self._maximum))
+        if low >= high:
+            # Ensure gap of at least 1
+            high = low + 1
+            if high > self._maximum:
+                high = self._maximum
+                low = high - 1
+        self._low_value = low
+        self._high_value = high
+        self.update()
+
+    def _value_to_x(self, value):
+        track_width = self.width() - 2 * self.margin
+        if self._maximum == self._minimum:
+            return self.margin
+        ratio = (value - self._minimum) / (self._maximum - self._minimum)
+        return int(self.margin + ratio * track_width)
+
+    def _x_to_value(self, x):
+        track_width = self.width() - 2 * self.margin
+        if track_width == 0:
+            return self._minimum
+        ratio = (x - self.margin) / track_width
+        ratio = max(0, min(1, ratio))
+        return int(self._minimum + ratio * (self._maximum - self._minimum))
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        palette = QApplication.palette()
+        track_bg = palette.color(QPalette.AlternateBase)
+        fill_color = palette.color(QPalette.Highlight)
+        text_color = palette.color(QPalette.Text)
+
+        height = self.height()
+        # Adjust track position to leave room for labels below
+        track_y = 12  # Fixed position near top
+
+        # Draw track background
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(track_bg))
+        painter.drawRoundedRect(self.margin, track_y,
+                                self.width() - 2 * self.margin,
+                                self.track_height, 3, 3)
+
+        # Draw selected range
+        low_x = self._value_to_x(self._low_value)
+        high_x = self._value_to_x(self._high_value)
+        painter.setBrush(QBrush(fill_color))
+        painter.drawRoundedRect(low_x, track_y, high_x - low_x, self.track_height, 3, 3)
+
+        # Draw handles
+        handle_y = track_y + self.track_height // 2
+        for which, value in [('low', self._low_value), ('high', self._high_value)]:
+            x = self._value_to_x(value)
+
+            if self._active_handle == which or self._hover_handle == which:
+                painter.setBrush(QBrush(QColor(255, 200, 100)))
+            else:
+                painter.setBrush(QBrush(palette.color(QPalette.Button)))
+
+            painter.setPen(QPen(palette.color(QPalette.Mid), 1))
+            painter.drawEllipse(QPointF(x, handle_y), self.handle_radius, self.handle_radius)
+
+        # Draw min/max labels below handles with small arrows
+        if self.show_labels:
+            from PyQt5.QtGui import QFont, QFontMetrics
+            font = painter.font()
+            font.setPointSize(9)  # Bigger font for readability
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(text_color)
+
+            # Label positions - below handles
+            label_y = track_y + self.track_height + self.handle_radius + 14
+
+            # Min label with up arrow
+            min_text = "▲ min"
+            fm = QFontMetrics(font)
+            min_width = fm.width(min_text)
+            painter.drawText(int(low_x - min_width // 2), int(label_y), min_text)
+
+            # Max label with up arrow
+            max_text = "▲ max"
+            max_width = fm.width(max_text)
+            painter.drawText(int(high_x - max_width // 2), int(label_y), max_text)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            x, y = event.x(), event.y()
+            low_x = self._value_to_x(self._low_value)
+            high_x = self._value_to_x(self._high_value)
+            # Handle y position matches paintEvent
+            track_y = 12
+            cy = track_y + self.track_height // 2
+
+            # Check handles
+            dist_low = ((x - low_x) ** 2 + (y - cy) ** 2) ** 0.5
+            dist_high = ((x - high_x) ** 2 + (y - cy) ** 2) ** 0.5
+
+            if dist_low <= self.handle_radius + 5:
+                self._active_handle = 'low'
+            elif dist_high <= self.handle_radius + 5:
+                self._active_handle = 'high'
+            else:
+                # Click on track - move nearest handle
+                if abs(x - low_x) < abs(x - high_x):
+                    self._active_handle = 'low'
+                    self.setLowValue(self._x_to_value(x))
+                else:
+                    self._active_handle = 'high'
+                    self.setHighValue(self._x_to_value(x))
+            self.update()
+
+    def mouseMoveEvent(self, event):
+        if self._active_handle:
+            value = self._x_to_value(event.x())
+            if self._active_handle == 'low':
+                value = min(value, self._high_value)
+                self.setLowValue(value)
+            else:
+                value = max(value, self._low_value)
+                self.setHighValue(value)
+        else:
+            # Update hover
+            x, y = event.x(), event.y()
+            low_x = self._value_to_x(self._low_value)
+            high_x = self._value_to_x(self._high_value)
+            # Handle y position matches paintEvent
+            track_y = 12
+            cy = track_y + self.track_height // 2
+
+            old_hover = self._hover_handle
+            dist_low = ((x - low_x) ** 2 + (y - cy) ** 2) ** 0.5
+            dist_high = ((x - high_x) ** 2 + (y - cy) ** 2) ** 0.5
+
+            if dist_low <= self.handle_radius + 5:
+                self._hover_handle = 'low'
+            elif dist_high <= self.handle_radius + 5:
+                self._hover_handle = 'high'
+            else:
+                self._hover_handle = None
+
+            if old_hover != self._hover_handle:
+                self.update()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._active_handle = None
+            self.update()
+
+    def leaveEvent(self, event):
+        self._hover_handle = None
+        self.update()
+

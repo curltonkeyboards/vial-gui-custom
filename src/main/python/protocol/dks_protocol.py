@@ -34,9 +34,9 @@ DKS_BEHAVIOR_RELEASE = 2            # Release only
 class DKSAction:
     """Represents a single DKS action (press or release)"""
 
-    def __init__(self, keycode=0, actuation=60, behavior=DKS_BEHAVIOR_TAP):
+    def __init__(self, keycode=0, actuation=127, behavior=DKS_BEHAVIOR_TAP):
         self.keycode = keycode          # Keycode to send (0 = disabled)
-        self.actuation = actuation      # Actuation point (0-100 = 0-2.5mm)
+        self.actuation = actuation      # Actuation point (0-255 = 0-4.0mm)
         self.behavior = behavior        # TAP/PRESS/RELEASE
 
     def is_enabled(self):

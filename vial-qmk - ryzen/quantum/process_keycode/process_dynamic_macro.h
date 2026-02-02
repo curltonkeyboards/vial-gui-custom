@@ -342,7 +342,7 @@ typedef struct {
     uint8_t vibrato_sensitivity;          // 50-200 (percentage, 100=normal)
     uint16_t vibrato_decay_time;          // 0-2000 (milliseconds)
     uint16_t min_press_time;              // 50-500ms (slow press threshold for min velocity)
-    uint16_t max_press_time;              // 5-100ms (fast press threshold for max velocity)
+    uint16_t max_press_time;              // 1-100ms (fast press threshold for max velocity)
     // Base/Main MIDI HE Velocity curve and range
     uint8_t he_velocity_curve;            // 0-4 (SOFTEST, SOFT, MEDIUM, HARD, HARDEST) - global fallback
     uint8_t he_velocity_min;              // 1-127 (minimum velocity)

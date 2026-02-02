@@ -251,13 +251,32 @@ bool velocityoverride = false;
 bool transposeoverride = false;
 bool truesustain = false;
 // Global MIDI Velocity/Aftertouch Settings
-uint8_t velocity_mode = 2;           // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak (default: Speed-based)
+// velocity_mode is fixed at 3 (Speed+Peak) - the only mode, others are deprecated
+uint8_t velocity_mode = 3;           // Fixed: Speed+Peak combined mode (legacy variable kept for compatibility)
+
+// BASE zone velocity settings
 uint8_t aftertouch_mode = 0;         // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
 uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
 uint8_t vibrato_sensitivity = 100;   // 50-200 (percentage, 100=normal)
 uint16_t vibrato_decay_time = 200;   // 0-2000 (milliseconds)
 uint16_t min_press_time = 200;       // 50-500ms (slow press threshold)
 uint16_t max_press_time = 20;        // 5-100ms (fast press threshold)
+
+// KEYSPLIT zone velocity settings
+uint8_t keysplit_aftertouch_mode = 0;
+uint8_t keysplit_aftertouch_cc = 255;
+uint8_t keysplit_vibrato_sensitivity = 100;
+uint16_t keysplit_vibrato_decay_time = 200;
+uint16_t keysplit_min_press_time = 200;
+uint16_t keysplit_max_press_time = 20;
+
+// TRIPLESPLIT zone velocity settings
+uint8_t triplesplit_aftertouch_mode = 0;
+uint8_t triplesplit_aftertouch_cc = 255;
+uint8_t triplesplit_vibrato_sensitivity = 100;
+uint16_t triplesplit_vibrato_decay_time = 200;
+uint16_t triplesplit_min_press_time = 200;
+uint16_t triplesplit_max_press_time = 20;
 bool keysplitmodifierheld = false;
 bool triplesplitmodifierheld = false;
 bool global_edit_modifier_held = false;
@@ -368,6 +387,24 @@ static const char* clock_source_names[] = {
 uint8_t he_velocity_curve = 0;  // Default: Linear (curve index 0)
 uint8_t he_velocity_min = 1;    // Default: 1
 uint8_t he_velocity_max = 127;  // Default: 127
+
+// Preset actuation override - BASE zone (when enabled, overrides per-key actuation for MIDI keys)
+bool preset_actuation_override = false;  // If true, use preset_actuation_point for base MIDI keys
+uint8_t preset_actuation_point = 20;     // 0-40 = 0.0-4.0mm in 0.1mm steps (20 = 2.0mm)
+uint8_t preset_speed_peak_ratio = 50;    // 0-100 = ratio of speed to peak (0=all peak, 100=all speed)
+uint8_t preset_retrigger_distance = 0;   // 0=off, 5-20 = 0.5-2.0mm retrigger distance
+
+// Preset actuation override - KEYSPLIT zone
+bool keysplit_preset_actuation_override = false;
+uint8_t keysplit_preset_actuation_point = 20;
+uint8_t keysplit_preset_speed_peak_ratio = 50;
+uint8_t keysplit_preset_retrigger_distance = 0;
+
+// Preset actuation override - TRIPLESPLIT zone
+bool triplesplit_preset_actuation_override = false;
+uint8_t triplesplit_preset_actuation_point = 20;
+uint8_t triplesplit_preset_speed_peak_ratio = 50;
+uint8_t triplesplit_preset_retrigger_distance = 0;
 
 // Velocity curve names for display
 __attribute__((unused)) static const char* velocity_curve_names[] = {
@@ -3309,7 +3346,7 @@ void reset_per_key_actuations(void) {
 // with calls to:
 //   - get_key_actuation_point(layer, row, col)
 //
-// The function returns a value 0-100 representing 0-2.5mm of travel.
+// The function returns a value 0-100 representing 0-4.0mm of travel (full key travel).
 // NOTE: Firmware ALWAYS uses per-key per-layer settings now.
 // The GUI handles "apply to all keys/layers" by writing the same values.
 uint8_t get_key_actuation_point(uint8_t layer, uint8_t row, uint8_t col) {
@@ -4249,6 +4286,86 @@ void handle_eeprom_diag_get(uint8_t* response) {
 // END EEPROM DIAGNOSTIC SYSTEM
 // =============================================================================
 
+// =============================================================================
+// VELOCITY PRESET DEBUG DISPLAY
+// =============================================================================
+bool velocity_preset_debug_mode = false;
+
+void velocity_preset_display_oled(void) {
+    char buf[22];
+
+    oled_clear();
+
+    // Line 0: Title
+    oled_set_cursor(0, 0);
+    oled_write_P(PSTR("VELOCITY PRESET DBG"), false);
+
+    // Line 1: Aftertouch mode and CC
+    extern uint8_t aftertouch_mode;
+    extern uint8_t aftertouch_cc;
+    oled_set_cursor(0, 1);
+    const char* at_modes[] = {"Off", "Rev", "Bot", "Post", "Vib"};
+    const char* at_mode_str = (aftertouch_mode < 5) ? at_modes[aftertouch_mode] : "???";
+    if (aftertouch_cc == 255) {
+        snprintf(buf, 22, "AT:%s CC:PolyAT", at_mode_str);
+    } else {
+        snprintf(buf, 22, "AT:%s CC:%d", at_mode_str, aftertouch_cc);
+    }
+    oled_write(buf, false);
+
+    // Line 2: Actuation override
+    oled_set_cursor(0, 2);
+    if (preset_actuation_override) {
+        uint8_t mm_whole = preset_actuation_point / 10;
+        uint8_t mm_frac = preset_actuation_point % 10;
+        snprintf(buf, 22, "Actuation: %d.%dmm", mm_whole, mm_frac);
+    } else {
+        snprintf(buf, 22, "Actuation: per-key");
+    }
+    oled_write(buf, false);
+
+    // Line 3: Speed/Peak ratio
+    oled_set_cursor(0, 3);
+    snprintf(buf, 22, "Speed/Peak: %d%%", preset_speed_peak_ratio);
+    oled_write(buf, false);
+
+    // Line 4: Retrigger
+    oled_set_cursor(0, 4);
+    if (preset_retrigger_distance > 0) {
+        uint8_t mm_whole = preset_retrigger_distance / 10;
+        uint8_t mm_frac = preset_retrigger_distance % 10;
+        snprintf(buf, 22, "Retrigger: %d.%dmm", mm_whole, mm_frac);
+    } else {
+        snprintf(buf, 22, "Retrigger: OFF");
+    }
+    oled_write(buf, false);
+
+    // Line 5: Velocity range
+    extern uint8_t he_velocity_min;
+    extern uint8_t he_velocity_max;
+    oled_set_cursor(0, 5);
+    snprintf(buf, 22, "Vel: %d-%d", he_velocity_min, he_velocity_max);
+    oled_write(buf, false);
+
+    // Line 6: Press times
+    extern uint16_t min_press_time;
+    extern uint16_t max_press_time;
+    oled_set_cursor(0, 6);
+    snprintf(buf, 22, "Press: %d-%dms", max_press_time, min_press_time);
+    oled_write(buf, false);
+
+    // Line 7: Vibrato settings
+    extern uint8_t vibrato_sensitivity;
+    extern uint16_t vibrato_decay_time;
+    oled_set_cursor(0, 7);
+    snprintf(buf, 22, "Vib: %d%% %dms", vibrato_sensitivity, vibrato_decay_time);
+    oled_write(buf, false);
+}
+
+// =============================================================================
+// END VELOCITY PRESET DEBUG DISPLAY
+// =============================================================================
+
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value) {
     set_custom_slot_background_mode(slot, value); 
 }
@@ -4473,10 +4590,10 @@ uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
         // Factory curve - read from PROGMEM
         memcpy_P(points, FACTORY_CURVES[curve_index], 8);
     } else if (curve_index >= CURVE_USER_START && curve_index <= CURVE_USER_END) {
-        // User curve - read from RAM
+        // User preset - read from RAM (points are in base zone)
         uint8_t user_idx = curve_index - CURVE_USER_START;
         if (user_idx < 10) {
-            memcpy(points, user_curves.curves[user_idx].points, 8);
+            memcpy(points, user_curves.presets[user_idx].base.points, 8);
         } else {
             // Invalid index - use linear
             return input;
@@ -4518,22 +4635,205 @@ uint8_t apply_curve(uint8_t input, uint8_t curve_index) {
     return input;
 }
 
-// Initialize user curves with defaults (all linear)
+// Initialize velocity presets with defaults (all linear, standard settings)
+// Helper function to initialize a zone_settings_t with defaults
+static void init_zone_defaults(zone_settings_t* zone) {
+    // Linear curve (0,0), (85,85), (170,170), (255,255)
+    zone->points[0][0] = 0;   zone->points[0][1] = 0;
+    zone->points[1][0] = 85;  zone->points[1][1] = 85;
+    zone->points[2][0] = 170; zone->points[2][1] = 170;
+    zone->points[3][0] = 255; zone->points[3][1] = 255;
+
+    // Default velocity range (full range)
+    zone->velocity_min = 1;
+    zone->velocity_max = 127;
+
+    // Default time settings
+    zone->slow_press_time = 200;  // 200ms for soft notes
+    zone->fast_press_time = 20;   // 20ms for loud notes
+
+    // Default aftertouch (off)
+    zone->aftertouch_mode = 0;    // Off
+    zone->aftertouch_cc = 255;    // Poly AT only
+
+    // Default vibrato settings
+    zone->vibrato_sensitivity = 100;  // 100%
+    zone->vibrato_decay = 200;        // 200ms
+
+    // Default: no actuation override (use per-key settings)
+    zone->flags = 0;
+    zone->actuation_point = 20;  // 2.0mm default if enabled (0-40 = 0.0-4.0mm)
+
+    // Default speed/peak ratio (50% = equal blend)
+    zone->speed_peak_ratio = 50;
+
+    // Default: retrigger off
+    zone->retrigger_distance = 0;  // 0 = off, 5-20 = 0.5-2.0mm
+}
+
 void user_curves_init(void) {
-    memset(&user_curves, 0, sizeof(user_curves_t));
+    memset(&user_curves, 0, sizeof(velocity_presets_t));
 
     for (int i = 0; i < 10; i++) {
-        // Set default name
-        snprintf(user_curves.curves[i].name, 16, "User %d", i + 1);
+        velocity_preset_t* preset = &user_curves.presets[i];
 
-        // Set to linear curve (0,0), (85,85), (170,170), (255,255)
-        user_curves.curves[i].points[0][0] = 0;   user_curves.curves[i].points[0][1] = 0;
-        user_curves.curves[i].points[1][0] = 85;  user_curves.curves[i].points[1][1] = 85;
-        user_curves.curves[i].points[2][0] = 170; user_curves.curves[i].points[2][1] = 170;
-        user_curves.curves[i].points[3][0] = 255; user_curves.curves[i].points[3][1] = 255;
+        // Set default name
+        snprintf(preset->name, 16, "User %d", i + 1);
+
+        // Default: no keysplit/triplesplit zones enabled
+        preset->zone_flags = 0;
+        preset->reserved = 0;
+
+        // Initialize all three zones with defaults
+        init_zone_defaults(&preset->base);
+        init_zone_defaults(&preset->keysplit);
+        init_zone_defaults(&preset->triplesplit);
     }
 
     user_curves.magic = USER_CURVES_MAGIC;
+}
+
+// Helper function to apply zone settings to global variables
+static void apply_zone_settings_to_globals(zone_settings_t* zone, bool is_keysplit, bool is_triplesplit) {
+    if (is_keysplit) {
+        // Apply to keysplit zone globals
+        extern uint8_t keysplit_he_velocity_min;
+        extern uint8_t keysplit_he_velocity_max;
+        extern uint8_t keysplit_aftertouch_mode;
+        extern uint8_t keysplit_aftertouch_cc;
+        extern uint8_t keysplit_vibrato_sensitivity;
+        extern uint16_t keysplit_vibrato_decay_time;
+        extern uint16_t keysplit_min_press_time;
+        extern uint16_t keysplit_max_press_time;
+        extern bool keysplit_preset_actuation_override;
+        extern uint8_t keysplit_preset_actuation_point;
+        extern uint8_t keysplit_preset_speed_peak_ratio;
+        extern uint8_t keysplit_preset_retrigger_distance;
+
+        keysplit_he_velocity_min = zone->velocity_min;
+        keysplit_he_velocity_max = zone->velocity_max;
+        keyboard_settings.keysplit_he_velocity_min = zone->velocity_min;
+        keyboard_settings.keysplit_he_velocity_max = zone->velocity_max;
+        keysplit_min_press_time = zone->slow_press_time;
+        keysplit_max_press_time = zone->fast_press_time;
+        keysplit_aftertouch_mode = zone->aftertouch_mode;
+        keysplit_aftertouch_cc = zone->aftertouch_cc;
+        keysplit_vibrato_sensitivity = zone->vibrato_sensitivity;
+        keysplit_vibrato_decay_time = zone->vibrato_decay;
+        keysplit_preset_actuation_override = (zone->flags & ZONE_FLAG_ACTUATION_OVERRIDE) != 0;
+        keysplit_preset_actuation_point = zone->actuation_point;
+        keysplit_preset_speed_peak_ratio = zone->speed_peak_ratio;
+        keysplit_preset_retrigger_distance = zone->retrigger_distance;
+    } else if (is_triplesplit) {
+        // Apply to triplesplit zone globals
+        extern uint8_t triplesplit_he_velocity_min;
+        extern uint8_t triplesplit_he_velocity_max;
+        extern uint8_t triplesplit_aftertouch_mode;
+        extern uint8_t triplesplit_aftertouch_cc;
+        extern uint8_t triplesplit_vibrato_sensitivity;
+        extern uint16_t triplesplit_vibrato_decay_time;
+        extern uint16_t triplesplit_min_press_time;
+        extern uint16_t triplesplit_max_press_time;
+        extern bool triplesplit_preset_actuation_override;
+        extern uint8_t triplesplit_preset_actuation_point;
+        extern uint8_t triplesplit_preset_speed_peak_ratio;
+        extern uint8_t triplesplit_preset_retrigger_distance;
+
+        triplesplit_he_velocity_min = zone->velocity_min;
+        triplesplit_he_velocity_max = zone->velocity_max;
+        keyboard_settings.triplesplit_he_velocity_min = zone->velocity_min;
+        keyboard_settings.triplesplit_he_velocity_max = zone->velocity_max;
+        triplesplit_min_press_time = zone->slow_press_time;
+        triplesplit_max_press_time = zone->fast_press_time;
+        triplesplit_aftertouch_mode = zone->aftertouch_mode;
+        triplesplit_aftertouch_cc = zone->aftertouch_cc;
+        triplesplit_vibrato_sensitivity = zone->vibrato_sensitivity;
+        triplesplit_vibrato_decay_time = zone->vibrato_decay;
+        triplesplit_preset_actuation_override = (zone->flags & ZONE_FLAG_ACTUATION_OVERRIDE) != 0;
+        triplesplit_preset_actuation_point = zone->actuation_point;
+        triplesplit_preset_speed_peak_ratio = zone->speed_peak_ratio;
+        triplesplit_preset_retrigger_distance = zone->retrigger_distance;
+    } else {
+        // Apply to base zone globals
+        extern uint8_t aftertouch_mode;
+        extern uint8_t aftertouch_cc;
+        extern uint8_t vibrato_sensitivity;
+        extern uint16_t vibrato_decay_time;
+        extern uint16_t min_press_time;
+        extern uint16_t max_press_time;
+        extern uint8_t he_velocity_min;
+        extern uint8_t he_velocity_max;
+        extern bool preset_actuation_override;
+        extern uint8_t preset_actuation_point;
+        extern uint8_t preset_speed_peak_ratio;
+        extern uint8_t preset_retrigger_distance;
+
+        he_velocity_min = zone->velocity_min;
+        he_velocity_max = zone->velocity_max;
+        keyboard_settings.he_velocity_min = zone->velocity_min;
+        keyboard_settings.he_velocity_max = zone->velocity_max;
+        min_press_time = zone->slow_press_time;
+        max_press_time = zone->fast_press_time;
+        aftertouch_mode = zone->aftertouch_mode;
+        aftertouch_cc = zone->aftertouch_cc;
+        vibrato_sensitivity = zone->vibrato_sensitivity;
+        vibrato_decay_time = zone->vibrato_decay;
+        preset_actuation_override = (zone->flags & ZONE_FLAG_ACTUATION_OVERRIDE) != 0;
+        preset_actuation_point = zone->actuation_point;
+        preset_speed_peak_ratio = zone->speed_peak_ratio;
+        preset_retrigger_distance = zone->retrigger_distance;
+    }
+}
+
+// Apply velocity preset settings to global variables
+// Called when user selects a preset from the GUI or loads from EEPROM
+void velocity_preset_apply(uint8_t preset_index) {
+    // Only apply user presets (7-16), not factory curves (0-6)
+    if (preset_index < CURVE_USER_START || preset_index > CURVE_USER_END) {
+        return;
+    }
+
+    uint8_t slot = preset_index - CURVE_USER_START;  // Convert to 0-9 index
+    if (slot >= 10) return;
+
+    velocity_preset_t* preset = &user_curves.presets[slot];
+
+    // Apply base zone settings (always)
+    apply_zone_settings_to_globals(&preset->base, false, false);
+
+    // Determine keysplitvelocitystatus based on preset zone_flags
+    // 0=disabled (all zones use same), 1=keysplit only, 2=triplesplit only, 3=both
+    uint8_t new_velocity_status = 0;
+    bool keysplit_enabled = (preset->zone_flags & PRESET_ZONE_KEYSPLIT_ENABLED) != 0;
+    bool triplesplit_enabled = (preset->zone_flags & PRESET_ZONE_TRIPLESPLIT_ENABLED) != 0;
+
+    if (keysplit_enabled && triplesplit_enabled) {
+        new_velocity_status = 3;
+    } else if (keysplit_enabled) {
+        new_velocity_status = 1;
+    } else if (triplesplit_enabled) {
+        new_velocity_status = 2;
+    }
+
+    // Update keysplitvelocitystatus and sync to keyboard_settings
+    keysplitvelocitystatus = new_velocity_status;
+    keyboard_settings.keysplitvelocitystatus = new_velocity_status;
+
+    // Apply keysplit zone settings if enabled
+    if (keysplit_enabled) {
+        apply_zone_settings_to_globals(&preset->keysplit, true, false);
+    }
+
+    // Apply triplesplit zone settings if enabled
+    if (triplesplit_enabled) {
+        apply_zone_settings_to_globals(&preset->triplesplit, false, true);
+    }
+
+    dprintf("Velocity preset %d '%s' applied: vel=%d-%d, zones=%s%s\n",
+            slot + 1, preset->name,
+            preset->base.velocity_min, preset->base.velocity_max,
+            keysplit_enabled ? "KS " : "",
+            triplesplit_enabled ? "TS" : "");
 }
 
 // Save user curves to EEPROM
@@ -4542,8 +4842,88 @@ void user_curves_save(void) {
     eeprom_update_block(&user_curves, (void*)USER_CURVES_EEPROM_ADDR, sizeof(user_curves_t));
 }
 
+// Old velocity preset format (v4, 40 bytes) for migration
+typedef struct {
+    uint8_t points[4][2];      // 8 bytes
+    char name[16];             // 16 bytes
+    uint8_t velocity_min;      // 1 byte
+    uint8_t velocity_max;      // 1 byte
+    uint16_t slow_press_time;  // 2 bytes
+    uint16_t fast_press_time;  // 2 bytes
+    uint8_t aftertouch_mode;   // 1 byte
+    uint8_t aftertouch_cc;     // 1 byte
+    uint8_t vibrato_sensitivity; // 1 byte
+    uint16_t vibrato_decay;    // 2 bytes
+    uint8_t flags;             // 1 byte
+    uint8_t actuation_point;   // 1 byte
+    uint8_t speed_peak_ratio;  // 1 byte
+    uint8_t retrigger_distance; // 1 byte
+} velocity_preset_v4_t;
+
+typedef struct {
+    velocity_preset_v4_t presets[10];
+    uint16_t magic;
+} velocity_presets_v4_t;
+
+// Migrate a v4 preset to the new zone-based format
+static void migrate_preset_v4_to_v5(velocity_preset_v4_t* old, velocity_preset_t* new_preset) {
+    // Copy name
+    memcpy(new_preset->name, old->name, 16);
+
+    // No keysplit/triplesplit zones in v4
+    new_preset->zone_flags = 0;
+    new_preset->reserved = 0;
+
+    // Copy all settings to base zone
+    memcpy(new_preset->base.points, old->points, sizeof(old->points));
+    new_preset->base.velocity_min = old->velocity_min;
+    new_preset->base.velocity_max = old->velocity_max;
+    new_preset->base.slow_press_time = old->slow_press_time;
+    new_preset->base.fast_press_time = old->fast_press_time;
+    new_preset->base.aftertouch_mode = old->aftertouch_mode;
+    new_preset->base.aftertouch_cc = old->aftertouch_cc;
+    new_preset->base.vibrato_sensitivity = old->vibrato_sensitivity;
+    new_preset->base.vibrato_decay = old->vibrato_decay;
+    new_preset->base.flags = old->flags;
+    new_preset->base.actuation_point = old->actuation_point;
+    new_preset->base.speed_peak_ratio = old->speed_peak_ratio;
+    new_preset->base.retrigger_distance = old->retrigger_distance;
+
+    // Initialize keysplit and triplesplit zones with defaults
+    init_zone_defaults(&new_preset->keysplit);
+    init_zone_defaults(&new_preset->triplesplit);
+}
+
 // Load user curves from EEPROM
 void user_curves_load(void) {
+    // First, check the magic number to determine format
+    uint16_t magic;
+    eeprom_read_block(&magic, (void*)(USER_CURVES_EEPROM_ADDR + sizeof(velocity_presets_v4_t) - 2), 2);
+
+    if (magic == USER_CURVES_MAGIC_V4) {
+        // Migrate from v4 (40-byte presets) to v5 (90-byte presets)
+        dprintf("Migrating velocity presets from v4 to v5...\n");
+
+        velocity_presets_v4_t old_presets;
+        eeprom_read_block(&old_presets, (void*)USER_CURVES_EEPROM_ADDR, sizeof(velocity_presets_v4_t));
+
+        // Initialize new structure
+        memset(&user_curves, 0, sizeof(velocity_presets_t));
+
+        // Migrate each preset
+        for (int i = 0; i < 10; i++) {
+            migrate_preset_v4_to_v5(&old_presets.presets[i], &user_curves.presets[i]);
+        }
+
+        // Set new magic and save
+        user_curves.magic = USER_CURVES_MAGIC;
+        user_curves_save();
+
+        dprintf("Migration complete.\n");
+        return;
+    }
+
+    // Try to read new format
     eeprom_read_block(&user_curves, (void*)USER_CURVES_EEPROM_ADDR, sizeof(user_curves_t));
 
     if (user_curves.magic != USER_CURVES_MAGIC) {
@@ -11231,45 +11611,52 @@ void oled_render_keylog(void) {
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
 
-	// ============ VELOCITY DEBUG INFO ============
-	// Show velocity mode name
-	const char* mode_names[] = {"FIX", "PEAK", "SPD", "S+P"};
-	const char* mode_name = (velocity_mode < 4) ? mode_names[velocity_mode] : "???";
+	// Line 1: Transposition
+	if (keysplittransposestatus == 1) {
+		snprintf(name, sizeof(name), "\n  TRA%+3d // TRA%+3d", transpose_number + octave_number, transpose_number2 + octave_number2);
+	} else if (keysplittransposestatus == 2) {
+		snprintf(name, sizeof(name), "\n T%+3d / T%+3d  /T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
+	} else if (keysplittransposestatus == 3) {
+		snprintf(name, sizeof(name), "\nT%+3d/T%+3d/T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
+	} else {
+		snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
+	}
 
-	// Show velocity curve (0-6 factory, 7-16 user)
+	// Line 2: Velocity curve name (factory or user preset name)
 	uint8_t curve = keyboard_settings.he_velocity_curve;
 	const char* curve_names[] = {"Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"};
 
-	// First line: Mode and Curve
 	if (curve <= 6) {
-		snprintf(name, sizeof(name), "\n M:%s CRV:%d(%s)", mode_name, curve, curve_names[curve]);
+		// Factory curve - show name centered
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n      %s", curve_names[curve]);
 	} else {
-		snprintf(name, sizeof(name), "\n M:%s CRV:%d(User%d)", mode_name, curve, curve - 6);
+		// User curve - show preset name
+		uint8_t slot = curve - CURVE_USER_START;
+		if (slot < 10 && user_curves.presets[slot].name[0] != '\0') {
+			// Truncate name to fit display (max ~15 chars)
+			char preset_name[16];
+			strncpy(preset_name, user_curves.presets[slot].name, 15);
+			preset_name[15] = '\0';
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n      %s", preset_name);
+		} else {
+			snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n      User %d", slot + 1);
+		}
 	}
 
-	// Second line: Press times (slow=min_press_time, fast=max_press_time)
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n SLO:%3dms FAST:%2dms", min_press_time, max_press_time);
-
-	// Get HE velocity settings from global keyboard settings (no longer per-layer)
-	uint8_t he_min = keyboard_settings.he_velocity_min;
-	uint8_t he_max = keyboard_settings.he_velocity_max;
-
-	// Show HE velocity range for current layer
-	if (he_min == he_max) {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", he_min);
+	// Line 3: MIDI Channel (with keysplit variants)
+	if (keysplitstatus == 1) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
+	} else if (keysplitstatus == 2) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
+	} else if (keysplitstatus == 3) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
 	} else {
-		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   VELOCITY %3d-%3d", he_min, he_max);
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1));
 	}
 
-	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
-	}else if (keysplitstatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d/ CH %2d /CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
-	}else if (keysplitstatus == 3) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\nC%2d/C%2d/C%2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));
-	}else { snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1));
-	}
+	// Chord name display
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");
-	// Append the RootName, ChordName, and BassName
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
-	// Add right padding and the ending characters
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", right_padding, "");
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "- - - - - - - - - -\n");
 
@@ -12857,6 +13244,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // Exit EEPROM diagnostic display mode on any keypress
     if (eeprom_diag_display_mode && record->event.pressed) {
         eeprom_diag_display_mode = false;
+        return true;  // Continue processing the keypress
+    }
+
+    // Exit velocity preset debug display mode on any keypress
+    extern bool velocity_preset_debug_mode;
+    if (velocity_preset_debug_mode && record->event.pressed) {
+        velocity_preset_debug_mode = false;
         return true;  // Continue processing the keypress
     }
 

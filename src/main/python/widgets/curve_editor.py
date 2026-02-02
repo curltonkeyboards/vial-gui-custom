@@ -91,9 +91,13 @@ class CurveEditorWidget(QWidget):
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Preset selector
+        # Preset selector widget (can be hidden as a unit)
+        self.preset_selector_widget = QWidget()
         preset_layout = QHBoxLayout()
-        preset_label = QLabel(tr("CurveEditor", "Preset:"))
+        preset_layout.setContentsMargins(0, 0, 0, 0)
+        self.preset_selector_widget.setLayout(preset_layout)
+
+        self.preset_label = QLabel(tr("CurveEditor", "Preset:"))
         self.preset_combo = QComboBox()
 
         # Add factory curves
@@ -113,7 +117,7 @@ class CurveEditorWidget(QWidget):
 
         self.preset_combo.currentIndexChanged.connect(self.on_preset_changed)
 
-        preset_layout.addWidget(preset_label)
+        preset_layout.addWidget(self.preset_label)
         preset_layout.addWidget(self.preset_combo, 1)
 
         if self.show_save_button:
@@ -121,7 +125,7 @@ class CurveEditorWidget(QWidget):
             self.save_to_user_btn.clicked.connect(self.on_save_to_user_clicked)
             preset_layout.addWidget(self.save_to_user_btn)
 
-        layout.addLayout(preset_layout)
+        layout.addWidget(self.preset_selector_widget)
 
         # Canvas (drawing area)
         self.canvas = CurveCanvas(self, self.points, self.canvas_size, self.margin, self.grid_divisions)
@@ -141,14 +145,10 @@ class CurveEditorWidget(QWidget):
             # Factory curve - load points directly
             self.set_points(self.FACTORY_CURVE_POINTS[curve_index])
         else:
-            # User curve (7-16) - check local cache first, then ask parent
+            # User curve (7-16) - always emit signal to load full preset from keyboard
+            # This ensures all settings (velocity, aftertouch, etc.) are reloaded, not just curve points
             slot_index = curve_index - 7  # Convert to 0-9 slot index
-            if slot_index in self.user_curves_cache:
-                # Load from local cache
-                self.load_user_curve_points(self.user_curves_cache[slot_index])
-            else:
-                # Emit signal for parent to load from keyboard
-                self.user_curve_selected.emit(slot_index)
+            self.user_curve_selected.emit(slot_index)
 
     def on_point_moved(self, point_index, x, y):
         """Called when user drags a point"""
@@ -204,6 +204,17 @@ class CurveEditorWidget(QWidget):
                 combo_index = len(self.FACTORY_CURVES) + 1 + i
                 self.preset_combo.setItemText(combo_index, names[i])
             self.preset_combo.blockSignals(False)
+
+    def set_user_curve_name(self, slot_index, name):
+        """Update a single user curve name in dropdown"""
+        if slot_index < 0 or slot_index >= 10:
+            return
+        self.user_curve_names[slot_index] = name
+        # User curves start after factory curves + separator
+        combo_index = len(self.FACTORY_CURVES) + 1 + slot_index
+        self.preset_combo.blockSignals(True)
+        self.preset_combo.setItemText(combo_index, name)
+        self.preset_combo.blockSignals(False)
 
     def select_curve(self, curve_index):
         """Select a curve by index (0-16 or -1 for custom)"""
@@ -434,7 +445,7 @@ class CurveCanvas(QWidget):
 
 
 class SaveToUserDialog(QDialog):
-    """Dialog for saving curve to a user slot"""
+    """Dialog for saving curve to a user slot with custom name input"""
 
     def __init__(self, parent, user_curve_names):
         super().__init__(parent)
@@ -443,6 +454,8 @@ class SaveToUserDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
+        from PyQt5.QtWidgets import QLineEdit, QFormLayout
+
         layout = QVBoxLayout()
 
         # Instructions
@@ -454,7 +467,17 @@ class SaveToUserDialog(QDialog):
         for i, name in enumerate(self.user_curve_names):
             self.list_widget.addItem(f"User {i+1}: {name}")
         self.list_widget.setCurrentRow(0)
+        self.list_widget.currentRowChanged.connect(self.on_slot_changed)
         layout.addWidget(self.list_widget)
+
+        # Name input field
+        name_layout = QFormLayout()
+        self.name_input = QLineEdit()
+        self.name_input.setMaxLength(16)
+        self.name_input.setPlaceholderText(tr("SaveToUserDialog", "Enter curve name (max 16 chars)"))
+        self.name_input.setText("User 1")  # Default name for first slot
+        name_layout.addRow(tr("SaveToUserDialog", "Curve Name:"), self.name_input)
+        layout.addLayout(name_layout)
 
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -465,11 +488,24 @@ class SaveToUserDialog(QDialog):
         self.setLayout(layout)
         self.setMinimumWidth(350)
 
+    def on_slot_changed(self, row):
+        """Update name input when slot selection changes"""
+        if row >= 0 and row < len(self.user_curve_names):
+            current_name = self.user_curve_names[row]
+            # If the current name looks like a default (User N or XX...), suggest "User N"
+            if current_name.startswith("User ") or current_name.endswith("..."):
+                self.name_input.setText(f"User {row + 1}")
+            else:
+                self.name_input.setText(current_name)
+
     def get_selected_slot(self):
         """Get selected slot index (0-9)"""
         return self.list_widget.currentRow()
 
     def get_curve_name(self):
-        """Get name for the curve (defaults to "User N")"""
-        slot = self.get_selected_slot()
-        return f"User {slot + 1}"
+        """Get name for the curve from input field"""
+        name = self.name_input.text().strip()
+        if not name:
+            slot = self.get_selected_slot()
+            return f"User {slot + 1}"
+        return name[:16]  # Truncate to 16 chars

@@ -920,6 +920,217 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
+    // =========================================================================
+    // USER CURVE COMMANDS (0xD9-0xDC)
+    // Save/load custom velocity curves (10 user slots, 4 points each)
+    // =========================================================================
+
+    // Check if this is a user curve command (0xD9-0xDC)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xD9 && data[3] <= 0xDC) {
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xD9: {  // HID_CMD_VELOCITY_PRESET_SET
+                // Set velocity preset using chunked transfer (4 chunks for zone-based presets)
+                // Format: [header(6), slot, chunk_id, chunk_data...]
+                // Chunk 0: name[16] + zone_flags[1] + reserved[1] = 18 bytes
+                // Chunk 1: base zone settings (23 bytes)
+                // Chunk 2: keysplit zone settings (23 bytes)
+                // Chunk 3: triplesplit zone settings (23 bytes)
+                uint8_t slot = data[6];
+                uint8_t chunk_id = data[7];
+
+                dprintf("VELOCITY_PRESET_SET: slot=%d, chunk=%d\n", slot, chunk_id);
+
+                if (slot < 10) {
+                    velocity_preset_t* preset = &user_curves.presets[slot];
+
+                    if (chunk_id == 0) {
+                        // Chunk 0: name (16 bytes) + zone_flags (1 byte) + reserved (1 byte)
+                        memcpy(preset->name, &data[8], 16);
+                        preset->name[15] = '\0';  // Ensure null termination
+                        preset->zone_flags = data[24];
+                        preset->reserved = data[25];
+                        response[5] = 0x01;  // Success
+                        dprintf("  Chunk 0: name='%s', zone_flags=0x%02X\n", preset->name, preset->zone_flags);
+                    } else if (chunk_id >= 1 && chunk_id <= 3) {
+                        // Chunk 1-3: zone settings (base, keysplit, triplesplit)
+                        zone_settings_t* zone;
+                        if (chunk_id == 1) zone = &preset->base;
+                        else if (chunk_id == 2) zone = &preset->keysplit;
+                        else zone = &preset->triplesplit;
+
+                        // Deserialize zone settings (23 bytes)
+                        memcpy(zone->points, &data[8], 8);  // 8 bytes
+                        zone->velocity_min = data[16];
+                        zone->velocity_max = data[17];
+                        zone->slow_press_time = data[18] | (data[19] << 8);
+                        zone->fast_press_time = data[20] | (data[21] << 8);
+                        zone->aftertouch_mode = data[22];
+                        zone->aftertouch_cc = data[23];
+                        zone->vibrato_sensitivity = data[24];
+                        zone->vibrato_decay = data[25] | (data[26] << 8);
+                        zone->flags = data[27];
+                        zone->actuation_point = data[28];
+                        zone->speed_peak_ratio = data[29];
+                        zone->retrigger_distance = data[30];
+
+                        // Save to EEPROM after last chunk (chunk 3)
+                        if (chunk_id == 3) {
+                            user_curves_save();
+                            dprintf("  Saved preset to EEPROM\n");
+                        }
+                        response[5] = 0x01;  // Success
+                        dprintf("  Chunk %d: zone vel=%d-%d, time=%d-%dms\n",
+                            chunk_id, zone->velocity_min, zone->velocity_max,
+                            zone->fast_press_time, zone->slow_press_time);
+                    } else {
+                        response[5] = 0x00;  // Error - invalid chunk
+                    }
+                    response[4] = 0x00;
+                } else {
+                    response[4] = 0x00;
+                    response[5] = 0x00;  // Error - invalid slot
+                }
+                break;
+            }
+
+            case 0xDA: {  // HID_CMD_VELOCITY_PRESET_GET
+                // Get velocity preset - sends 4 response packets (zone-based format)
+                // Request format: [header(6), slot]
+                // Response: 4 packets with all preset data
+                uint8_t slot = data[6];
+
+                dprintf("VELOCITY_PRESET_GET: slot=%d\n", slot);
+
+                if (slot < 10) {
+                    velocity_preset_t* preset = &user_curves.presets[slot];
+
+                    // Send Chunk 0: name + zone_flags
+                    uint8_t chunk0[32] = {0};
+                    chunk0[0] = HID_MANUFACTURER_ID;
+                    chunk0[1] = HID_SUB_ID;
+                    chunk0[2] = HID_DEVICE_ID;
+                    chunk0[3] = 0xDA;
+                    chunk0[4] = 0x00;  // Reserved
+                    chunk0[5] = 0x01;  // Success
+                    chunk0[6] = slot;
+                    chunk0[7] = 0;     // Chunk ID 0
+                    memcpy(&chunk0[8], preset->name, 16);
+                    chunk0[24] = preset->zone_flags;
+                    chunk0[25] = preset->reserved;
+                    raw_hid_send(chunk0, 32);
+
+                    // Helper macro for serializing zone settings
+                    #define SEND_ZONE_CHUNK(chunk_id, zone_ptr) do { \
+                        uint8_t chunk[32] = {0}; \
+                        chunk[0] = HID_MANUFACTURER_ID; \
+                        chunk[1] = HID_SUB_ID; \
+                        chunk[2] = HID_DEVICE_ID; \
+                        chunk[3] = 0xDA; \
+                        chunk[4] = 0x00; \
+                        chunk[5] = 0x01; \
+                        chunk[6] = slot; \
+                        chunk[7] = chunk_id; \
+                        memcpy(&chunk[8], (zone_ptr)->points, 8); \
+                        chunk[16] = (zone_ptr)->velocity_min; \
+                        chunk[17] = (zone_ptr)->velocity_max; \
+                        chunk[18] = (zone_ptr)->slow_press_time & 0xFF; \
+                        chunk[19] = ((zone_ptr)->slow_press_time >> 8) & 0xFF; \
+                        chunk[20] = (zone_ptr)->fast_press_time & 0xFF; \
+                        chunk[21] = ((zone_ptr)->fast_press_time >> 8) & 0xFF; \
+                        chunk[22] = (zone_ptr)->aftertouch_mode; \
+                        chunk[23] = (zone_ptr)->aftertouch_cc; \
+                        chunk[24] = (zone_ptr)->vibrato_sensitivity; \
+                        chunk[25] = (zone_ptr)->vibrato_decay & 0xFF; \
+                        chunk[26] = ((zone_ptr)->vibrato_decay >> 8) & 0xFF; \
+                        chunk[27] = (zone_ptr)->flags; \
+                        chunk[28] = (zone_ptr)->actuation_point; \
+                        chunk[29] = (zone_ptr)->speed_peak_ratio; \
+                        chunk[30] = (zone_ptr)->retrigger_distance; \
+                        raw_hid_send(chunk, 32); \
+                    } while(0)
+
+                    // Send Chunk 1: base zone
+                    SEND_ZONE_CHUNK(1, &preset->base);
+
+                    // Send Chunk 2: keysplit zone
+                    SEND_ZONE_CHUNK(2, &preset->keysplit);
+
+                    // Send Chunk 3: triplesplit zone
+                    SEND_ZONE_CHUNK(3, &preset->triplesplit);
+
+                    #undef SEND_ZONE_CHUNK
+
+                    dprintf("  Sent 4 chunks for preset '%s'\n", preset->name);
+                    return;  // Already sent response packets
+                } else {
+                    response[4] = 0x00;
+                    response[5] = 0x00;  // Error - invalid slot
+                }
+                break;
+            }
+
+            case 0xDB: {  // HID_CMD_VELOCITY_PRESET_GET_ALL_NAMES
+                // Get all preset names (truncated to 2 chars each to fit in one packet)
+                dprintf("VELOCITY_PRESET_GET_ALL_NAMES\n");
+
+                response[4] = 0x00;  // Reserved
+                response[5] = 0x01;  // Success
+
+                // Return 10 names truncated to 2 chars each (20 bytes) at response[6]
+                for (int i = 0; i < 10; i++) {
+                    response[6 + i*2] = user_curves.presets[i].name[0];
+                    response[6 + i*2 + 1] = user_curves.presets[i].name[1];
+                }
+                break;
+            }
+
+            case 0xDC: {  // HID_CMD_VELOCITY_PRESET_RESET
+                // Reset all velocity presets to defaults
+                dprintf("VELOCITY_PRESET_RESET\n");
+
+                user_curves_reset();
+
+                response[4] = 0x00;  // Reserved
+                response[5] = 0x01;  // Success
+                break;
+            }
+
+            case 0xDD: {  // HID_CMD_VELOCITY_PRESET_DEBUG_TOGGLE
+                // Toggle velocity preset debug display on OLED
+                extern bool velocity_preset_debug_mode;
+                velocity_preset_debug_mode = !velocity_preset_debug_mode;
+                dprintf("VELOCITY_PRESET_DEBUG: %s\n", velocity_preset_debug_mode ? "ON" : "OFF");
+
+                response[4] = 0x00;  // Reserved
+                response[5] = 0x01;  // Success
+                response[6] = velocity_preset_debug_mode ? 0x01 : 0x00;  // Current state
+                break;
+            }
+
+            default:
+                response[4] = 0x00;
+                response[5] = 0x00;  // Error - unknown command
+                break;
+        }
+
+        raw_hid_send(response, 32);
+        return;
+    }
+
     // Check if this is an ADC matrix tester command (0xDF)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
@@ -996,6 +1207,10 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             case 4:  // PARAM_HE_VELOCITY_CURVE (0-16)
                 keyboard_settings.he_velocity_curve = value8;
                 he_velocity_curve = value8;  // Also update global for OLED display
+                // If selecting a user curve (7-16), apply all preset settings
+                if (value8 >= CURVE_USER_START && value8 <= CURVE_USER_END) {
+                    velocity_preset_apply(value8);
+                }
                 settings_changed = true;
                 dprintf("SET param 4 (velocity_curve) = %d\n", value8);
                 break;
@@ -1013,10 +1228,9 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
 
             // Global MIDI settings (update global variables)
-            case 13:  // PARAM_VELOCITY_MODE (0-3)
-                velocity_mode = value8;
-                settings_changed = true;
-                dprintf("SET param 13 (velocity_mode) = %d\n", value8);
+            case 13:  // PARAM_VELOCITY_MODE - DEPRECATED, fixed at 3 (Speed+Peak)
+                // Ignore velocity_mode changes - always use Speed+Peak mode
+                dprintf("SET param 13 (velocity_mode) = %d [IGNORED - fixed at mode 3]\n", value8);
                 break;
             case 14:  // PARAM_AFTERTOUCH_MODE (0-4)
                 aftertouch_mode = value8;
@@ -1380,8 +1594,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             uint16_t new_min = data[7] | (data[8] << 8);
             uint16_t new_max = data[9] | (data[10] << 8);
 
-            // Validate ranges (50-500 for min, 5-100 for max)
-            if (new_min >= 50 && new_min <= 500 && new_max >= 5 && new_max <= 100 && new_max < new_min) {
+            // Validate ranges (50-500 for min, 1-100 for max)
+            if (new_min >= 50 && new_min <= 500 && new_max >= 1 && new_max <= 100 && new_max < new_min) {
                 min_press_time = new_min;
                 max_press_time = new_max;
                 keyboard_settings.min_press_time = min_press_time;
