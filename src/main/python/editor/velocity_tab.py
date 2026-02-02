@@ -732,7 +732,6 @@ class VelocityTab(BasicEditor):
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_widget = QWidget()
-        main_widget.setMaximumWidth(1000)  # Maximum 1000px width
         main_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout = QVBoxLayout()
         main_layout.setSpacing(15)
@@ -842,10 +841,11 @@ class VelocityTab(BasicEditor):
         bottom_layout.addWidget(preset_list_group)
 
         # =====================================================================
-        # RIGHT SIDE: Velocity Preset Group (zone tabs with embedded curve editors)
+        # RIGHT SIDE: Preset Settings Group (zone tabs with embedded curve editors)
         # =====================================================================
-        preset_group = QGroupBox(tr("VelocityTab", "Velocity Settings"))
+        preset_group = QGroupBox(tr("VelocityTab", "Preset Settings"))
         preset_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        preset_group.setMaximumWidth(800)  # Limit width of preset settings
         preset_main_layout = QVBoxLayout()
         preset_main_layout.setSpacing(10)
         preset_group.setLayout(preset_main_layout)

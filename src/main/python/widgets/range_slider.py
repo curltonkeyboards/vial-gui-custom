@@ -546,8 +546,8 @@ class TriggerSlider(MultiHandleSlider):
             return max(min_val, min(new_value, max_val))
         elif handle_index == 2:  # Deadzone top (inverted)
             # Internal range is (255 - DEADZONE_MAX) to 255, i.e., 204 to 255
-            # Must not go below actuation plus gap
-            min_val = self.values[1] + 1
+            # Must not go below actuation plus gap, and must stay above 204 (max 0.8mm from top)
+            min_val = max(self.values[1] + 1, 255 - DEADZONE_MAX)  # At least 204 (0.8mm from top)
             return max(min_val, min(new_value, self.maximum))
 
         return new_value
@@ -812,12 +812,13 @@ class DualRangeSlider(QWidget):
         if self.show_labels:
             from PyQt5.QtGui import QFont, QFontMetrics
             font = painter.font()
-            font.setPointSize(7)
+            font.setPointSize(9)  # Bigger font for readability
+            font.setBold(True)
             painter.setFont(font)
             painter.setPen(text_color)
 
             # Label positions - below handles
-            label_y = track_y + self.track_height + self.handle_radius + 12
+            label_y = track_y + self.track_height + self.handle_radius + 14
 
             # Min label with up arrow
             min_text = "▲ min"
