@@ -30,6 +30,15 @@ static void    *current_macro_buffer2 = NULL;
 static void   **current_macro_pointer = NULL;
 static uint32_t *current_recording_start_time = NULL;
 
+// Helper function to scale MIDI velocity (1-127) to 0-255 for loop recording
+// This stores the final calculated velocity so loops can apply their own curve on playback
+static inline uint8_t velocity_to_storage(uint8_t velocity) {
+    if (velocity < 1) velocity = 1;
+    if (velocity > 127) velocity = 127;
+    // Scale 1-127 to 0-255
+    return (uint8_t)(((uint16_t)(velocity - 1) * 255) / 126);
+}
+
 // External functions for arpeggiator press order tracking
 extern void arp_track_note_pressed(uint8_t live_note_index);
 extern void arp_track_note_moved(uint8_t from_index, uint8_t to_index);
@@ -736,8 +745,9 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note);
 
-    // Use raw_travel if available, otherwise use final_velocity as fallback
-    uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : final_velocity;
+    // Store final velocity scaled to 0-255 for loop recording
+    // This allows loops to apply their own velocity curve on playback
+    uint8_t velocity_for_recording = velocity_to_storage(final_velocity);
 
     // QUICK BUILD HOOK: Intercept notes for arpeggiator/sequencer building
     extern bool quick_build_is_active(void);
@@ -749,11 +759,11 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
     // Skip preroll and macro recording when arp is active (arp records its own output)
     if (!arp_suppressed) {
         if (collecting_preroll) {
-            collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, travel_for_recording);
+            collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, velocity_for_recording);
         }
 
         if (current_macro_id > 0) {
-            dynamic_macro_intercept_noteon(channel, note, travel_for_recording, current_macro_id,
+            dynamic_macro_intercept_noteon(channel, note, velocity_for_recording, current_macro_id,
                                          current_macro_buffer1, current_macro_buffer2,
                                          current_macro_pointer, current_recording_start_time);
         }
@@ -883,22 +893,23 @@ void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8
     // Add LED lighting (existing code handles the rest)
     add_lighting_live_note(channel, note);
 
-    // Use raw_travel if available, otherwise use final_velocity as fallback
-    uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : final_velocity;
+    // Store final velocity scaled to 0-255 for loop recording
+    // This allows loops to apply their own velocity curve on playback
+    uint8_t velocity_for_recording = velocity_to_storage(final_velocity);
 
     // Collect for preroll if active (for slave recordings)
     if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, travel_for_recording);
+        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, velocity_for_recording);
     }
 
     // Record to macro if we're recording
     if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteon(channel, note, travel_for_recording, current_macro_id,
+        dynamic_macro_intercept_noteon(channel, note, velocity_for_recording, current_macro_id,
                                      current_macro_buffer1, current_macro_buffer2,
                                      current_macro_pointer, current_recording_start_time);
     }
 
-    dprintf("arp: note-on ch:%d note:%d vel:%d raw:%d\n", channel, note, final_velocity, raw_travel);
+    dprintf("arp: note-on ch:%d note:%d vel:%d stored:%d\n", channel, note, final_velocity, velocity_for_recording);
 }
 
 void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity) {
