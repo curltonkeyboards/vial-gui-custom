@@ -955,7 +955,19 @@ void dynamic_macro_init(void) {
         macro_velocity_absolute_target[i] = 0;
         macro_velocity_absolute_pending[i] = false;
         macro_velocity_absolute_pending_value[i] = 0;
-        
+
+        // Reset velocity curve/min/max to Linear preset
+        // Loops store final velocities and use Linear by default so values play back unchanged
+        macro_recording_curve[i] = 2;   // Linear curve
+        macro_recording_min[i] = 1;     // Min velocity
+        macro_recording_max[i] = 127;   // Max velocity
+        macro_recording_curve_target[i] = 2;
+        macro_recording_min_target[i] = 1;
+        macro_recording_max_target[i] = 127;
+        macro_recording_curve_pending[i] = false;
+        macro_recording_min_pending[i] = false;
+        macro_recording_max_pending[i] = false;
+
         macro_octave_doubler[i] = 0;
         macro_octave_doubler_target[i] = 0;
         macro_octave_doubler_pending[i] = false;
@@ -985,12 +997,18 @@ void dynamic_macro_init(void) {
         overdub_velocity_absolute_target[i] = 0;
         overdub_velocity_absolute_pending[i] = false;
         overdub_velocity_absolute_pending_value[i] = 0;
-        
+
+        // Reset overdub velocity curve/min/max to Linear preset
+        overdub_recording_curve[i] = 2;   // Linear curve
+        overdub_recording_min[i] = 1;     // Min velocity
+        overdub_recording_max[i] = 127;   // Max velocity
+        overdub_recording_set[i] = false; // Allow next overdub to set values
+
         overdub_octave_doubler[i] = 0;
         overdub_octave_doubler_target[i] = 0;
         overdub_octave_doubler_pending[i] = false;
         overdub_octave_doubler_pending_value[i] = 0;
-        
+
         // Reset additional macro-specific flags (matching device startup)
         skip_autoplay_for_macro[i] = false;
         ignore_second_press[i] = false; 
@@ -1361,38 +1379,45 @@ static midi_event_t* get_overdub_read_start(uint8_t macro_num) {
 
 
 
-// Helper function to snapshot velocity curve/range settings when recording starts
+// Helper function to set Linear velocity settings when recording starts
+// Loops always record with Linear preset so stored velocities represent the actual MIDI values
+// Users can then change the loop's velocity preset to transform playback
 static void snapshot_recording_settings(uint8_t macro_num) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t macro_idx = macro_num - 1;
 
-        // Snapshot curve and range from global settings
-        macro_recording_curve[macro_idx] = he_velocity_curve;
-        macro_recording_min[macro_idx] = he_velocity_min;
-        macro_recording_max[macro_idx] = he_velocity_max;
+        // Set to Linear preset (curve=2, min=1, max=127) instead of snapshotting global
+        // This ensures stored velocities play back unchanged by default
+        macro_recording_curve[macro_idx] = 2;   // Linear curve
+        macro_recording_min[macro_idx] = 1;     // Min velocity
+        macro_recording_max[macro_idx] = 127;   // Max velocity
 
-        dprintf("dynamic macro: snapshotted recording settings for macro %d - curve:%d min:%d max:%d\n",
-                macro_num, macro_recording_curve[macro_idx],
-                macro_recording_min[macro_idx], macro_recording_max[macro_idx]);
+        // Also reset targets to match
+        macro_recording_curve_target[macro_idx] = 2;
+        macro_recording_min_target[macro_idx] = 1;
+        macro_recording_max_target[macro_idx] = 127;
+
+        dprintf("dynamic macro: set Linear recording settings for macro %d - curve:2 min:1 max:127\n",
+                macro_num);
     }
 }
 
-// Helper function to snapshot overdub recording settings (only if not already set)
+// Helper function to set Linear overdub recording settings (only if not already set)
+// Overdubs also use Linear preset so stored velocities represent actual MIDI values
 static void snapshot_overdub_recording_settings(uint8_t macro_num) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t macro_idx = macro_num - 1;
 
-        // Only snapshot if not already set (for continuous overdubs)
+        // Only set if not already set (for continuous overdubs)
         if (!overdub_recording_set[macro_idx]) {
-            // Snapshot curve and range from global settings
-            overdub_recording_curve[macro_idx] = he_velocity_curve;
-            overdub_recording_min[macro_idx] = he_velocity_min;
-            overdub_recording_max[macro_idx] = he_velocity_max;
+            // Set to Linear preset (curve=2, min=1, max=127) instead of snapshotting global
+            overdub_recording_curve[macro_idx] = 2;   // Linear curve
+            overdub_recording_min[macro_idx] = 1;     // Min velocity
+            overdub_recording_max[macro_idx] = 127;   // Max velocity
             overdub_recording_set[macro_idx] = true;
 
-            dprintf("dynamic macro: snapshotted overdub recording settings for macro %d - curve:%d min:%d max:%d\n",
-                    macro_num, overdub_recording_curve[macro_idx],
-                    overdub_recording_min[macro_idx], overdub_recording_max[macro_idx]);
+            dprintf("dynamic macro: set Linear overdub recording settings for macro %d - curve:2 min:1 max:127\n",
+                    macro_num);
         }
     }
 }
@@ -4734,41 +4759,53 @@ void reset_all_macro_channel_absolute_targets(void) {
 void reset_macro_transformations(uint8_t macro_num) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t idx = macro_num - 1;  // Convert to 0-based index
-        
+
         // Reset transpose
         set_macro_transpose_target(macro_num, 0);
         macro_transpose_pending[idx] = false;
         macro_transpose_pending_value[idx] = 0;
-        
+
         // Reset channel offset
         set_macro_channel_offset_target(macro_num, 0);
         macro_channel_offset_pending[idx] = false;
         macro_channel_offset_pending_value[idx] = 0;
-        
+
         // Reset channel absolute
         set_macro_channel_absolute_target(macro_num, 0);
         macro_channel_absolute_pending[idx] = false;
         macro_channel_absolute_pending_value[idx] = 0;
-        
+
         // Reset velocity offset
         set_macro_velocity_offset_target(macro_num, 0);
         macro_velocity_offset_pending[idx] = false;
         macro_velocity_offset_pending_value[idx] = 0;
-        
+
         // Reset velocity absolute
         set_macro_velocity_absolute_target(macro_num, 0);
         macro_velocity_absolute_pending[idx] = false;
         macro_velocity_absolute_pending_value[idx] = 0;
-        
+
+        // Reset velocity curve/min/max to Linear preset
+        // This ensures cleared loops play back stored velocities unchanged
+        macro_recording_curve[idx] = 2;   // Linear curve
+        macro_recording_min[idx] = 1;     // Min velocity
+        macro_recording_max[idx] = 127;   // Max velocity
+        macro_recording_curve_target[idx] = 2;
+        macro_recording_min_target[idx] = 1;
+        macro_recording_max_target[idx] = 127;
+        macro_recording_curve_pending[idx] = false;
+        macro_recording_min_pending[idx] = false;
+        macro_recording_max_pending[idx] = false;
+
         // Reset octave doubler
         set_macro_octave_doubler_target(macro_num, 0);
         macro_octave_doubler_pending[idx] = false;
         macro_octave_doubler_pending_value[idx] = 0;
-        
+
         // Reset overdub merge pending
         overdub_merge_pending[idx] = false;
-        
-        dprintf("dynamic macro: reset all transformations and pending flags for macro %d\n", macro_num);
+
+        dprintf("dynamic macro: reset all transformations and pending flags for macro %d (velocity preset reset to Linear)\n", macro_num);
     }
 }
 
@@ -5052,32 +5089,38 @@ void reset_all_overdub_transformations(void) {
 void reset_overdub_transformations(uint8_t macro_num) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t idx = macro_num - 1;
-        
+
         set_overdub_transpose_target(macro_num, 0);
         overdub_transpose_pending[idx] = false;
         overdub_transpose_pending_value[idx] = 0;
-        
+
         set_overdub_channel_offset_target(macro_num, 0);
         overdub_channel_offset_pending[idx] = false;
         overdub_channel_offset_pending_value[idx] = 0;
-        
+
         set_overdub_channel_absolute_target(macro_num, 0);
         overdub_channel_absolute_pending[idx] = false;
         overdub_channel_absolute_pending_value[idx] = 0;
-        
+
         set_overdub_velocity_offset_target(macro_num, 0);
         overdub_velocity_offset_pending[idx] = false;
         overdub_velocity_offset_pending_value[idx] = 0;
-        
+
         set_overdub_velocity_absolute_target(macro_num, 0);
         overdub_velocity_absolute_pending[idx] = false;
         overdub_velocity_absolute_pending_value[idx] = 0;
-        
+
+        // Reset overdub velocity curve/min/max to Linear preset
+        overdub_recording_curve[idx] = 2;   // Linear curve
+        overdub_recording_min[idx] = 1;     // Min velocity
+        overdub_recording_max[idx] = 127;   // Max velocity
+        overdub_recording_set[idx] = false; // Allow next overdub to set new values
+
         set_overdub_octave_doubler_target(macro_num, 0);
         overdub_octave_doubler_pending[idx] = false;
         overdub_octave_doubler_pending_value[idx] = 0;
-        
-        dprintf("dynamic macro: reset all overdub transformations for macro %d\n", macro_num);
+
+        dprintf("dynamic macro: reset all overdub transformations for macro %d (velocity preset reset to Linear)\n", macro_num);
     }
 }
 

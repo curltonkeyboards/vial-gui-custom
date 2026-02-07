@@ -68,14 +68,17 @@ extern layer_key_actuations_t per_key_actuations[12];
 // Velocity preset actuation override - BASE zone
 extern bool preset_actuation_override;
 extern uint8_t preset_actuation_point;  // 0-40 = 0.0-4.0mm
+extern uint8_t preset_retrigger_distance;  // 0=off, 5-20 = 0.5-2.0mm
 
 // Velocity preset actuation override - KEYSPLIT zone
 extern bool keysplit_preset_actuation_override;
 extern uint8_t keysplit_preset_actuation_point;
+extern uint8_t keysplit_preset_retrigger_distance;
 
 // Velocity preset actuation override - TRIPLESPLIT zone
 extern bool triplesplit_preset_actuation_override;
 extern uint8_t triplesplit_preset_actuation_point;
+extern uint8_t triplesplit_preset_retrigger_distance;
 
 // Keysplit velocity status (controls which zones have separate velocity)
 // 0=disabled (all zones same), 1=keysplit only, 2=triplesplit only, 3=both
@@ -146,6 +149,11 @@ typedef struct {
     uint8_t peak_travel;
     bool send_on_release;
     bool velocity_captured;      // True when velocity has been captured for this press
+
+    // MIDI Retrigger state (separate from rapidfire)
+    // Retrigger allows new note-on without note-off while above actuation point
+    bool retrigger_eligible;     // True when key has risen by retrigger_distance from peak
+    uint8_t retrigger_peak;      // Peak travel when retrigger tracking started
 
     // Mode 2 & 3: Speed-based
     uint8_t last_travel;
@@ -1081,11 +1089,55 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // Use per-key actuation from cache (280 bytes, fits in L1 cache)
     // Cache is refreshed on layer change before this function is called
     uint8_t per_key_actuation = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
+
+    // ========================================================================
+    // ZONE-SPECIFIC ACTUATION OVERRIDE AND RETRIGGER
+    // Check zone type and apply zone-specific settings if enabled
+    // keysplitvelocitystatus: 0=all same, 1=keysplit only, 2=triplesplit only, 3=both
+    // ========================================================================
+    uint8_t zone_type = state->zone_type;
+    bool zone_actuation_override = false;
+    uint8_t zone_actuation_point = 0;
+    uint8_t zone_retrigger_distance = 0;
+
+    if (zone_type == ZONE_TYPE_KEYSPLIT && (keysplitvelocitystatus == 1 || keysplitvelocitystatus == 3)) {
+        // Use keysplit zone settings
+        zone_actuation_override = keysplit_preset_actuation_override;
+        zone_actuation_point = keysplit_preset_actuation_point;
+        zone_retrigger_distance = keysplit_preset_retrigger_distance;
+    } else if (zone_type == ZONE_TYPE_TRIPLESPLIT && (keysplitvelocitystatus == 2 || keysplitvelocitystatus == 3)) {
+        // Use triplesplit zone settings
+        zone_actuation_override = triplesplit_preset_actuation_override;
+        zone_actuation_point = triplesplit_preset_actuation_point;
+        zone_retrigger_distance = triplesplit_preset_retrigger_distance;
+    } else {
+        // Use base zone settings
+        zone_actuation_override = preset_actuation_override;
+        zone_actuation_point = preset_actuation_point;
+        zone_retrigger_distance = preset_retrigger_distance;
+    }
+
+    // Apply actuation override if enabled for this zone
+    // zone_actuation_point is 0-40 (0.0-4.0mm), convert to 0-255 distance scale
+    if (zone_actuation_override) {
+        per_key_actuation = (zone_actuation_point * 255) / 40;
+    }
+
     uint8_t midi_threshold = (per_key_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
     uint8_t analog_mode = active_settings.velocity_mode;
 
+    // Convert retrigger_distance (0-20 = 0-2.0mm in 0.1mm steps) to travel units
+    // Travel units: 240 = full travel (~4mm), so 1mm ≈ 60 units
+    // retrigger_distance / 10.0 = mm, mm * 60 = travel units
+    // Simplified: retrigger_travel = retrigger_distance * 6
+    uint8_t retrigger_travel = zone_retrigger_distance * 6;
+
     state->was_pressed = state->pressed;
     state->pressed = pressed;
+
+    // Save previous last_travel for retrigger direction detection
+    // (last_travel gets updated in velocity mode switch below)
+    uint8_t prev_last_travel = state->last_travel;
 
     // RT velocity modifier - disabled for now to avoid accessing large array in hot path
     // TODO: Add to per_key_config_lite_t cache if needed
@@ -1350,6 +1402,63 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 state->last_travel = travel;
             }
             break;
+    }
+
+    // ========================================================================
+    // MIDI RETRIGGER PROCESSING
+    // Allows re-triggering note-on without note-off while above actuation point
+    // Different from rapidfire: note-off ONLY happens when crossing below actuation
+    // ========================================================================
+    if (retrigger_travel > 0 && state->velocity_captured) {
+        // Track peak travel for retrigger eligibility calculation
+        if (travel > state->retrigger_peak) {
+            state->retrigger_peak = travel;
+            state->retrigger_eligible = false;  // Reset eligibility when going deeper
+        }
+
+        // Check for retrigger eligibility: key has risen by retrigger_travel from peak
+        // AND still above actuation point (midi_threshold)
+        if (!state->retrigger_eligible &&
+            state->retrigger_peak > 0 &&
+            travel >= midi_threshold &&
+            travel <= state->retrigger_peak - retrigger_travel) {
+            state->retrigger_eligible = true;
+        }
+
+        // Handle retrigger: key pressed down again while eligible
+        // This triggers a new note-on with partial velocity based on travel distance
+        if (state->retrigger_eligible && travel > prev_last_travel) {
+            // Key is moving down again - check if it's a significant re-press
+            uint8_t repress_distance = travel - (state->retrigger_peak - retrigger_travel);
+
+            if (repress_distance >= 3) {  // Minimum 3 units (~0.05mm) to count as re-press
+                // Calculate partial velocity based on travel distance from eligible point
+                // Full travel (0 to midi_threshold) = 100% velocity range
+                // Partial travel (eligible point to current) = scaled velocity
+                uint16_t partial_raw = ((uint16_t)repress_distance * 255) / midi_threshold;
+                if (partial_raw > 255) partial_raw = 255;
+                if (partial_raw < 1) partial_raw = 1;
+
+                state->raw_velocity = (uint8_t)partial_raw;
+                state->retrigger_eligible = false;  // Consumed the retrigger
+                state->retrigger_peak = travel;     // New peak tracking starts here
+
+                // Update base_velocity for the new note-on
+                key->base_velocity = (state->raw_velocity * 127) / 255;
+                if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+
+                // Force a new note-on event by simulating a fresh press
+                // The pressed flag is already true, but we need to signal
+                // that this is a new note-on event for the MIDI sender
+                state->was_pressed = false;  // This will trigger note-on logic below
+            }
+        }
+
+        // Clear retrigger state when key goes below actuation (note-off territory)
+        if (travel < midi_threshold) {
+            state->retrigger_eligible = false;
+            state->retrigger_peak = 0;
+        }
     }
 
     // ========================================================================
