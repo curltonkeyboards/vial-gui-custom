@@ -46,12 +46,25 @@ extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
 #define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
 #define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
 
-// Direct HE Curve Selection (5 keycodes: 0xCCB0-0xCCB4)
+// Direct HE Curve Selection - Factory presets (0xCCB0-0xCCB4)
 #define HE_CURVE_SOFTEST    0xCCB0
 #define HE_CURVE_SOFT       0xCCB1
 #define HE_CURVE_MEDIUM     0xCCB2
 #define HE_CURVE_HARD       0xCCB3
 #define HE_CURVE_HARDEST    0xCCB4
+// Direct HE Curve Selection - Aggro, Digital, and User presets (0xCC90-0xCC9B)
+#define HE_CURVE_AGGRO      0xCC90
+#define HE_CURVE_DIGITAL    0xCC91
+#define HE_CURVE_USER_1     0xCC92
+#define HE_CURVE_USER_2     0xCC93
+#define HE_CURVE_USER_3     0xCC94
+#define HE_CURVE_USER_4     0xCC95
+#define HE_CURVE_USER_5     0xCC96
+#define HE_CURVE_USER_6     0xCC97
+#define HE_CURVE_USER_7     0xCC98
+#define HE_CURVE_USER_8     0xCC99
+#define HE_CURVE_USER_9     0xCC9A
+#define HE_CURVE_USER_10    0xCC9B
 
 // HE Velocity Range keycodes (combined min/max where min ≤ max) - starts at 0xCCB5
 // Base address for range keycodes (8,128 keycodes total: 127×128/2 triangular number)
@@ -66,13 +79,27 @@ extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
 #define HE_MACRO_MAX_UP     0xEC94  // Increment max velocity (with macro awareness)
 #define HE_MACRO_MAX_DOWN   0xEC95  // Decrement max velocity (with macro awareness)
 
-// Direct HE Curve Selection (0xEC96-0xEC9A)
+// Direct HE Curve Selection (0xEC96-0xECA6)
 // These directly set the curve to a specific value (with macro/modifier awareness)
+// Factory presets (0-6)
 #define HE_MACRO_CURVE_0    0xEC96  // Set to SOFTEST (curve 0)
 #define HE_MACRO_CURVE_1    0xEC97  // Set to SOFT (curve 1)
 #define HE_MACRO_CURVE_2    0xEC98  // Set to MEDIUM (curve 2)
 #define HE_MACRO_CURVE_3    0xEC99  // Set to HARD (curve 3)
 #define HE_MACRO_CURVE_4    0xEC9A  // Set to HARDEST (curve 4)
+#define HE_MACRO_CURVE_5    0xEC9B  // Set to AGGRO (curve 5)
+#define HE_MACRO_CURVE_6    0xEC9C  // Set to DIGITAL (curve 6)
+// User presets (7-16)
+#define HE_MACRO_CURVE_7    0xEC9D  // Set to User 1 (curve 7)
+#define HE_MACRO_CURVE_8    0xEC9E  // Set to User 2 (curve 8)
+#define HE_MACRO_CURVE_9    0xEC9F  // Set to User 3 (curve 9)
+#define HE_MACRO_CURVE_10   0xECA0  // Set to User 4 (curve 10)
+#define HE_MACRO_CURVE_11   0xECA1  // Set to User 5 (curve 11)
+#define HE_MACRO_CURVE_12   0xECA2  // Set to User 6 (curve 12)
+#define HE_MACRO_CURVE_13   0xECA3  // Set to User 7 (curve 13)
+#define HE_MACRO_CURVE_14   0xECA4  // Set to User 8 (curve 14)
+#define HE_MACRO_CURVE_15   0xECA5  // Set to User 9 (curve 15)
+#define HE_MACRO_CURVE_16   0xECA6  // Set to User 10 (curve 16)
 
 // Arpeggiator & Sequencer Keycodes now defined in orthomidi5x14.h (0xCD00-0xCDFF range)
 
@@ -13780,10 +13807,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // HE Velocity Curve Controls (global settings)
+    // HE Velocity Curve Controls (global settings) - cycles through all 17 curves (0-16)
     if (keycode == HE_VEL_CURVE_UP) {
         if (record->event.pressed) {
-            keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 5;
+            keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 17;
+            he_velocity_curve = keyboard_settings.he_velocity_curve;
             dprintf("Global HE Velocity Curve: %d\n", keyboard_settings.he_velocity_curve);
         }
         return false;
@@ -13792,22 +13820,34 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == HE_VEL_CURVE_DOWN) {
         if (record->event.pressed) {
             if (keyboard_settings.he_velocity_curve == 0) {
-                keyboard_settings.he_velocity_curve = 4;
+                keyboard_settings.he_velocity_curve = 16;
             } else {
                 keyboard_settings.he_velocity_curve--;
             }
+            he_velocity_curve = keyboard_settings.he_velocity_curve;
             dprintf("Global HE Velocity Curve: %d\n", keyboard_settings.he_velocity_curve);
         }
         return false;
     }
 
-    // Direct HE Curve Selection - affects ALL layers
+    // Direct HE Curve Selection (0xCCB0-0xCCB4) - affects ALL layers
     if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
         if (record->event.pressed) {
-            uint8_t curve_value = keycode - HE_CURVE_SOFTEST;
-            // Update ALL layers
-            // Update global HE velocity curve
+            uint8_t curve_value = keycode - HE_CURVE_SOFTEST;  // 0-4
             keyboard_settings.he_velocity_curve = curve_value;
+            he_velocity_curve = curve_value;
+            dprintf("All layers HE Curve: %d\n", curve_value);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // Direct HE Curve Selection for Aggro, Digital, and User presets (0xCC90-0xCC9B)
+    if (keycode >= HE_CURVE_AGGRO && keycode <= HE_CURVE_USER_10) {
+        if (record->event.pressed) {
+            uint8_t curve_value = 5 + (keycode - HE_CURVE_AGGRO);  // 5-16
+            keyboard_settings.he_velocity_curve = curve_value;
+            he_velocity_curve = curve_value;
             dprintf("All layers HE Curve: %d\n", curve_value);
             set_keylog(keycode, record);
         }
@@ -13827,12 +13867,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
                 switch (keycode) {
                     case HE_MACRO_CURVE_UP:
-                        curve = (curve + 1) % 5;  // 0-4: SOFTEST, SOFT, MEDIUM, HARD, HARDEST
+                        curve = (curve + 1) % 17;  // 0-16: 7 factory + 10 user presets
                         set_macro_recording_curve_target(current_macro_id, curve);
                         dprintf("Macro %d recording curve: %d\n", current_macro_id, curve);
                         break;
                     case HE_MACRO_CURVE_DOWN:
-                        curve = (curve == 0) ? 4 : (curve - 1);
+                        curve = (curve == 0) ? 16 : (curve - 1);
                         set_macro_recording_curve_target(current_macro_id, curve);
                         dprintf("Macro %d recording curve: %d\n", current_macro_id, curve);
                         break;
@@ -13861,39 +13901,45 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 // Keysplit modifier held - modify keysplit HE settings
                 switch (keycode) {
                     case HE_MACRO_CURVE_UP:
-                        keyboard_settings.keysplit_he_velocity_curve = (keyboard_settings.keysplit_he_velocity_curve + 1) % 5;
+                        keyboard_settings.keysplit_he_velocity_curve = (keyboard_settings.keysplit_he_velocity_curve + 1) % 17;
+                        keysplit_he_velocity_curve = keyboard_settings.keysplit_he_velocity_curve;
                         dprintf("Global Keysplit HE Curve: %d\n", keyboard_settings.keysplit_he_velocity_curve);
                         break;
                     case HE_MACRO_CURVE_DOWN:
                         if (keyboard_settings.keysplit_he_velocity_curve == 0) {
-                            keyboard_settings.keysplit_he_velocity_curve = 4;
+                            keyboard_settings.keysplit_he_velocity_curve = 16;
                         } else {
                             keyboard_settings.keysplit_he_velocity_curve--;
                         }
+                        keysplit_he_velocity_curve = keyboard_settings.keysplit_he_velocity_curve;
                         dprintf("Global Keysplit HE Curve: %d\n", keyboard_settings.keysplit_he_velocity_curve);
                         break;
                     case HE_MACRO_MIN_UP:
                         if (keyboard_settings.keysplit_he_velocity_min < 127) {
                             keyboard_settings.keysplit_he_velocity_min++;
                         }
+                        keysplit_he_velocity_min = keyboard_settings.keysplit_he_velocity_min;
                         dprintf("Global Keysplit HE Min: %d\n", keyboard_settings.keysplit_he_velocity_min);
                         break;
                     case HE_MACRO_MIN_DOWN:
                         if (keyboard_settings.keysplit_he_velocity_min > 1) {
                             keyboard_settings.keysplit_he_velocity_min--;
                         }
+                        keysplit_he_velocity_min = keyboard_settings.keysplit_he_velocity_min;
                         dprintf("Global Keysplit HE Min: %d\n", keyboard_settings.keysplit_he_velocity_min);
                         break;
                     case HE_MACRO_MAX_UP:
                         if (keyboard_settings.keysplit_he_velocity_max < 127) {
                             keyboard_settings.keysplit_he_velocity_max++;
                         }
+                        keysplit_he_velocity_max = keyboard_settings.keysplit_he_velocity_max;
                         dprintf("Global Keysplit HE Max: %d\n", keyboard_settings.keysplit_he_velocity_max);
                         break;
                     case HE_MACRO_MAX_DOWN:
                         if (keyboard_settings.keysplit_he_velocity_max > 1) {
                             keyboard_settings.keysplit_he_velocity_max--;
                         }
+                        keysplit_he_velocity_max = keyboard_settings.keysplit_he_velocity_max;
                         dprintf("Global Keysplit HE Max: %d\n", keyboard_settings.keysplit_he_velocity_max);
                         break;
                 }
@@ -13901,39 +13947,45 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 // Triplesplit modifier held - modify triplesplit HE settings
                 switch (keycode) {
                     case HE_MACRO_CURVE_UP:
-                        keyboard_settings.triplesplit_he_velocity_curve = (keyboard_settings.triplesplit_he_velocity_curve + 1) % 5;
+                        keyboard_settings.triplesplit_he_velocity_curve = (keyboard_settings.triplesplit_he_velocity_curve + 1) % 17;
+                        triplesplit_he_velocity_curve = keyboard_settings.triplesplit_he_velocity_curve;
                         dprintf("Global Triplesplit HE Curve: %d\n", keyboard_settings.triplesplit_he_velocity_curve);
                         break;
                     case HE_MACRO_CURVE_DOWN:
                         if (keyboard_settings.triplesplit_he_velocity_curve == 0) {
-                            keyboard_settings.triplesplit_he_velocity_curve = 4;
+                            keyboard_settings.triplesplit_he_velocity_curve = 16;
                         } else {
                             keyboard_settings.triplesplit_he_velocity_curve--;
                         }
+                        triplesplit_he_velocity_curve = keyboard_settings.triplesplit_he_velocity_curve;
                         dprintf("Global Triplesplit HE Curve: %d\n", keyboard_settings.triplesplit_he_velocity_curve);
                         break;
                     case HE_MACRO_MIN_UP:
                         if (keyboard_settings.triplesplit_he_velocity_min < 127) {
                             keyboard_settings.triplesplit_he_velocity_min++;
                         }
+                        triplesplit_he_velocity_min = keyboard_settings.triplesplit_he_velocity_min;
                         dprintf("Global Triplesplit HE Min: %d\n", keyboard_settings.triplesplit_he_velocity_min);
                         break;
                     case HE_MACRO_MIN_DOWN:
                         if (keyboard_settings.triplesplit_he_velocity_min > 1) {
                             keyboard_settings.triplesplit_he_velocity_min--;
                         }
+                        triplesplit_he_velocity_min = keyboard_settings.triplesplit_he_velocity_min;
                         dprintf("Global Triplesplit HE Min: %d\n", keyboard_settings.triplesplit_he_velocity_min);
                         break;
                     case HE_MACRO_MAX_UP:
                         if (keyboard_settings.triplesplit_he_velocity_max < 127) {
                             keyboard_settings.triplesplit_he_velocity_max++;
                         }
+                        triplesplit_he_velocity_max = keyboard_settings.triplesplit_he_velocity_max;
                         dprintf("Global Triplesplit HE Max: %d\n", keyboard_settings.triplesplit_he_velocity_max);
                         break;
                     case HE_MACRO_MAX_DOWN:
                         if (keyboard_settings.triplesplit_he_velocity_max > 1) {
                             keyboard_settings.triplesplit_he_velocity_max--;
                         }
+                        triplesplit_he_velocity_max = keyboard_settings.triplesplit_he_velocity_max;
                         dprintf("Global Triplesplit HE Max: %d\n", keyboard_settings.triplesplit_he_velocity_max);
                         break;
                 }
@@ -13941,39 +13993,45 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 // No modifier held - modify main HE settings (global)
                 switch (keycode) {
                     case HE_MACRO_CURVE_UP:
-                        keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 5;
+                        keyboard_settings.he_velocity_curve = (keyboard_settings.he_velocity_curve + 1) % 17;
+                        he_velocity_curve = keyboard_settings.he_velocity_curve;
                         dprintf("Global HE Velocity Curve: %d\n", keyboard_settings.he_velocity_curve);
                         break;
                     case HE_MACRO_CURVE_DOWN:
                         if (keyboard_settings.he_velocity_curve == 0) {
-                            keyboard_settings.he_velocity_curve = 4;
+                            keyboard_settings.he_velocity_curve = 16;
                         } else {
                             keyboard_settings.he_velocity_curve--;
                         }
+                        he_velocity_curve = keyboard_settings.he_velocity_curve;
                         dprintf("Global HE Velocity Curve: %d\n", keyboard_settings.he_velocity_curve);
                         break;
                     case HE_MACRO_MIN_UP:
                         if (keyboard_settings.he_velocity_min < 127) {
                             keyboard_settings.he_velocity_min++;
                         }
+                        he_velocity_min = keyboard_settings.he_velocity_min;
                         dprintf("Global HE Velocity Min: %d\n", keyboard_settings.he_velocity_min);
                         break;
                     case HE_MACRO_MIN_DOWN:
                         if (keyboard_settings.he_velocity_min > 1) {
                             keyboard_settings.he_velocity_min--;
                         }
+                        he_velocity_min = keyboard_settings.he_velocity_min;
                         dprintf("Global HE Velocity Min: %d\n", keyboard_settings.he_velocity_min);
                         break;
                     case HE_MACRO_MAX_UP:
                         if (keyboard_settings.he_velocity_max < 127) {
                             keyboard_settings.he_velocity_max++;
                         }
+                        he_velocity_max = keyboard_settings.he_velocity_max;
                         dprintf("Global HE Velocity Max: %d\n", keyboard_settings.he_velocity_max);
                         break;
                     case HE_MACRO_MAX_DOWN:
                         if (keyboard_settings.he_velocity_max > 1) {
                             keyboard_settings.he_velocity_max--;
                         }
+                        he_velocity_max = keyboard_settings.he_velocity_max;
                         dprintf("Global HE Velocity Max: %d\n", keyboard_settings.he_velocity_max);
                         break;
                 }
@@ -13983,12 +14041,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // Direct HE Curve Selection (0xEC96-0xEC9A)
-    // These set the curve to a specific value (0-4)
+    // Direct HE Curve Selection (0xEC96-0xECA6)
+    // These set the curve to a specific value (0-16: 7 factory + 10 user)
     // Macro-aware and modifier-aware
-    if (keycode >= HE_MACRO_CURVE_0 && keycode <= HE_MACRO_CURVE_4) {
+    if (keycode >= HE_MACRO_CURVE_0 && keycode <= HE_MACRO_CURVE_16) {
         if (record->event.pressed) {
-            uint8_t curve_value = keycode - HE_MACRO_CURVE_0;  // 0-4
+            uint8_t curve_value = keycode - HE_MACRO_CURVE_0;  // 0-16
 
             if (current_macro_id > 0) {
                 // A macro is recording - set the macro's recording curve
@@ -13997,14 +14055,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else if (keysplitmodifierheld) {
                 // Keysplit modifier held - set keysplit curve (global)
                 keyboard_settings.keysplit_he_velocity_curve = curve_value;
+                keysplit_he_velocity_curve = curve_value;
                 dprintf("Global Keysplit HE Curve set to: %d\n", curve_value);
             } else if (triplesplitmodifierheld) {
                 // Triplesplit modifier held - set triplesplit curve (global)
                 keyboard_settings.triplesplit_he_velocity_curve = curve_value;
+                triplesplit_he_velocity_curve = curve_value;
                 dprintf("Global Triplesplit HE Curve set to: %d\n", curve_value);
             } else {
                 // No modifier held - set main HE curve (global)
                 keyboard_settings.he_velocity_curve = curve_value;
+                he_velocity_curve = curve_value;
                 dprintf("Global HE Velocity Curve set to: %d\n", curve_value);
             }
             set_keylog(keycode, record);

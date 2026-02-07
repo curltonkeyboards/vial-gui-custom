@@ -4678,8 +4678,8 @@ void set_macro_recording_curve_target(uint8_t macro_num, uint8_t curve) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t macro_idx = macro_num - 1;
 
-        // Clamp to valid range (0-4)
-        if (curve > 4) curve = 4;
+        // Clamp to valid range (0-16: 7 factory + 10 user presets)
+        if (curve > 16) curve = 16;
 
         macro_recording_curve_target[macro_idx] = curve;
 
@@ -5090,8 +5090,8 @@ void set_overdub_recording_curve_target(uint8_t macro_num, uint8_t curve) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t macro_idx = macro_num - 1;
 
-        // Clamp to valid range (0-4)
-        if (curve > 4) curve = 4;
+        // Clamp to valid range (0-16: 7 factory + 10 user presets)
+        if (curve > 16) curve = 16;
 
         overdub_recording_curve_target[macro_idx] = curve;
 
