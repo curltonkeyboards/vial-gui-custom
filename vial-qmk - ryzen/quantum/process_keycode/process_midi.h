@@ -159,6 +159,14 @@ void set_overdub_velocity_offset_target(uint8_t macro_num, int8_t velocity_offse
 uint8_t get_overdub_velocity_absolute_target(uint8_t macro_num);
 void set_overdub_velocity_absolute_target(uint8_t macro_num, uint8_t velocity_absolute);
 
+// Overdub recording curve/min/max functions
+uint8_t get_overdub_recording_curve(uint8_t macro_num);
+void set_overdub_recording_curve_target(uint8_t macro_num, uint8_t curve);
+uint8_t get_overdub_recording_min(uint8_t macro_num);
+void set_overdub_recording_min_target(uint8_t macro_num, uint8_t min);
+uint8_t get_overdub_recording_max(uint8_t macro_num);
+void set_overdub_recording_max_target(uint8_t macro_num, uint8_t max);
+
 // Overdub octave doubler functions (if needed)
 int8_t get_overdub_octave_doubler_target(uint8_t macro_num);
 void set_overdub_octave_doubler_target(uint8_t macro_num, int8_t octave_offset);
