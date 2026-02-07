@@ -2344,12 +2344,55 @@ class keycodes_v5:
         "KS_MODIFIER": 0xCCAD,  # Key split modifier
         "TS_MODIFIER": 0xCCAE,  # Triple split modifier
 
-        # HE Velocity Curve keycodes (0xCCB0-0xCCB4)
+        # HE Velocity Curve keycodes - Factory presets (0xCCB0-0xCCB4)
         "HE_CURVE_SOFTEST": 0xCCB0,
         "HE_CURVE_SOFT": 0xCCB1,
         "HE_CURVE_MEDIUM": 0xCCB2,
         "HE_CURVE_HARD": 0xCCB3,
         "HE_CURVE_HARDEST": 0xCCB4,
+
+        # HE Velocity Curve keycodes - Aggro, Digital, and User presets (0xCC90-0xCC9B)
+        "HE_CURVE_AGGRO": 0xCC90,
+        "HE_CURVE_DIGITAL": 0xCC91,
+        "HE_CURVE_USER_1": 0xCC92,
+        "HE_CURVE_USER_2": 0xCC93,
+        "HE_CURVE_USER_3": 0xCC94,
+        "HE_CURVE_USER_4": 0xCC95,
+        "HE_CURVE_USER_5": 0xCC96,
+        "HE_CURVE_USER_6": 0xCC97,
+        "HE_CURVE_USER_7": 0xCC98,
+        "HE_CURVE_USER_8": 0xCC99,
+        "HE_CURVE_USER_9": 0xCC9A,
+        "HE_CURVE_USER_10": 0xCC9B,
+
+        # Macro-aware HE Velocity Controls (0xEC90-0xEC95)
+        "HE_MACRO_CURVE_UP": 0xEC90,
+        "HE_MACRO_CURVE_DOWN": 0xEC91,
+        "HE_MACRO_MIN_UP": 0xEC92,
+        "HE_MACRO_MIN_DOWN": 0xEC93,
+        "HE_MACRO_MAX_UP": 0xEC94,
+        "HE_MACRO_MAX_DOWN": 0xEC95,
+
+        # Macro-aware Direct HE Curve Selection (0xEC96-0xECA6)
+        # Factory presets (curves 0-6)
+        "HE_MACRO_CURVE_0": 0xEC96,   # Softest
+        "HE_MACRO_CURVE_1": 0xEC97,   # Soft
+        "HE_MACRO_CURVE_2": 0xEC98,   # Medium
+        "HE_MACRO_CURVE_3": 0xEC99,   # Hard
+        "HE_MACRO_CURVE_4": 0xEC9A,   # Hardest
+        "HE_MACRO_CURVE_5": 0xEC9B,   # Aggro
+        "HE_MACRO_CURVE_6": 0xEC9C,   # Digital
+        # User presets (curves 7-16)
+        "HE_MACRO_CURVE_7": 0xEC9D,   # User 1
+        "HE_MACRO_CURVE_8": 0xEC9E,   # User 2
+        "HE_MACRO_CURVE_9": 0xEC9F,   # User 3
+        "HE_MACRO_CURVE_10": 0xECA0,  # User 4
+        "HE_MACRO_CURVE_11": 0xECA1,  # User 5
+        "HE_MACRO_CURVE_12": 0xECA2,  # User 6
+        "HE_MACRO_CURVE_13": 0xECA3,  # User 7
+        "HE_MACRO_CURVE_14": 0xECA4,  # User 8
+        "HE_MACRO_CURVE_15": 0xECA5,  # User 9
+        "HE_MACRO_CURVE_16": 0xECA6,  # User 10
 
         # HE Velocity Range base (for dynamic generation, starts at 0xCCB5)
         "HE_VEL_RANGE_1_1": 0xCCB5,  # Base for range keycodes (allows min == max)
