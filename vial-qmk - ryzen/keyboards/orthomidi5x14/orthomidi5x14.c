@@ -37,14 +37,14 @@ extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
 #undef KC_CUSTOM
 #define KC_CUSTOM (0x8000 + 128 * 7) + 128 * 128 + 5 + 17
 
-// MIDI Routing Toggle Keycodes (after gaming controls)
-#define MIDI_IN_MODE_TOG    (KC_CUSTOM + 1)  // Toggle MIDI In routing mode
-#define USB_MIDI_MODE_TOG   (KC_CUSTOM + 2)  // Toggle USB MIDI routing mode
-#define MIDI_CLOCK_SRC_TOG  (KC_CUSTOM + 3)  // Toggle MIDI clock source
+// MIDI Routing Toggle Keycodes - Fixed addresses to avoid MI_CHORD collision at KC_CUSTOM
+#define MIDI_IN_MODE_TOG    0xECB0  // Toggle MIDI In routing mode
+#define USB_MIDI_MODE_TOG   0xECB1  // Toggle USB MIDI routing mode
+#define MIDI_CLOCK_SRC_TOG  0xECB2  // Toggle MIDI clock source
 
-// HE Velocity Curve and Range Keycodes - Fixed addresses (not relative to KC_CUSTOM)
-#define HE_VEL_CURVE_UP     (KC_CUSTOM + 4)  // Cycle to next velocity curve
-#define HE_VEL_CURVE_DOWN   (KC_CUSTOM + 5)  // Cycle to previous velocity curve
+// HE Velocity Curve Cycle Keycodes - Fixed addresses to avoid MI_CHORD collision at KC_CUSTOM
+#define HE_VEL_CURVE_UP     0xECB3  // Cycle to next velocity curve
+#define HE_VEL_CURVE_DOWN   0xECB4  // Cycle to previous velocity curve
 
 // Direct HE Curve Selection - Factory presets (0xCCB0-0xCCB4)
 #define HE_CURVE_SOFTEST    0xCCB0
