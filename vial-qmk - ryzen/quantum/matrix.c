@@ -1201,6 +1201,18 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->velocity_captured = false;
                 }
 
+                // Safety: force note-off if key is physically near rest but travel
+                // didn't quite cross NOTE_OFF_TRAVEL due to calibration drift.
+                // Uses distance < 15 (~0.24mm / 6% of range) as a generous fallback
+                // that's still well below any actuation point.
+                // Also requires !is_pressed to avoid interfering with RT retrigger
+                // (where is_pressed can toggle while key still has real travel).
+                if (state->send_on_release && !key->is_pressed && key->distance < 15) {
+                    state->send_on_release = false;
+                    state->peak_travel = 0;
+                    state->velocity_captured = false;
+                }
+
                 state->last_travel = travel;
             }
             break;
@@ -1394,6 +1406,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
                 // Note OFF when key returns close to rest
                 if (state->send_on_release && travel < NOTE_OFF_TRAVEL3) {
+                    state->send_on_release = false;
+                    state->peak_travel = 0;
+                    state->velocity_captured = false;
+                }
+
+                // Safety: force note-off if key is physically near rest but travel
+                // didn't quite cross NOTE_OFF_TRAVEL due to calibration drift.
+                if (state->send_on_release && !key->is_pressed && key->distance < 15) {
                     state->send_on_release = false;
                     state->peak_travel = 0;
                     state->velocity_captured = false;
