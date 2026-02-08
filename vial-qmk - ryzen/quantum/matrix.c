@@ -742,14 +742,11 @@ static void refresh_key_type_cache(uint8_t layer) {
                 key_type_cache[key_idx] = KEY_TYPE_DKS;
                 dks_keycode_cache[key_idx] = keycode;
             }
-            // Check if MIDI key (position-based from midi_key_states, set at init)
-            else if (midi_key_states[key_idx].is_midi_key) {
-                key_type_cache[key_idx] = KEY_TYPE_MIDI;
-                dks_keycode_cache[key_idx] = 0;
-            }
-            // Check if MIDI keycode (keycode-based: MI_C, MI_Cs, etc.)
-            // MIDI note keycodes are 0x7103 (QK_MIDI_NOTE_C_0) through 0x71FF
-            else if (keycode >= 0x7103 && keycode <= 0x71FF) {
+            // Check if MIDI key by keycode on current layer (not permanent is_midi_key flag)
+            // Covers all MIDI ranges: base notes, keysplit, and triplesplit
+            else if ((keycode >= 0x7103 && keycode <= 0x71FF) ||
+                     (keycode >= 0xC600 && keycode <= 0xC647) ||
+                     (keycode >= 0xC670 && keycode <= 0xC6B7)) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
                 dks_keycode_cache[key_idx] = 0;
             }
@@ -904,7 +901,7 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     // Apply velocity preset actuation override if enabled (MIDI keys only)
     // Check zone type and keysplitvelocitystatus to determine which actuation to use
     // keysplitvelocitystatus: 0=all same, 1=keysplit only, 2=triplesplit only, 3=both
-    if (midi_key_states[key_idx].is_midi_key) {
+    if (key_type_cache[key_idx] == KEY_TYPE_MIDI) {
         uint8_t zone = midi_key_states[key_idx].zone_type;
         bool use_zone_actuation = false;
         bool zone_actuation_override = false;
@@ -941,7 +938,7 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     // Check if rapid trigger is enabled via the flag (not just rt_down != 0)
     // MIDI keys never use per-key RT - they use velocity preset retrigger instead
     bool rt_enabled = (flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) && (rt_down > 0);
-    if (midi_key_states[key_idx].is_midi_key) {
+    if (key_type_cache[key_idx] == KEY_TYPE_MIDI) {
         rt_enabled = false;
     }
 
@@ -1208,6 +1205,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->send_on_release = false;
                     state->peak_travel = 0;
                     state->velocity_captured = false;
+                    // Reset retrigger state so next press starts clean
+                    state->retrigger_peak = 0;
+                    state->retrigger_eligible = false;
+                    state->retrigger_eligible_point = 0;
+                    state->retrigger_move_start = 0;
                 }
 
                 state->last_travel = travel;
@@ -1297,6 +1299,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->release_travel = travel;  // Store release position for scaling
                     // Start timer now so partial release + re-press gets fresh timing
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
+                    // Reset retrigger state so next press starts clean
+                    state->retrigger_peak = 0;
+                    state->retrigger_eligible = false;
+                    state->retrigger_eligible_point = 0;
+                    state->retrigger_move_start = 0;
                 }
 
                 state->last_travel = travel;
@@ -1406,6 +1413,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->send_on_release = false;
                     state->peak_travel = 0;
                     state->velocity_captured = false;
+                    // Reset retrigger state so next press starts clean
+                    state->retrigger_peak = 0;
+                    state->retrigger_eligible = false;
+                    state->retrigger_eligible_point = 0;
+                    state->retrigger_move_start = 0;
                 }
 
                 state->last_travel = travel;
