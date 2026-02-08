@@ -150,10 +150,12 @@ typedef struct {
     bool send_on_release;
     bool velocity_captured;      // True when velocity has been captured for this press
 
-    // MIDI Retrigger state (separate from rapidfire)
-    // Retrigger allows new note-on without note-off while above actuation point
+    // MIDI Retrigger state (velocity preset feature, separate from per-key rapidfire)
+    // Retrigger allows new note-on after releasing by retrigger_distance from peak
     bool retrigger_eligible;     // True when key has risen by retrigger_distance from peak
-    uint8_t retrigger_peak;      // Peak travel when retrigger tracking started
+    uint8_t retrigger_peak;      // Peak travel during current retrigger cycle
+    uint8_t retrigger_eligible_point; // Travel value where key became eligible (for speed measurement)
+    uint32_t retrigger_move_start;    // ChibiOS ticks when key started moving down from eligible point
 
     // Mode 2 & 3: Speed-based
     uint8_t last_travel;
@@ -740,14 +742,11 @@ static void refresh_key_type_cache(uint8_t layer) {
                 key_type_cache[key_idx] = KEY_TYPE_DKS;
                 dks_keycode_cache[key_idx] = keycode;
             }
-            // Check if MIDI key (position-based from midi_key_states, set at init)
-            else if (midi_key_states[key_idx].is_midi_key) {
-                key_type_cache[key_idx] = KEY_TYPE_MIDI;
-                dks_keycode_cache[key_idx] = 0;
-            }
-            // Check if MIDI keycode (keycode-based: MI_C, MI_Cs, etc.)
-            // MIDI note keycodes are 0x7103 (QK_MIDI_NOTE_C_0) through 0x71FF
-            else if (keycode >= 0x7103 && keycode <= 0x71FF) {
+            // Check if MIDI key by keycode on current layer (not permanent is_midi_key flag)
+            // Covers all MIDI ranges: base notes, keysplit, and triplesplit
+            else if ((keycode >= 0x7103 && keycode <= 0x71FF) ||
+                     (keycode >= 0xC600 && keycode <= 0xC647) ||
+                     (keycode >= 0xC670 && keycode <= 0xC6B7)) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
                 dks_keycode_cache[key_idx] = 0;
             }
@@ -902,7 +901,7 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     // Apply velocity preset actuation override if enabled (MIDI keys only)
     // Check zone type and keysplitvelocitystatus to determine which actuation to use
     // keysplitvelocitystatus: 0=all same, 1=keysplit only, 2=triplesplit only, 3=both
-    if (midi_key_states[key_idx].is_midi_key) {
+    if (key_type_cache[key_idx] == KEY_TYPE_MIDI) {
         uint8_t zone = midi_key_states[key_idx].zone_type;
         bool use_zone_actuation = false;
         bool zone_actuation_override = false;
@@ -937,7 +936,11 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     uint8_t reset_point = (flags & PER_KEY_FLAG_CONTINUOUS_RT) ? 0 : actuation_point;
 
     // Check if rapid trigger is enabled via the flag (not just rt_down != 0)
+    // MIDI keys never use per-key RT - they use velocity preset retrigger instead
     bool rt_enabled = (flags & PER_KEY_FLAG_RAPIDFIRE_ENABLED) && (rt_down > 0);
+    if (key_type_cache[key_idx] == KEY_TYPE_MIDI) {
+        rt_enabled = false;
+    }
 
     if (!rt_enabled) {
         // RT disabled - simple threshold mode
@@ -1202,6 +1205,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->send_on_release = false;
                     state->peak_travel = 0;
                     state->velocity_captured = false;
+                    // Reset retrigger state so next press starts clean
+                    state->retrigger_peak = 0;
+                    state->retrigger_eligible = false;
+                    state->retrigger_eligible_point = 0;
+                    state->retrigger_move_start = 0;
                 }
 
                 state->last_travel = travel;
@@ -1291,6 +1299,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->release_travel = travel;  // Store release position for scaling
                     // Start timer now so partial release + re-press gets fresh timing
                     state->move_start_time = (uint32_t)chVTGetSystemTimeX();
+                    // Reset retrigger state so next press starts clean
+                    state->retrigger_peak = 0;
+                    state->retrigger_eligible = false;
+                    state->retrigger_eligible_point = 0;
+                    state->retrigger_move_start = 0;
                 }
 
                 state->last_travel = travel;
@@ -1400,6 +1413,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->send_on_release = false;
                     state->peak_travel = 0;
                     state->velocity_captured = false;
+                    // Reset retrigger state so next press starts clean
+                    state->retrigger_peak = 0;
+                    state->retrigger_eligible = false;
+                    state->retrigger_eligible_point = 0;
+                    state->retrigger_move_start = 0;
                 }
 
                 state->last_travel = travel;
@@ -1408,59 +1426,114 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     }
 
     // ========================================================================
-    // MIDI RETRIGGER PROCESSING
-    // Allows re-triggering note-on without note-off while above actuation point
-    // Different from rapidfire: note-off ONLY happens when crossing below actuation
+    // MIDI RETRIGGER PROCESSING (velocity preset feature)
+    // Re-triggers note-on by sending note-off + note-on directly (bypasses QMK matrix)
+    // Eligibility: key rises by retrigger_distance from peak (distance-based, any position)
+    // 10% hysteresis: must press 10% of actuation distance past eligible point to fire
+    // Speed-based velocity with distance cap based on available travel
     // ========================================================================
     if (retrigger_travel > 0 && state->velocity_captured) {
-        // Track peak travel for retrigger eligibility calculation
+        // Track peak travel for retrigger eligibility
         if (travel > state->retrigger_peak) {
             state->retrigger_peak = travel;
-            state->retrigger_eligible = false;  // Reset eligibility when going deeper
+            state->retrigger_eligible = false;  // Going deeper, reset eligibility
+            state->retrigger_move_start = 0;    // Reset speed timer
         }
 
         // Check for retrigger eligibility: key has risen by retrigger_travel from peak
-        // AND still above actuation point (midi_threshold)
+        // Purely distance-based - no requirement to be above actuation point
         if (!state->retrigger_eligible &&
             state->retrigger_peak > 0 &&
-            travel >= midi_threshold &&
+            state->retrigger_peak > retrigger_travel &&
             travel <= state->retrigger_peak - retrigger_travel) {
             state->retrigger_eligible = true;
+            state->retrigger_eligible_point = travel;  // Record position for speed + cap
+            state->retrigger_move_start = 0;           // Speed timer starts on downward movement
         }
 
-        // Handle retrigger: key pressed down again while eligible
-        // This triggers a new note-on with partial velocity based on travel distance
-        if (state->retrigger_eligible && travel > prev_last_travel) {
-            // Key is moving down again - check if it's a significant re-press
-            uint8_t repress_distance = travel - (state->retrigger_peak - retrigger_travel);
+        if (state->retrigger_eligible) {
+            if (travel > prev_last_travel) {
+                // Key moving down - start speed timer on first downward movement
+                if (state->retrigger_move_start == 0) {
+                    state->retrigger_move_start = (uint32_t)chVTGetSystemTimeX();
+                }
 
-            if (repress_distance >= 3) {  // Minimum 3 units (~0.05mm) to count as re-press
-                // Calculate partial velocity based on travel distance from eligible point
-                // Full travel (0 to midi_threshold) = 100% velocity range
-                // Partial travel (eligible point to current) = scaled velocity
-                uint16_t partial_raw = ((uint16_t)repress_distance * 255) / midi_threshold;
-                if (partial_raw > 255) partial_raw = 255;
-                if (partial_raw < 1) partial_raw = 1;
+                // 10% hysteresis: must press 10% of actuation distance past eligible point
+                uint8_t hysteresis = midi_threshold / 10;
+                if (hysteresis < 1) hysteresis = 1;
 
-                state->raw_velocity = (uint8_t)partial_raw;
-                state->retrigger_eligible = false;  // Consumed the retrigger
-                state->retrigger_peak = travel;     // New peak tracking starts here
+                uint8_t repress_distance = travel - state->retrigger_eligible_point;
 
-                // Update base_velocity for the new note-on
-                key->base_velocity = (state->raw_velocity * 127) / 255;
-                if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                if (repress_distance >= hysteresis) {
+                    // --- Speed-based velocity ---
+                    // Measure from eligible point to current (where hysteresis threshold crossed)
+                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->retrigger_move_start;
+                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
+                    uint32_t elapsed_ms = elapsed_us / 1000;
 
-                // Force a new note-on event by simulating a fresh press
-                // The pressed flag is already true, but we need to signal
-                // that this is a new note-on event for the MIDI sender
-                state->was_pressed = false;  // This will trigger note-on logic below
+                    uint32_t speed_raw;
+                    if (elapsed_ms == 0 || elapsed_ms <= max_press_time) {
+                        speed_raw = 255;
+                    } else if (elapsed_ms >= min_press_time) {
+                        speed_raw = 1;
+                    } else {
+                        speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
+                        if (speed_raw < 1) speed_raw = 1;
+                    }
+
+                    // --- Velocity cap based on available travel ---
+                    // Cap = (actuation - release_point) / actuation
+                    // release_point = retrigger_eligible_point (where key became eligible)
+                    uint16_t velocity_cap;
+                    if (midi_threshold > state->retrigger_eligible_point) {
+                        velocity_cap = ((uint16_t)(midi_threshold - state->retrigger_eligible_point) * 255) / midi_threshold;
+                    } else {
+                        velocity_cap = 0;
+                    }
+                    if (velocity_cap > 255) velocity_cap = 255;
+
+                    // Apply cap to speed velocity
+                    uint16_t capped_raw = (speed_raw * velocity_cap) / 255;
+                    if (capped_raw < 1) capped_raw = 1;
+                    if (capped_raw > 255) capped_raw = 255;
+
+                    state->raw_velocity = (uint8_t)capped_raw;
+
+                    // Get final velocity through zone-appropriate curve/min/max mapping
+                    uint8_t row = KEY_ROW(key_idx);
+                    uint8_t col = KEY_COL(key_idx);
+                    uint8_t velocity;
+
+                    if (state->zone_type == ZONE_TYPE_KEYSPLIT &&
+                        (keysplitvelocitystatus == 1 || keysplitvelocitystatus == 3)) {
+                        velocity = get_keysplit_he_velocity_from_position(row, col);
+                    } else if (state->zone_type == ZONE_TYPE_TRIPLESPLIT &&
+                               (keysplitvelocitystatus == 2 || keysplitvelocitystatus == 3)) {
+                        velocity = get_triplesplit_he_velocity_from_position(row, col);
+                    } else {
+                        velocity = get_he_velocity_from_position(row, col);
+                    }
+
+                    // Send note-off (respects sustain/queue) then note-on directly
+                    uint8_t raw_travel = (travel * 255) / 240;
+                    midi_send_noteoff_with_recording(state->note_channel, state->midi_note, 127, 0, state->zone_type);
+                    midi_send_noteon_with_recording(state->note_channel, state->midi_note, velocity, raw_travel);
+
+                    // Store for GUI display
+                    analog_matrix_store_final_velocity(row, col, velocity);
+
+                    // Reset for next retrigger cycle
+                    state->retrigger_eligible = false;
+                    state->retrigger_peak = travel;     // New peak starts here
+                    state->retrigger_move_start = 0;
+                }
+            } else if (travel < prev_last_travel) {
+                // Key still moving up while eligible - update eligible point if higher
+                if (travel < state->retrigger_eligible_point) {
+                    state->retrigger_eligible_point = travel;
+                }
+                state->retrigger_move_start = 0;  // Reset speed timer for next downward move
             }
-        }
-
-        // Clear retrigger state when key goes below actuation (note-off territory)
-        if (travel < midi_threshold) {
-            state->retrigger_eligible = false;
-            state->retrigger_peak = 0;
         }
     }
 
