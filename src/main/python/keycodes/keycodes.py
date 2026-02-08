@@ -3449,7 +3449,7 @@ for x in range(100):
 # Using LGUI (Windows key) as Command modifier since Windows keyboards map GUI to Cmd on Mac.
 
 # -----------------------------------------------------------------------------
-# ABLETON LIVE Shortcuts (0xDA00-0xDA3F)
+# ABLETON LIVE Shortcuts (0xF000-0xF03F)
 # -----------------------------------------------------------------------------
 KEYCODES_DAW_ABLETON = [
     # Transport Controls
@@ -3513,7 +3513,7 @@ KEYCODES_DAW_ABLETON = [
 ]
 
 # -----------------------------------------------------------------------------
-# FL STUDIO Shortcuts (0xDB00-0xDB3F)
+# FL STUDIO Shortcuts (0xF100-0xF13F)
 # -----------------------------------------------------------------------------
 KEYCODES_DAW_FL = [
     # Transport Controls
@@ -3578,7 +3578,7 @@ KEYCODES_DAW_FL = [
 ]
 
 # -----------------------------------------------------------------------------
-# LOGIC PRO Shortcuts (0xDC00-0xDC3F)
+# LOGIC PRO Shortcuts (0xF200-0xF23F)
 # -----------------------------------------------------------------------------
 KEYCODES_DAW_LOGIC = [
     # Transport Controls
@@ -3645,7 +3645,7 @@ KEYCODES_DAW_LOGIC = [
 ]
 
 # -----------------------------------------------------------------------------
-# PRO TOOLS Shortcuts (0xDD00-0xDD3F)
+# PRO TOOLS Shortcuts (0xF300-0xF33F)
 # -----------------------------------------------------------------------------
 KEYCODES_DAW_PROTOOLS = [
     # Transport Controls
@@ -3712,7 +3712,7 @@ KEYCODES_DAW_PROTOOLS = [
 ]
 
 # -----------------------------------------------------------------------------
-# GARAGEBAND Shortcuts (0xDE00-0xDE3F)
+# GARAGEBAND Shortcuts (0xF400-0xF43F)
 # -----------------------------------------------------------------------------
 KEYCODES_DAW_GARAGEBAND = [
     # Transport Controls

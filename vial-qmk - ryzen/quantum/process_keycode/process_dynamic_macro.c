@@ -356,6 +356,15 @@ static uint8_t overdub_recording_curve[MAX_MACROS] = {2, 2, 2, 2};
 static uint8_t overdub_recording_min[MAX_MACROS] = {1, 1, 1, 1};
 static uint8_t overdub_recording_max[MAX_MACROS] = {127, 127, 127, 127};
 static bool overdub_recording_set[MAX_MACROS] = {false, false, false, false};  // Track if overdub range has been set
+static uint8_t overdub_recording_curve_target[MAX_MACROS] = {2, 2, 2, 2};
+static uint8_t overdub_recording_min_target[MAX_MACROS] = {1, 1, 1, 1};
+static uint8_t overdub_recording_max_target[MAX_MACROS] = {127, 127, 127, 127};
+static bool overdub_recording_curve_pending[MAX_MACROS] = {false, false, false, false};
+static bool overdub_recording_min_pending[MAX_MACROS] = {false, false, false, false};
+static bool overdub_recording_max_pending[MAX_MACROS] = {false, false, false, false};
+static uint8_t overdub_recording_curve_pending_value[MAX_MACROS] = {2, 2, 2, 2};
+static uint8_t overdub_recording_min_pending_value[MAX_MACROS] = {1, 1, 1, 1};
+static uint8_t overdub_recording_max_pending_value[MAX_MACROS] = {127, 127, 127, 127};
 
 static int8_t macro_octave_doubler[MAX_MACROS] = {0, 0, 0, 0};
 static int8_t macro_octave_doubler_target[MAX_MACROS] = {0, 0, 0, 0};
@@ -1003,6 +1012,12 @@ void dynamic_macro_init(void) {
         overdub_recording_min[i] = 1;     // Min velocity
         overdub_recording_max[i] = 127;   // Max velocity
         overdub_recording_set[i] = false; // Allow next overdub to set values
+        overdub_recording_curve_target[i] = 2;
+        overdub_recording_min_target[i] = 1;
+        overdub_recording_max_target[i] = 127;
+        overdub_recording_curve_pending[i] = false;
+        overdub_recording_min_pending[i] = false;
+        overdub_recording_max_pending[i] = false;
 
         overdub_octave_doubler[i] = 0;
         overdub_octave_doubler_target[i] = 0;
@@ -3264,11 +3279,33 @@ static void check_loop_trigger(void) {
             if (macro_velocity_absolute[i] == 0) {
                 dprintf("dynamic macro: applied pending velocity absolute change for macro %d to ORIGINAL\n", i + 1);
             } else {
-                dprintf("dynamic macro: applied pending velocity absolute change for macro %d to %d\n", 
+                dprintf("dynamic macro: applied pending velocity absolute change for macro %d to %d\n",
                         i + 1, macro_velocity_absolute[i]);
             }
         }
-        
+
+        // Velocity curve/min/max don't need note cleanup (don't affect note tracking)
+        if (macro_recording_curve_pending[i]) {
+            macro_recording_curve[i] = macro_recording_curve_pending_value[i];
+            macro_recording_curve_pending[i] = false;
+            dprintf("dynamic macro: applied pending recording curve change for macro %d to %d\n",
+                    i + 1, macro_recording_curve[i]);
+        }
+
+        if (macro_recording_min_pending[i]) {
+            macro_recording_min[i] = macro_recording_min_pending_value[i];
+            macro_recording_min_pending[i] = false;
+            dprintf("dynamic macro: applied pending recording min change for macro %d to %d\n",
+                    i + 1, macro_recording_min[i]);
+        }
+
+        if (macro_recording_max_pending[i]) {
+            macro_recording_max[i] = macro_recording_max_pending_value[i];
+            macro_recording_max_pending[i] = false;
+            dprintf("dynamic macro: applied pending recording max change for macro %d to %d\n",
+                    i + 1, macro_recording_max[i]);
+        }
+
         if (macro_octave_doubler_pending[i]) {
             macro_octave_doubler[i] = macro_octave_doubler_pending_value[i];
             macro_octave_doubler_pending[i] = false;
@@ -3317,11 +3354,33 @@ static void check_loop_trigger(void) {
                 if (overdub_velocity_absolute[i] == 0) {
                     dprintf("dynamic macro: applied pending overdub velocity absolute change for macro %d to ORIGINAL\n", i + 1);
                 } else {
-                    dprintf("dynamic macro: applied pending overdub velocity absolute change for macro %d to %d\n", 
+                    dprintf("dynamic macro: applied pending overdub velocity absolute change for macro %d to %d\n",
                             i + 1, overdub_velocity_absolute[i]);
                 }
             }
-            
+
+            // Overdub velocity curve/min/max don't need note cleanup
+            if (overdub_recording_curve_pending[i]) {
+                overdub_recording_curve[i] = overdub_recording_curve_pending_value[i];
+                overdub_recording_curve_pending[i] = false;
+                dprintf("dynamic macro: applied pending overdub recording curve change for macro %d to %d\n",
+                        i + 1, overdub_recording_curve[i]);
+            }
+
+            if (overdub_recording_min_pending[i]) {
+                overdub_recording_min[i] = overdub_recording_min_pending_value[i];
+                overdub_recording_min_pending[i] = false;
+                dprintf("dynamic macro: applied pending overdub recording min change for macro %d to %d\n",
+                        i + 1, overdub_recording_min[i]);
+            }
+
+            if (overdub_recording_max_pending[i]) {
+                overdub_recording_max[i] = overdub_recording_max_pending_value[i];
+                overdub_recording_max_pending[i] = false;
+                dprintf("dynamic macro: applied pending overdub recording max change for macro %d to %d\n",
+                        i + 1, overdub_recording_max[i]);
+            }
+
             if (overdub_octave_doubler_pending[i]) {
                 overdub_octave_doubler[i] = overdub_octave_doubler_pending_value[i];
                 overdub_octave_doubler_pending[i] = false;
@@ -4619,8 +4678,8 @@ void set_macro_recording_curve_target(uint8_t macro_num, uint8_t curve) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         uint8_t macro_idx = macro_num - 1;
 
-        // Clamp to valid range (0-4)
-        if (curve > 4) curve = 4;
+        // Clamp to valid range (0-16: 7 factory + 10 user presets)
+        if (curve > 16) curve = 16;
 
         macro_recording_curve_target[macro_idx] = curve;
 
@@ -5019,6 +5078,116 @@ void set_overdub_velocity_absolute_target(uint8_t macro_num, uint8_t velocity_ab
     }
 }
 
+// Overdub recording curve
+uint8_t get_overdub_recording_curve(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        return overdub_recording_curve[macro_num - 1];
+    }
+    return 2;
+}
+
+void set_overdub_recording_curve_target(uint8_t macro_num, uint8_t curve) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+
+        // Clamp to valid range (0-16: 7 factory + 10 user presets)
+        if (curve > 16) curve = 16;
+
+        overdub_recording_curve_target[macro_idx] = curve;
+
+        bool any_macros_playing = false;
+        for (uint8_t i = 0; i < MAX_MACROS; i++) {
+            if (macro_playback[i].is_playing || overdub_playback[i].is_playing) {
+                any_macros_playing = true;
+                break;
+            }
+        }
+
+        if (any_macros_playing) {
+            overdub_recording_curve_pending[macro_idx] = true;
+            overdub_recording_curve_pending_value[macro_idx] = curve;
+            dprintf("dynamic macro: set overdub recording curve target for macro %d to %d (queued)\n", macro_num, curve);
+        } else {
+            overdub_recording_curve[macro_idx] = curve;
+            dprintf("dynamic macro: immediately applied overdub recording curve %d for macro %d\n", curve, macro_num);
+        }
+    }
+}
+
+// Overdub recording min
+uint8_t get_overdub_recording_min(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        return overdub_recording_min[macro_num - 1];
+    }
+    return 1;
+}
+
+void set_overdub_recording_min_target(uint8_t macro_num, uint8_t min) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+
+        // Clamp to valid range (1-127)
+        if (min < 1) min = 1;
+        if (min > 127) min = 127;
+
+        overdub_recording_min_target[macro_idx] = min;
+
+        bool any_macros_playing = false;
+        for (uint8_t i = 0; i < MAX_MACROS; i++) {
+            if (macro_playback[i].is_playing || overdub_playback[i].is_playing) {
+                any_macros_playing = true;
+                break;
+            }
+        }
+
+        if (any_macros_playing) {
+            overdub_recording_min_pending[macro_idx] = true;
+            overdub_recording_min_pending_value[macro_idx] = min;
+            dprintf("dynamic macro: set overdub recording min target for macro %d to %d (queued)\n", macro_num, min);
+        } else {
+            overdub_recording_min[macro_idx] = min;
+            dprintf("dynamic macro: immediately applied overdub recording min %d for macro %d\n", min, macro_num);
+        }
+    }
+}
+
+// Overdub recording max
+uint8_t get_overdub_recording_max(uint8_t macro_num) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        return overdub_recording_max[macro_num - 1];
+    }
+    return 127;
+}
+
+void set_overdub_recording_max_target(uint8_t macro_num, uint8_t max) {
+    if (macro_num >= 1 && macro_num <= MAX_MACROS) {
+        uint8_t macro_idx = macro_num - 1;
+
+        // Clamp to valid range (1-127)
+        if (max < 1) max = 1;
+        if (max > 127) max = 127;
+
+        overdub_recording_max_target[macro_idx] = max;
+
+        bool any_macros_playing = false;
+        for (uint8_t i = 0; i < MAX_MACROS; i++) {
+            if (macro_playback[i].is_playing || overdub_playback[i].is_playing) {
+                any_macros_playing = true;
+                break;
+            }
+        }
+
+        if (any_macros_playing) {
+            overdub_recording_max_pending[macro_idx] = true;
+            overdub_recording_max_pending_value[macro_idx] = max;
+            dprintf("dynamic macro: set overdub recording max target for macro %d to %d (queued)\n", macro_num, max);
+        } else {
+            overdub_recording_max[macro_idx] = max;
+            dprintf("dynamic macro: immediately applied overdub recording max %d for macro %d\n", max, macro_num);
+        }
+    }
+}
+
 int8_t get_overdub_octave_doubler_target(uint8_t macro_num) {
     if (macro_num >= 1 && macro_num <= MAX_MACROS) {
         return overdub_octave_doubler_target[macro_num - 1];
@@ -5115,6 +5284,12 @@ void reset_overdub_transformations(uint8_t macro_num) {
         overdub_recording_min[idx] = 1;     // Min velocity
         overdub_recording_max[idx] = 127;   // Max velocity
         overdub_recording_set[idx] = false; // Allow next overdub to set new values
+        overdub_recording_curve_target[idx] = 2;
+        overdub_recording_min_target[idx] = 1;
+        overdub_recording_max_target[idx] = 127;
+        overdub_recording_curve_pending[idx] = false;
+        overdub_recording_min_pending[idx] = false;
+        overdub_recording_max_pending[idx] = false;
 
         set_overdub_octave_doubler_target(macro_num, 0);
         overdub_octave_doubler_pending[idx] = false;
@@ -5207,17 +5382,39 @@ static void process_pending_states_for_macro(uint8_t macro_idx) {
         if (macro_velocity_absolute[macro_idx] == 0) {
             dprintf("dynamic macro: applied pending velocity absolute change for macro %d to ORIGINAL\n", macro_num);
         } else {
-            dprintf("dynamic macro: applied pending velocity absolute change for macro %d to %d\n", 
+            dprintf("dynamic macro: applied pending velocity absolute change for macro %d to %d\n",
                     macro_num, macro_velocity_absolute[macro_idx]);
         }
     }
-    
+
+    // Velocity curve/min/max don't need note cleanup (don't affect note tracking)
+    if (macro_recording_curve_pending[macro_idx]) {
+        macro_recording_curve[macro_idx] = macro_recording_curve_pending_value[macro_idx];
+        macro_recording_curve_pending[macro_idx] = false;
+        dprintf("dynamic macro: applied pending recording curve change for macro %d to %d\n",
+                macro_num, macro_recording_curve[macro_idx]);
+    }
+
+    if (macro_recording_min_pending[macro_idx]) {
+        macro_recording_min[macro_idx] = macro_recording_min_pending_value[macro_idx];
+        macro_recording_min_pending[macro_idx] = false;
+        dprintf("dynamic macro: applied pending recording min change for macro %d to %d\n",
+                macro_num, macro_recording_min[macro_idx]);
+    }
+
+    if (macro_recording_max_pending[macro_idx]) {
+        macro_recording_max[macro_idx] = macro_recording_max_pending_value[macro_idx];
+        macro_recording_max_pending[macro_idx] = false;
+        dprintf("dynamic macro: applied pending recording max change for macro %d to %d\n",
+                macro_num, macro_recording_max[macro_idx]);
+    }
+
     if (macro_octave_doubler_pending[macro_idx]) {
         macro_octave_doubler[macro_idx] = macro_octave_doubler_pending_value[macro_idx];
         macro_octave_doubler_pending[macro_idx] = false;
         dprintf("dynamic macro: applied pending octave doubler change for macro %d\n", macro_num);
     }
-    
+
     // Process pending overdub mute/unmute states
     if (overdub_mute_pending[macro_idx]) {
         // Mute the overdub
