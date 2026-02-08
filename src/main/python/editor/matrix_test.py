@@ -3642,7 +3642,7 @@ class LayerActuationConfigurator(BasicEditor):
                 'normal': 80,
                 'midi': 80,
                 'aftertouch': 0,
-                'velocity': 2,
+                'velocity': 3,  # Speed+Peak (only supported mode)
                 'rapid': 4,
                 'midi_rapid_sens': 10,
                 'midi_rapid_vel': 10,
@@ -4045,28 +4045,23 @@ class LayerActuationConfigurator(BasicEditor):
         
         velocity_combo = ArrowComboBox()
         velocity_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        velocity_combo.addItem("Fixed (64)", 0)
-        velocity_combo.addItem("Peak at Apex", 1)
-        velocity_combo.addItem("Speed-Based", 2)
-        velocity_combo.addItem("Speed + Peak Combined", 3)
-        velocity_combo.setCurrentIndex(2)
+        velocity_combo.addItem("Speed + Peak", 3)
+        velocity_combo.setCurrentIndex(0)
         velocity_combo.setEditable(True)
         velocity_combo.lineEdit().setReadOnly(True)
         velocity_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        velocity_combo.setEnabled(False)  # Fixed at Speed+Peak, not user-configurable
         combo_layout.addWidget(velocity_combo)
         combo_layout.addStretch()
-        
+
         advanced_layout.addLayout(combo_layout)
-        velocity_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('velocity', velocity_combo)
-        )
         
-        # Velocity Speed Scale (dropdown)
+        # Velocity Speed Scale (deprecated - fixed at 10, kept for protocol compat)
         combo_layout = QHBoxLayout()
         label = QLabel(tr("LayerActuationConfigurator", "Velocity Speed Scale:"))
         label.setMinimumWidth(200)
         combo_layout.addWidget(label)
-        
+
         vel_speed_combo = ArrowComboBox()
         vel_speed_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(1, 21):
@@ -4075,13 +4070,12 @@ class LayerActuationConfigurator(BasicEditor):
         vel_speed_combo.setEditable(True)
         vel_speed_combo.lineEdit().setReadOnly(True)
         vel_speed_combo.lineEdit().setAlignment(Qt.AlignCenter)
+        vel_speed_combo.setEnabled(False)  # Deprecated: speed scale handled by speed_peak_ratio
+        vel_speed_combo.setToolTip("Deprecated: use Speed/Peak Ratio in Velocity tab instead")
         combo_layout.addWidget(vel_speed_combo)
         combo_layout.addStretch()
-        
+
         advanced_layout.addLayout(combo_layout)
-        vel_speed_combo.currentIndexChanged.connect(
-            lambda: self.on_master_combo_changed('vel_speed', vel_speed_combo)
-        )
         
         # Enable MIDI Rapidfire checkbox
         midi_rapid_checkbox = QCheckBox(tr("LayerActuationConfigurator", "Enable MIDI Rapidfire"))
@@ -4511,29 +4505,24 @@ class LayerActuationConfigurator(BasicEditor):
         
         combo = ArrowComboBox()
         combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
-        combo.addItem("Fixed (64)", 0)
-        combo.addItem("Peak at Apex", 1)
-        combo.addItem("Speed-Based", 2)
-        combo.addItem("Speed + Peak Combined", 3)
-        combo.setCurrentIndex(2)
+        combo.addItem("Speed + Peak", 3)
+        combo.setCurrentIndex(0)
         combo.setEditable(True)
         combo.lineEdit().setReadOnly(True)
         combo.lineEdit().setAlignment(Qt.AlignCenter)
+        combo.setEnabled(False)  # Fixed at Speed+Peak, not user-configurable
         combo_layout.addWidget(combo)
         combo_layout.addStretch()
 
         layer_advanced_layout.addLayout(combo_layout)
-        combo.currentIndexChanged.connect(
-            lambda: self.on_layer_combo_changed('velocity', combo)
-        )
         self.layer_widgets['velocity_combo'] = combo
         
-        # Velocity Speed Scale combo
+        # Velocity Speed Scale combo (deprecated - fixed at 10, kept for protocol compat)
         combo_layout = QHBoxLayout()
         label = QLabel(tr("LayerActuationConfigurator", "Velocity Speed Scale:"))
         label.setMinimumWidth(180)
         combo_layout.addWidget(label)
-        
+
         combo = ArrowComboBox()
         combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         for i in range(1, 21):
@@ -4542,13 +4531,12 @@ class LayerActuationConfigurator(BasicEditor):
         combo.setEditable(True)
         combo.lineEdit().setReadOnly(True)
         combo.lineEdit().setAlignment(Qt.AlignCenter)
+        combo.setEnabled(False)  # Deprecated: speed scale handled by speed_peak_ratio
+        combo.setToolTip("Deprecated: use Speed/Peak Ratio in Velocity tab instead")
         combo_layout.addWidget(combo)
         combo_layout.addStretch()
 
         layer_advanced_layout.addLayout(combo_layout)
-        combo.currentIndexChanged.connect(
-            lambda: self.on_layer_combo_changed('vel_speed', combo)
-        )
         self.layer_widgets['vel_speed_combo'] = combo
         
         # Enable MIDI Rapidfire checkbox
@@ -5159,7 +5147,7 @@ class LayerActuationConfigurator(BasicEditor):
                     'normal': 80,
                     'midi': 80,
                     'aftertouch': 0,
-                    'velocity': 2,
+                    'velocity': 3,  # Speed+Peak (only supported mode)
                     'rapid': 4,
                     'midi_rapid_sens': 10,
                     'midi_rapid_vel': 10,

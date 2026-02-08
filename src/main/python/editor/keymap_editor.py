@@ -74,7 +74,7 @@ class QuickActuationWidget(QWidget):
             self.layer_data.append({
                 'normal': 80,
                 'midi': 80,
-                'velocity': 2,  # Velocity mode (0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak)
+                'velocity': 3,  # Velocity mode: 3=Speed+Peak (only supported mode)
                 'vel_speed': 10,  # Velocity speed scale
                 'aftertouch_mode': 0,  # 0=Off, 1=Reverse, 2=Bottom-Out, 3=Post-Act, 4=Vibrato
                 'aftertouch_cc': 255,  # 255=Off (no CC), 0-127=CC number
@@ -109,7 +109,7 @@ class QuickActuationWidget(QWidget):
 
         # Global MIDI settings for velocity/aftertouch (not per-layer)
         self.global_midi_settings = {
-            'velocity_mode': 2,         # 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
+            'velocity_mode': 3,         # 3=Speed+Peak (only supported mode)
             'aftertouch_mode': 0,       # 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
             'vibrato_sensitivity': 100, # 50-200 (percentage)
@@ -1571,7 +1571,7 @@ class QuickActuationWidget(QWidget):
                     self.current_layer,
                     data['normal'],
                     data['midi'],
-                    global_settings.get('velocity_mode', 2),   # GLOBAL
+                    global_settings.get('velocity_mode', 3),   # GLOBAL: Speed+Peak
                     10,  # vel_speed deprecated, use default
                     flags,
                     global_settings.get('aftertouch_mode', 0),      # GLOBAL
@@ -1603,7 +1603,7 @@ class QuickActuationWidget(QWidget):
                         layer,
                         data['normal'],
                         data['midi'],
-                        global_settings.get('velocity_mode', 2),   # GLOBAL
+                        global_settings.get('velocity_mode', 3),   # GLOBAL: Speed+Peak
                         10,  # vel_speed deprecated, use default
                         flags,
                         global_settings.get('aftertouch_mode', 0),      # GLOBAL
