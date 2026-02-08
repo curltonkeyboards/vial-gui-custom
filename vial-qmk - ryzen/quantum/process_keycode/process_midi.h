@@ -87,6 +87,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record);
 #        define MIDI_TONE_COUNT (MIDI_TONE_MAX - MIDI_TONE_MIN + 1)
 
 uint8_t midi_compute_note(uint16_t keycode);
+uint8_t midi_compute_note2(uint16_t keycode);
+uint8_t midi_compute_note3(uint16_t keycode);
 bool is_any_macro_modifier_active(void);  // Function declaration
 extern bool overdub_advanced_mode;
 void reset_all_macro_transpose(void);

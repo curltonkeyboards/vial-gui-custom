@@ -1572,11 +1572,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             state->note_channel = channel_number;
         }
 
-        // Compute actual MIDI note: note_index + transpose + octave + 24
-        state->midi_note = state->note_index + transpose_number + octave_number + 24;
-
-        // Clamp to valid MIDI range
-        if (state->midi_note > 127) state->midi_note = 127;
+        // Compute actual MIDI note from keycode (must match process_midi.c path)
+        if (keycode >= 0xC670 && keycode <= 0xC6B7) {
+            state->midi_note = midi_compute_note3(keycode);
+        } else if (keycode >= 0xC600 && keycode <= 0xC647) {
+            state->midi_note = midi_compute_note2(keycode);
+        } else {
+            state->midi_note = midi_compute_note(keycode);
+        }
     }
 
     // Aftertouch handling - now sends polyphonic aftertouch + optional CC
