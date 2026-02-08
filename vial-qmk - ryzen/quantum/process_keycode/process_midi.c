@@ -115,6 +115,12 @@ static void remove_live_note(uint8_t channel, uint8_t note) {
 void force_clear_all_live_notes(void) {
     dprintf("midi: force clearing all live notes (count: %d)\n", live_note_count);
 
+    // Update OLED display and lighting for each note before clearing
+    for (uint8_t i = 0; i < live_note_count; i++) {
+        noteoffdisplayupdates(live_notes[i][1]);
+        remove_lighting_live_note(live_notes[i][0], live_notes[i][1]);
+    }
+
     // Reset the count to 0 to clear all live notes
     live_note_count = 0;
 
@@ -253,13 +259,15 @@ void cleanup_notes_from_macro(uint8_t macro_id) {
         // Skip note-offs for notes that are currently being played live
         if (!is_live_note_active(notes_to_stop[i][0], notes_to_stop[i][1])) {
             midi_send_noteoff(&midi_device, notes_to_stop[i][0], notes_to_stop[i][1], 0);
-            dprintf("midi: sent note-off for macro %d ch:%d note:%d\n", 
+            noteoffdisplayupdates(notes_to_stop[i][1]);
+            remove_lighting_live_note(notes_to_stop[i][0], notes_to_stop[i][1]);
+            dprintf("midi: sent note-off for macro %d ch:%d note:%d\n",
                     macro_id, notes_to_stop[i][0], notes_to_stop[i][1]);
         } else {
-            dprintf("midi: skipped note-off for macro %d ch:%d note:%d (active live note)\n", 
+            dprintf("midi: skipped note-off for macro %d ch:%d note:%d (active live note)\n",
                     macro_id, notes_to_stop[i][0], notes_to_stop[i][1]);
         }
-        
+
         // Always unmark this note from the macro tracking
         unmark_note_from_macro(notes_to_stop[i][0], notes_to_stop[i][1], macro_id);
     }
