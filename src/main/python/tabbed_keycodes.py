@@ -1177,7 +1177,8 @@ class midiadvancedTab(QScrollArea):
         # HE Velocity Range button (replaces fixed velocity)
         self.add_he_velocity_range_button(he_row_layout, 200)
 
-        # HE Velocity Curve dropdown
+        # HE Velocity Curve dropdown (all 17: 7 factory + 10 user)
+        # Hold loop modifier + select to target a specific loop, or overdub modifier for overdub
         self.add_header_dropdown("HE Velocity Curve", KEYCODES_HE_VELOCITY_CURVE, he_row_layout, 200)
 
         he_row_layout.addStretch(1)  # Right spacer

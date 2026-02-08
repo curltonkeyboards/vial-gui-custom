@@ -2401,6 +2401,9 @@ class keycodes_v5:
         "MIDI_IN_MODE_TOG": 0xECB0,  # Hardware MIDI IN routing mode toggle (PROC/THRU/CLK/IGN)
         "USB_MIDI_MODE_TOG": 0xECB1,  # USB MIDI routing mode toggle (PROC/THRU/CLK/IGN)
         "MIDI_CLOCK_SRC_TOG": 0xECB2,  # MIDI clock source toggle (LOCAL/USB/MIDI_IN)
+        # HE Velocity Curve cycling (0xECB3-0xECB4) - moved from KC_CUSTOM+4/5 to avoid MI_CHORD collision
+        "HE_VEL_CURVE_UP": 0xECB3,    # Global HE velocity curve cycle up
+        "HE_VEL_CURVE_DOWN": 0xECB4,  # Global HE velocity curve cycle down
 
         # Arpeggiator Control (0xEE00-0xEE0F) - Moved to avoid overlap with HE Velocity Range
         "ARP_PLAY": 0xEE00,  # Arpeggiator play/stop

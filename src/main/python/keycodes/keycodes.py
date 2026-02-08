@@ -3820,13 +3820,59 @@ for x in range (128):
                               "TS\nVelocity\n{}".format(x),
                               "TS\nVelocity {}".format(x)))
 
-# HE Velocity Curve keycodes
+# HE Velocity Curve keycodes - all 17 presets (7 factory + 10 user)
 KEYCODES_HE_VELOCITY_CURVE = [
+    # Factory presets (0-6)
     K("HE_CURVE_SOFTEST", "HE Curve\nSoftest", "HE Velocity Curve Softest"),
     K("HE_CURVE_SOFT", "HE Curve\nSoft", "HE Velocity Curve Soft"),
-    K("HE_CURVE_MEDIUM", "HE Curve\nMedium", "HE Velocity Curve Medium"),
+    K("HE_CURVE_MEDIUM", "HE Curve\nMedium", "HE Velocity Curve Medium (Linear)"),
     K("HE_CURVE_HARD", "HE Curve\nHard", "HE Velocity Curve Hard"),
     K("HE_CURVE_HARDEST", "HE Curve\nHardest", "HE Velocity Curve Hardest"),
+    K("HE_CURVE_AGGRO", "HE Curve\nAggro", "HE Velocity Curve Aggro"),
+    K("HE_CURVE_DIGITAL", "HE Curve\nDigital", "HE Velocity Curve Digital"),
+    # User presets (7-16)
+    K("HE_CURVE_USER_1", "HE Curve\nUser 1", "HE Velocity Curve User Preset 1"),
+    K("HE_CURVE_USER_2", "HE Curve\nUser 2", "HE Velocity Curve User Preset 2"),
+    K("HE_CURVE_USER_3", "HE Curve\nUser 3", "HE Velocity Curve User Preset 3"),
+    K("HE_CURVE_USER_4", "HE Curve\nUser 4", "HE Velocity Curve User Preset 4"),
+    K("HE_CURVE_USER_5", "HE Curve\nUser 5", "HE Velocity Curve User Preset 5"),
+    K("HE_CURVE_USER_6", "HE Curve\nUser 6", "HE Velocity Curve User Preset 6"),
+    K("HE_CURVE_USER_7", "HE Curve\nUser 7", "HE Velocity Curve User Preset 7"),
+    K("HE_CURVE_USER_8", "HE Curve\nUser 8", "HE Velocity Curve User Preset 8"),
+    K("HE_CURVE_USER_9", "HE Curve\nUser 9", "HE Velocity Curve User Preset 9"),
+    K("HE_CURVE_USER_10", "HE Curve\nUser 10", "HE Velocity Curve User Preset 10"),
+]
+
+# Macro-aware HE Velocity Curve keycodes - these target loops when modifiers are held
+KEYCODES_HE_MACRO_CURVE = [
+    # Cycling keycodes
+    K("HE_MACRO_CURVE_UP", "Loop\nCurve ▲", "Loop Velocity Curve Up (cycles 0-16)"),
+    K("HE_MACRO_CURVE_DOWN", "Loop\nCurve ▼", "Loop Velocity Curve Down (cycles 0-16)"),
+    K("HE_MACRO_MIN_UP", "Loop\nMin ▲", "Loop Velocity Min Up"),
+    K("HE_MACRO_MIN_DOWN", "Loop\nMin ▼", "Loop Velocity Min Down"),
+    K("HE_MACRO_MAX_UP", "Loop\nMax ▲", "Loop Velocity Max Up"),
+    K("HE_MACRO_MAX_DOWN", "Loop\nMax ▼", "Loop Velocity Max Down"),
+    # Global curve cycling
+    K("HE_VEL_CURVE_UP", "Curve ▲", "HE Velocity Curve Up (global cycling)"),
+    K("HE_VEL_CURVE_DOWN", "Curve ▼", "HE Velocity Curve Down (global cycling)"),
+    # Direct macro curve selection (0-16)
+    K("HE_MACRO_CURVE_0", "Loop Curve\nSoftest", "Loop Velocity Curve Softest (0)"),
+    K("HE_MACRO_CURVE_1", "Loop Curve\nSoft", "Loop Velocity Curve Soft (1)"),
+    K("HE_MACRO_CURVE_2", "Loop Curve\nMedium", "Loop Velocity Curve Medium (2)"),
+    K("HE_MACRO_CURVE_3", "Loop Curve\nHard", "Loop Velocity Curve Hard (3)"),
+    K("HE_MACRO_CURVE_4", "Loop Curve\nHardest", "Loop Velocity Curve Hardest (4)"),
+    K("HE_MACRO_CURVE_5", "Loop Curve\nAggro", "Loop Velocity Curve Aggro (5)"),
+    K("HE_MACRO_CURVE_6", "Loop Curve\nDigital", "Loop Velocity Curve Digital (6)"),
+    K("HE_MACRO_CURVE_7", "Loop Curve\nUser 1", "Loop Velocity Curve User 1 (7)"),
+    K("HE_MACRO_CURVE_8", "Loop Curve\nUser 2", "Loop Velocity Curve User 2 (8)"),
+    K("HE_MACRO_CURVE_9", "Loop Curve\nUser 3", "Loop Velocity Curve User 3 (9)"),
+    K("HE_MACRO_CURVE_10", "Loop Curve\nUser 4", "Loop Velocity Curve User 4 (10)"),
+    K("HE_MACRO_CURVE_11", "Loop Curve\nUser 5", "Loop Velocity Curve User 5 (11)"),
+    K("HE_MACRO_CURVE_12", "Loop Curve\nUser 6", "Loop Velocity Curve User 6 (12)"),
+    K("HE_MACRO_CURVE_13", "Loop Curve\nUser 7", "Loop Velocity Curve User 7 (13)"),
+    K("HE_MACRO_CURVE_14", "Loop Curve\nUser 8", "Loop Velocity Curve User 8 (14)"),
+    K("HE_MACRO_CURVE_15", "Loop Curve\nUser 9", "Loop Velocity Curve User 9 (15)"),
+    K("HE_MACRO_CURVE_16", "Loop Curve\nUser 10", "Loop Velocity Curve User 10 (16)"),
 ]
 
 # HE Velocity Range keycodes (min/max pairs where min ≤ max)
@@ -3882,7 +3928,7 @@ def recreate_keycodes():
                     KEYCODES_TAP_DANCE + KEYCODES_MACRO + KEYCODES_MACRO_BASE + KEYCODES_EARTRAINER + KEYCODES_SAVE + KEYCODES_SETTINGS1 + KEYCODES_SETTINGS2 + KEYCODES_SETTINGS3 + KEYCODES_CHORDTRAINER + KEYCODES_USER + KEYCODES_HIDDEN + KEYCODES_MIDI+ KEYCODES_MIDI_CHANNEL_OS + KEYCODES_MIDI_CHANNEL_HOLD + KEYCODES_RGB_KC_CUSTOM + KEYCODES_RGB_KC_CUSTOM2 + KEYCODES_RGBSAVE + KEYCODES_MIDI_CHANNEL_KEYSPLIT + KEYCODES_MIDI_CHANNEL_KEYSPLIT2 + KEYCODES_KEYSPLIT_BUTTONS +
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+KEYCODES_VELOCITY_SHUFFLE + KEYCODES_CC_ENCODERVALUE+ KEYCODES_EXWHEEL +
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_0+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+KEYCODES_MIDI_CHORD_5+KEYCODES_MIDI_SPLIT+KEYCODES_MIDI_SPLIT2+
-                    KEYCODES_HE_VELOCITY_CURVE+KEYCODES_HE_VELOCITY_RANGE+
+                    KEYCODES_HE_VELOCITY_CURVE+KEYCODES_HE_MACRO_CURVE+KEYCODES_HE_VELOCITY_RANGE+
                     KEYCODES_ARPEGGIATOR+KEYCODES_ARPEGGIATOR_PRESETS+KEYCODES_STEP_SEQUENCER+KEYCODES_STEP_SEQUENCER_PRESETS+KEYCODES_DKS+KEYCODES_TOGGLE+
                     KEYCODES_C_CHORDPROG_BASIC_MINOR + KEYCODES_C_CHORDPROG_BASIC_MAJOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_CHORDPROG_EXPERT_MINOR + KEYCODES_C_CHORDPROG_EXPERT_MAJOR +
                     KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR +
