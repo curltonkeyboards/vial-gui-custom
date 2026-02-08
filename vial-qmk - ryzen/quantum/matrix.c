@@ -125,6 +125,7 @@ typedef struct {
 
     // Calibration tracking
     uint16_t last_adc_value;        // For stability detection
+    uint16_t stable_start_adc;      // ADC value when stability was first detected (drift guard)
     uint32_t stable_time;           // When key became stable
     bool is_stable;                 // Key is at stable position
 } key_state_t;
@@ -812,14 +813,19 @@ static void update_calibration(uint32_t key_idx) {
         stability_threshold = AUTO_CALIB_ZERO_TRAVEL_JITTER;  // Minimum threshold
     }
 
-    // Check if current ADC is close to the last stable reading
+    // Check if current ADC is close to the last stable reading (scan-to-scan)
     if (abs((int)key->adc_filtered - (int)key->last_adc_value) < stability_threshold) {
         if (!key->is_stable) {
             key->is_stable = true;
             key->stable_time = now;
+            key->stable_start_adc = key->adc_filtered;  // Record where stability started
         }
-        // Also verify still within range of where stability started
-        // (prevents drift during the stability period)
+        // Drift guard: if reading has drifted too far from where stability started,
+        // reset stability. This prevents gradual drift during a slow key release
+        // from keeping is_stable=true across a wide ADC range.
+        if (abs((int)key->adc_filtered - (int)key->stable_start_adc) >= stability_threshold) {
+            key->is_stable = false;
+        }
     } else {
         key->is_stable = false;
     }
