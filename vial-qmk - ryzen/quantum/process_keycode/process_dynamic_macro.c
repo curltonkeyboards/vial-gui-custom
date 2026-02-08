@@ -2491,7 +2491,7 @@ static void execute_command_batch(void) {
                 // Currently recording this macro - stop recording
                 midi_event_t *macro_start = get_macro_buffer(macro_id);
                 midi_event_t **macro_end_ptr = get_macro_end_ptr(macro_id);
-                force_clear_all_live_notes();
+                // Note: live notes are preserved for held keys (see dynamic_macro_record_end)
                 dynamic_macro_record_end(macro_start, macro_pointer, +1, macro_end_ptr, &recording_start_time);
                 
                 // Clear the suspended recording flag for this macro
@@ -5726,9 +5726,12 @@ void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_po
     //    return;
    // } << AUTO DELETES LOOP IF NO NOTES RECORDED
 	
-    // SEND NOTE-OFFS FOR ALL LIVE NOTES when recording ends
-    force_clear_all_live_notes();
-    dprintf("dynamic macro: cleared all live notes at end of recording\n");
+    // NOTE: Do NOT clear live_notes here. Keys that are still physically held
+    // must remain in live_notes[] so that releasing them after recording ends
+    // properly sends note-offs. Previously, force_clear_all_live_notes() cleared
+    // ALL notes, which caused note-offs to be suppressed by the is_note_from_macro
+    // check in midi_send_noteoff_with_recording() when the key was later released.
+    dprintf("dynamic macro: recording ended, live notes preserved for held keys\n");
     
     // If sustain was active, send a sustain off event
     if (recording_sustain_active) {
@@ -8921,7 +8924,7 @@ static bool handle_unsynced_mode(uint8_t macro_num, uint8_t macro_idx,
     // If we're currently recording this macro, stop recording immediately
     if (macro_id == macro_num) {
         // End recording immediately
-		force_clear_all_live_notes();
+        // Note: live notes are preserved for held keys (see dynamic_macro_record_end)
         dynamic_macro_record_end(macro_start, macro_pointer, +1, macro_end_ptr, &recording_start_time);
         
         // Check if we need to enter overdub mode
