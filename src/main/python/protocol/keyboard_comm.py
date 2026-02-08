@@ -105,6 +105,7 @@ PARAM_VIBRATO_SENSITIVITY = 40     # 50-200 (percentage, 100 = normal)
 PARAM_VIBRATO_DECAY_TIME = 41      # 0-2000 (milliseconds, 16-bit) - use 2-byte write
 PARAM_MIN_PRESS_TIME = 42          # 0-255 (ms) - minimum time for slow press (full velocity)
 PARAM_MAX_PRESS_TIME = 43          # 0-255 (ms) - maximum time for fast press (min velocity)
+PARAM_SPEED_PEAK_RATIO = 44       # 0-100 = ratio of speed to peak (0=all peak, 100=all speed)
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -1584,127 +1585,26 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 data = bytearray([param_id, value])
 
             packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, data)
-            print(f"[HID Debug] set_keyboard_param_single: param_id={param_id}, value={value}, data={list(data)}")
-            print(f"[HID Debug] Packet (first 10 bytes): {list(packet[:10])}")
 
             # Retry logic: 4 retries with 100ms delay
             for attempt in range(5):  # 1 initial + 4 retries = 5 total attempts
                 try:
                     response = self.usb_send(self.dev, packet, retries=1)
-                    print(f"[HID Debug] Attempt {attempt+1}: response={list(response[:10]) if response and len(response) >= 10 else response}")
                     if response and len(response) > 0 and response[5] == 1:
-                        print(f"[HID Debug] Success! response[5]={response[5]}")
                         return True
-                    else:
-                        print(f"[HID Debug] Failed: response[5]={response[5] if response and len(response) > 5 else 'N/A'}")
 
                     # If not last attempt, wait before retry
                     if attempt < 4:
                         time.sleep(0.1)  # 100ms delay
                 except Exception as e:
-                    print(f"[HID Debug] Exception on attempt {attempt+1}: {e}")
                     if attempt < 4:
                         time.sleep(0.1)
                     continue
 
-            # All retries failed, return False (silent failure, UI will handle if needed)
-            print(f"[HID Debug] All retries failed for param_id={param_id}")
             return False
 
         except Exception as e:
-            print(f"[HID Debug] Exception in set_keyboard_param_single: {e}")
             return False
-
-    def set_keyboard_param_single_debug(self, param_id, value):
-        """Set individual keyboard parameter with detailed debug info
-
-        Args:
-            param_id: Parameter ID (PARAM_* constant)
-            value: Parameter value (int or bytes)
-
-        Returns:
-            tuple: (success: bool, debug_info: dict)
-                debug_info contains:
-                - tx_packet: First 15 bytes of sent packet
-                - tx_data: The data portion being sent
-                - rx_response: First 15 bytes of response
-                - status_byte: The status byte (response[5])
-                - attempts: Number of attempts made
-                - error: Error message if failed
-        """
-        debug_info = {
-            'tx_packet': None,
-            'tx_data': None,
-            'rx_response': None,
-            'status_byte': None,
-            'attempts': 0,
-            'error': None
-        }
-
-        try:
-            # Build data payload: [param_id, value_bytes...]
-            if param_id in [PARAM_VELOCITY_SENSITIVITY, PARAM_CC_SENSITIVITY]:
-                # 4-byte parameters
-                data = bytearray([param_id]) + struct.pack('<I', value)
-            elif param_id in [PARAM_VIBRATO_DECAY_TIME, PARAM_MIN_PRESS_TIME, PARAM_MAX_PRESS_TIME]:
-                # 16-bit parameters (little-endian)
-                data = bytearray([param_id, value & 0xFF, (value >> 8) & 0xFF])
-            elif param_id in [PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3]:
-                # Signed byte parameters
-                data = bytearray([param_id, value & 0xFF])
-            else:
-                # Standard 1-byte parameters
-                data = bytearray([param_id, value])
-
-            debug_info['tx_data'] = list(data)
-
-            packet = self._create_hid_packet(HID_CMD_SET_KEYBOARD_PARAM_SINGLE, 0, data)
-            debug_info['tx_packet'] = list(packet[:15])
-
-            # Retry logic: 4 retries with 100ms delay
-            last_response = None
-            for attempt in range(5):  # 1 initial + 4 retries = 5 total attempts
-                debug_info['attempts'] = attempt + 1
-                try:
-                    response = self.usb_send(self.dev, packet, retries=1)
-                    last_response = response
-
-                    if response and len(response) >= 10:
-                        debug_info['rx_response'] = list(response[:15])
-                    else:
-                        debug_info['rx_response'] = list(response) if response else None
-
-                    if response and len(response) > 5:
-                        debug_info['status_byte'] = response[5]
-                        # Interpret status byte (1 = success for this command)
-                        if response[5] == 1:
-                            return True, debug_info
-                        elif response[5] == 0:
-                            debug_info['error'] = f"Status=0: Firmware returned failure/not-ack"
-                        elif response[5] == 0xFF:
-                            debug_info['error'] = f"Status=0xFF: Command not recognized by firmware"
-                        else:
-                            debug_info['error'] = f"Status={response[5]}: Unknown error code"
-                    else:
-                        debug_info['error'] = f"Invalid response length: {len(response) if response else 0}"
-
-                    # If not last attempt, wait before retry
-                    if attempt < 4:
-                        time.sleep(0.1)  # 100ms delay
-                except Exception as e:
-                    debug_info['error'] = f"Exception on attempt {attempt+1}: {str(e)}"
-                    if attempt < 4:
-                        time.sleep(0.1)
-                    continue
-
-            # All retries failed
-            if not debug_info['error']:
-                debug_info['error'] = "All 5 attempts failed"
-            return False, debug_info
-
-        except Exception as e:
-            debug_info['error'] = f"Exception: {str(e)}"
-            return False, debug_info
 
     def save_midi_slot(self, slot, config_data):
         """Save MIDIswitch configuration to slot"""
