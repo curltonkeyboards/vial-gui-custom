@@ -13830,25 +13830,79 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // Direct HE Curve Selection (0xCCB0-0xCCB4) - affects ALL layers
+    // Direct HE Curve Selection (0xCCB0-0xCCB4) - macro/overdub/keysplit/triplesplit/global aware
     if (keycode >= HE_CURVE_SOFTEST && keycode <= HE_CURVE_HARDEST) {
         if (record->event.pressed) {
             uint8_t curve_value = keycode - HE_CURVE_SOFTEST;  // 0-4
-            keyboard_settings.he_velocity_curve = curve_value;
-            he_velocity_curve = curve_value;
-            dprintf("All layers HE Curve: %d\n", curve_value);
+            if (is_any_macro_modifier_active() && overdub_button_held && overdub_advanced_mode) {
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        set_overdub_recording_curve_target(i + 1, curve_value);
+                        dprintf("Overdub %d curve set to: %d\n", i + 1, curve_value);
+                    }
+                }
+            } else if (is_any_macro_modifier_active()) {
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        set_macro_recording_curve_target(i + 1, curve_value);
+                        dprintf("Macro %d curve set to: %d\n", i + 1, curve_value);
+                    }
+                }
+            } else if (current_macro_id > 0) {
+                set_macro_recording_curve_target(current_macro_id, curve_value);
+                dprintf("Recording macro %d curve set to: %d\n", current_macro_id, curve_value);
+            } else if (keysplitmodifierheld) {
+                keyboard_settings.keysplit_he_velocity_curve = curve_value;
+                keysplit_he_velocity_curve = curve_value;
+                dprintf("Keysplit HE Curve: %d\n", curve_value);
+            } else if (triplesplitmodifierheld) {
+                keyboard_settings.triplesplit_he_velocity_curve = curve_value;
+                triplesplit_he_velocity_curve = curve_value;
+                dprintf("Triplesplit HE Curve: %d\n", curve_value);
+            } else {
+                keyboard_settings.he_velocity_curve = curve_value;
+                he_velocity_curve = curve_value;
+                dprintf("All layers HE Curve: %d\n", curve_value);
+            }
             set_keylog(keycode, record);
         }
         return false;
     }
 
-    // Direct HE Curve Selection for Aggro, Digital, and User presets (0xCC90-0xCC9B)
+    // Direct HE Curve Selection for Aggro, Digital, and User presets (0xCC90-0xCC9B) - macro/overdub/keysplit/triplesplit/global aware
     if (keycode >= HE_CURVE_AGGRO && keycode <= HE_CURVE_USER_10) {
         if (record->event.pressed) {
             uint8_t curve_value = 5 + (keycode - HE_CURVE_AGGRO);  // 5-16
-            keyboard_settings.he_velocity_curve = curve_value;
-            he_velocity_curve = curve_value;
-            dprintf("All layers HE Curve: %d\n", curve_value);
+            if (is_any_macro_modifier_active() && overdub_button_held && overdub_advanced_mode) {
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        set_overdub_recording_curve_target(i + 1, curve_value);
+                        dprintf("Overdub %d curve set to: %d\n", i + 1, curve_value);
+                    }
+                }
+            } else if (is_any_macro_modifier_active()) {
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        set_macro_recording_curve_target(i + 1, curve_value);
+                        dprintf("Macro %d curve set to: %d\n", i + 1, curve_value);
+                    }
+                }
+            } else if (current_macro_id > 0) {
+                set_macro_recording_curve_target(current_macro_id, curve_value);
+                dprintf("Recording macro %d curve set to: %d\n", current_macro_id, curve_value);
+            } else if (keysplitmodifierheld) {
+                keyboard_settings.keysplit_he_velocity_curve = curve_value;
+                keysplit_he_velocity_curve = curve_value;
+                dprintf("Keysplit HE Curve: %d\n", curve_value);
+            } else if (triplesplitmodifierheld) {
+                keyboard_settings.triplesplit_he_velocity_curve = curve_value;
+                triplesplit_he_velocity_curve = curve_value;
+                dprintf("Triplesplit HE Curve: %d\n", curve_value);
+            } else {
+                keyboard_settings.he_velocity_curve = curve_value;
+                he_velocity_curve = curve_value;
+                dprintf("All layers HE Curve: %d\n", curve_value);
+            }
             set_keylog(keycode, record);
         }
         return false;
@@ -13859,8 +13913,92 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // otherwise they modify the global settings
     if (keycode >= HE_MACRO_CURVE_UP && keycode <= HE_MACRO_MAX_DOWN) {
         if (record->event.pressed) {
-            if (current_macro_id > 0) {
-                // A macro is recording - modify the macro's recording settings
+            if (is_any_macro_modifier_active() && overdub_button_held && overdub_advanced_mode) {
+                // Macro modifier + overdub button held in advanced mode - apply to overdub
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        uint8_t curve = get_overdub_recording_curve(i + 1);
+                        uint8_t min = get_overdub_recording_min(i + 1);
+                        uint8_t max = get_overdub_recording_max(i + 1);
+
+                        switch (keycode) {
+                            case HE_MACRO_CURVE_UP:
+                                curve = (curve + 1) % 17;
+                                set_overdub_recording_curve_target(i + 1, curve);
+                                dprintf("Overdub %d recording curve: %d\n", i + 1, curve);
+                                break;
+                            case HE_MACRO_CURVE_DOWN:
+                                curve = (curve == 0) ? 16 : (curve - 1);
+                                set_overdub_recording_curve_target(i + 1, curve);
+                                dprintf("Overdub %d recording curve: %d\n", i + 1, curve);
+                                break;
+                            case HE_MACRO_MIN_UP:
+                                if (min < 127) min++;
+                                set_overdub_recording_min_target(i + 1, min);
+                                dprintf("Overdub %d recording min: %d\n", i + 1, min);
+                                break;
+                            case HE_MACRO_MIN_DOWN:
+                                if (min > 1) min--;
+                                set_overdub_recording_min_target(i + 1, min);
+                                dprintf("Overdub %d recording min: %d\n", i + 1, min);
+                                break;
+                            case HE_MACRO_MAX_UP:
+                                if (max < 127) max++;
+                                set_overdub_recording_max_target(i + 1, max);
+                                dprintf("Overdub %d recording max: %d\n", i + 1, max);
+                                break;
+                            case HE_MACRO_MAX_DOWN:
+                                if (max > 1) max--;
+                                set_overdub_recording_max_target(i + 1, max);
+                                dprintf("Overdub %d recording max: %d\n", i + 1, max);
+                                break;
+                        }
+                    }
+                }
+            } else if (is_any_macro_modifier_active()) {
+                // Macro modifier held (no overdub) - apply to specific macro(s)
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        uint8_t curve = get_macro_recording_curve(i + 1);
+                        uint8_t min = get_macro_recording_min(i + 1);
+                        uint8_t max = get_macro_recording_max(i + 1);
+
+                        switch (keycode) {
+                            case HE_MACRO_CURVE_UP:
+                                curve = (curve + 1) % 17;
+                                set_macro_recording_curve_target(i + 1, curve);
+                                dprintf("Macro %d recording curve: %d\n", i + 1, curve);
+                                break;
+                            case HE_MACRO_CURVE_DOWN:
+                                curve = (curve == 0) ? 16 : (curve - 1);
+                                set_macro_recording_curve_target(i + 1, curve);
+                                dprintf("Macro %d recording curve: %d\n", i + 1, curve);
+                                break;
+                            case HE_MACRO_MIN_UP:
+                                if (min < 127) min++;
+                                set_macro_recording_min_target(i + 1, min);
+                                dprintf("Macro %d recording min: %d\n", i + 1, min);
+                                break;
+                            case HE_MACRO_MIN_DOWN:
+                                if (min > 1) min--;
+                                set_macro_recording_min_target(i + 1, min);
+                                dprintf("Macro %d recording min: %d\n", i + 1, min);
+                                break;
+                            case HE_MACRO_MAX_UP:
+                                if (max < 127) max++;
+                                set_macro_recording_max_target(i + 1, max);
+                                dprintf("Macro %d recording max: %d\n", i + 1, max);
+                                break;
+                            case HE_MACRO_MAX_DOWN:
+                                if (max > 1) max--;
+                                set_macro_recording_max_target(i + 1, max);
+                                dprintf("Macro %d recording max: %d\n", i + 1, max);
+                                break;
+                        }
+                    }
+                }
+            } else if (current_macro_id > 0) {
+                // A macro is actively recording - modify the recording macro's settings
                 uint8_t curve = get_macro_recording_curve(current_macro_id);
                 uint8_t min = get_macro_recording_min(current_macro_id);
                 uint8_t max = get_macro_recording_max(current_macro_id);
@@ -14048,8 +14186,24 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             uint8_t curve_value = keycode - HE_MACRO_CURVE_0;  // 0-16
 
-            if (current_macro_id > 0) {
-                // A macro is recording - set the macro's recording curve
+            if (is_any_macro_modifier_active() && overdub_button_held && overdub_advanced_mode) {
+                // Macro modifier + overdub button held in advanced mode - apply to overdub
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        set_overdub_recording_curve_target(i + 1, curve_value);
+                        dprintf("Overdub %d recording curve set to: %d\n", i + 1, curve_value);
+                    }
+                }
+            } else if (is_any_macro_modifier_active()) {
+                // Macro modifier held (no overdub) - apply to macro recording
+                for (uint8_t i = 0; i < 4; i++) {
+                    if (macro_modifier_held[i]) {
+                        set_macro_recording_curve_target(i + 1, curve_value);
+                        dprintf("Macro %d recording curve set to: %d\n", i + 1, curve_value);
+                    }
+                }
+            } else if (current_macro_id > 0) {
+                // A macro is actively recording - set the recording macro's curve
                 set_macro_recording_curve_target(current_macro_id, curve_value);
                 dprintf("Macro %d recording curve set to: %d\n", current_macro_id, curve_value);
             } else if (keysplitmodifierheld) {
