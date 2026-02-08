@@ -831,10 +831,13 @@ static void update_calibration(uint32_t key_idx) {
     if (key->is_stable && !key->is_pressed &&
         key->distance < AUTO_CALIB_MAX_DISTANCE &&
         timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-        // For Hall effect sensors: rest value is typically higher ADC
-        // Only update if significantly different from current rest value
-        if (key->adc_filtered > key->adc_rest_value + stability_threshold ||
-            key->adc_filtered < key->adc_rest_value - stability_threshold) {
+        // Use a small threshold for the rest value update decision.
+        // The stability detection (above) already confirmed the reading is stable,
+        // so we just need enough hysteresis to avoid chasing 1-2 unit ADC noise.
+        // Using CALIBRATION_EPSILON (5) prevents constant micro-updates while
+        // still catching real drift (e.g. 27 ADC units over time).
+        if (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON ||
+            key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON) {
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
