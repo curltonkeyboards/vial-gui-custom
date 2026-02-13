@@ -821,13 +821,30 @@ static void update_calibration(uint32_t key_idx) {
             key->stable_start_adc = key->adc_filtered;  // Record where stability started
         }
         // Drift guard: if reading has drifted too far from where stability started,
-        // reset stability. This prevents gradual drift during a slow key release
-        // from keeping is_stable=true across a wide ADC range.
-        if (abs((int)key->adc_filtered - (int)key->stable_start_adc) >= stability_threshold) {
+        // reset stability. Uses AUTO_CALIB_DRIFT_GUARD (15) instead of
+        // stability_threshold (50) to prevent rest value from tracking slow presses.
+        // The old threshold allowed ~50 ADC units of drift before resetting, but
+        // CALIBRATION_EPSILON is only 5, so rest could be updated ~10 times within
+        // that window. The tighter guard ensures any meaningful movement restarts
+        // the 10-second stability timer.
+        if (abs((int)key->adc_filtered - (int)key->stable_start_adc) >= AUTO_CALIB_DRIFT_GUARD) {
             key->is_stable = false;
         }
     } else {
         key->is_stable = false;
+    }
+
+    // Stale timer prevention: when a key sits at rest for >10s, the stability timer
+    // passes. If a slow press then begins, scan-to-scan changes are small enough that
+    // is_stable stays true, and the OLD timer allows immediate rest value updates.
+    // Fix: if the reading has moved away from the current rest value (potential press
+    // starting) and stability was established at/near rest, restart the timer.
+    // This forces a full 10-second wait at the new value before updating rest.
+    if (key->is_stable &&
+        abs((int)key->adc_filtered - (int)key->adc_rest_value) > CALIBRATION_EPSILON &&
+        abs((int)key->stable_start_adc - (int)key->adc_rest_value) <= CALIBRATION_EPSILON) {
+        key->stable_time = now;
+        key->stable_start_adc = key->adc_filtered;
     }
 
     // Auto-calibrate rest position when stable, not pressed, AND near rest position
@@ -1754,17 +1771,20 @@ static void analog_matrix_task_internal(void) {
             // Store raw value for debugging
             key->adc_raw = raw_value;
 
-            // TROUBLESHOOTING: Bypass EMA filter, use raw ADC directly
-            // Original: key->adc_filtered = EMA(raw_value, key->adc_filtered);
-            key->adc_filtered = raw_value;
+            // EMA filter: smooths raw ADC noise for stable calibration and distance.
+            // Without this, raw ADC noise (~10-15 units) causes false stability
+            // detection and calibration drift during slow presses.
+            key->adc_filtered = EMA(raw_value, key->adc_filtered);
 
-            // 2. Update calibration (continuous)
-            update_calibration(key_idx);
-
-            // 3. Calculate distance (0-255)
+            // 2. Calculate distance BEFORE calibration so the distance guard
+            //    in update_calibration uses the CURRENT scan's distance, not
+            //    the previous scan's (which would be 0 when starting from rest)
             key->distance = adc_to_distance(key->adc_filtered,
                                             key->adc_rest_value,
                                             key->adc_bottom_out_value);
+
+            // 3. Update calibration (continuous)
+            update_calibration(key_idx);
 
             // 4. Process RT state machine
             process_rapid_trigger(key_idx, current_layer);

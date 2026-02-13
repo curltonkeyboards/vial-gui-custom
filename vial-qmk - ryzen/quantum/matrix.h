@@ -127,6 +127,8 @@ typedef uint32_t matrix_row_t;
 #define AUTO_CALIB_VALID_RELEASE_TIME 10000  // ms - must be stable for 10 seconds before recalibrating rest
 #define AUTO_CALIB_MAX_DISTANCE 13           // ~5% of 255 max distance - only recalibrate near rest
 #define AUTO_CALIB_STABILITY_PERCENT 2       // Must be within 2% of stable value to count as stable
+#define AUTO_CALIB_DRIFT_GUARD 15            // Max ADC drift from stable_start before resetting stability
+                                             // Tighter than stability_threshold to prevent rest tracking slow presses
 
 // Smart warm-up estimation using linear formula: bottom = rest * SLOPE / 1000 + OFFSET
 // This accounts for the fact that sensors with higher rest ADC values need proportionally more range
