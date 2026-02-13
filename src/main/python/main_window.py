@@ -430,7 +430,6 @@ class MainWindow(QMainWindow):
             (self.matrix_tester, "matrix_tester"),
             (self.rgb_configurator, "rgb_configurator"),
             (self.MIDIswitchSettingsConfigurator, "MIDIswitchSettingsConfigurator"),
-            (self.thruloop_configurator, "thruloop_configurator"),
             (self.gaming_configurator, "gaming_configurator"),
             (self.midi_patchbay, "midi_patchbay"),
             (self.loop_manager, "loop_manager"),
