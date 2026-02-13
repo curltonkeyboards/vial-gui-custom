@@ -845,29 +845,29 @@ static void update_calibration(uint32_t key_idx) {
     if (key->is_stable && !key->is_pressed && key->distance < AUTO_CALIB_MAX_DISTANCE) {
         bool inverted = (key->adc_rest_value > key->adc_bottom_out_value);
 
-        // Determine if ADC has drifted toward the "pressed" direction from rest.
-        // For inverted Hall effect (rest > bottom): lower ADC = more pressed.
-        // For normal orientation (rest < bottom): higher ADC = more pressed.
-        bool drifted_toward_pressed = inverted
-            ? (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON)
-            : (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON);
-
+        // Determine if ADC has drifted away from pressed (toward rest/release).
+        // For inverted Hall effect (rest > bottom): higher ADC = more released.
+        // For normal orientation (rest < bottom): lower ADC = more released.
         bool drifted_away_from_pressed = inverted
             ? (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON)
             : (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON);
 
-        if (drifted_toward_pressed) {
-            // Rest has shifted toward pressed direction - update immediately.
-            // Prevents the key from appearing partially pressed at its resting
-            // position (rest value must never exceed actual rest ADC).
+        bool drifted_toward_pressed = inverted
+            ? (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON)
+            : (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON);
+
+        if (drifted_away_from_pressed) {
+            // ADC has moved further into "released" territory than current rest.
+            // Update immediately - rest should always reflect the true resting
+            // position. A higher reading at rest means the baseline has shifted.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
-        } else if (drifted_away_from_pressed &&
+        } else if (drifted_toward_pressed &&
                    timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-            // Rest has shifted away from pressed direction - safe to wait.
-            // Requires full 10-second stability period to prevent slow presses
-            // from inflating the rest value.
+            // ADC has dropped below rest - could be a slow press or genuine
+            // downward temperature drift. Require full 10-second stability
+            // to distinguish real drift from slow presses.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
