@@ -6,7 +6,7 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider, QMenu, QInputDialog)
+                           QScrollArea, QSlider, QMenu, QInputDialog, QTabWidget)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QBrush, QPen, QFont, QLinearGradient
@@ -1130,15 +1130,6 @@ class ThruLoopConfigurator(BasicEditor):
         self.alternate_restart = QCheckBox(tr("ThruLoopConfigurator", "Alternate Restart Mode"))
         basic_layout.addWidget(self.alternate_restart, 2, 1)
 
-        # Disable ThruLoop and CC Loop Recording (side by side)
-        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Loop Controls:")), 3, 0, 1, 2)
-
-        self.loop_enabled = QCheckBox(tr("ThruLoopConfigurator", "Disable ThruLoop"))
-        basic_layout.addWidget(self.loop_enabled, 4, 0)
-
-        self.cc_loop_recording = QCheckBox(tr("ThruLoopConfigurator", "CC Loop Recording"))
-        basic_layout.addWidget(self.cc_loop_recording, 4, 1)
-
         # LoopChop Settings (below Basic Settings)
         self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
         self.loopchop_group.setFixedWidth(400)
@@ -1315,11 +1306,9 @@ class ThruLoopConfigurator(BasicEditor):
         """)
         
         # Connect signals AFTER all widgets are created
-        self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)
         self.separate_loopchop.stateChanged.connect(self.on_separate_loopchop_changed)
-        
+
         # Initialize UI state AFTER all widgets and connections are set up
-        self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
         
     def create_cc_combo(self, for_table=False, narrow=False):
@@ -1373,11 +1362,6 @@ class ThruLoopConfigurator(BasicEditor):
                 return
         combo.setCurrentIndex(0)
     
-    def on_loop_enabled_changed(self):
-        enabled = not self.loop_enabled.isChecked()
-        self.main_group.setEnabled(enabled)
-        self.loopchop_group.setEnabled(enabled)
-    
     def on_separate_loopchop_changed(self):
         separate = self.separate_loopchop.isChecked()
         if self.single_loopchop_label:
@@ -1426,8 +1410,8 @@ class ThruLoopConfigurator(BasicEditor):
                 raise RuntimeError("Device not connected")
             
             # 1. Send basic loop configuration
+            # Note: loop_enabled and cc_loop_recording are now in MIDI Settings
             loop_config_data = [
-                0 if self.loop_enabled.isChecked() else 1,
                 self.loop_channel.currentData(),
                 1 if self.sync_midi.isChecked() else 0,
                 1 if self.alternate_restart.isChecked() else 0,
@@ -1435,8 +1419,6 @@ class ThruLoopConfigurator(BasicEditor):
             # Add restart CCs from main table
             restart_values = self.get_restart_cc_values()
             loop_config_data.extend(restart_values)
-            # Add CC loop recording
-            loop_config_data.append(1 if self.cc_loop_recording.isChecked() else 0)
             
             if not self.device.keyboard.set_thruloop_config(loop_config_data):
                 raise RuntimeError("Failed to set ThruLoop config")
@@ -1486,10 +1468,7 @@ class ThruLoopConfigurator(BasicEditor):
     
     def apply_config(self, config):
         """Apply configuration dictionary to UI"""
-        # Basic settings
-        if 'loopEnabled' in config:
-            self.loop_enabled.setChecked(not config.get("loopEnabled", True))
-        
+        # Basic settings (loop_enabled and cc_loop_recording now in MIDI Settings)
         if 'loopChannel' in config:
             for i in range(self.loop_channel.count()):
                 if self.loop_channel.itemData(i) == config.get("loopChannel", 16):
@@ -1500,8 +1479,6 @@ class ThruLoopConfigurator(BasicEditor):
             self.sync_midi.setChecked(config.get("syncMidi", False))
         if 'alternateRestart' in config:
             self.alternate_restart.setChecked(config.get("alternateRestart", False))
-        if 'ccLoopRecording' in config:
-            self.cc_loop_recording.setChecked(config.get("ccLoopRecording", False))
         
         # LoopChop settings
         if 'separateLoopChopCC' in config:
@@ -1532,7 +1509,6 @@ class ThruLoopConfigurator(BasicEditor):
                     self.set_cc_value(combo, nav_ccs[i])
         
         # Update UI state
-        self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
         
     def on_reset(self):
@@ -1554,14 +1530,12 @@ class ThruLoopConfigurator(BasicEditor):
     
     def reset_ui_to_defaults(self):
         """Reset UI to default values"""
-        self.loop_enabled.setChecked(False)
         self.loop_channel.setCurrentIndex(15)
         self.sync_midi.setChecked(False)
         self.alternate_restart.setChecked(False)
-        self.cc_loop_recording.setChecked(False)
         self.separate_loopchop.setChecked(False)
         self.set_cc_value(self.master_cc, 128)
-        
+
         # Reset all combos to None (128)
         for row_combos in self.main_combos:
             for combo in row_combos:
@@ -1570,22 +1544,19 @@ class ThruLoopConfigurator(BasicEditor):
         for row_combos in self.overdub_combos:
             for combo in row_combos:
                 self.set_cc_value(combo, 128)
-        
+
         for combo in self.nav_combos:
             self.set_cc_value(combo, 128)
-        
-        self.on_loop_enabled_changed()
+
         self.on_separate_loopchop_changed()
     
     def get_current_config(self):
         """Get current UI configuration as dictionary"""
         config = {
             "version": "1.0",
-            "loopEnabled": not self.loop_enabled.isChecked(),
-            "loopChannel": self.loop_channel.currentData(), 
+            "loopChannel": self.loop_channel.currentData(),
             "syncMidi": self.sync_midi.isChecked(),
             "alternateRestart": self.alternate_restart.isChecked(),
-            "ccLoopRecording": self.cc_loop_recording.isChecked(),
             "separateLoopChopCC": self.separate_loopchop.isChecked(),
             "masterCC": self.get_cc_value(self.master_cc),
             "restartCCs": self.get_restart_cc_values(),
@@ -1658,7 +1629,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return container
 
     def setup_ui(self):
-        # Create scroll area for better window resizing
+        # Create tab widget for MIDI Settings and ThruLoop sub-tabs
+        self.tabs_widget = QTabWidget()
+        self.addWidget(self.tabs_widget)
+
+        # Tab 1: MIDI Settings
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -1669,7 +1644,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         main_widget.setLayout(main_layout)
 
         scroll_area.setWidget(main_widget)
-        self.addWidget(scroll_area, 1)
+        self.tabs_widget.addTab(scroll_area, "MIDI Settings")
+
+        # Tab 2: ThruLoop (created and added after MIDI settings tab setup)
+        self.thruloop_tab = ThruLoopConfigurator()
+        self.tabs_widget.addTab(self.thruloop_tab, "ThruLoop")
 
         main_layout.addSpacing(10)
 
@@ -2454,7 +2433,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.sample_mode.addItem("On", True)
         loop_layout.addWidget(self.sample_mode, 0, 4)
 
-        # Loop Messaging with help
+        # ThruLoop on/off with help
         thruloop_label = QWidget()
         thruloop_label_layout = QHBoxLayout()
         thruloop_label_layout.setContentsMargins(0, 0, 0, 0)
@@ -2462,7 +2441,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         thruloop_label_layout.addWidget(self.create_help_label(
             "Pass MIDI messages through the looper.\n"
             "Off: MIDI is not passed through\n"
-            "On: MIDI messages are forwarded"
+            "On: MIDI messages are forwarded\n\n"
+            "Configure ThruLoop channel, restart messaging,\n"
+            "and CC mappings in the ThruLoop tab."
         ))
         thruloop_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")))
         thruloop_label.setLayout(thruloop_label_layout)
@@ -2478,77 +2459,29 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.loop_messaging_enabled.addItem("On", True)
         loop_layout.addWidget(self.loop_messaging_enabled, 1, 2)
 
-        # Messaging Channel with help
-        thruloop_ch_label = QWidget()
-        thruloop_ch_label_layout = QHBoxLayout()
-        thruloop_ch_label_layout.setContentsMargins(0, 0, 0, 0)
-        thruloop_ch_label_layout.setSpacing(5)
-        thruloop_ch_label_layout.addWidget(self.create_help_label(
-            "MIDI channel (1-16) used for ThruLoop messages.\n"
-            "ThruLoop messages will be sent on this channel."
+        # CC Loop Recording with help
+        cc_loop_rec_label = QWidget()
+        cc_loop_rec_label_layout = QHBoxLayout()
+        cc_loop_rec_label_layout.setContentsMargins(0, 0, 0, 0)
+        cc_loop_rec_label_layout.setSpacing(5)
+        cc_loop_rec_label_layout.addWidget(self.create_help_label(
+            "Record CC messages in loop recordings.\n"
+            "Off: Only note on/off recorded\n"
+            "On: CC messages also recorded"
         ))
-        thruloop_ch_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")))
-        thruloop_ch_label.setLayout(thruloop_ch_label_layout)
-        loop_layout.addWidget(thruloop_ch_label, 1, 3)
-        self.loop_messaging_channel = ArrowComboBox()
-        self.loop_messaging_channel.setMinimumWidth(120)
-        self.loop_messaging_channel.setMinimumHeight(25)
-        self.loop_messaging_channel.setMaximumHeight(25)
-        self.loop_messaging_channel.setEditable(True)
-        self.loop_messaging_channel.lineEdit().setReadOnly(True)
-        self.loop_messaging_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 17):
-            self.loop_messaging_channel.addItem(str(i), i)
-        self.loop_messaging_channel.setCurrentIndex(15)
-        loop_layout.addWidget(self.loop_messaging_channel, 1, 4)
-
-        # Sync MIDI Mode with help
-        restart_msg_label = QWidget()
-        restart_msg_label_layout = QHBoxLayout()
-        restart_msg_label_layout.setContentsMargins(0, 0, 0, 0)
-        restart_msg_label_layout.setSpacing(5)
-        restart_msg_label_layout.addWidget(self.create_help_label(
-            "Send restart messages when loop restarts.\n"
-            "Off: No restart messages sent\n"
-            "On: Send restart messages to external devices"
-        ))
-        restart_msg_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")))
-        restart_msg_label.setLayout(restart_msg_label_layout)
-        loop_layout.addWidget(restart_msg_label, 2, 1)
-        self.sync_midi_mode = ArrowComboBox()
-        self.sync_midi_mode.setMinimumWidth(120)
-        self.sync_midi_mode.setMinimumHeight(25)
-        self.sync_midi_mode.setMaximumHeight(25)
-        self.sync_midi_mode.setEditable(True)
-        self.sync_midi_mode.lineEdit().setReadOnly(True)
-        self.sync_midi_mode.lineEdit().setAlignment(Qt.AlignCenter)
-        self.sync_midi_mode.addItem("Off", False)
-        self.sync_midi_mode.addItem("On", True)
-        loop_layout.addWidget(self.sync_midi_mode, 2, 2)
-
-        # Restart Mode with help
-        restart_mode_label = QWidget()
-        restart_mode_label_layout = QHBoxLayout()
-        restart_mode_label_layout.setContentsMargins(0, 0, 0, 0)
-        restart_mode_label_layout.setSpacing(5)
-        restart_mode_label_layout.addWidget(self.create_help_label(
-            "How to signal loop restart to external devices.\n"
-            "Restart CC: Send a CC message to restart\n"
-            "Stop+Start: Send stop then start messages"
-        ))
-        restart_mode_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")))
-        restart_mode_label.setLayout(restart_mode_label_layout)
-        loop_layout.addWidget(restart_mode_label, 2, 3)
-        self.alternate_restart_mode = ArrowComboBox()
-        self.alternate_restart_mode.setMinimumWidth(120)
-        self.alternate_restart_mode.setMinimumHeight(25)
-        self.alternate_restart_mode.setMaximumHeight(25)
-        self.alternate_restart_mode.setEditable(True)
-        self.alternate_restart_mode.lineEdit().setReadOnly(True)
-        self.alternate_restart_mode.lineEdit().setAlignment(Qt.AlignCenter)
-        self.alternate_restart_mode.addItem("Restart CC", False)
-        self.alternate_restart_mode.addItem("Stop+Start", True)
-        loop_layout.addWidget(self.alternate_restart_mode, 2, 4)
+        cc_loop_rec_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")))
+        cc_loop_rec_label.setLayout(cc_loop_rec_label_layout)
+        loop_layout.addWidget(cc_loop_rec_label, 1, 3)
+        self.cc_loop_recording = ArrowComboBox()
+        self.cc_loop_recording.setMinimumWidth(120)
+        self.cc_loop_recording.setMinimumHeight(25)
+        self.cc_loop_recording.setMaximumHeight(25)
+        self.cc_loop_recording.setEditable(True)
+        self.cc_loop_recording.lineEdit().setReadOnly(True)
+        self.cc_loop_recording.lineEdit().setAlignment(Qt.AlignCenter)
+        self.cc_loop_recording.addItem("Off", False)
+        self.cc_loop_recording.addItem("On", True)
+        loop_layout.addWidget(self.cc_loop_recording, 1, 4)
 
         # Overdub Mode with help
         overdub_label = QWidget()
@@ -2562,7 +2495,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         ))
         overdub_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")))
         overdub_label.setLayout(overdub_label_layout)
-        loop_layout.addWidget(overdub_label, 3, 1)
+        loop_layout.addWidget(overdub_label, 2, 1)
         self.smart_chord_light = ArrowComboBox()
         self.smart_chord_light.setMinimumWidth(120)
         self.smart_chord_light.setMinimumHeight(25)
@@ -2572,7 +2505,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light.lineEdit().setAlignment(Qt.AlignCenter)
         self.smart_chord_light.addItem("Default", 0)
         self.smart_chord_light.addItem("8 Track Looper", 1)
-        loop_layout.addWidget(self.smart_chord_light, 3, 2)
+        loop_layout.addWidget(self.smart_chord_light, 2, 2)
 
         # Macro Override Live Notes with help
         macro_override_label = QWidget()
@@ -2586,7 +2519,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         ))
         macro_override_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Macro Override:")))
         macro_override_label.setLayout(macro_override_label_layout)
-        loop_layout.addWidget(macro_override_label, 3, 3)
+        loop_layout.addWidget(macro_override_label, 2, 3)
         self.macro_override_live_notes = ArrowComboBox()
         self.macro_override_live_notes.setMinimumWidth(120)
         self.macro_override_live_notes.setMinimumHeight(25)
@@ -2596,7 +2529,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.macro_override_live_notes.lineEdit().setAlignment(Qt.AlignCenter)
         self.macro_override_live_notes.addItem("Off", False)
         self.macro_override_live_notes.addItem("On", True)
-        loop_layout.addWidget(self.macro_override_live_notes, 3, 4)
+        loop_layout.addWidget(self.macro_override_live_notes, 2, 4)
 
         # Advanced Settings Group with title on left, container centered
         advanced_row_container = QWidget()
@@ -2798,30 +2731,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.custom_layer_animations.addItem("Off", False)
         self.custom_layer_animations.addItem("On", True)
         advanced_layout.addWidget(self.custom_layer_animations, 3, 2)
-
-        # CC Loop Recording with help
-        cc_loop_label = QWidget()
-        cc_loop_label_layout = QHBoxLayout()
-        cc_loop_label_layout.setContentsMargins(0, 0, 0, 0)
-        cc_loop_label_layout.setSpacing(5)
-        cc_loop_label_layout.addWidget(self.create_help_label(
-            "Record Control Change messages in loops.\n"
-            "Off: Only record note events\n"
-            "On: Record CC messages alongside notes"
-        ))
-        cc_loop_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")))
-        cc_loop_label.setLayout(cc_loop_label_layout)
-        advanced_layout.addWidget(cc_loop_label, 3, 3)
-        self.cc_loop_recording = ArrowComboBox()
-        self.cc_loop_recording.setMinimumWidth(120)
-        self.cc_loop_recording.setMinimumHeight(25)
-        self.cc_loop_recording.setMaximumHeight(25)
-        self.cc_loop_recording.setEditable(True)
-        self.cc_loop_recording.lineEdit().setReadOnly(True)
-        self.cc_loop_recording.lineEdit().setAlignment(Qt.AlignCenter)
-        self.cc_loop_recording.addItem("Off", False)
-        self.cc_loop_recording.addItem("On", True)
-        advanced_layout.addWidget(self.cc_loop_recording, 3, 4)
 
         # True Sustain with help
         true_sustain_label = QWidget()
@@ -3254,9 +3163,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "unsynced_mode_active": self.unsynced_mode.currentData(),
             "sample_mode_active": self.sample_mode.currentData(),
             "loop_messaging_enabled": self.loop_messaging_enabled.currentData(),
-            "loop_messaging_channel": self.loop_messaging_channel.currentData(),
-            "sync_midi_mode": self.sync_midi_mode.currentData(),
-            "alternate_restart_mode": self.alternate_restart_mode.currentData(),
             "colorblindmode": self.colorblind_mode.currentData(),
             "cclooprecording": self.cc_loop_recording.currentData(),
             "truesustain": self.true_sustain.currentData(),
@@ -3354,9 +3260,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.unsynced_mode, config.get("unsynced_mode_active"), False)
         set_combo_by_data(self.sample_mode, config.get("sample_mode_active"), False)
         set_combo_by_data(self.loop_messaging_enabled, config.get("loop_messaging_enabled"), False)
-        set_combo_by_data(self.loop_messaging_channel, config.get("loop_messaging_channel"), 16)
-        set_combo_by_data(self.sync_midi_mode, config.get("sync_midi_mode"), False)
-        set_combo_by_data(self.alternate_restart_mode, config.get("alternate_restart_mode"), False)
         set_combo_by_data(self.colorblind_mode, config.get("colorblindmode"), 0)
         set_combo_by_data(self.cc_loop_recording, config.get("cclooprecording"), False)
         set_combo_by_data(self.true_sustain, config.get("truesustain"), False)
@@ -3427,8 +3330,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 26-byte structure"""
-        data = bytearray(26)
+        """Pack advanced settings into 23-byte structure
+
+        Note: loop_messaging_channel, sync_midi_mode, alternate_restart_mode
+        are now managed by the ThruLoop tab (0xB0 packet), not the advanced packet.
+        """
+        data = bytearray(23)
 
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
@@ -3440,22 +3347,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings["unsynced_mode_active"]; offset += 1
         data[offset] = 1 if settings["sample_mode_active"] else 0; offset += 1
         data[offset] = 1 if settings["loop_messaging_enabled"] else 0; offset += 1
-        data[offset] = settings["loop_messaging_channel"]; offset += 1
-        data[offset] = 1 if settings["sync_midi_mode"] else 0; offset += 1
-        data[offset] = 1 if settings["alternate_restart_mode"] else 0; offset += 1
         data[offset] = settings["colorblindmode"]; offset += 1
         data[offset] = 1 if settings["cclooprecording"] else 0; offset += 1
         data[offset] = 1 if settings["truesustain"] else 0; offset += 1
-        # MIDI Routing Override settings (bytes 15-20)
+        # MIDI Routing Override settings (bytes 12-17)
         data[offset] = 1 if settings.get("channel_override", False) else 0; offset += 1
         data[offset] = 1 if settings.get("velocity_override", False) else 0; offset += 1
         data[offset] = 1 if settings.get("transpose_override", False) else 0; offset += 1
         data[offset] = settings.get("midi_in_mode", 0); offset += 1
         data[offset] = settings.get("usb_midi_mode", 0); offset += 1
         data[offset] = settings.get("midi_clock_source", 0); offset += 1
-        # Macro override live notes (byte 21)
+        # Macro override live notes (byte 18)
         data[offset] = 1 if settings.get("macro_override_live_notes", False) else 0; offset += 1
-        # SmartChord settings (bytes 22-25)
+        # SmartChord settings (bytes 19-22)
         data[offset] = settings.get("smartchord_mode", 0); offset += 1
         data[offset] = settings.get("base_smartchord_ignore", 0); offset += 1
         data[offset] = settings.get("keysplit_smartchord_ignore", 0); offset += 1
@@ -3585,9 +3489,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "unsynced_mode_active": 0,
             "sample_mode_active": False,
             "loop_messaging_enabled": False,
-            "loop_messaging_channel": 16,
-            "sync_midi_mode": False,
-            "alternate_restart_mode": False,
             "colorblindmode": 0,
             "cclooprecording": False,
             "truesustain": False,
@@ -3623,6 +3524,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
+
+        # Propagate device to embedded ThruLoop tab
+        if hasattr(self, 'thruloop_tab'):
+            self.thruloop_tab.rebuild(device)
 
         # Load MIDI configuration from keyboard
         if hasattr(self.device.keyboard, 'midi_config') and self.device.keyboard.midi_config:

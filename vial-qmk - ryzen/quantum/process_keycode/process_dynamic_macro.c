@@ -11613,28 +11613,28 @@ void send_macro_via_hid(uint8_t macro_num) {
 
 // Set loop messaging basic configuration
 static void handle_set_loop_config(const uint8_t* data) {
-    loop_messaging_enabled = (data[0] != 0);
-    
+    // Note: loop_messaging_enabled and cclooprecording are now managed by
+    // MIDI Settings (advanced packet), not the ThruLoop packet.
+
     // Validate and set channel (1-16)
-    uint8_t channel = data[1];
+    uint8_t channel = data[0];
     if (channel >= 1 && channel <= 16) {
         loop_messaging_channel = channel;
     }
-    
-    sync_midi_mode = (data[2] != 0);
-    alternate_restart_mode = (data[3] != 0);
-    
+
+    sync_midi_mode = (data[1] != 0);
+    alternate_restart_mode = (data[2] != 0);
+
     // Set loop restart CCs (4 bytes)
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
-        loop_restart_cc[i] = data[4 + i];
+        loop_restart_cc[i] = data[3 + i];
     }
-	cclooprecording = (data[8] != 0);  // 9th byte for cclooprecording
-    
+
     // SAVE TO EEPROM
     save_loop_settings();
-    
-    dprintf("HID: Updated loop config - enabled:%d, channel:%d, sync:%d, alt_restart:%d\n", 
-            loop_messaging_enabled, loop_messaging_channel, sync_midi_mode, alternate_restart_mode);
+
+    dprintf("HID: Updated loop config - channel:%d, sync:%d, alt_restart:%d\n",
+            loop_messaging_channel, sync_midi_mode, alternate_restart_mode);
 }
 
 // Set main loop CC arrays
@@ -11700,17 +11700,16 @@ static void handle_get_all_config(uint8_t macro_num) {
     // We need to send multiple packets since all config won't fit in one packet
     load_loop_settings();
     
-    // Packet 1: Loop messaging basic config
-    uint8_t config_packet1[9];
-    config_packet1[0] = loop_messaging_enabled ? 1 : 0;
-    config_packet1[1] = loop_messaging_channel;
-    config_packet1[2] = sync_midi_mode ? 1 : 0;
-    config_packet1[3] = alternate_restart_mode ? 1 : 0;
+    // Packet 1: Loop config (7 bytes - channel, sync, restart mode, restart CCs)
+    // Note: loop_messaging_enabled and cclooprecording now in MIDI Settings advanced packet
+    uint8_t config_packet1[7];
+    config_packet1[0] = loop_messaging_channel;
+    config_packet1[1] = sync_midi_mode ? 1 : 0;
+    config_packet1[2] = alternate_restart_mode ? 1 : 0;
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
-        config_packet1[4 + i] = loop_restart_cc[i];
+        config_packet1[3 + i] = loop_restart_cc[i];
     }
-    config_packet1[8] = cclooprecording ? 1 : 0;
-    send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, config_packet1, 9);
+    send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, config_packet1, 7);
     wait_ms(5);
     
     // Packet 2: Main loop CCs
@@ -11756,8 +11755,8 @@ static void handle_get_all_config(uint8_t macro_num) {
 }
 // Reset all loop messaging configuration to defaults
 static void handle_reset_loop_config(void) {
-    // Reset to your default values
-    loop_messaging_enabled = false;
+    // Reset thruloop-specific values (loop_messaging_enabled and cclooprecording
+    // are now managed by MIDI Settings, not ThruLoop)
     loop_messaging_channel = 16;  // Changed to match initialization
     sync_midi_mode = false;
     alternate_restart_mode = false;
@@ -11788,7 +11787,6 @@ static void handle_reset_loop_config(void) {
     loop_navigate_5_8_cc = 128;
     loop_navigate_6_8_cc = 128;
     loop_navigate_7_8_cc = 128;
-	cclooprecording = false;
     
     // SAVE TO EEPROM
     save_loop_settings();
@@ -12163,7 +12161,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             break;
 
 		case HID_CMD_SET_LOOP_CONFIG: // 0xB0
-			if (length >= 12) { // Header + 8 data bytes minimum
+			if (length >= 13) { // Header(6) + 7 data bytes (channel, sync, restart, 4 CCs)
 				handle_set_loop_config(&data[6]); // Skip header bytes
 				send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, NULL, 0); // Success
 			} else {
@@ -12222,8 +12220,8 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             break;
 			
 				// Add case to your HID handler:
-		case HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED: // 0x55
-			if (length >= 21) { // Header + 15 data bytes
+		case HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED: // 0xBB
+			if (length >= 29) { // Header(6) + 23 data bytes
 				handle_set_keyboard_config_advanced(&data[6]);
 				send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, NULL, 0);
 			} else {
@@ -13063,11 +13061,8 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     unsynced_mode_active = *ptr++;
     sample_mode_active = (*ptr++ != 0);
     
-    // Read loop messaging features
+    // Read loop settings (channel/sync/restart now in ThruLoop packet 0xB0)
     loop_messaging_enabled = (*ptr++ != 0);
-    loop_messaging_channel = *ptr++;
-    sync_midi_mode = (*ptr++ != 0);
-    alternate_restart_mode = (*ptr++ != 0);
     colorblindmode = *ptr++;
     cclooprecording = (*ptr++ != 0);
     truesustain = (*ptr++ != 0);
@@ -13096,9 +13091,8 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.unsynced_mode_active = unsynced_mode_active;
     keyboard_settings.sample_mode_active = sample_mode_active;
     keyboard_settings.loop_messaging_enabled = loop_messaging_enabled;
-    keyboard_settings.loop_messaging_channel = loop_messaging_channel;
-    keyboard_settings.sync_midi_mode = sync_midi_mode;
-    keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+    // Note: loop_messaging_channel, sync_midi_mode, alternate_restart_mode
+    // are now managed by ThruLoop (0xB0 packet / loop_settings EEPROM)
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
@@ -13364,8 +13358,8 @@ static void handle_get_keyboard_config(void) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
 
-    // Packet 2: Advanced settings (26 bytes - expanded for smartchord settings)
-    uint8_t config_packet2[26];
+    // Packet 2: Advanced settings (23 bytes - channel/sync/restart now in ThruLoop 0xB0)
+    uint8_t config_packet2[23];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13377,13 +13371,10 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.unsynced_mode_active;
     *ptr++ = keyboard_settings.sample_mode_active ? 1 : 0;
     *ptr++ = keyboard_settings.loop_messaging_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.loop_messaging_channel;
-    *ptr++ = keyboard_settings.sync_midi_mode ? 1 : 0;
-    *ptr++ = keyboard_settings.alternate_restart_mode ? 1 : 0;
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    // MIDI Routing Override Settings
+    // MIDI Routing Override Settings (bytes 12-17)
     *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
     *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
     *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
@@ -13391,13 +13382,13 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
     *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
-    // SmartChord settings (bytes 22-25)
+    // SmartChord settings (bytes 19-22)
     *ptr++ = keyboard_settings.smartchord_mode;
     *ptr++ = keyboard_settings.base_smartchord_ignore;
     *ptr++ = keyboard_settings.keysplit_smartchord_ignore;
     *ptr++ = keyboard_settings.triplesplit_smartchord_ignore;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 26);
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 23);
 
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
@@ -13429,11 +13420,8 @@ static void handle_reset_keyboard_config(void) {
     colorblindmode = 0;
 	cclooprecording = false;
 	truesustain = false;
-    // Reset new loop messaging features to defaults
+    // Reset thruloop on/off (channel/sync/restart managed by ThruLoop reset)
     loop_messaging_enabled = false;
-    loop_messaging_channel = 16;  // Default to MIDI channel 16
-    sync_midi_mode = false;
-    alternate_restart_mode = false;
     // Reset MIDI routing override settings to defaults
     channeloverride = false;
     velocityoverride = false;
@@ -13551,8 +13539,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
 
-    // Packet 2: Advanced settings (26 bytes - expanded for smartchord settings)
-    uint8_t config_packet2[26];
+    // Packet 2: Advanced settings (23 bytes - channel/sync/restart now in ThruLoop 0xB0)
+    uint8_t config_packet2[23];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13564,13 +13552,10 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.unsynced_mode_active;
     *ptr++ = keyboard_settings.sample_mode_active ? 1 : 0;
     *ptr++ = keyboard_settings.loop_messaging_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.loop_messaging_channel;
-    *ptr++ = keyboard_settings.sync_midi_mode ? 1 : 0;
-    *ptr++ = keyboard_settings.alternate_restart_mode ? 1 : 0;
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    // MIDI Routing Override Settings
+    // MIDI Routing Override Settings (bytes 12-17)
     *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
     *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
     *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
@@ -13578,13 +13563,13 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
     *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
-    // SmartChord settings (bytes 22-25)
+    // SmartChord settings (bytes 19-22)
     *ptr++ = keyboard_settings.smartchord_mode;
     *ptr++ = keyboard_settings.base_smartchord_ignore;
     *ptr++ = keyboard_settings.keysplit_smartchord_ignore;
     *ptr++ = keyboard_settings.triplesplit_smartchord_ignore;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 26);
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 23);
 
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
@@ -13609,9 +13594,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     unsynced_mode_active = keyboard_settings.unsynced_mode_active;
     sample_mode_active = keyboard_settings.sample_mode_active;
     loop_messaging_enabled = keyboard_settings.loop_messaging_enabled;
-    loop_messaging_channel = keyboard_settings.loop_messaging_channel;
-    sync_midi_mode = keyboard_settings.sync_midi_mode;
-    alternate_restart_mode = keyboard_settings.alternate_restart_mode;
+    // Note: loop_messaging_channel, sync_midi_mode, alternate_restart_mode
+    // are now managed by ThruLoop (loop_settings EEPROM)
     colorblindmode = keyboard_settings.colorblindmode;
     cclooprecording = keyboard_settings.cclooprecording;
     truesustain = keyboard_settings.truesustain;

@@ -1496,15 +1496,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             
             if HID_CMD_SET_LOOP_CONFIG in packets:
                 data = packets[HID_CMD_SET_LOOP_CONFIG][6:]
-                config['loopEnabled'] = data[0] != 0
-                config['loopChannel'] = data[1] 
-                config['syncMidi'] = data[2] != 0
-                config['alternateRestart'] = data[3] != 0
-                config['restartCCs'] = list(data[4:8])
-                if len(data) > 8:
-                    config['ccLoopRecording'] = data[8] != 0
-                else:
-                    config['ccLoopRecording'] = False
+                # Note: loopEnabled and ccLoopRecording now in MIDI Settings advanced packet
+                config['loopChannel'] = data[0]
+                config['syncMidi'] = data[1] != 0
+                config['alternateRestart'] = data[2] != 0
+                config['restartCCs'] = list(data[3:7])
                     
             if HID_CMD_SET_MAIN_LOOP_CCS in packets:
                 data = packets[HID_CMD_SET_MAIN_LOOP_CCS][6:]
@@ -1744,26 +1740,24 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "unsynced_mode_active": data[6],
                     "sample_mode_active": data[7] != 0,
                     "loop_messaging_enabled": data[8] != 0,
-                    "loop_messaging_channel": data[9],
-                    "sync_midi_mode": data[10] != 0,
-                    "alternate_restart_mode": data[11] != 0,
-                    "colorblindmode": data[12],
-                    "cclooprecording": data[13] != 0,
-                    "truesustain": data[14] != 0,
-                    # MIDI Routing Override Settings (bytes 15-20)
-                    "channel_override": data[15] != 0 if len(data) > 15 else False,
-                    "velocity_override": data[16] != 0 if len(data) > 16 else False,
-                    "transpose_override": data[17] != 0 if len(data) > 17 else False,
-                    "midi_in_mode": data[18] if len(data) > 18 else 0,
-                    "usb_midi_mode": data[19] if len(data) > 19 else 0,
-                    "midi_clock_source": data[20] if len(data) > 20 else 0,
-                    # Macro override live notes (byte 21)
-                    "macro_override_live_notes": data[21] != 0 if len(data) > 21 else False,
-                    # SmartChord settings (bytes 22-25)
-                    "smartchord_mode": data[22] if len(data) > 22 else 0,
-                    "base_smartchord_ignore": data[23] if len(data) > 23 else 0,
-                    "keysplit_smartchord_ignore": data[24] if len(data) > 24 else 0,
-                    "triplesplit_smartchord_ignore": data[25] if len(data) > 25 else 0
+                    # Note: channel/sync/restart now in ThruLoop packet (0xB0)
+                    "colorblindmode": data[9],
+                    "cclooprecording": data[10] != 0,
+                    "truesustain": data[11] != 0,
+                    # MIDI Routing Override Settings (bytes 12-17)
+                    "channel_override": data[12] != 0 if len(data) > 12 else False,
+                    "velocity_override": data[13] != 0 if len(data) > 13 else False,
+                    "transpose_override": data[14] != 0 if len(data) > 14 else False,
+                    "midi_in_mode": data[15] if len(data) > 15 else 0,
+                    "usb_midi_mode": data[16] if len(data) > 16 else 0,
+                    "midi_clock_source": data[17] if len(data) > 17 else 0,
+                    # Macro override live notes (byte 18)
+                    "macro_override_live_notes": data[18] != 0 if len(data) > 18 else False,
+                    # SmartChord settings (bytes 19-22)
+                    "smartchord_mode": data[19] if len(data) > 19 else 0,
+                    "base_smartchord_ignore": data[20] if len(data) > 20 else 0,
+                    "keysplit_smartchord_ignore": data[21] if len(data) > 21 else 0,
+                    "triplesplit_smartchord_ignore": data[22] if len(data) > 22 else 0
                 })
                 
             return config if config else None
