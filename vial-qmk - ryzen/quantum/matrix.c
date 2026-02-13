@@ -356,9 +356,12 @@ typedef enum {
 static uint8_t key_type_cache[NUM_KEYS];
 static uint16_t dks_keycode_cache[NUM_KEYS];  // Cache DKS keycodes for processing
 static uint8_t key_type_cache_layer = 0xFF;   // Layer the cache was built for
+static layer_state_t key_type_cache_state = ~(layer_state_t)0;  // Full layer state for cache invalidation
 
-// Forward declaration
+// Forward declarations
 static void refresh_key_type_cache(uint8_t layer);
+static uint16_t resolve_keycode_through_layers(uint8_t row, uint8_t col);
+static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out, uint8_t *zone_type_out);
 
 // ============================================================================
 // PER-KEY ACTUATION CACHE (280 bytes - fits in L1 cache)
@@ -727,39 +730,93 @@ static inline void update_active_settings(uint8_t current_layer) {
 
 // Refresh key type cache when layer changes
 // This reads keycodes from EEPROM once per layer change instead of 140x per scan
+/**
+ * Resolve keycode through the layer stack, matching QMK's standard behavior.
+ *
+ * When MO(layer) is held, keys that are KC_TRNS on that layer should fall
+ * through to the next active layer below. Without this, KC_TRNS keys on a
+ * held layer get misclassified as KEY_TYPE_NORMAL, causing the custom analog
+ * MIDI path to be bypassed while QMK's standard action processing still
+ * triggers the MIDI note through fallthrough - leading to stuck notes,
+ * uncontrolled retrigger, and missing velocity processing.
+ *
+ * This mirrors layer_switch_get_layer() in action_layer.c.
+ */
+static uint16_t resolve_keycode_through_layers(uint8_t row, uint8_t col) {
+    layer_state_t layers = layer_state | default_layer_state;
+
+    // Walk from highest active layer down, skip KC_TRNS (0x0001)
+    for (int8_t i = MAX_LAYER - 1; i >= 0; i--) {
+        if (layers & ((layer_state_t)1 << i)) {
+            uint16_t keycode = dynamic_keymap_get_keycode(i, row, col);
+            if (keycode != KC_TRANSPARENT) {
+                return keycode;
+            }
+        }
+    }
+
+    // Fall back to layer 0
+    return dynamic_keymap_get_keycode(0, row, col);
+}
+
 static void refresh_key_type_cache(uint8_t layer) {
     if (layer >= 12) layer = 0;
 
-    // Skip if cache is already valid for this layer
-    if (key_type_cache_layer == layer) return;
+    // Invalidate on any layer state change, not just highest-layer change.
+    // This is needed because resolve_keycode_through_layers walks the full
+    // layer stack - toggling a middle layer changes resolved keycodes even
+    // if the highest active layer stays the same.
+    layer_state_t current_state = layer_state | default_layer_state;
+    if (key_type_cache_layer == layer && key_type_cache_state == current_state) return;
 
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             uint32_t key_idx = KEY_INDEX(row, col);
-            uint16_t keycode = dynamic_keymap_get_keycode(layer, row, col);
+            // Resolve through layer stack so KC_TRNS on held layers falls
+            // through to the actual keycode on the layer below, matching
+            // QMK's standard action processing behavior.
+            uint16_t keycode = resolve_keycode_through_layers(row, col);
 
             // Check if DKS key
             if (is_dks_keycode(keycode)) {
                 key_type_cache[key_idx] = KEY_TYPE_DKS;
                 dks_keycode_cache[key_idx] = keycode;
             }
-            // Check if MIDI key by keycode on current layer (not permanent is_midi_key flag)
+            // Check if MIDI key by resolved keycode (handles KC_TRNS fallthrough)
             // Covers all MIDI ranges: base notes, keysplit, and triplesplit
             else if ((keycode >= 0x7103 && keycode <= 0x71FF) ||
                      (keycode >= 0xC600 && keycode <= 0xC647) ||
                      (keycode >= 0xC670 && keycode <= 0xC6B7)) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
                 dks_keycode_cache[key_idx] = 0;
+
+                // Update midi_key_states so process_midi_key_analog has the
+                // correct note_index and zone_type for this key, even if it
+                // became MIDI through layer fallthrough (e.g., KC_TRNS on
+                // held layer resolving to MIDI on the layer below).
+                if (midi_states_initialized && !midi_key_states[key_idx].is_midi_key) {
+                    uint8_t note_index;
+                    uint8_t zone_type;
+                    if (check_is_midi_key(row, col, &note_index, &zone_type)) {
+                        midi_key_states[key_idx].is_midi_key = true;
+                        midi_key_states[key_idx].note_index = note_index;
+                        midi_key_states[key_idx].zone_type = zone_type;
+                    }
+                }
             }
-            // Normal key
+            // Normal key - clear MIDI state if it was previously MIDI
             else {
                 key_type_cache[key_idx] = KEY_TYPE_NORMAL;
                 dks_keycode_cache[key_idx] = 0;
+                if (midi_states_initialized && midi_key_states[key_idx].is_midi_key) {
+                    midi_key_states[key_idx].is_midi_key = false;
+                }
             }
         }
     }
 
     key_type_cache_layer = layer;
+    key_type_cache_state = current_state;
 }
 
 // ============================================================================
@@ -1060,24 +1117,55 @@ static uint8_t get_zone_type_from_keycode(uint16_t keycode) {
 }
 
 static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out, uint8_t *zone_type_out) {
-    uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
-    if (current_layer >= 12) return false;
-
-    uint8_t array_index = layer_to_index_map[current_layer];
-    if (array_index == 255) return false;
-
     if (optimized_midi_positions == NULL) return false;
 
+    // Resolve the actual keycode through the layer stack (handles KC_TRNS fallthrough)
+    uint16_t keycode = resolve_keycode_through_layers(row, col);
+
+    // Check if the resolved keycode is a MIDI keycode
+    bool is_midi = (keycode >= 0x7103 && keycode <= 0x71FF) ||
+                   (keycode >= 0xC600 && keycode <= 0xC647) ||
+                   (keycode >= 0xC670 && keycode <= 0xC6B7);
+    if (!is_midi) return false;
+
+    // Find the layer that actually has the MIDI keycode (walk stack like resolve does)
+    // We need to look up note_index from the correct layer's optimized_midi_positions
+    layer_state_t layers = layer_state | default_layer_state;
     uint8_t led_index = g_led_config.matrix_co[row][col];
 
-    for (uint8_t note = 0; note < 72; note++) {
-        for (uint8_t pos = 0; pos < 6; pos++) {
-            if (optimized_midi_positions[array_index][note][pos] == led_index) {
-                *note_index_out = note;
-                // Get the actual keycode to determine zone type
-                uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
-                *zone_type_out = get_zone_type_from_keycode(keycode);
-                return true;
+    for (int8_t i = MAX_LAYER - 1; i >= 0; i--) {
+        if (layers & ((layer_state_t)1 << i)) {
+            uint16_t layer_keycode = dynamic_keymap_get_keycode(i, row, col);
+            if (layer_keycode != KC_TRANSPARENT) {
+                // This is the layer with the actual keycode
+                if (i >= 12) break;
+                uint8_t array_index = layer_to_index_map[i];
+                if (array_index == 255) break;
+
+                for (uint8_t note = 0; note < 72; note++) {
+                    for (uint8_t pos = 0; pos < 6; pos++) {
+                        if (optimized_midi_positions[array_index][note][pos] == led_index) {
+                            *note_index_out = note;
+                            *zone_type_out = get_zone_type_from_keycode(keycode);
+                            return true;
+                        }
+                    }
+                }
+                break;  // Found the layer but not in position table
+            }
+        }
+    }
+
+    // Fall back to layer 0
+    uint8_t array_index = layer_to_index_map[0];
+    if (array_index != 255) {
+        for (uint8_t note = 0; note < 72; note++) {
+            for (uint8_t pos = 0; pos < 6; pos++) {
+                if (optimized_midi_positions[array_index][note][pos] == led_index) {
+                    *note_index_out = note;
+                    *zone_type_out = get_zone_type_from_keycode(keycode);
+                    return true;
+                }
             }
         }
     }
@@ -1561,10 +1649,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
     // Capture channel and MIDI note when note first becomes pressed
     if (pressed && !state->was_pressed) {
-        // Determine channel and MIDI note based on keycode
+        // Determine channel and MIDI note based on resolved keycode
+        // Use layer-stack resolution so KC_TRNS on held layers falls through
+        // to the actual MIDI keycode on the layer below.
         uint8_t row = KEY_ROW(key_idx);
         uint8_t col = KEY_COL(key_idx);
-        uint16_t keycode = dynamic_keymap_get_keycode(current_layer, row, col);
+        uint16_t keycode = resolve_keycode_through_layers(row, col);
 
         // Determine channel based on keycode range
         if (keycode >= 0xC600 && keycode <= 0xC647) {
