@@ -503,13 +503,16 @@ void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note);
 
-    // Smartchord doesn't have raw_travel, use final_velocity as fallback
+    // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
+    // The playback velocity transform expects 0-255 raw_travel input
+    uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
+
     if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, final_velocity);
+        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, raw_travel_scaled);
     }
 
     if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteon(channel, note, final_velocity, current_macro_id,
+        dynamic_macro_intercept_noteon(channel, note, raw_travel_scaled, current_macro_id,
                                      current_macro_buffer1, current_macro_buffer2,
                                      current_macro_pointer, current_recording_start_time);
     }
@@ -526,10 +529,12 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
 	noteoffdisplayupdates(note);
 
 
+    // Scale MIDI velocity (0-127) to raw_travel range (0-255) for recording
+    uint8_t raw_travel_scaled = (velocity > 0) ? (uint8_t)((uint16_t)velocity * 255 / 127) : 0;
+
     // Collect for preroll if it's active (only for slave recordings)
-    // Smartchord doesn't have raw_travel, use velocity as fallback
     if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
+        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, raw_travel_scaled);
     }
 
     // Check if sustain is active and this is NOT a note from macro playback
@@ -545,7 +550,7 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
         remove_lighting_live_note(channel, note);
         // Record to macro if we're recording (and it's not a sustained note)
         if (current_macro_id > 0 && (!sustain_active || is_note_from_macro(channel, note))) {
-            dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id,
+            dynamic_macro_intercept_noteoff(channel, note, raw_travel_scaled, current_macro_id,
                                           current_macro_buffer1, current_macro_buffer2,
                                           current_macro_pointer, current_recording_start_time);
         }
@@ -564,13 +569,15 @@ void midi_send_noteon_trainer(uint8_t channel, uint8_t note, uint8_t velocity) {
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note);
 
-    // Trainer doesn't have raw_travel, use final_velocity as fallback
+    // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
+    uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
+
     if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, final_velocity);
+        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, raw_travel_scaled);
     }
 
     if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteon(channel, note, final_velocity, current_macro_id,
+        dynamic_macro_intercept_noteon(channel, note, raw_travel_scaled, current_macro_id,
                                      current_macro_buffer1, current_macro_buffer2,
                                      current_macro_pointer, current_recording_start_time);
     }
@@ -581,10 +588,12 @@ void midi_send_noteoff_trainer(uint8_t channel, uint8_t note, uint8_t velocity) 
     if (is_note_from_macro(channel, note) && !is_live_note_active(channel, note)) {
         return; // Don't let live note-offs stop macro notes unless the note is actually live
     }
-    // Collect for preroll if it's active (only for slave recordings)
-    // Trainer doesn't have raw_travel, use velocity as fallback
+
+    // Scale MIDI velocity (0-127) to raw_travel range (0-255) for recording
+    uint8_t raw_travel_scaled = (velocity > 0) ? (uint8_t)((uint16_t)velocity * 255 / 127) : 0;
+
     if (collecting_preroll) {
-        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, velocity);
+        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, raw_travel_scaled);
     }
 
     // Check if sustain is active and this is NOT a note from macro playback
@@ -600,7 +609,7 @@ void midi_send_noteoff_trainer(uint8_t channel, uint8_t note, uint8_t velocity) 
         remove_lighting_live_note(channel, note);
         // Record to macro if we're recording (and it's not a sustained note)
         if (current_macro_id > 0 && (!sustain_active || is_note_from_macro(channel, note))) {
-            dynamic_macro_intercept_noteoff(channel, note, velocity, current_macro_id,
+            dynamic_macro_intercept_noteoff(channel, note, raw_travel_scaled, current_macro_id,
                                           current_macro_buffer1, current_macro_buffer2,
                                           current_macro_pointer, current_recording_start_time);
         }
