@@ -12058,16 +12058,16 @@ static void handle_dks_reset_slot(const uint8_t* data) {
     memset(slot->press_keycode, 0, sizeof(slot->press_keycode));
     memset(slot->release_keycode, 0, sizeof(slot->release_keycode));
 
-    // Set default actuation points (0-255 = 0-4.0mm)
-    slot->press_actuation[0] = 38;   // ~0.6mm
-    slot->press_actuation[1] = 77;   // ~1.2mm
-    slot->press_actuation[2] = 115;  // ~1.8mm
-    slot->press_actuation[3] = 153;  // ~2.4mm
+    // Set default actuation points
+    slot->press_actuation[0] = 24;  // 0.6mm
+    slot->press_actuation[1] = 48;  // 1.2mm
+    slot->press_actuation[2] = 72;  // 1.8mm
+    slot->press_actuation[3] = 96;  // 2.4mm
 
-    slot->release_actuation[0] = 153;  // ~2.4mm
-    slot->release_actuation[1] = 115;  // ~1.8mm
-    slot->release_actuation[2] = 77;   // ~1.2mm
-    slot->release_actuation[3] = 38;   // ~0.6mm
+    slot->release_actuation[0] = 96;  // 2.4mm
+    slot->release_actuation[1] = 72;  // 1.8mm
+    slot->release_actuation[2] = 48;  // 1.2mm
+    slot->release_actuation[3] = 24;  // 0.6mm
 
     slot->behaviors = 0x0000;  // All TAP
 
