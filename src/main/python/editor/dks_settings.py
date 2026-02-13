@@ -892,7 +892,7 @@ class DKSActionEditor(QWidget):
 
         self.actuation_slider = QSlider(Qt.Horizontal)
         self.actuation_slider.setMinimum(0)
-        self.actuation_slider.setMaximum(100)
+        self.actuation_slider.setMaximum(255)
         self.actuation_slider.setValue(127)
         self.actuation_slider.setFixedWidth(70)
         self.actuation_slider.valueChanged.connect(self._update_actuation_label)
@@ -1446,8 +1446,8 @@ class DKSSettingsTab(BasicEditor):
             self.dks_protocol = None
             return
 
-        # Create DKS protocol handler
-        self.dks_protocol = ProtocolDKS(device)
+        # Create DKS protocol handler (needs keyboard comm object, not VialKeyboard wrapper)
+        self.dks_protocol = ProtocolDKS(device.keyboard)
 
         # Set protocol for all entries
         for entry in self.dks_entries:
