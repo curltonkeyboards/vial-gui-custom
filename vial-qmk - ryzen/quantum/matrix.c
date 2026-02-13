@@ -826,23 +826,48 @@ static void update_calibration(uint32_t key_idx) {
         if (abs((int)key->adc_filtered - (int)key->stable_start_adc) >= stability_threshold) {
             key->is_stable = false;
         }
+        // Micro-drift guard: if ADC has moved meaningfully (> CALIBRATION_EPSILON)
+        // from where stability started, the key is still considered "stable" for
+        // general purposes, but restart the 10-second timer and update the reference.
+        // This prevents slow presses from accumulating enough stable time to
+        // incorrectly recalibrate the rest value (the old timer from when the key
+        // was truly at rest would carry over into the slow press). Temperature drift
+        // is slow enough that 10 seconds of post-drift stability is easily achieved.
+        else if (abs((int)key->adc_filtered - (int)key->stable_start_adc) > CALIBRATION_EPSILON) {
+            key->stable_time = now;
+            key->stable_start_adc = key->adc_filtered;
+        }
     } else {
         key->is_stable = false;
     }
 
     // Auto-calibrate rest position when stable, not pressed, AND near rest position
-    // Requires stability for full AUTO_CALIB_VALID_RELEASE_TIME (10 seconds)
-    // The distance check (< 5% of travel) prevents recalibration during slow presses
-    if (key->is_stable && !key->is_pressed &&
-        key->distance < AUTO_CALIB_MAX_DISTANCE &&
-        timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-        // Use a small threshold for the rest value update decision.
-        // The stability detection (above) already confirmed the reading is stable,
-        // so we just need enough hysteresis to avoid chasing 1-2 unit ADC noise.
-        // Using CALIBRATION_EPSILON (5) prevents constant micro-updates while
-        // still catching real drift (e.g. 27 ADC units over time).
-        if (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON ||
-            key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON) {
+    if (key->is_stable && !key->is_pressed && key->distance < AUTO_CALIB_MAX_DISTANCE) {
+        bool inverted = (key->adc_rest_value > key->adc_bottom_out_value);
+
+        // Determine if ADC has drifted away from pressed (toward rest/release).
+        // For inverted Hall effect (rest > bottom): higher ADC = more released.
+        // For normal orientation (rest < bottom): lower ADC = more released.
+        bool drifted_away_from_pressed = inverted
+            ? (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON)
+            : (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON);
+
+        bool drifted_toward_pressed = inverted
+            ? (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON)
+            : (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON);
+
+        if (drifted_away_from_pressed) {
+            // ADC has moved further into "released" territory than current rest.
+            // Update immediately - rest should always reflect the true resting
+            // position. A higher reading at rest means the baseline has shifted.
+            key->adc_rest_value = key->adc_filtered;
+            calibration_dirty = true;
+            last_calibration_change = timer_read();
+        } else if (drifted_toward_pressed &&
+                   timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
+            // ADC has dropped below rest - could be a slow press or genuine
+            // downward temperature drift. Require full 10-second stability
+            // to distinguish real drift from slow presses.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
