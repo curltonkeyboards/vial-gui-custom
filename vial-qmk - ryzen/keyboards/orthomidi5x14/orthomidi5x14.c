@@ -132,6 +132,11 @@ uint8_t triplesplit_he_velocity_max = 127;
 uint8_t base_sustain = 0;
 uint8_t keysplit_sustain = 0;
 uint8_t triplesplit_sustain = 0;
+// SmartChord settings
+uint8_t smartchord_mode = 0;              // 0=Hold, 1=Toggle
+uint8_t base_smartchord_ignore = 0;       // 0=Allow, 1=Ignore
+uint8_t keysplit_smartchord_ignore = 0;    // 0=Allow, 1=Ignore
+uint8_t triplesplit_smartchord_ignore = 0; // 0=Allow, 1=Ignore
 // Hall Effect Sensor Linearization LUT
 uint8_t lut_correction_strength = 0;  // 0=linear (no correction), 100=full logarithmic LUT
 
@@ -2023,8 +2028,8 @@ void play_chord(uint16_t chord_type, uint8_t note_offset, bool is_minor_progress
     current_root_midi_note = midi_note;
     
     // Manually send MIDI note-on for the root note
-    midi_send_noteon_with_recording(channel, midi_note, velocity, travelvelocity);
-    
+    midi_send_noteon_with_recording(channel, midi_note, velocity, travelvelocity, 0);  // note_type=0 (base/progression)
+
     // Track the highest and lowest notes of this chord for voice leading
     if (progressionvoicing == 3 || progressionvoicing == 4) {
         // Get the chord structure
@@ -2827,6 +2832,10 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
     midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
     macro_override_live_notes = keyboard_settings.macro_override_live_notes;
+    smartchord_mode = keyboard_settings.smartchord_mode;
+    base_smartchord_ignore = keyboard_settings.base_smartchord_ignore;
+    keysplit_smartchord_ignore = keyboard_settings.keysplit_smartchord_ignore;
+    triplesplit_smartchord_ignore = keyboard_settings.triplesplit_smartchord_ignore;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }
@@ -14452,15 +14461,23 @@ if (keycode >= 0xC92A && keycode <= 0xC93B) {
     uint16_t base_interval_code = play_simultaneous ? ((keycode * 3) - (0xC938 * 3) + 0xC92A) : keycode;   
     
     if (record->event.pressed) {
-        smartchordstatus += 1;        
+        // Toggle mode: if already active, turn off and return
+        if (smartchord_mode == 1 && smartchordstatus > 0) {
+            smartchordstatus = 0;
+            if (smartchordlight != 3) { smartchordlight = 0; }
+            trueheldkey1 = 0; heldkey1 = 0;
+            trueheldkey2 = 0; heldkey2 = 0;
+            return false;
+        }
+        smartchordstatus += 1;
         // Cache the layer lookup once
-        int8_t current_layer = get_highest_layer(layer_state | default_layer_state);	
+        int8_t current_layer = get_highest_layer(layer_state | default_layer_state);
         uint8_t positions[6];  // Reusable array for positions
-        
+
         // Generate random base note between 24 and 36 semitones above 28931
         uint16_t base_keycode = 28931 + (rand() % 13) + 24;
         base_note = midi_compute_note(base_keycode);
-        
+
         // Calculate held key values for base note
         trueheldkey1 = base_keycode - 28931;
         heldkey1 = ((trueheldkey1 % 12) + 12) % 12 + 1;
@@ -14548,6 +14565,10 @@ if (keycode >= 0xC92A && keycode <= 0xC93B) {
         
         return false;
     } else {
+        // Toggle mode: skip release handling entirely (chord stays active)
+        if (smartchord_mode == 1) {
+            return false;
+        }
         // On key release, stop all notes
         if (base_note != 0) {
             midi_send_noteoff_smartchord(channel, base_note, velocity);
@@ -14698,12 +14719,21 @@ if (keycode >= 0xC93C && keycode <= 0xC94F) {
     }
     
     if (record->event.pressed) {
+        // Toggle mode: if already active, turn off and return
+        if (smartchord_mode == 1 && smartchordstatus > 0) {
+            smartchordstatus = 0;
+            if (smartchordlight != 3) { smartchordlight = 0; }
+            trueheldkey1 = 0; heldkey1 = 0; heldkey1difference = 0;
+            trueheldkey2 = 0; heldkey2 = 0; heldkey2difference = 0;
+            trueheldkey3 = 0; heldkey3 = 0; heldkey3difference = 0;
+            return false;
+        }
         smartchordstatus += 1;
-        
+
         // Cache the layer lookup once
-        int8_t current_layer = get_highest_layer(layer_state | default_layer_state);	
+        int8_t current_layer = get_highest_layer(layer_state | default_layer_state);
         uint8_t positions[6];  // Reusable array for positions
-        
+
         uint16_t base_keycode = 28931 + (rand() % 6) + 6 + 24 + octave_number + transpose_number;
         uint8_t base_note = midi_compute_note(base_keycode);
         
@@ -14889,12 +14919,16 @@ if (keycode >= 0xC93C && keycode <= 0xC94F) {
         
         return false;
     } else {
+        // Toggle mode: skip release handling entirely (chord stays active)
+        if (smartchord_mode == 1) {
+            return false;
+        }
         uint8_t base_note = midi_compute_note(trueheldkey1 + 28931);
         midi_send_noteoff_smartchord(channel, base_note, velocity);
         if (trueheldkey2 != 0) midi_send_noteoff_smartchord(channel, midi_compute_note(trueheldkey2 + 28931), velocity);
         if (trueheldkey3 != 0) midi_send_noteoff_smartchord(channel, midi_compute_note(trueheldkey3 + 28931), velocity);
         if (trueheldkey4 != 0) midi_send_noteoff_smartchord(channel, midi_compute_note(trueheldkey4 + 28931), velocity);
-        
+
         smartchordstatus -= 1;
 
         chordkey1_led_index = 99; chordkey1_led_index2 = 99; chordkey1_led_index3 = 99;
@@ -15000,11 +15034,26 @@ if (keycode >= 0xC38B && keycode <= 0xC416) {
 	 keycode = 0xC396 + smartchordchanger;}
 	 
 	 if (record->event.pressed) {
+        // Toggle mode: if already active, turn off and return
+        if (smartchord_mode == 1 && smartchordstatus > 0) {
+            smartchordstatus = 0;
+            chordkey2 = 0; chordkey3 = 0; chordkey4 = 0;
+            chordkey5 = 0; chordkey6 = 0; chordkey7 = 0;
+            if (smartchordlight != 3) { smartchordlight = 0; }
+            trueheldkey2 = 0; heldkey2 = 0; heldkey2difference = 0;
+            trueheldkey3 = 0; heldkey3 = 0; heldkey3difference = 0;
+            trueheldkey4 = 0; heldkey4 = 0; heldkey4difference = 0;
+            trueheldkey5 = 0; heldkey5 = 0; heldkey5difference = 0;
+            trueheldkey6 = 0; heldkey6 = 0; heldkey6difference = 0;
+            trueheldkey7 = 0; heldkey7 = 0; heldkey7difference = 0;
+            rootnote = 13; bassnote = 13;
+            return false;
+        }
         smartchordstatus += 1;
-		
+
 		 switch (keycode) {
-		case 0xC38B:    
-            chordkey2 = 1; 
+		case 0xC38B:
+            chordkey2 = 1;
 			chordkey3 = 0;   
 			chordkey4 = 0;
 			chordkey5 = 0;
@@ -15857,6 +15906,10 @@ break;
 			}
 		
     } else {
+        // Toggle mode: skip release handling entirely (chord stays active)
+        if (smartchord_mode == 1) {
+            return false;
+        }
         smartchordstatus -= 1;
 		if (smartchordlight != 3) {smartchordlight = 0;}
 		if (smartchordstatus == 0) {

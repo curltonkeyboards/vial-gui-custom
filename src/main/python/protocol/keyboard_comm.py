@@ -106,6 +106,12 @@ PARAM_VIBRATO_DECAY_TIME = 41      # 0-2000 (milliseconds, 16-bit) - use 2-byte 
 PARAM_MIN_PRESS_TIME = 42          # 0-255 (ms) - minimum time for slow press (full velocity)
 PARAM_MAX_PRESS_TIME = 43          # 0-255 (ms) - maximum time for fast press (min velocity)
 PARAM_SPEED_PEAK_RATIO = 44       # 0-100 = ratio of speed to peak (0=all peak, 100=all speed)
+PARAM_MACRO_OVERRIDE_LIVE_NOTES = 45  # bool: macro notes override live notes
+# SmartChord settings
+PARAM_SMARTCHORD_MODE = 46            # 0=Hold, 1=Toggle
+PARAM_BASE_SMARTCHORD_IGNORE = 47     # 0=Allow, 1=Ignore smartchord for base zone
+PARAM_KEYSPLIT_SMARTCHORD_IGNORE = 48 # 0=Allow, 1=Ignore smartchord for keysplit zone
+PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE = 49  # 0=Allow, 1=Ignore smartchord for triplesplit zone
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
@@ -1744,30 +1750,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "colorblindmode": data[12],
                     "cclooprecording": data[13] != 0,
                     "truesustain": data[14] != 0,
-                    # aftertouch_mode and aftertouch_cc are now per-layer (in layer_actuations)
-                    # Base/Main MIDI velocity settings
-                    "he_velocity_curve": data[15] if len(data) > 15 else 2,
-                    "he_velocity_min": data[16] if len(data) > 16 else 1,
-                    "he_velocity_max": data[17] if len(data) > 17 else 127,
-                    # KeySplit velocity settings
-                    "keysplit_he_velocity_curve": data[18] if len(data) > 18 else 2,
-                    "keysplit_he_velocity_min": data[19] if len(data) > 19 else 1,
-                    "keysplit_he_velocity_max": data[20] if len(data) > 20 else 127,
-                    # TripleSplit velocity settings
-                    "triplesplit_he_velocity_curve": data[21] if len(data) > 21 else 2,
-                    "triplesplit_he_velocity_min": data[22] if len(data) > 22 else 1,
-                    "triplesplit_he_velocity_max": data[23] if len(data) > 23 else 127,
-                    # Sustain settings (0=Ignore, 1=ON)
-                    "base_sustain": data[24] if len(data) > 24 else 0,
-                    "keysplit_sustain": data[25] if len(data) > 25 else 0,
-                    "triplesplit_sustain": data[26] if len(data) > 26 else 0,
-                    # MIDI Routing Override Settings
+                    # MIDI Routing Override Settings (bytes 15-20)
                     "channel_override": data[15] != 0 if len(data) > 15 else False,
                     "velocity_override": data[16] != 0 if len(data) > 16 else False,
                     "transpose_override": data[17] != 0 if len(data) > 17 else False,
                     "midi_in_mode": data[18] if len(data) > 18 else 0,
                     "usb_midi_mode": data[19] if len(data) > 19 else 0,
-                    "midi_clock_source": data[20] if len(data) > 20 else 0
+                    "midi_clock_source": data[20] if len(data) > 20 else 0,
+                    # Macro override live notes (byte 21)
+                    "macro_override_live_notes": data[21] != 0 if len(data) > 21 else False
                 })
                 
             return config if config else None

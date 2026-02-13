@@ -140,6 +140,12 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_VIBRATO_DECAY_TIME             41  // 16-bit, uses 2 bytes
 #define PARAM_MIN_PRESS_TIME                 42  // 16-bit, uses 2 bytes
 #define PARAM_MAX_PRESS_TIME                 43  // 16-bit, uses 2 bytes
+#define PARAM_SPEED_PEAK_RATIO               44
+#define PARAM_MACRO_OVERRIDE_LIVE_NOTES      45
+#define PARAM_SMARTCHORD_MODE                46
+#define PARAM_BASE_SMARTCHORD_IGNORE         47
+#define PARAM_KEYSPLIT_SMARTCHORD_IGNORE      48
+#define PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE   49
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -13291,6 +13297,30 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             keyboard_settings.max_press_time = max_press_time;
             break;
 
+        // Macro override live notes
+        case PARAM_MACRO_OVERRIDE_LIVE_NOTES:
+            macro_override_live_notes = (*value_ptr != 0);
+            keyboard_settings.macro_override_live_notes = macro_override_live_notes;
+            break;
+
+        // SmartChord settings
+        case PARAM_SMARTCHORD_MODE:
+            smartchord_mode = *value_ptr;
+            keyboard_settings.smartchord_mode = smartchord_mode;
+            break;
+        case PARAM_BASE_SMARTCHORD_IGNORE:
+            base_smartchord_ignore = *value_ptr;
+            keyboard_settings.base_smartchord_ignore = base_smartchord_ignore;
+            break;
+        case PARAM_KEYSPLIT_SMARTCHORD_IGNORE:
+            keysplit_smartchord_ignore = *value_ptr;
+            keyboard_settings.keysplit_smartchord_ignore = keysplit_smartchord_ignore;
+            break;
+        case PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE:
+            triplesplit_smartchord_ignore = *value_ptr;
+            keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
+            break;
+
         default:
             dprintf("HID: Unknown param_id: %d\n", param_id);
             return;
@@ -13397,6 +13427,10 @@ static void handle_reset_keyboard_config(void) {
     usb_midi_mode = MIDI_ROUTE_PROCESS_ALL;
     midi_clock_source = CLOCK_SOURCE_LOCAL;
     macro_override_live_notes = false;
+    smartchord_mode = 0;
+    base_smartchord_ignore = 0;
+    keysplit_smartchord_ignore = 0;
+    triplesplit_smartchord_ignore = 0;
 
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
@@ -13437,6 +13471,10 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
     keyboard_settings.macro_override_live_notes = macro_override_live_notes;
+    keyboard_settings.smartchord_mode = smartchord_mode;
+    keyboard_settings.base_smartchord_ignore = base_smartchord_ignore;
+    keyboard_settings.keysplit_smartchord_ignore = keysplit_smartchord_ignore;
+    keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
 
     // Save to EEPROM
     save_keyboard_settings();

@@ -27,7 +27,10 @@ from protocol.keyboard_comm import (
     PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS,
     # MIDI Routing Override Settings
     PARAM_CHANNEL_OVERRIDE, PARAM_VELOCITY_OVERRIDE, PARAM_TRANSPOSE_OVERRIDE,
-    PARAM_MIDI_IN_MODE, PARAM_USB_MIDI_MODE, PARAM_MIDI_CLOCK_SOURCE
+    PARAM_MIDI_IN_MODE, PARAM_USB_MIDI_MODE, PARAM_MIDI_CLOCK_SOURCE,
+    PARAM_MACRO_OVERRIDE_LIVE_NOTES,
+    PARAM_SMARTCHORD_MODE, PARAM_BASE_SMARTCHORD_IGNORE,
+    PARAM_KEYSPLIT_SMARTCHORD_IGNORE, PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE
 )
 from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from util import tr
@@ -1930,6 +1933,35 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.base_sustain.lineEdit().setReadOnly(True)
         self.base_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         base_layout.addWidget(self.base_sustain, row, 1)
+        row += 1
+
+        # SmartChord Ignore with help
+        sc_ignore_label_container = QWidget()
+        sc_ignore_label_layout = QHBoxLayout()
+        sc_ignore_label_layout.setContentsMargins(0, 0, 0, 0)
+        sc_ignore_label_layout.setSpacing(5)
+        sc_ignore_label_layout.addWidget(self.create_help_label(
+            "SmartChord behavior for base zone keys:\n"
+            "Allow: SmartChord adds harmony notes\n"
+            "Ignore: SmartChord has no effect on these keys"
+        ))
+        sc_ignore_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord:")))
+        sc_ignore_label_layout.addStretch()
+        sc_ignore_label_container.setLayout(sc_ignore_label_layout)
+        base_layout.addWidget(sc_ignore_label_container, row, 0)
+
+        self.base_smartchord_ignore = ArrowComboBox()
+        self.base_smartchord_ignore.setMinimumWidth(80)
+        self.base_smartchord_ignore.setMaximumWidth(120)
+        self.base_smartchord_ignore.setMinimumHeight(25)
+        self.base_smartchord_ignore.setMaximumHeight(25)
+        self.base_smartchord_ignore.addItem("Allow", 0)
+        self.base_smartchord_ignore.addItem("Ignore", 1)
+        self.base_smartchord_ignore.setCurrentIndex(0)
+        self.base_smartchord_ignore.setEditable(True)
+        self.base_smartchord_ignore.lineEdit().setReadOnly(True)
+        self.base_smartchord_ignore.lineEdit().setAlignment(Qt.AlignCenter)
+        base_layout.addWidget(self.base_smartchord_ignore, row, 1)
 
         # KeySplit Settings container
         self.keysplit_offshoot = QGroupBox()
@@ -2143,6 +2175,35 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.keysplit_sustain.lineEdit().setReadOnly(True)
         self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.keysplit_sustain, ks_row, 1, 1, 2)
+        ks_row += 1
+
+        # SmartChord Ignore with help
+        ks_sc_label = QWidget()
+        ks_sc_label_layout = QHBoxLayout()
+        ks_sc_label_layout.setContentsMargins(0, 0, 0, 0)
+        ks_sc_label_layout.setSpacing(3)
+        ks_sc_label_layout.addWidget(self.create_help_label(
+            "SmartChord behavior for KeySplit keys:\n"
+            "Allow: SmartChord adds harmony notes\n"
+            "Ignore: SmartChord has no effect on these keys"
+        ))
+        ks_sc_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord:")))
+        ks_sc_label_layout.addStretch()
+        ks_sc_label.setLayout(ks_sc_label_layout)
+        keysplit_layout.addWidget(ks_sc_label, ks_row, 0)
+
+        self.keysplit_smartchord_ignore = ArrowComboBox()
+        self.keysplit_smartchord_ignore.setMinimumWidth(80)
+        self.keysplit_smartchord_ignore.setMaximumWidth(120)
+        self.keysplit_smartchord_ignore.setMinimumHeight(25)
+        self.keysplit_smartchord_ignore.setMaximumHeight(25)
+        self.keysplit_smartchord_ignore.addItem("Allow", 0)
+        self.keysplit_smartchord_ignore.addItem("Ignore", 1)
+        self.keysplit_smartchord_ignore.setCurrentIndex(0)
+        self.keysplit_smartchord_ignore.setEditable(True)
+        self.keysplit_smartchord_ignore.lineEdit().setReadOnly(True)
+        self.keysplit_smartchord_ignore.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_smartchord_ignore, ks_row, 1, 1, 2)
 
         # TripleSplit Settings container
         self.triplesplit_offshoot = QGroupBox()
@@ -2356,6 +2417,35 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.triplesplit_sustain.lineEdit().setReadOnly(True)
         self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         triplesplit_layout.addWidget(self.triplesplit_sustain, ts_row, 1, 1, 2)
+        ts_row += 1
+
+        # SmartChord Ignore with help
+        ts_sc_label = QWidget()
+        ts_sc_label_layout = QHBoxLayout()
+        ts_sc_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_sc_label_layout.setSpacing(3)
+        ts_sc_label_layout.addWidget(self.create_help_label(
+            "SmartChord behavior for TripleSplit keys:\n"
+            "Allow: SmartChord adds harmony notes\n"
+            "Ignore: SmartChord has no effect on these keys"
+        ))
+        ts_sc_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord:")))
+        ts_sc_label_layout.addStretch()
+        ts_sc_label.setLayout(ts_sc_label_layout)
+        triplesplit_layout.addWidget(ts_sc_label, ts_row, 0)
+
+        self.triplesplit_smartchord_ignore = ArrowComboBox()
+        self.triplesplit_smartchord_ignore.setMinimumWidth(80)
+        self.triplesplit_smartchord_ignore.setMaximumWidth(120)
+        self.triplesplit_smartchord_ignore.setMinimumHeight(25)
+        self.triplesplit_smartchord_ignore.setMaximumHeight(25)
+        self.triplesplit_smartchord_ignore.addItem("Allow", 0)
+        self.triplesplit_smartchord_ignore.addItem("Ignore", 1)
+        self.triplesplit_smartchord_ignore.setCurrentIndex(0)
+        self.triplesplit_smartchord_ignore.setEditable(True)
+        self.triplesplit_smartchord_ignore.lineEdit().setReadOnly(True)
+        self.triplesplit_smartchord_ignore.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.triplesplit_smartchord_ignore, ts_row, 1, 1, 2)
 
         # Create wrapper for keysplit with title above
         keysplit_wrapper = QWidget()
@@ -2620,6 +2710,30 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light.addItem("8 Track Looper", 1)
         loop_layout.addWidget(self.smart_chord_light, 3, 2)
 
+        # Macro Override Live Notes with help
+        macro_override_label = QWidget()
+        macro_override_label_layout = QHBoxLayout()
+        macro_override_label_layout.setContentsMargins(0, 0, 0, 0)
+        macro_override_label_layout.setSpacing(5)
+        macro_override_label_layout.addWidget(self.create_help_label(
+            "Control how macro playback interacts with live notes.\n"
+            "Off: Macro skips notes that are currently held live\n"
+            "On: Macro plays notes even when held live"
+        ))
+        macro_override_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Macro Override:")))
+        macro_override_label.setLayout(macro_override_label_layout)
+        loop_layout.addWidget(macro_override_label, 3, 3)
+        self.macro_override_live_notes = ArrowComboBox()
+        self.macro_override_live_notes.setMinimumWidth(120)
+        self.macro_override_live_notes.setMinimumHeight(25)
+        self.macro_override_live_notes.setMaximumHeight(25)
+        self.macro_override_live_notes.setEditable(True)
+        self.macro_override_live_notes.lineEdit().setReadOnly(True)
+        self.macro_override_live_notes.lineEdit().setAlignment(Qt.AlignCenter)
+        self.macro_override_live_notes.addItem("Off", False)
+        self.macro_override_live_notes.addItem("On", True)
+        loop_layout.addWidget(self.macro_override_live_notes, 3, 4)
+
         # Advanced Settings Group with title on left, container centered
         advanced_row_container = QWidget()
         advanced_row_layout = QHBoxLayout()
@@ -2869,6 +2983,30 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
 
+        # SmartChord Mode with help
+        sc_mode_label = QWidget()
+        sc_mode_label_layout = QHBoxLayout()
+        sc_mode_label_layout.setContentsMargins(0, 0, 0, 0)
+        sc_mode_label_layout.setSpacing(5)
+        sc_mode_label_layout.addWidget(self.create_help_label(
+            "How the SmartChord button activates.\n"
+            "Hold: SmartChord active while button is held\n"
+            "Toggle: Button toggles SmartChord on/off"
+        ))
+        sc_mode_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord Mode:")))
+        sc_mode_label.setLayout(sc_mode_label_layout)
+        advanced_layout.addWidget(sc_mode_label, 4, 3)
+        self.smartchord_mode = ArrowComboBox()
+        self.smartchord_mode.setMinimumWidth(120)
+        self.smartchord_mode.setMinimumHeight(25)
+        self.smartchord_mode.setMaximumHeight(25)
+        self.smartchord_mode.setEditable(True)
+        self.smartchord_mode.lineEdit().setReadOnly(True)
+        self.smartchord_mode.lineEdit().setAlignment(Qt.AlignCenter)
+        self.smartchord_mode.addItem("Hold", 0)
+        self.smartchord_mode.addItem("Toggle", 1)
+        advanced_layout.addWidget(self.smartchord_mode, 4, 4)
+
         # Aftertouch is now per-layer (configured in Layer Actuation section)
         aftertouch_note = QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch: Per-Layer"))
         aftertouch_note.setStyleSheet("QLabel { color: #888; font-style: italic; }")
@@ -2877,7 +3015,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "Go to the Layer Actuation section to configure\n"
             "aftertouch mode and CC number for each layer."
         )
-        advanced_layout.addWidget(aftertouch_note, 4, 3, 1, 2)  # Spans cols 3-4
+        advanced_layout.addWidget(aftertouch_note, 5, 1, 1, 2)  # Moved to row 5
 
         # MIDI Routing Settings Group with title on left, container centered
         routing_row_container = QWidget()
@@ -3160,6 +3298,27 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             lambda: self.send_param_update(PARAM_MIDI_CLOCK_SOURCE, self.midi_clock_source.currentData())
         )
 
+        # Macro Override Live Notes
+        self.macro_override_live_notes.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_MACRO_OVERRIDE_LIVE_NOTES, 1 if self.macro_override_live_notes.currentData() else 0)
+        )
+
+        # SmartChord Mode
+        self.smartchord_mode.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_SMARTCHORD_MODE, self.smartchord_mode.currentData())
+        )
+
+        # SmartChord Ignore per zone
+        self.base_smartchord_ignore.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_BASE_SMARTCHORD_IGNORE, self.base_smartchord_ignore.currentData())
+        )
+        self.keysplit_smartchord_ignore.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLIT_SMARTCHORD_IGNORE, self.keysplit_smartchord_ignore.currentData())
+        )
+        self.triplesplit_smartchord_ignore.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE, self.triplesplit_smartchord_ignore.currentData())
+        )
+
     def send_param_update(self, param_id, value):
         """Send real-time HID parameter update to keyboard"""
         try:
@@ -3283,7 +3442,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "transpose_override": self.transpose_override.currentData(),
             "midi_in_mode": self.midi_in_mode.currentData(),
             "usb_midi_mode": self.usb_midi_mode.currentData(),
-            "midi_clock_source": self.midi_clock_source.currentData()
+            "midi_clock_source": self.midi_clock_source.currentData(),
+            # Macro override live notes
+            "macro_override_live_notes": self.macro_override_live_notes.currentData(),
+            # SmartChord settings
+            "smartchord_mode": self.smartchord_mode.currentData(),
+            "base_smartchord_ignore": self.base_smartchord_ignore.currentData(),
+            "keysplit_smartchord_ignore": self.keysplit_smartchord_ignore.currentData(),
+            "triplesplit_smartchord_ignore": self.triplesplit_smartchord_ignore.currentData()
         }
 
     def apply_settings(self, config):
@@ -3384,6 +3550,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.midi_in_mode, config.get("midi_in_mode"), 0)
         set_combo_by_data(self.usb_midi_mode, config.get("usb_midi_mode"), 0)
         set_combo_by_data(self.midi_clock_source, config.get("midi_clock_source"), 0)
+        # Macro override live notes
+        set_combo_by_data(self.macro_override_live_notes, config.get("macro_override_live_notes"), False)
+        # SmartChord settings
+        set_combo_by_data(self.smartchord_mode, config.get("smartchord_mode"), 0)
+        set_combo_by_data(self.base_smartchord_ignore, config.get("base_smartchord_ignore"), 0)
+        set_combo_by_data(self.keysplit_smartchord_ignore, config.get("keysplit_smartchord_ignore"), 0)
+        set_combo_by_data(self.triplesplit_smartchord_ignore, config.get("triplesplit_smartchord_ignore"), 0)
 
     def pack_basic_data(self, settings):
         """Pack basic settings into 22-byte structure
@@ -3426,8 +3599,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 21-byte structure (expanded for MIDI routing overrides)"""
-        data = bytearray(21)
+        """Pack advanced settings into 22-byte structure"""
+        data = bytearray(22)
 
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
@@ -3452,6 +3625,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings.get("midi_in_mode", 0); offset += 1
         data[offset] = settings.get("usb_midi_mode", 0); offset += 1
         data[offset] = settings.get("midi_clock_source", 0); offset += 1
+        # Macro override live notes (byte 21)
+        data[offset] = 1 if settings.get("macro_override_live_notes", False) else 0; offset += 1
 
         return data
     
@@ -3593,7 +3768,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "transpose_override": False,
             "midi_in_mode": 0,
             "usb_midi_mode": 0,
-            "midi_clock_source": 0
+            "midi_clock_source": 0,
+            # Macro override live notes
+            "macro_override_live_notes": False,
+            # SmartChord settings
+            "smartchord_mode": 0,
+            "base_smartchord_ignore": 0,
+            "keysplit_smartchord_ignore": 0,
+            "triplesplit_smartchord_ignore": 0
         }
         self.apply_settings(defaults)
     

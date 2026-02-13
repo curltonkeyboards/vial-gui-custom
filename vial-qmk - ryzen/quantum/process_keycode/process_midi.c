@@ -722,7 +722,7 @@ void midi_send_pitchbend_with_recording(uint8_t channel, int16_t bend_value) {
     dprintf("midi: sent Pitchbend ch:%d value:%d\n", channel, bend_value);
 }
 
-void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
+void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel, uint8_t note_type) {
     // Velocity has already been calculated by the caller via get_he_velocity_from_position()
     // or apply_he_velocity_from_record(). Do NOT re-process it here.
     uint8_t final_velocity = velocity;
@@ -734,10 +734,22 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
     extern bool arp_is_active(void);
     bool arp_suppressed = arp_is_active();
 
+    // Check if this note type should ignore smartchord
+    bool ignore_smartchord = false;
+    if (note_type == 0 && base_smartchord_ignore == 1) {
+        ignore_smartchord = true;
+    } else if (note_type == 1 && keysplit_smartchord_ignore == 1) {
+        ignore_smartchord = true;
+    } else if (note_type == 2 && triplesplit_smartchord_ignore == 1) {
+        ignore_smartchord = true;
+    }
+
     if (!arp_suppressed) {
         midi_send_noteon(&midi_device, channel, note, final_velocity);
-        smartchordaddnotes(channel, note, final_velocity);
-        smartchorddisplayupdates(note);
+        if (!ignore_smartchord) {
+            smartchordaddnotes(channel, note, final_velocity);
+            smartchorddisplayupdates(note);
+        }
     }
 
     // Always update display and live note tracking (arp reads live_notes[])
@@ -819,7 +831,18 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
         return;
     }
 
-    smartchordremovenotes(channel, note, velocity);
+    // Check if this note type should ignore smartchord for note-off
+    bool ignore_smartchord_off = false;
+    if (note_type == 0 && base_smartchord_ignore == 1) {
+        ignore_smartchord_off = true;
+    } else if (note_type == 1 && keysplit_smartchord_ignore == 1) {
+        ignore_smartchord_off = true;
+    } else if (note_type == 2 && triplesplit_smartchord_ignore == 1) {
+        ignore_smartchord_off = true;
+    }
+    if (!ignore_smartchord_off) {
+        smartchordremovenotes(channel, note, velocity);
+    }
 
     // Use raw_travel if available, otherwise use velocity as fallback
     uint8_t travel_for_recording = (raw_travel > 0) ? raw_travel : velocity;
@@ -960,7 +983,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t note = midi_compute_note(keycode);
                 // Store final velocity for GUI polling (shows actual sent velocity)
                 analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
-                midi_send_noteon_with_recording(channel, note, velocity, raw_travel);
+                midi_send_noteon_with_recording(channel, note, velocity, raw_travel, 0);  // note_type=0 (base)
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, note, velocity);
                 tone_status[1][tone] += 1;
                 if (tone_status[0][tone] == MIDI_INVALID_NOTE) {
@@ -1008,7 +1031,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t noteb = midi_compute_note2(keycode);
                 // Store final velocity for GUI polling (shows actual sent velocity)
                 analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
-                midi_send_noteon_with_recording(channel, noteb, velocity, raw_travel);
+                midi_send_noteon_with_recording(channel, noteb, velocity, raw_travel, 1);  // note_type=1 (keysplit)
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, noteb, velocity);
                 toneb_status[1][toneb] += 1;
                 if (toneb_status[0][toneb] == MIDI_INVALID_NOTE) {
@@ -1055,7 +1078,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t notec = midi_compute_note3(keycode);
                 // Store final velocity for GUI polling (shows actual sent velocity)
                 analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
-                midi_send_noteon_with_recording(channel, notec, velocity, raw_travel);
+                midi_send_noteon_with_recording(channel, notec, velocity, raw_travel, 2);  // note_type=2 (triplesplit)
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, notec, velocity);
                 tonec_status[1][tonec] += 1;
                 if (tonec_status[0][tonec] == MIDI_INVALID_NOTE) {

@@ -1523,7 +1523,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     // Send note-off (respects sustain/queue) then note-on directly
                     uint8_t raw_travel = (travel * 255) / 240;
                     midi_send_noteoff_with_recording(state->note_channel, state->midi_note, 127, 0, state->zone_type);
-                    midi_send_noteon_with_recording(state->note_channel, state->midi_note, velocity, raw_travel);
+                    midi_send_noteon_with_recording(state->note_channel, state->midi_note, velocity, raw_travel, state->zone_type);
 
                     // Store for GUI display
                     analog_matrix_store_final_velocity(row, col, velocity);
