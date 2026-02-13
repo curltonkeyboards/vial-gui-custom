@@ -826,6 +826,17 @@ static void update_calibration(uint32_t key_idx) {
         if (abs((int)key->adc_filtered - (int)key->stable_start_adc) >= stability_threshold) {
             key->is_stable = false;
         }
+        // Micro-drift guard: if ADC has moved meaningfully (> CALIBRATION_EPSILON)
+        // from where stability started, the key is still considered "stable" for
+        // general purposes, but restart the 10-second timer and update the reference.
+        // This prevents slow presses from accumulating enough stable time to
+        // incorrectly recalibrate the rest value (the old timer from when the key
+        // was truly at rest would carry over into the slow press). Temperature drift
+        // is slow enough that 10 seconds of post-drift stability is easily achieved.
+        else if (abs((int)key->adc_filtered - (int)key->stable_start_adc) > CALIBRATION_EPSILON) {
+            key->stable_time = now;
+            key->stable_start_adc = key->adc_filtered;
+        }
     } else {
         key->is_stable = false;
     }
