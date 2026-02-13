@@ -18,9 +18,9 @@ from protocol.constants import VIAL_PROTOCOL_MATRIX_TESTER
 from tabbed_keycodes import GamepadWidget, DpadButton
 from protocol.keyboard_comm import (
     PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
-    PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
-    PARAM_KEYSPLIT_HE_VELOCITY_CURVE, PARAM_KEYSPLIT_HE_VELOCITY_MIN, PARAM_KEYSPLIT_HE_VELOCITY_MAX,
-    PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, PARAM_TRIPLESPLIT_HE_VELOCITY_MAX,
+    PARAM_HE_VELOCITY_CURVE,
+    PARAM_KEYSPLIT_HE_VELOCITY_CURVE,
+    PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE,
     # PARAM_AFTERTOUCH_MODE and PARAM_AFTERTOUCH_CC removed - aftertouch is now per-layer
     PARAM_BASE_SUSTAIN, PARAM_KEYSPLIT_SUSTAIN, PARAM_TRIPLESPLIT_SUSTAIN,
     PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS,
@@ -1856,55 +1856,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         base_layout.addWidget(self.global_velocity_curve, row, 1)
         row += 1
 
-        # Velocity Min with help
-        velocity_min_label_container = QWidget()
-        velocity_min_label_layout = QHBoxLayout()
-        velocity_min_label_layout.setContentsMargins(0, 0, 0, 0)
-        velocity_min_label_layout.setSpacing(5)
-        velocity_min_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity value (1-127)"))
-        velocity_min_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
-        velocity_min_label_layout.addStretch()
-        velocity_min_label_container.setLayout(velocity_min_label_layout)
-        base_layout.addWidget(velocity_min_label_container, row, 0)
-
-        self.global_velocity_min = QSlider(Qt.Horizontal)
-        self.global_velocity_min.setMinimum(1)
-        self.global_velocity_min.setMaximum(127)
-        self.global_velocity_min.setValue(1)
-        base_layout.addWidget(self.global_velocity_min, row, 1)
-        self.velocity_min_value_label = QLabel("1")
-        self.velocity_min_value_label.setMinimumWidth(30)
-        self.velocity_min_value_label.setAlignment(Qt.AlignCenter)
-        base_layout.addWidget(self.velocity_min_value_label, row, 2)
-        self.global_velocity_min.valueChanged.connect(
-            lambda v: self.velocity_min_value_label.setText(str(v))
-        )
-        row += 1
-
-        # Velocity Max with help
-        velocity_max_label_container = QWidget()
-        velocity_max_label_layout = QHBoxLayout()
-        velocity_max_label_layout.setContentsMargins(0, 0, 0, 0)
-        velocity_max_label_layout.setSpacing(5)
-        velocity_max_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity value (1-127)"))
-        velocity_max_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
-        velocity_max_label_layout.addStretch()
-        velocity_max_label_container.setLayout(velocity_max_label_layout)
-        base_layout.addWidget(velocity_max_label_container, row, 0)
-
-        self.global_velocity_max = QSlider(Qt.Horizontal)
-        self.global_velocity_max.setMinimum(1)
-        self.global_velocity_max.setMaximum(127)
-        self.global_velocity_max.setValue(127)
-        base_layout.addWidget(self.global_velocity_max, row, 1)
-        self.velocity_max_value_label = QLabel("127")
-        self.velocity_max_value_label.setMinimumWidth(30)
-        self.velocity_max_value_label.setAlignment(Qt.AlignCenter)
-        base_layout.addWidget(self.velocity_max_value_label, row, 2)
-        self.global_velocity_max.valueChanged.connect(
-            lambda v: self.velocity_max_value_label.setText(str(v))
-        )
-        row += 1
+        # Velocity min/max removed - now configured per velocity preset
 
         # Sustain with help
         sustain_label_container = QWidget()
@@ -2102,51 +2054,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         keysplit_layout.addWidget(self.keysplit_velocity_enable, ks_row, 2)
         ks_row += 1
 
-        # Velocity Min with help
-        vmin_label = QWidget()
-        vmin_label_layout = QHBoxLayout()
-        vmin_label_layout.setContentsMargins(0, 0, 0, 0)
-        vmin_label_layout.setSpacing(3)
-        vmin_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity (1-127) for KeySplit keys"))
-        vmin_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
-        vmin_label_layout.addStretch()
-        vmin_label.setLayout(vmin_label_layout)
-        keysplit_layout.addWidget(vmin_label, ks_row, 0)
-
-        self.velocity_min2 = QSlider(Qt.Horizontal)
-        self.velocity_min2.setMinimum(1)
-        self.velocity_min2.setMaximum(127)
-        self.velocity_min2.setValue(1)
-        keysplit_layout.addWidget(self.velocity_min2, ks_row, 1)
-        self.velocity_min2_value = QLabel("1")
-        self.velocity_min2_value.setMinimumWidth(30)
-        self.velocity_min2_value.setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_min2_value, ks_row, 2)
-        self.velocity_min2.valueChanged.connect(lambda v: self.velocity_min2_value.setText(str(v)))
-        ks_row += 1
-
-        # Velocity Max with help
-        vmax_label = QWidget()
-        vmax_label_layout = QHBoxLayout()
-        vmax_label_layout.setContentsMargins(0, 0, 0, 0)
-        vmax_label_layout.setSpacing(3)
-        vmax_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity (1-127) for KeySplit keys"))
-        vmax_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
-        vmax_label_layout.addStretch()
-        vmax_label.setLayout(vmax_label_layout)
-        keysplit_layout.addWidget(vmax_label, ks_row, 0)
-
-        self.velocity_max2 = QSlider(Qt.Horizontal)
-        self.velocity_max2.setMinimum(1)
-        self.velocity_max2.setMaximum(127)
-        self.velocity_max2.setValue(127)
-        keysplit_layout.addWidget(self.velocity_max2, ks_row, 1)
-        self.velocity_max2_value = QLabel("127")
-        self.velocity_max2_value.setMinimumWidth(30)
-        self.velocity_max2_value.setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_max2_value, ks_row, 2)
-        self.velocity_max2.valueChanged.connect(lambda v: self.velocity_max2_value.setText(str(v)))
-        ks_row += 1
+        # Velocity min/max removed - now configured per velocity preset
 
         # Sustain with help
         sus_label = QWidget()
@@ -2344,51 +2252,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         triplesplit_layout.addWidget(self.triplesplit_velocity_enable, ts_row, 2)
         ts_row += 1
 
-        # Velocity Min with help
-        ts_vmin_label = QWidget()
-        ts_vmin_label_layout = QHBoxLayout()
-        ts_vmin_label_layout.setContentsMargins(0, 0, 0, 0)
-        ts_vmin_label_layout.setSpacing(3)
-        ts_vmin_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity (1-127) for TripleSplit keys"))
-        ts_vmin_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
-        ts_vmin_label_layout.addStretch()
-        ts_vmin_label.setLayout(ts_vmin_label_layout)
-        triplesplit_layout.addWidget(ts_vmin_label, ts_row, 0)
-
-        self.velocity_min3 = QSlider(Qt.Horizontal)
-        self.velocity_min3.setMinimum(1)
-        self.velocity_min3.setMaximum(127)
-        self.velocity_min3.setValue(1)
-        triplesplit_layout.addWidget(self.velocity_min3, ts_row, 1)
-        self.velocity_min3_value = QLabel("1")
-        self.velocity_min3_value.setMinimumWidth(30)
-        self.velocity_min3_value.setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.velocity_min3_value, ts_row, 2)
-        self.velocity_min3.valueChanged.connect(lambda v: self.velocity_min3_value.setText(str(v)))
-        ts_row += 1
-
-        # Velocity Max with help
-        ts_vmax_label = QWidget()
-        ts_vmax_label_layout = QHBoxLayout()
-        ts_vmax_label_layout.setContentsMargins(0, 0, 0, 0)
-        ts_vmax_label_layout.setSpacing(3)
-        ts_vmax_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity (1-127) for TripleSplit keys"))
-        ts_vmax_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
-        ts_vmax_label_layout.addStretch()
-        ts_vmax_label.setLayout(ts_vmax_label_layout)
-        triplesplit_layout.addWidget(ts_vmax_label, ts_row, 0)
-
-        self.velocity_max3 = QSlider(Qt.Horizontal)
-        self.velocity_max3.setMinimum(1)
-        self.velocity_max3.setMaximum(127)
-        self.velocity_max3.setValue(127)
-        triplesplit_layout.addWidget(self.velocity_max3, ts_row, 1)
-        self.velocity_max3_value = QLabel("127")
-        self.velocity_max3_value.setMinimumWidth(30)
-        self.velocity_max3_value.setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.velocity_max3_value, ts_row, 2)
-        self.velocity_max3.valueChanged.connect(lambda v: self.velocity_max3_value.setText(str(v)))
-        ts_row += 1
+        # Velocity min/max removed - now configured per velocity preset
 
         # Sustain with help
         ts_sus_label = QWidget()
@@ -3219,14 +3083,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_curve.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_HE_VELOCITY_CURVE, self.global_velocity_curve.currentData())
         )
-        self.global_velocity_min.valueChanged.connect(
-            lambda v: [self.velocity_min_value_label.setText(str(v)),
-                      self.send_param_update(PARAM_HE_VELOCITY_MIN, v)]
-        )
-        self.global_velocity_max.valueChanged.connect(
-            lambda v: [self.velocity_max_value_label.setText(str(v)),
-                      self.send_param_update(PARAM_HE_VELOCITY_MAX, v)]
-        )
+        # Velocity min/max connections removed - now per velocity preset
         self.base_sustain.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_BASE_SUSTAIN, self.base_sustain.currentData())
         )
@@ -3242,14 +3099,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_curve2.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_CURVE, self.velocity_curve2.currentData())
         )
-        self.velocity_min2.valueChanged.connect(
-            lambda v: [self.velocity_min2_value.setText(str(v)),
-                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MIN, v)]
-        )
-        self.velocity_max2.valueChanged.connect(
-            lambda v: [self.velocity_max2_value.setText(str(v)),
-                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MAX, v)]
-        )
+        # Velocity min/max connections removed - now per velocity preset
         self.keysplit_sustain.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_KEYSPLIT_SUSTAIN, self.keysplit_sustain.currentData())
         )
@@ -3264,14 +3114,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_curve3.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, self.velocity_curve3.currentData())
         )
-        self.velocity_min3.valueChanged.connect(
-            lambda v: [self.velocity_min3_value.setText(str(v)),
-                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, v)]
-        )
-        self.velocity_max3.valueChanged.connect(
-            lambda v: [self.velocity_max3_value.setText(str(v)),
-                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MAX, v)]
-        )
+        # Velocity min/max connections removed - now per velocity preset
         self.triplesplit_sustain.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_TRIPLESPLIT_SUSTAIN, self.triplesplit_sustain.currentData())
         )
@@ -3417,20 +3260,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "colorblindmode": self.colorblind_mode.currentData(),
             "cclooprecording": self.cc_loop_recording.currentData(),
             "truesustain": self.true_sustain.currentData(),
-            # KeySplit/TripleSplit velocity settings
+            # KeySplit/TripleSplit velocity settings (curve only - min/max now per velocity preset)
             "velocity_curve2": self.velocity_curve2.currentData(),
-            "velocity_min2": self.velocity_min2.value(),  # Changed from currentData() to value()
-            "velocity_max2": self.velocity_max2.value(),  # Changed from currentData() to value()
             "velocity_curve3": self.velocity_curve3.currentData(),
-            "velocity_min3": self.velocity_min3.value(),  # Changed from currentData() to value()
-            "velocity_max3": self.velocity_max3.value(),  # Changed from currentData() to value()
             # Global MIDI settings
             "global_transpose": self.global_transpose.currentData(),
             "global_channel": self.global_channel.currentData(),
             "global_velocity_curve": self.global_velocity_curve.currentData(),
-            # global_aftertouch removed - now per-layer
-            "global_velocity_min": self.global_velocity_min.value(),  # Changed from currentData() to value()
-            "global_velocity_max": self.global_velocity_max.value(),  # Changed from currentData() to value()
             # global_aftertouch_cc removed - now per-layer
             # Sustain settings
             "base_sustain": self.base_sustain.currentData(),
@@ -3524,21 +3360,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.colorblind_mode, config.get("colorblindmode"), 0)
         set_combo_by_data(self.cc_loop_recording, config.get("cclooprecording"), False)
         set_combo_by_data(self.true_sustain, config.get("truesustain"), False)
-        # KeySplit/TripleSplit velocity settings
+        # KeySplit/TripleSplit velocity settings (curve only - min/max now per velocity preset)
         set_combo_by_data(self.velocity_curve2, config.get("velocity_curve2"), 2)
-        self.velocity_min2.setValue(config.get("velocity_min2", 1))  # Changed to slider setValue
-        self.velocity_max2.setValue(config.get("velocity_max2", 127))  # Changed to slider setValue
         set_combo_by_data(self.velocity_curve3, config.get("velocity_curve3"), 2)
-        self.velocity_min3.setValue(config.get("velocity_min3", 1))  # Changed to slider setValue
-        self.velocity_max3.setValue(config.get("velocity_max3", 127))  # Changed to slider setValue
         # Global MIDI settings
         set_combo_by_data(self.global_transpose, config.get("global_transpose"), 0)
         set_combo_by_data(self.global_channel, config.get("global_channel"), 0)
         set_combo_by_data(self.global_velocity_curve, config.get("global_velocity_curve"), 2)
-        # global_aftertouch removed - now per-layer
-        self.global_velocity_min.setValue(config.get("global_velocity_min", 1))  # Changed to slider setValue
-        self.global_velocity_max.setValue(config.get("global_velocity_max", 127))  # Changed to slider setValue
-        # global_aftertouch_cc removed - now per-layer
         # Sustain settings
         set_combo_by_data(self.base_sustain, config.get("base_sustain"), 0)
         set_combo_by_data(self.keysplit_sustain, config.get("keysplit_sustain"), 0)
@@ -3635,16 +3463,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
-            
+
             settings = self.get_current_settings()
-            
+
             basic_data = self.pack_basic_data(settings)
+            print(f"[MIDI Settings] Saving slot {slot}: basic_data={len(basic_data)} bytes: {basic_data.hex()}")
             if not self.device.keyboard.save_midi_slot(slot, basic_data):
-                raise RuntimeError(f"Failed to save to slot {slot}")
-            
+                raise RuntimeError(f"Failed to save basic data to slot {slot}")
+
+            print(f"[MIDI Settings] Basic data saved OK, sending advanced data in 50ms...")
             QtCore.QTimer.singleShot(50, lambda: self._send_advanced_data(settings))
-            
+
         except Exception as e:
+            print(f"[MIDI Settings] Save error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to save to slot {slot}: {str(e)}")
     
     def _send_advanced_data(self, settings):
@@ -3652,11 +3483,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 return
-                
+
             advanced_data = self.pack_advanced_data(settings)
+            print(f"[MIDI Settings] Sending advanced data: {len(advanced_data)} bytes: {advanced_data.hex()}")
             if not self.device.keyboard.set_midi_advanced_config(advanced_data):
                 raise RuntimeError("Failed to send advanced config")
+            print(f"[MIDI Settings] Advanced data sent OK")
         except Exception as e:
+            print(f"[MIDI Settings] Advanced data error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to send advanced data: {str(e)}")
     
     def on_load_slot(self, slot):
@@ -3664,27 +3498,33 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
-                
+
+            print(f"[MIDI Settings] Loading slot {slot}...")
             if not self.device.keyboard.load_midi_slot(slot):
                 raise RuntimeError(f"Failed to load from slot {slot}")
-                
+
+            print(f"[MIDI Settings] Slot {slot} load command OK, fetching config in 100ms...")
             # Small delay then get the loaded configuration
             QtCore.QTimer.singleShot(100, lambda: self._load_config_after_slot_load(slot))
-                
+
         except Exception as e:
+            print(f"[MIDI Settings] Load error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to load from slot {slot}: {str(e)}")
-    
+
     def _load_config_after_slot_load(self, slot):
         """Get and apply configuration after slot load"""
         try:
             config = self.device.keyboard.get_midi_config()
-            
+
             if not config:
                 raise RuntimeError("Failed to get config after slot load")
-            
+
+            print(f"[MIDI Settings] Loaded config from slot {slot}: {config}")
             self.apply_settings(config)
-            
+            print(f"[MIDI Settings] Settings applied to UI")
+
         except Exception as e:
+            print(f"[MIDI Settings] Apply config error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to apply loaded config: {str(e)}")
     
     def on_load_current_settings(self):
@@ -3747,18 +3587,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "cclooprecording": False,
             "truesustain": False,
             "velocity_curve2": 2,
-            "velocity_min2": 1,
-            "velocity_max2": 127,
             "velocity_curve3": 2,
-            "velocity_min3": 1,
-            "velocity_max3": 127,
             "global_transpose": 0,
             "global_channel": 0,
             "global_velocity_curve": 2,
-            # global_aftertouch removed - now per-layer
-            "global_velocity_min": 1,
-            "global_velocity_max": 127,
-            # global_aftertouch_cc removed - now per-layer
             "base_sustain": 0,
             "keysplit_sustain": 0,
             "triplesplit_sustain": 0,

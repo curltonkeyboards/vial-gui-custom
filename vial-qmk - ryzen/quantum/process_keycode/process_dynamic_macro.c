@@ -12213,7 +12213,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			break;
 
 		case HID_CMD_SET_KEYBOARD_CONFIG: // 0xB6
-            if (length >= 41) { // Header + 35 data bytes minimum (expanded for velocity curve/min/max)
+            if (length >= 28) { // Header (6) + 22 basic data bytes
                 handle_set_keyboard_config(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG, 0, 0, NULL, 0); // Success
             } else {
@@ -12241,10 +12241,11 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             break;
 
         case HID_CMD_SAVE_KEYBOARD_SLOT: // 0x53
-            if (length >= 41) { // Header + slot + 35 data bytes minimum (expanded for velocity curve/min/max)
+            if (length >= 29) { // Header (6) + slot (1) + 22 basic data bytes
                 handle_save_keyboard_slot(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SAVE_KEYBOARD_SLOT, 0, 0, NULL, 0); // Success
             } else {
+                dprintf("HID: Save slot packet too short: %d bytes (need 29)\n", length);
                 send_hid_response(HID_CMD_SAVE_KEYBOARD_SLOT, 0, 1, NULL, 0); // Error
             }
             break;
@@ -13332,9 +13333,9 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
 
 static void handle_get_keyboard_config(void) {
     load_keyboard_settings();
-    
-    // Packet 1: Basic settings (35 bytes - expanded for velocity curve/min/max)
-    uint8_t config_packet1[35];
+
+    // Packet 1: Basic settings (22 bytes)
+    uint8_t config_packet1[22];
     uint8_t* ptr = config_packet1;
 
     *(int32_t*)ptr = keyboard_settings.velocity_sensitivity; ptr += 4;
@@ -13515,8 +13516,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     dprintf("HID: Loaded keyboard config from slot %d\n", slot);
     
     // Send the loaded configuration back to the webapp using two packets
-    // Packet 1: Basic settings (35 bytes - expanded for velocity curve/min/max)
-    uint8_t config_packet1[35];
+    // Packet 1: Basic settings (22 bytes)
+    uint8_t config_packet1[22];
     uint8_t* ptr = config_packet1;
 
     *(int32_t*)ptr = keyboard_settings.velocity_sensitivity; ptr += 4;
