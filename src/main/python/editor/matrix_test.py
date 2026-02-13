@@ -1646,9 +1646,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         scroll_area.setWidget(main_widget)
         self.tabs_widget.addTab(scroll_area, "MIDI Settings")
 
-        # Tab 2: ThruLoop (created and added after MIDI settings tab setup)
+        # Tab 2: ThruLoop (wrapped in QWidget since ThruLoopConfigurator is a QVBoxLayout)
         self.thruloop_tab = ThruLoopConfigurator()
-        self.tabs_widget.addTab(self.thruloop_tab, "ThruLoop")
+        thruloop_container = QWidget()
+        thruloop_container.setLayout(self.thruloop_tab)
+        self.tabs_widget.addTab(thruloop_container, "ThruLoop")
 
         main_layout.addSpacing(10)
 
