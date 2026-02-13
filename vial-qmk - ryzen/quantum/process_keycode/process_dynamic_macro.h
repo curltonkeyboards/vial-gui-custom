@@ -368,6 +368,7 @@ typedef struct {
     uint8_t midi_in_mode;                 // MIDI IN routing mode (0=Process All, 1=Thru, 2=Clock Only, 3=Ignore)
     uint8_t usb_midi_mode;                // USB MIDI routing mode (0=Process All, 1=Thru, 2=Clock Only, 3=Ignore)
     uint8_t midi_clock_source;            // Clock source (0=Local, 1=USB, 2=MIDI IN)
+    bool macro_override_live_notes;       // When true, macro notes play even if same note is live (skip live note check)
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;

@@ -38,6 +38,7 @@ bool truesustain;
 bool channeloverride;
 bool velocityoverride;
 bool transposeoverride;
+bool macro_override_live_notes;
 
 void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel, uint8_t note_type);

@@ -2826,6 +2826,7 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
     usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
     midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
+    macro_override_live_notes = keyboard_settings.macro_override_live_notes;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }

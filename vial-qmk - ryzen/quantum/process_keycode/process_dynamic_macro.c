@@ -3645,15 +3645,15 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = macro_num + MAX_MACROS;
                 
-                if (!is_live_note_active(override_channel, transposed_note)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
                     add_lighting_macro_note(override_channel, transposed_note, track_id);
-                    
+
                     dprintf("independent overdub: played note ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                             state->current->channel, override_channel, state->current->note, transposed_note,
                             state->current->raw_travel, offset_velocity, macro_num);
                 } else {
-                    dprintf("independent overdub: skipped note on ch:%d->%d note:%d->%d (active live note)\n", 
+                    dprintf("independent overdub: skipped note on ch:%d->%d note:%d->%d (active live note)\n",
                             state->current->channel, override_channel, state->current->note, transposed_note);
                 }
                 
@@ -3666,7 +3666,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 if (octave_doubler_value != 0) {
                     uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                    if (!is_live_note_active(override_channel, octave_note)) {
+                    if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                         midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
                         add_lighting_macro_note(override_channel, octave_note, track_id);
                     }
@@ -3702,7 +3702,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = macro_num + MAX_MACROS;
                 
-                if (!is_live_note_active(override_channel, transposed_note)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     midi_send_noteoff(&midi_device, override_channel, transposed_note, offset_velocity);
                     remove_lighting_macro_note(override_channel, transposed_note, track_id);
                     
@@ -3723,7 +3723,7 @@ if (is_independent_overdub && macro_num > 0) {
                                              
                 if (octave_doubler_value != 0) {
                     uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                    if (!is_live_note_active(override_channel, octave_note)) {
+                    if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                         midi_send_noteoff(&midi_device, override_channel, octave_note, offset_velocity);
                         remove_lighting_macro_note(override_channel, octave_note, track_id);
                     }
@@ -3990,7 +3990,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = is_overdub_state ? (macro_num + MAX_MACROS) : macro_num;
                 
-                if (!is_live_note_active(override_channel, transposed_note)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                         midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
                         add_lighting_macro_note(override_channel, transposed_note, track_id);
@@ -4063,7 +4063,7 @@ if (is_independent_overdub && macro_num > 0) {
                     
                     if (octave_doubler_value != 0) {
                         uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                        if (!is_live_note_active(override_channel, octave_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                             if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                                 midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
                                 add_lighting_macro_note(override_channel, octave_note, track_id);
@@ -4118,7 +4118,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = is_overdub_state ? (macro_num + MAX_MACROS) : macro_num;
                 
-                if (!is_live_note_active(override_channel_off, transposed_note_off)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel_off, transposed_note_off)) {
                     if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                         midi_send_noteoff(&midi_device, override_channel_off, transposed_note_off, offset_velocity_off);
                         remove_lighting_macro_note(override_channel_off, transposed_note_off, track_id);
@@ -4167,7 +4167,7 @@ if (is_independent_overdub && macro_num > 0) {
                     
                     if (octave_doubler_value != 0) {
                         uint8_t octave_note = apply_transpose(transposed_note_off, octave_doubler_value);
-                        if (!is_live_note_active(override_channel_off, octave_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel_off, octave_note)) {
                             if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                                 midi_send_noteoff(&midi_device, override_channel_off, octave_note, offset_velocity_off);
                                 remove_lighting_macro_note(override_channel_off, octave_note, track_id);
@@ -5726,12 +5726,17 @@ void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_po
     //    return;
    // } << AUTO DELETES LOOP IF NO NOTES RECORDED
 	
-    // NOTE: Do NOT clear live_notes here. Keys that are still physically held
-    // must remain in live_notes[] so that releasing them after recording ends
-    // properly sends note-offs. Previously, force_clear_all_live_notes() cleared
-    // ALL notes, which caused note-offs to be suppressed by the is_note_from_macro
-    // check in midi_send_noteoff_with_recording() when the key was later released.
-    dprintf("dynamic macro: recording ended, live notes preserved for held keys\n");
+    if (macro_override_live_notes) {
+        // New system: preserve live notes for held keys so note-offs work correctly
+        // when the key is released after recording ends.
+        dprintf("dynamic macro: recording ended, live notes preserved (override mode)\n");
+    } else {
+        // Old system: clear live notes and reset display state for chord describer
+        force_clear_all_live_notes();
+        extern void clear_all_held_keys(void);
+        clear_all_held_keys();
+        dprintf("dynamic macro: cleared all live notes and display state at end of recording\n");
+    }
     
     // If sustain was active, send a sustain off event
     if (recording_sustain_active) {
@@ -6610,7 +6615,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                 switch (event->type) {
                     case MIDI_EVENT_NOTE_ON:
                         // Check if the transposed note is currently being played live
-                        if (!is_live_note_active(override_channel, transposed_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                             // Only send if not muted and not a live note
                             if (!macro_main_muted[macro_idx] || is_overdub) {
                                 midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
@@ -6626,7 +6631,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                             
                             if (octave_doubler_value != 0) {
                                 uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                                if (!is_live_note_active(override_channel, octave_note)) {
+                                if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                                     if (!macro_main_muted[macro_idx] || is_overdub) {
                                         midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
                                         add_lighting_macro_note(override_channel, octave_note, track_id);
@@ -6642,7 +6647,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                         
                     case MIDI_EVENT_NOTE_OFF:
                         // For note-offs, we should send them regardless to ensure clean state
-                        if (!is_live_note_active(override_channel, transposed_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                             if (!macro_main_muted[macro_idx] || is_overdub) {
                                 midi_send_noteoff(&midi_device, override_channel, transposed_note, offset_velocity);
                                 remove_lighting_macro_note(override_channel, transposed_note, track_id);
@@ -6657,7 +6662,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                             
                             if (octave_doubler_value != 0) {
                                 uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                                if (!is_live_note_active(override_channel, octave_note)) {
+                                if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                                     if (!macro_main_muted[macro_idx] || is_overdub) {
                                         midi_send_noteoff(&midi_device, override_channel, octave_note, offset_velocity);
                                         remove_lighting_macro_note(override_channel, octave_note, track_id);
@@ -13067,6 +13072,7 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     midi_in_mode = (midi_in_mode_t)*ptr++;
     usb_midi_mode = (usb_midi_mode_t)*ptr++;
     midi_clock_source = (midi_clock_source_t)*ptr++;
+    macro_override_live_notes = (*ptr++ != 0);
 
     // Update advanced keyboard settings structure
     keyboard_settings.keysplitchannel = keysplitchannel;
@@ -13091,6 +13097,7 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
+    keyboard_settings.macro_override_live_notes = macro_override_live_notes;
 
     if (pending_slot_save != 255) {
         save_keyboard_settings_to_slot(pending_slot_save);
@@ -13317,8 +13324,8 @@ static void handle_get_keyboard_config(void) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
     
-    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
-    uint8_t config_packet2[21];
+    // Packet 2: Advanced settings (22 bytes - expanded for macro override live notes)
+    uint8_t config_packet2[22];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13343,8 +13350,9 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
+    *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 22);
     
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
@@ -13388,6 +13396,7 @@ static void handle_reset_keyboard_config(void) {
     midi_in_mode = MIDI_ROUTE_PROCESS_ALL;
     usb_midi_mode = MIDI_ROUTE_PROCESS_ALL;
     midi_clock_source = CLOCK_SOURCE_LOCAL;
+    macro_override_live_notes = false;
 
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
@@ -13427,6 +13436,7 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
+    keyboard_settings.macro_override_live_notes = macro_override_live_notes;
 
     // Save to EEPROM
     save_keyboard_settings();
@@ -13488,8 +13498,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
     
-    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
-    uint8_t config_packet2[21];
+    // Packet 2: Advanced settings (22 bytes - expanded for macro override live notes)
+    uint8_t config_packet2[22];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13514,8 +13524,9 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
+    *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 22);
     
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
