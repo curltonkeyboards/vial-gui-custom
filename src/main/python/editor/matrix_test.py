@@ -2509,17 +2509,17 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light.addItem("8 Track Looper", 1)
         loop_layout.addWidget(self.smart_chord_light, 2, 2)
 
-        # Macro Override Live Notes with help
+        # Live Note Priority with help
         macro_override_label = QWidget()
         macro_override_label_layout = QHBoxLayout()
         macro_override_label_layout.setContentsMargins(0, 0, 0, 0)
         macro_override_label_layout.setSpacing(5)
         macro_override_label_layout.addWidget(self.create_help_label(
             "Control how macro playback interacts with live notes.\n"
-            "Off: Macro skips notes that are currently held live\n"
-            "On: Macro plays notes even when held live"
+            "Off: Macro plays notes even when held live\n"
+            "On: Live notes take priority, macro skips held notes"
         ))
-        macro_override_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Macro Override:")))
+        macro_override_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Live Note Priority:")))
         macro_override_label.setLayout(macro_override_label_layout)
         loop_layout.addWidget(macro_override_label, 2, 3)
         self.macro_override_live_notes = ArrowComboBox()

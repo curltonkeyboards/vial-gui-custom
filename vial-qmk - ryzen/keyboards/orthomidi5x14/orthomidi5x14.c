@@ -137,6 +137,7 @@ uint8_t smartchord_mode = 0;              // 0=Hold, 1=Toggle
 uint8_t base_smartchord_ignore = 0;       // 0=Allow, 1=Ignore
 uint8_t keysplit_smartchord_ignore = 0;    // 0=Allow, 1=Ignore
 uint8_t triplesplit_smartchord_ignore = 0; // 0=Allow, 1=Ignore
+uint16_t toggled_smartchord_keycode = 0;  // Tracks which smartchord is currently toggled on
 // Hall Effect Sensor Linearization LUT
 uint8_t lut_correction_strength = 0;  // 0=linear (no correction), 100=full logarithmic LUT
 
@@ -14461,15 +14462,34 @@ if (keycode >= 0xC92A && keycode <= 0xC93B) {
     uint16_t base_interval_code = play_simultaneous ? ((keycode * 3) - (0xC938 * 3) + 0xC92A) : keycode;   
     
     if (record->event.pressed) {
-        // Toggle mode: if already active, turn off and return
+        // Toggle mode handling
         if (smartchord_mode == 1 && smartchordstatus > 0) {
-            smartchordstatus = 0;
-            if (smartchordlight != 3) { smartchordlight = 0; }
+            if (toggled_smartchord_keycode == keycode) {
+                // Same chord pressed again: turn off
+                smartchordstatus = 0;
+                if (smartchordlight != 3) { smartchordlight = 0; }
+                trueheldkey1 = 0; heldkey1 = 0;
+                trueheldkey2 = 0; heldkey2 = 0;
+                toggled_smartchord_keycode = 0;
+                return false;
+            }
+            // Different chord: send note-offs for current, then fall through to set up new
+            uint8_t channel_off = channel_number;
+            uint8_t velocity_off = he_velocity_min + ((he_velocity_max - he_velocity_min)/2);
+            if (base_note != 0) midi_send_noteoff_smartchord(channel_off, base_note, velocity_off);
+            if (interval_note != 0) midi_send_noteoff_smartchord(channel_off, interval_note, velocity_off);
+            // Reset LED indices
+            chordkey1_led_index = 99; chordkey1_led_index2 = 99; chordkey1_led_index3 = 99;
+            chordkey1_led_index4 = 99; chordkey1_led_index5 = 99; chordkey1_led_index6 = 99;
+            chordkey2_led_index = 99; chordkey2_led_index2 = 99; chordkey2_led_index3 = 99;
+            chordkey2_led_index4 = 99; chordkey2_led_index5 = 99; chordkey2_led_index6 = 99;
             trueheldkey1 = 0; heldkey1 = 0;
             trueheldkey2 = 0; heldkey2 = 0;
-            return false;
+            // Don't increment smartchordstatus, keep it at current level
+        } else {
+            smartchordstatus += 1;
         }
-        smartchordstatus += 1;
+        toggled_smartchord_keycode = keycode;
         // Cache the layer lookup once
         int8_t current_layer = get_highest_layer(layer_state | default_layer_state);
         uint8_t positions[6];  // Reusable array for positions
@@ -14719,16 +14739,41 @@ if (keycode >= 0xC93C && keycode <= 0xC94F) {
     }
     
     if (record->event.pressed) {
-        // Toggle mode: if already active, turn off and return
+        // Toggle mode handling
         if (smartchord_mode == 1 && smartchordstatus > 0) {
-            smartchordstatus = 0;
-            if (smartchordlight != 3) { smartchordlight = 0; }
+            if (toggled_smartchord_keycode == keycode) {
+                // Same chord pressed again: turn off
+                smartchordstatus = 0;
+                if (smartchordlight != 3) { smartchordlight = 0; }
+                trueheldkey1 = 0; heldkey1 = 0; heldkey1difference = 0;
+                trueheldkey2 = 0; heldkey2 = 0; heldkey2difference = 0;
+                trueheldkey3 = 0; heldkey3 = 0; heldkey3difference = 0;
+                toggled_smartchord_keycode = 0;
+                return false;
+            }
+            // Different chord: send note-offs for current, then fall through to set up new
+            uint8_t vel_off = he_velocity_min + ((he_velocity_max - he_velocity_min)/2);
+            if (trueheldkey1 != 0) midi_send_noteoff_smartchord(channel, midi_compute_note(trueheldkey1 + 28931), vel_off);
+            if (trueheldkey2 != 0) midi_send_noteoff_smartchord(channel, midi_compute_note(trueheldkey2 + 28931), vel_off);
+            if (trueheldkey3 != 0) midi_send_noteoff_smartchord(channel, midi_compute_note(trueheldkey3 + 28931), vel_off);
+            if (trueheldkey4 != 0) midi_send_noteoff_smartchord(channel, midi_compute_note(trueheldkey4 + 28931), vel_off);
+            // Reset LED indices
+            chordkey1_led_index = 99; chordkey1_led_index2 = 99; chordkey1_led_index3 = 99;
+            chordkey1_led_index4 = 99; chordkey1_led_index5 = 99; chordkey1_led_index6 = 99;
+            chordkey2_led_index = 99; chordkey2_led_index2 = 99; chordkey2_led_index3 = 99;
+            chordkey2_led_index4 = 99; chordkey2_led_index5 = 99; chordkey2_led_index6 = 99;
+            chordkey3_led_index = 99; chordkey3_led_index2 = 99; chordkey3_led_index3 = 99;
+            chordkey3_led_index4 = 99; chordkey3_led_index5 = 99; chordkey3_led_index6 = 99;
+            chordkey4_led_index = 99; chordkey4_led_index2 = 99; chordkey4_led_index3 = 99;
+            chordkey4_led_index4 = 99; chordkey4_led_index5 = 99; chordkey4_led_index6 = 99;
             trueheldkey1 = 0; heldkey1 = 0; heldkey1difference = 0;
             trueheldkey2 = 0; heldkey2 = 0; heldkey2difference = 0;
             trueheldkey3 = 0; heldkey3 = 0; heldkey3difference = 0;
-            return false;
+            trueheldkey4 = 0; heldkey4 = 0; heldkey4difference = 0;
+        } else {
+            smartchordstatus += 1;
         }
-        smartchordstatus += 1;
+        toggled_smartchord_keycode = keycode;
 
         // Cache the layer lookup once
         int8_t current_layer = get_highest_layer(layer_state | default_layer_state);
@@ -15034,12 +15079,27 @@ if (keycode >= 0xC38B && keycode <= 0xC416) {
 	 keycode = 0xC396 + smartchordchanger;}
 	 
 	 if (record->event.pressed) {
-        // Toggle mode: if already active, turn off and return
+        // Toggle mode handling
         if (smartchord_mode == 1 && smartchordstatus > 0) {
-            smartchordstatus = 0;
+            if (toggled_smartchord_keycode == keycode) {
+                // Same chord pressed again: turn off
+                smartchordstatus = 0;
+                chordkey2 = 0; chordkey3 = 0; chordkey4 = 0;
+                chordkey5 = 0; chordkey6 = 0; chordkey7 = 0;
+                if (smartchordlight != 3) { smartchordlight = 0; }
+                trueheldkey2 = 0; heldkey2 = 0; heldkey2difference = 0;
+                trueheldkey3 = 0; heldkey3 = 0; heldkey3difference = 0;
+                trueheldkey4 = 0; heldkey4 = 0; heldkey4difference = 0;
+                trueheldkey5 = 0; heldkey5 = 0; heldkey5difference = 0;
+                trueheldkey6 = 0; heldkey6 = 0; heldkey6difference = 0;
+                trueheldkey7 = 0; heldkey7 = 0; heldkey7difference = 0;
+                rootnote = 13; bassnote = 13;
+                toggled_smartchord_keycode = 0;
+                return false;
+            }
+            // Different chord: clear current state and fall through to set up new chord
             chordkey2 = 0; chordkey3 = 0; chordkey4 = 0;
             chordkey5 = 0; chordkey6 = 0; chordkey7 = 0;
-            if (smartchordlight != 3) { smartchordlight = 0; }
             trueheldkey2 = 0; heldkey2 = 0; heldkey2difference = 0;
             trueheldkey3 = 0; heldkey3 = 0; heldkey3difference = 0;
             trueheldkey4 = 0; heldkey4 = 0; heldkey4difference = 0;
@@ -15047,9 +15107,10 @@ if (keycode >= 0xC38B && keycode <= 0xC416) {
             trueheldkey6 = 0; heldkey6 = 0; heldkey6difference = 0;
             trueheldkey7 = 0; heldkey7 = 0; heldkey7difference = 0;
             rootnote = 13; bassnote = 13;
-            return false;
+        } else {
+            smartchordstatus += 1;
         }
-        smartchordstatus += 1;
+        toggled_smartchord_keycode = keycode;
 
 		 switch (keycode) {
 		case 0xC38B:
