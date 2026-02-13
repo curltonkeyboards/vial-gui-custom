@@ -45,7 +45,6 @@ from util import tr, EXAMPLE_KEYBOARDS, KeycodeDisplay, EXAMPLE_KEYBOARD_PREFIX
 from vial_device import VialKeyboard
 from editor.matrix_test import MatrixTest
 from editor.matrix_test import MIDIswitchSettingsConfigurator
-from editor.matrix_test import ThruLoopConfigurator
 from editor.matrix_test import GamingConfigurator
 from editor.velocity_tab import VelocityTab
 from editor.midi_patch import MIDIPatchBay
@@ -153,7 +152,6 @@ class MainWindow(QMainWindow):
         # Initialize the new configurators
         t0 = time.time()
         self.MIDIswitchSettingsConfigurator = MIDIswitchSettingsConfigurator()
-        self.thruloop_configurator = ThruLoopConfigurator()
         self.gaming_configurator = GamingConfigurator()
 
         # Initialize MIDI Patch and Loop Manager tabs
@@ -168,7 +166,7 @@ class MainWindow(QMainWindow):
                         (self.dks_settings, "DKS Settings"), (self.toggle_settings, "Toggle Keys"),
                         (self.layout_editor, "Layout"), (self.macro_recorder, "Macros"),
                         (self.rgb_configurator, "Lighting"), (self.MIDIswitchSettingsConfigurator, "MIDI Settings"),
-                        (self.thruloop_configurator, "ThruLoop"), (self.gaming_configurator, "Gaming Settings"),
+                        (self.gaming_configurator, "Gaming Settings"),
                         (self.midi_patchbay, "MIDI Patch"), (self.loop_manager, "Loop Manager"),
                         (self.arpeggiator, "Arpeggiator"), (self.step_sequencer, "Step Sequencer"),
                         (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
@@ -432,7 +430,6 @@ class MainWindow(QMainWindow):
             (self.matrix_tester, "matrix_tester"),
             (self.rgb_configurator, "rgb_configurator"),
             (self.MIDIswitchSettingsConfigurator, "MIDIswitchSettingsConfigurator"),
-            (self.thruloop_configurator, "thruloop_configurator"),
             (self.gaming_configurator, "gaming_configurator"),
             (self.midi_patchbay, "midi_patchbay"),
             (self.loop_manager, "loop_manager"),

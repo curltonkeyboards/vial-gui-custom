@@ -1523,7 +1523,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     // Send note-off (respects sustain/queue) then note-on directly
                     uint8_t raw_travel = (travel * 255) / 240;
                     midi_send_noteoff_with_recording(state->note_channel, state->midi_note, 127, 0, state->zone_type);
-                    midi_send_noteon_with_recording(state->note_channel, state->midi_note, velocity, raw_travel);
+                    midi_send_noteon_with_recording(state->note_channel, state->midi_note, velocity, raw_travel, state->zone_type);
 
                     // Store for GUI display
                     analog_matrix_store_final_velocity(row, col, velocity);
@@ -1578,10 +1578,28 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             state->note_channel = channel_number;
         }
 
-        // Compute actual MIDI note: note_index + transpose + octave + 24
-        state->midi_note = state->note_index + transpose_number + octave_number + 24;
+        // Compute actual MIDI note from keycode (must match process_midi path)
+        // Previously used cached note_index from init, but that could be stale
+        // if the layer changed since initialize_midi_states() ran.
+        if (keycode >= 0xC670 && keycode <= 0xC6B7) {
+            // Triplesplit note - use zone-specific transpose if enabled
+            int t_val = (keysplittransposestatus == 2 || keysplittransposestatus == 3) ?
+                        (transpose_number3 + octave_number3) : (transpose_number + octave_number);
+            state->midi_note = (keycode - 0xC670) + t_val + 24;
+            state->zone_type = ZONE_TYPE_TRIPLESPLIT;
+        } else if (keycode >= 0xC600 && keycode <= 0xC647) {
+            // Keysplit note - use zone-specific transpose if enabled
+            int t_val = (keysplittransposestatus == 1 || keysplittransposestatus == 3) ?
+                        (transpose_number2 + octave_number2) : (transpose_number + octave_number);
+            state->midi_note = (keycode - 0xC600) + t_val + 24;
+            state->zone_type = ZONE_TYPE_KEYSPLIT;
+        } else {
+            // Base note (MI_* keycodes 0x7103-0x714A)
+            state->midi_note = (keycode - 0x7103) + transpose_number + octave_number + 24;
+            state->zone_type = ZONE_TYPE_BASE;
+        }
 
-        // Clamp to valid MIDI range
+        // Clamp to valid MIDI range (handles negative transpose wrapping to >127)
         if (state->midi_note > 127) state->midi_note = 127;
     }
 

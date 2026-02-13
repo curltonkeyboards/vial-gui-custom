@@ -140,6 +140,12 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_VIBRATO_DECAY_TIME             41  // 16-bit, uses 2 bytes
 #define PARAM_MIN_PRESS_TIME                 42  // 16-bit, uses 2 bytes
 #define PARAM_MAX_PRESS_TIME                 43  // 16-bit, uses 2 bytes
+#define PARAM_SPEED_PEAK_RATIO               44
+#define PARAM_MACRO_OVERRIDE_LIVE_NOTES      45
+#define PARAM_SMARTCHORD_MODE                46
+#define PARAM_BASE_SMARTCHORD_IGNORE         47
+#define PARAM_KEYSPLIT_SMARTCHORD_IGNORE      48
+#define PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE   49
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -2491,7 +2497,7 @@ static void execute_command_batch(void) {
                 // Currently recording this macro - stop recording
                 midi_event_t *macro_start = get_macro_buffer(macro_id);
                 midi_event_t **macro_end_ptr = get_macro_end_ptr(macro_id);
-                force_clear_all_live_notes();
+                // Note: live notes are preserved for held keys (see dynamic_macro_record_end)
                 dynamic_macro_record_end(macro_start, macro_pointer, +1, macro_end_ptr, &recording_start_time);
                 
                 // Clear the suspended recording flag for this macro
@@ -3645,15 +3651,15 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = macro_num + MAX_MACROS;
                 
-                if (!is_live_note_active(override_channel, transposed_note)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
                     add_lighting_macro_note(override_channel, transposed_note, track_id);
-                    
+
                     dprintf("independent overdub: played note ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                             state->current->channel, override_channel, state->current->note, transposed_note,
                             state->current->raw_travel, offset_velocity, macro_num);
                 } else {
-                    dprintf("independent overdub: skipped note on ch:%d->%d note:%d->%d (active live note)\n", 
+                    dprintf("independent overdub: skipped note on ch:%d->%d note:%d->%d (active live note)\n",
                             state->current->channel, override_channel, state->current->note, transposed_note);
                 }
                 
@@ -3666,7 +3672,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 if (octave_doubler_value != 0) {
                     uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                    if (!is_live_note_active(override_channel, octave_note)) {
+                    if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                         midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
                         add_lighting_macro_note(override_channel, octave_note, track_id);
                     }
@@ -3702,7 +3708,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = macro_num + MAX_MACROS;
                 
-                if (!is_live_note_active(override_channel, transposed_note)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     midi_send_noteoff(&midi_device, override_channel, transposed_note, offset_velocity);
                     remove_lighting_macro_note(override_channel, transposed_note, track_id);
                     
@@ -3723,7 +3729,7 @@ if (is_independent_overdub && macro_num > 0) {
                                              
                 if (octave_doubler_value != 0) {
                     uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                    if (!is_live_note_active(override_channel, octave_note)) {
+                    if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                         midi_send_noteoff(&midi_device, override_channel, octave_note, offset_velocity);
                         remove_lighting_macro_note(override_channel, octave_note, track_id);
                     }
@@ -3990,7 +3996,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = is_overdub_state ? (macro_num + MAX_MACROS) : macro_num;
                 
-                if (!is_live_note_active(override_channel, transposed_note)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                         midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
                         add_lighting_macro_note(override_channel, transposed_note, track_id);
@@ -4063,7 +4069,7 @@ if (is_independent_overdub && macro_num > 0) {
                     
                     if (octave_doubler_value != 0) {
                         uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                        if (!is_live_note_active(override_channel, octave_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                             if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                                 midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
                                 add_lighting_macro_note(override_channel, octave_note, track_id);
@@ -4118,7 +4124,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 uint8_t track_id = is_overdub_state ? (macro_num + MAX_MACROS) : macro_num;
                 
-                if (!is_live_note_active(override_channel_off, transposed_note_off)) {
+                if (macro_override_live_notes || !is_live_note_active(override_channel_off, transposed_note_off)) {
                     if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                         midi_send_noteoff(&midi_device, override_channel_off, transposed_note_off, offset_velocity_off);
                         remove_lighting_macro_note(override_channel_off, transposed_note_off, track_id);
@@ -4167,7 +4173,7 @@ if (is_independent_overdub && macro_num > 0) {
                     
                     if (octave_doubler_value != 0) {
                         uint8_t octave_note = apply_transpose(transposed_note_off, octave_doubler_value);
-                        if (!is_live_note_active(override_channel_off, octave_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel_off, octave_note)) {
                             if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                                 midi_send_noteoff(&midi_device, override_channel_off, octave_note, offset_velocity_off);
                                 remove_lighting_macro_note(override_channel_off, octave_note, track_id);
@@ -5726,9 +5732,17 @@ void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_po
     //    return;
    // } << AUTO DELETES LOOP IF NO NOTES RECORDED
 	
-    // SEND NOTE-OFFS FOR ALL LIVE NOTES when recording ends
-    force_clear_all_live_notes();
-    dprintf("dynamic macro: cleared all live notes at end of recording\n");
+    if (macro_override_live_notes) {
+        // New system: preserve live notes for held keys so note-offs work correctly
+        // when the key is released after recording ends.
+        dprintf("dynamic macro: recording ended, live notes preserved (override mode)\n");
+    } else {
+        // Old system: clear live notes and reset display state for chord describer
+        force_clear_all_live_notes();
+        extern void clear_all_held_keys(void);
+        clear_all_held_keys();
+        dprintf("dynamic macro: cleared all live notes and display state at end of recording\n");
+    }
     
     // If sustain was active, send a sustain off event
     if (recording_sustain_active) {
@@ -6607,7 +6621,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                 switch (event->type) {
                     case MIDI_EVENT_NOTE_ON:
                         // Check if the transposed note is currently being played live
-                        if (!is_live_note_active(override_channel, transposed_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                             // Only send if not muted and not a live note
                             if (!macro_main_muted[macro_idx] || is_overdub) {
                                 midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
@@ -6623,7 +6637,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                             
                             if (octave_doubler_value != 0) {
                                 uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                                if (!is_live_note_active(override_channel, octave_note)) {
+                                if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                                     if (!macro_main_muted[macro_idx] || is_overdub) {
                                         midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
                                         add_lighting_macro_note(override_channel, octave_note, track_id);
@@ -6639,7 +6653,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                         
                     case MIDI_EVENT_NOTE_OFF:
                         // For note-offs, we should send them regardless to ensure clean state
-                        if (!is_live_note_active(override_channel, transposed_note)) {
+                        if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                             if (!macro_main_muted[macro_idx] || is_overdub) {
                                 midi_send_noteoff(&midi_device, override_channel, transposed_note, offset_velocity);
                                 remove_lighting_macro_note(override_channel, transposed_note, track_id);
@@ -6654,7 +6668,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                             
                             if (octave_doubler_value != 0) {
                                 uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
-                                if (!is_live_note_active(override_channel, octave_note)) {
+                                if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                                     if (!macro_main_muted[macro_idx] || is_overdub) {
                                         midi_send_noteoff(&midi_device, override_channel, octave_note, offset_velocity);
                                         remove_lighting_macro_note(override_channel, octave_note, track_id);
@@ -8921,7 +8935,7 @@ static bool handle_unsynced_mode(uint8_t macro_num, uint8_t macro_idx,
     // If we're currently recording this macro, stop recording immediately
     if (macro_id == macro_num) {
         // End recording immediately
-		force_clear_all_live_notes();
+        // Note: live notes are preserved for held keys (see dynamic_macro_record_end)
         dynamic_macro_record_end(macro_start, macro_pointer, +1, macro_end_ptr, &recording_start_time);
         
         // Check if we need to enter overdub mode
@@ -11599,28 +11613,28 @@ void send_macro_via_hid(uint8_t macro_num) {
 
 // Set loop messaging basic configuration
 static void handle_set_loop_config(const uint8_t* data) {
-    loop_messaging_enabled = (data[0] != 0);
-    
+    // Note: loop_messaging_enabled and cclooprecording are now managed by
+    // MIDI Settings (advanced packet), not the ThruLoop packet.
+
     // Validate and set channel (1-16)
-    uint8_t channel = data[1];
+    uint8_t channel = data[0];
     if (channel >= 1 && channel <= 16) {
         loop_messaging_channel = channel;
     }
-    
-    sync_midi_mode = (data[2] != 0);
-    alternate_restart_mode = (data[3] != 0);
-    
+
+    sync_midi_mode = (data[1] != 0);
+    alternate_restart_mode = (data[2] != 0);
+
     // Set loop restart CCs (4 bytes)
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
-        loop_restart_cc[i] = data[4 + i];
+        loop_restart_cc[i] = data[3 + i];
     }
-	cclooprecording = (data[8] != 0);  // 9th byte for cclooprecording
-    
+
     // SAVE TO EEPROM
     save_loop_settings();
-    
-    dprintf("HID: Updated loop config - enabled:%d, channel:%d, sync:%d, alt_restart:%d\n", 
-            loop_messaging_enabled, loop_messaging_channel, sync_midi_mode, alternate_restart_mode);
+
+    dprintf("HID: Updated loop config - channel:%d, sync:%d, alt_restart:%d\n",
+            loop_messaging_channel, sync_midi_mode, alternate_restart_mode);
 }
 
 // Set main loop CC arrays
@@ -11686,17 +11700,16 @@ static void handle_get_all_config(uint8_t macro_num) {
     // We need to send multiple packets since all config won't fit in one packet
     load_loop_settings();
     
-    // Packet 1: Loop messaging basic config
-    uint8_t config_packet1[9];
-    config_packet1[0] = loop_messaging_enabled ? 1 : 0;
-    config_packet1[1] = loop_messaging_channel;
-    config_packet1[2] = sync_midi_mode ? 1 : 0;
-    config_packet1[3] = alternate_restart_mode ? 1 : 0;
+    // Packet 1: Loop config (7 bytes - channel, sync, restart mode, restart CCs)
+    // Note: loop_messaging_enabled and cclooprecording now in MIDI Settings advanced packet
+    uint8_t config_packet1[7];
+    config_packet1[0] = loop_messaging_channel;
+    config_packet1[1] = sync_midi_mode ? 1 : 0;
+    config_packet1[2] = alternate_restart_mode ? 1 : 0;
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
-        config_packet1[4 + i] = loop_restart_cc[i];
+        config_packet1[3 + i] = loop_restart_cc[i];
     }
-    config_packet1[8] = cclooprecording ? 1 : 0;
-    send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, config_packet1, 9);
+    send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, config_packet1, 7);
     wait_ms(5);
     
     // Packet 2: Main loop CCs
@@ -11742,8 +11755,8 @@ static void handle_get_all_config(uint8_t macro_num) {
 }
 // Reset all loop messaging configuration to defaults
 static void handle_reset_loop_config(void) {
-    // Reset to your default values
-    loop_messaging_enabled = false;
+    // Reset thruloop-specific values (loop_messaging_enabled and cclooprecording
+    // are now managed by MIDI Settings, not ThruLoop)
     loop_messaging_channel = 16;  // Changed to match initialization
     sync_midi_mode = false;
     alternate_restart_mode = false;
@@ -11774,7 +11787,6 @@ static void handle_reset_loop_config(void) {
     loop_navigate_5_8_cc = 128;
     loop_navigate_6_8_cc = 128;
     loop_navigate_7_8_cc = 128;
-	cclooprecording = false;
     
     // SAVE TO EEPROM
     save_loop_settings();
@@ -12149,7 +12161,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             break;
 
 		case HID_CMD_SET_LOOP_CONFIG: // 0xB0
-			if (length >= 12) { // Header + 8 data bytes minimum
+			if (length >= 13) { // Header(6) + 7 data bytes (channel, sync, restart, 4 CCs)
 				handle_set_loop_config(&data[6]); // Skip header bytes
 				send_hid_response(HID_CMD_SET_LOOP_CONFIG, macro_num, 0, NULL, 0); // Success
 			} else {
@@ -12199,7 +12211,7 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
 			break;
 
 		case HID_CMD_SET_KEYBOARD_CONFIG: // 0xB6
-            if (length >= 41) { // Header + 35 data bytes minimum (expanded for velocity curve/min/max)
+            if (length >= 28) { // Header (6) + 22 basic data bytes
                 handle_set_keyboard_config(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG, 0, 0, NULL, 0); // Success
             } else {
@@ -12208,8 +12220,8 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             break;
 			
 				// Add case to your HID handler:
-		case HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED: // 0x55
-			if (length >= 21) { // Header + 15 data bytes
+		case HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED: // 0xBB
+			if (length >= 29) { // Header(6) + 23 data bytes
 				handle_set_keyboard_config_advanced(&data[6]);
 				send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, NULL, 0);
 			} else {
@@ -12227,10 +12239,11 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             break;
 
         case HID_CMD_SAVE_KEYBOARD_SLOT: // 0x53
-            if (length >= 41) { // Header + slot + 35 data bytes minimum (expanded for velocity curve/min/max)
+            if (length >= 29) { // Header (6) + slot (1) + 22 basic data bytes
                 handle_save_keyboard_slot(&data[6]); // Skip header bytes
                 send_hid_response(HID_CMD_SAVE_KEYBOARD_SLOT, 0, 0, NULL, 0); // Success
             } else {
+                dprintf("HID: Save slot packet too short: %d bytes (need 29)\n", length);
                 send_hid_response(HID_CMD_SAVE_KEYBOARD_SLOT, 0, 1, NULL, 0); // Error
             }
             break;
@@ -13048,11 +13061,8 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     unsynced_mode_active = *ptr++;
     sample_mode_active = (*ptr++ != 0);
     
-    // Read loop messaging features
+    // Read loop settings (channel/sync/restart now in ThruLoop packet 0xB0)
     loop_messaging_enabled = (*ptr++ != 0);
-    loop_messaging_channel = *ptr++;
-    sync_midi_mode = (*ptr++ != 0);
-    alternate_restart_mode = (*ptr++ != 0);
     colorblindmode = *ptr++;
     cclooprecording = (*ptr++ != 0);
     truesustain = (*ptr++ != 0);
@@ -13064,6 +13074,12 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     midi_in_mode = (midi_in_mode_t)*ptr++;
     usb_midi_mode = (usb_midi_mode_t)*ptr++;
     midi_clock_source = (midi_clock_source_t)*ptr++;
+    macro_override_live_notes = (*ptr++ != 0);
+    // SmartChord settings (bytes 22-25)
+    smartchord_mode = *ptr++;
+    base_smartchord_ignore = *ptr++;
+    keysplit_smartchord_ignore = *ptr++;
+    triplesplit_smartchord_ignore = *ptr++;
 
     // Update advanced keyboard settings structure
     keyboard_settings.keysplitchannel = keysplitchannel;
@@ -13075,9 +13091,8 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.unsynced_mode_active = unsynced_mode_active;
     keyboard_settings.sample_mode_active = sample_mode_active;
     keyboard_settings.loop_messaging_enabled = loop_messaging_enabled;
-    keyboard_settings.loop_messaging_channel = loop_messaging_channel;
-    keyboard_settings.sync_midi_mode = sync_midi_mode;
-    keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+    // Note: loop_messaging_channel, sync_midi_mode, alternate_restart_mode
+    // are now managed by ThruLoop (0xB0 packet / loop_settings EEPROM)
     keyboard_settings.colorblindmode = colorblindmode;
     keyboard_settings.cclooprecording = cclooprecording;
     keyboard_settings.truesustain = truesustain;
@@ -13088,6 +13103,11 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
+    keyboard_settings.macro_override_live_notes = macro_override_live_notes;
+    keyboard_settings.smartchord_mode = smartchord_mode;
+    keyboard_settings.base_smartchord_ignore = base_smartchord_ignore;
+    keyboard_settings.keysplit_smartchord_ignore = keysplit_smartchord_ignore;
+    keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
 
     if (pending_slot_save != 255) {
         save_keyboard_settings_to_slot(pending_slot_save);
@@ -13281,6 +13301,30 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             keyboard_settings.max_press_time = max_press_time;
             break;
 
+        // Macro override live notes
+        case PARAM_MACRO_OVERRIDE_LIVE_NOTES:
+            macro_override_live_notes = (*value_ptr != 0);
+            keyboard_settings.macro_override_live_notes = macro_override_live_notes;
+            break;
+
+        // SmartChord settings
+        case PARAM_SMARTCHORD_MODE:
+            smartchord_mode = *value_ptr;
+            keyboard_settings.smartchord_mode = smartchord_mode;
+            break;
+        case PARAM_BASE_SMARTCHORD_IGNORE:
+            base_smartchord_ignore = *value_ptr;
+            keyboard_settings.base_smartchord_ignore = base_smartchord_ignore;
+            break;
+        case PARAM_KEYSPLIT_SMARTCHORD_IGNORE:
+            keysplit_smartchord_ignore = *value_ptr;
+            keyboard_settings.keysplit_smartchord_ignore = keysplit_smartchord_ignore;
+            break;
+        case PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE:
+            triplesplit_smartchord_ignore = *value_ptr;
+            keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
+            break;
+
         default:
             dprintf("HID: Unknown param_id: %d\n", param_id);
             return;
@@ -13292,9 +13336,9 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
 
 static void handle_get_keyboard_config(void) {
     load_keyboard_settings();
-    
-    // Packet 1: Basic settings (35 bytes - expanded for velocity curve/min/max)
-    uint8_t config_packet1[35];
+
+    // Packet 1: Basic settings (22 bytes)
+    uint8_t config_packet1[22];
     uint8_t* ptr = config_packet1;
 
     *(int32_t*)ptr = keyboard_settings.velocity_sensitivity; ptr += 4;
@@ -13313,9 +13357,9 @@ static void handle_get_keyboard_config(void) {
 
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
-    
-    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
-    uint8_t config_packet2[21];
+
+    // Packet 2: Advanced settings (23 bytes - channel/sync/restart now in ThruLoop 0xB0)
+    uint8_t config_packet2[23];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13327,22 +13371,25 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.unsynced_mode_active;
     *ptr++ = keyboard_settings.sample_mode_active ? 1 : 0;
     *ptr++ = keyboard_settings.loop_messaging_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.loop_messaging_channel;
-    *ptr++ = keyboard_settings.sync_midi_mode ? 1 : 0;
-    *ptr++ = keyboard_settings.alternate_restart_mode ? 1 : 0;
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    // MIDI Routing Override Settings
+    // MIDI Routing Override Settings (bytes 12-17)
     *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
     *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
     *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
+    *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
+    // SmartChord settings (bytes 19-22)
+    *ptr++ = keyboard_settings.smartchord_mode;
+    *ptr++ = keyboard_settings.base_smartchord_ignore;
+    *ptr++ = keyboard_settings.keysplit_smartchord_ignore;
+    *ptr++ = keyboard_settings.triplesplit_smartchord_ignore;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
-    
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 23);
+
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
 
@@ -13373,11 +13420,8 @@ static void handle_reset_keyboard_config(void) {
     colorblindmode = 0;
 	cclooprecording = false;
 	truesustain = false;
-    // Reset new loop messaging features to defaults
+    // Reset thruloop on/off (channel/sync/restart managed by ThruLoop reset)
     loop_messaging_enabled = false;
-    loop_messaging_channel = 16;  // Default to MIDI channel 16
-    sync_midi_mode = false;
-    alternate_restart_mode = false;
     // Reset MIDI routing override settings to defaults
     channeloverride = false;
     velocityoverride = false;
@@ -13385,6 +13429,11 @@ static void handle_reset_keyboard_config(void) {
     midi_in_mode = MIDI_ROUTE_PROCESS_ALL;
     usb_midi_mode = MIDI_ROUTE_PROCESS_ALL;
     midi_clock_source = CLOCK_SOURCE_LOCAL;
+    macro_override_live_notes = false;
+    smartchord_mode = 0;
+    base_smartchord_ignore = 0;
+    keysplit_smartchord_ignore = 0;
+    triplesplit_smartchord_ignore = 0;
 
     // Update keyboard settings structure
     keyboard_settings.velocity_sensitivity = velocity_sensitivity;
@@ -13424,6 +13473,11 @@ static void handle_reset_keyboard_config(void) {
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
+    keyboard_settings.macro_override_live_notes = macro_override_live_notes;
+    keyboard_settings.smartchord_mode = smartchord_mode;
+    keyboard_settings.base_smartchord_ignore = base_smartchord_ignore;
+    keyboard_settings.keysplit_smartchord_ignore = keysplit_smartchord_ignore;
+    keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
 
     // Save to EEPROM
     save_keyboard_settings();
@@ -13464,8 +13518,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     dprintf("HID: Loaded keyboard config from slot %d\n", slot);
     
     // Send the loaded configuration back to the webapp using two packets
-    // Packet 1: Basic settings (35 bytes - expanded for velocity curve/min/max)
-    uint8_t config_packet1[35];
+    // Packet 1: Basic settings (22 bytes)
+    uint8_t config_packet1[22];
     uint8_t* ptr = config_packet1;
 
     *(int32_t*)ptr = keyboard_settings.velocity_sensitivity; ptr += 4;
@@ -13484,9 +13538,9 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
 
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
-    
-    // Packet 2: Advanced settings (21 bytes - expanded for MIDI routing overrides)
-    uint8_t config_packet2[21];
+
+    // Packet 2: Advanced settings (23 bytes - channel/sync/restart now in ThruLoop 0xB0)
+    uint8_t config_packet2[23];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13498,22 +13552,25 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.unsynced_mode_active;
     *ptr++ = keyboard_settings.sample_mode_active ? 1 : 0;
     *ptr++ = keyboard_settings.loop_messaging_enabled ? 1 : 0;
-    *ptr++ = keyboard_settings.loop_messaging_channel;
-    *ptr++ = keyboard_settings.sync_midi_mode ? 1 : 0;
-    *ptr++ = keyboard_settings.alternate_restart_mode ? 1 : 0;
     *ptr++ = keyboard_settings.colorblindmode;
     *ptr++ = keyboard_settings.cclooprecording ? 1 : 0;
     *ptr++ = keyboard_settings.truesustain ? 1 : 0;
-    // MIDI Routing Override Settings
+    // MIDI Routing Override Settings (bytes 12-17)
     *ptr++ = keyboard_settings.channeloverride ? 1 : 0;
     *ptr++ = keyboard_settings.velocityoverride ? 1 : 0;
     *ptr++ = keyboard_settings.transposeoverride ? 1 : 0;
     *ptr++ = keyboard_settings.midi_in_mode;
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
+    *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
+    // SmartChord settings (bytes 19-22)
+    *ptr++ = keyboard_settings.smartchord_mode;
+    *ptr++ = keyboard_settings.base_smartchord_ignore;
+    *ptr++ = keyboard_settings.keysplit_smartchord_ignore;
+    *ptr++ = keyboard_settings.triplesplit_smartchord_ignore;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 21);
-    
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 23);
+
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
     cc_sensitivity = keyboard_settings.cc_sensitivity;
@@ -13537,9 +13594,8 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     unsynced_mode_active = keyboard_settings.unsynced_mode_active;
     sample_mode_active = keyboard_settings.sample_mode_active;
     loop_messaging_enabled = keyboard_settings.loop_messaging_enabled;
-    loop_messaging_channel = keyboard_settings.loop_messaging_channel;
-    sync_midi_mode = keyboard_settings.sync_midi_mode;
-    alternate_restart_mode = keyboard_settings.alternate_restart_mode;
+    // Note: loop_messaging_channel, sync_midi_mode, alternate_restart_mode
+    // are now managed by ThruLoop (loop_settings EEPROM)
     colorblindmode = keyboard_settings.colorblindmode;
     cclooprecording = keyboard_settings.cclooprecording;
     truesustain = keyboard_settings.truesustain;
@@ -13550,6 +13606,11 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
     usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
     midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
+    macro_override_live_notes = keyboard_settings.macro_override_live_notes;
+    smartchord_mode = keyboard_settings.smartchord_mode;
+    base_smartchord_ignore = keyboard_settings.base_smartchord_ignore;
+    keysplit_smartchord_ignore = keyboard_settings.keysplit_smartchord_ignore;
+    triplesplit_smartchord_ignore = keyboard_settings.triplesplit_smartchord_ignore;
 
     dprintf("HID: Applied loaded settings from slot %d to active configuration\n", slot);
 }

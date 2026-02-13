@@ -6,7 +6,7 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider, QMenu, QInputDialog)
+                           QScrollArea, QSlider, QMenu, QInputDialog, QTabWidget)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QBrush, QPen, QFont, QLinearGradient
@@ -18,16 +18,19 @@ from protocol.constants import VIAL_PROTOCOL_MATRIX_TESTER
 from tabbed_keycodes import GamepadWidget, DpadButton
 from protocol.keyboard_comm import (
     PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
-    PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
-    PARAM_KEYSPLIT_HE_VELOCITY_CURVE, PARAM_KEYSPLIT_HE_VELOCITY_MIN, PARAM_KEYSPLIT_HE_VELOCITY_MAX,
-    PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, PARAM_TRIPLESPLIT_HE_VELOCITY_MAX,
+    PARAM_HE_VELOCITY_CURVE,
+    PARAM_KEYSPLIT_HE_VELOCITY_CURVE,
+    PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE,
     # PARAM_AFTERTOUCH_MODE and PARAM_AFTERTOUCH_CC removed - aftertouch is now per-layer
     PARAM_BASE_SUSTAIN, PARAM_KEYSPLIT_SUSTAIN, PARAM_TRIPLESPLIT_SUSTAIN,
     PARAM_KEYSPLITCHANNEL, PARAM_KEYSPLIT2CHANNEL, PARAM_KEYSPLITSTATUS,
     PARAM_KEYSPLITTRANSPOSESTATUS, PARAM_KEYSPLITVELOCITYSTATUS,
     # MIDI Routing Override Settings
     PARAM_CHANNEL_OVERRIDE, PARAM_VELOCITY_OVERRIDE, PARAM_TRANSPOSE_OVERRIDE,
-    PARAM_MIDI_IN_MODE, PARAM_USB_MIDI_MODE, PARAM_MIDI_CLOCK_SOURCE
+    PARAM_MIDI_IN_MODE, PARAM_USB_MIDI_MODE, PARAM_MIDI_CLOCK_SOURCE,
+    PARAM_MACRO_OVERRIDE_LIVE_NOTES,
+    PARAM_SMARTCHORD_MODE, PARAM_BASE_SMARTCHORD_IGNORE,
+    PARAM_KEYSPLIT_SMARTCHORD_IGNORE, PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE
 )
 from widgets.keyboard_widget import KeyboardWidget2, KeyboardWidgetSimple
 from util import tr
@@ -1127,15 +1130,6 @@ class ThruLoopConfigurator(BasicEditor):
         self.alternate_restart = QCheckBox(tr("ThruLoopConfigurator", "Alternate Restart Mode"))
         basic_layout.addWidget(self.alternate_restart, 2, 1)
 
-        # Disable ThruLoop and CC Loop Recording (side by side)
-        basic_layout.addWidget(QLabel(tr("ThruLoopConfigurator", "Loop Controls:")), 3, 0, 1, 2)
-
-        self.loop_enabled = QCheckBox(tr("ThruLoopConfigurator", "Disable ThruLoop"))
-        basic_layout.addWidget(self.loop_enabled, 4, 0)
-
-        self.cc_loop_recording = QCheckBox(tr("ThruLoopConfigurator", "CC Loop Recording"))
-        basic_layout.addWidget(self.cc_loop_recording, 4, 1)
-
         # LoopChop Settings (below Basic Settings)
         self.loopchop_group = QGroupBox(tr("ThruLoopConfigurator", "LoopChop"))
         self.loopchop_group.setFixedWidth(400)
@@ -1312,11 +1306,9 @@ class ThruLoopConfigurator(BasicEditor):
         """)
         
         # Connect signals AFTER all widgets are created
-        self.loop_enabled.stateChanged.connect(self.on_loop_enabled_changed)
         self.separate_loopchop.stateChanged.connect(self.on_separate_loopchop_changed)
-        
+
         # Initialize UI state AFTER all widgets and connections are set up
-        self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
         
     def create_cc_combo(self, for_table=False, narrow=False):
@@ -1370,11 +1362,6 @@ class ThruLoopConfigurator(BasicEditor):
                 return
         combo.setCurrentIndex(0)
     
-    def on_loop_enabled_changed(self):
-        enabled = not self.loop_enabled.isChecked()
-        self.main_group.setEnabled(enabled)
-        self.loopchop_group.setEnabled(enabled)
-    
     def on_separate_loopchop_changed(self):
         separate = self.separate_loopchop.isChecked()
         if self.single_loopchop_label:
@@ -1423,8 +1410,8 @@ class ThruLoopConfigurator(BasicEditor):
                 raise RuntimeError("Device not connected")
             
             # 1. Send basic loop configuration
+            # Note: loop_enabled and cc_loop_recording are now in MIDI Settings
             loop_config_data = [
-                0 if self.loop_enabled.isChecked() else 1,
                 self.loop_channel.currentData(),
                 1 if self.sync_midi.isChecked() else 0,
                 1 if self.alternate_restart.isChecked() else 0,
@@ -1432,8 +1419,6 @@ class ThruLoopConfigurator(BasicEditor):
             # Add restart CCs from main table
             restart_values = self.get_restart_cc_values()
             loop_config_data.extend(restart_values)
-            # Add CC loop recording
-            loop_config_data.append(1 if self.cc_loop_recording.isChecked() else 0)
             
             if not self.device.keyboard.set_thruloop_config(loop_config_data):
                 raise RuntimeError("Failed to set ThruLoop config")
@@ -1483,10 +1468,7 @@ class ThruLoopConfigurator(BasicEditor):
     
     def apply_config(self, config):
         """Apply configuration dictionary to UI"""
-        # Basic settings
-        if 'loopEnabled' in config:
-            self.loop_enabled.setChecked(not config.get("loopEnabled", True))
-        
+        # Basic settings (loop_enabled and cc_loop_recording now in MIDI Settings)
         if 'loopChannel' in config:
             for i in range(self.loop_channel.count()):
                 if self.loop_channel.itemData(i) == config.get("loopChannel", 16):
@@ -1497,8 +1479,6 @@ class ThruLoopConfigurator(BasicEditor):
             self.sync_midi.setChecked(config.get("syncMidi", False))
         if 'alternateRestart' in config:
             self.alternate_restart.setChecked(config.get("alternateRestart", False))
-        if 'ccLoopRecording' in config:
-            self.cc_loop_recording.setChecked(config.get("ccLoopRecording", False))
         
         # LoopChop settings
         if 'separateLoopChopCC' in config:
@@ -1529,7 +1509,6 @@ class ThruLoopConfigurator(BasicEditor):
                     self.set_cc_value(combo, nav_ccs[i])
         
         # Update UI state
-        self.on_loop_enabled_changed()
         self.on_separate_loopchop_changed()
         
     def on_reset(self):
@@ -1551,14 +1530,12 @@ class ThruLoopConfigurator(BasicEditor):
     
     def reset_ui_to_defaults(self):
         """Reset UI to default values"""
-        self.loop_enabled.setChecked(False)
         self.loop_channel.setCurrentIndex(15)
         self.sync_midi.setChecked(False)
         self.alternate_restart.setChecked(False)
-        self.cc_loop_recording.setChecked(False)
         self.separate_loopchop.setChecked(False)
         self.set_cc_value(self.master_cc, 128)
-        
+
         # Reset all combos to None (128)
         for row_combos in self.main_combos:
             for combo in row_combos:
@@ -1567,22 +1544,19 @@ class ThruLoopConfigurator(BasicEditor):
         for row_combos in self.overdub_combos:
             for combo in row_combos:
                 self.set_cc_value(combo, 128)
-        
+
         for combo in self.nav_combos:
             self.set_cc_value(combo, 128)
-        
-        self.on_loop_enabled_changed()
+
         self.on_separate_loopchop_changed()
     
     def get_current_config(self):
         """Get current UI configuration as dictionary"""
         config = {
             "version": "1.0",
-            "loopEnabled": not self.loop_enabled.isChecked(),
-            "loopChannel": self.loop_channel.currentData(), 
+            "loopChannel": self.loop_channel.currentData(),
             "syncMidi": self.sync_midi.isChecked(),
             "alternateRestart": self.alternate_restart.isChecked(),
-            "ccLoopRecording": self.cc_loop_recording.isChecked(),
             "separateLoopChopCC": self.separate_loopchop.isChecked(),
             "masterCC": self.get_cc_value(self.master_cc),
             "restartCCs": self.get_restart_cc_values(),
@@ -1655,7 +1629,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return container
 
     def setup_ui(self):
-        # Create scroll area for better window resizing
+        # Create tab widget for MIDI Settings and ThruLoop sub-tabs
+        self.tabs_widget = QTabWidget()
+        self.addWidget(self.tabs_widget)
+
+        # Tab 1: MIDI Settings
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -1666,7 +1644,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         main_widget.setLayout(main_layout)
 
         scroll_area.setWidget(main_widget)
-        self.addWidget(scroll_area, 1)
+        self.tabs_widget.addTab(scroll_area, "MIDI Settings")
+
+        # Tab 2: ThruLoop (wrapped in QWidget since ThruLoopConfigurator is a QVBoxLayout)
+        self.thruloop_tab = ThruLoopConfigurator()
+        thruloop_container = QWidget()
+        thruloop_container.setLayout(self.thruloop_tab)
+        self.tabs_widget.addTab(thruloop_container, "ThruLoop")
 
         main_layout.addSpacing(10)
 
@@ -1853,55 +1837,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         base_layout.addWidget(self.global_velocity_curve, row, 1)
         row += 1
 
-        # Velocity Min with help
-        velocity_min_label_container = QWidget()
-        velocity_min_label_layout = QHBoxLayout()
-        velocity_min_label_layout.setContentsMargins(0, 0, 0, 0)
-        velocity_min_label_layout.setSpacing(5)
-        velocity_min_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity value (1-127)"))
-        velocity_min_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
-        velocity_min_label_layout.addStretch()
-        velocity_min_label_container.setLayout(velocity_min_label_layout)
-        base_layout.addWidget(velocity_min_label_container, row, 0)
-
-        self.global_velocity_min = QSlider(Qt.Horizontal)
-        self.global_velocity_min.setMinimum(1)
-        self.global_velocity_min.setMaximum(127)
-        self.global_velocity_min.setValue(1)
-        base_layout.addWidget(self.global_velocity_min, row, 1)
-        self.velocity_min_value_label = QLabel("1")
-        self.velocity_min_value_label.setMinimumWidth(30)
-        self.velocity_min_value_label.setAlignment(Qt.AlignCenter)
-        base_layout.addWidget(self.velocity_min_value_label, row, 2)
-        self.global_velocity_min.valueChanged.connect(
-            lambda v: self.velocity_min_value_label.setText(str(v))
-        )
-        row += 1
-
-        # Velocity Max with help
-        velocity_max_label_container = QWidget()
-        velocity_max_label_layout = QHBoxLayout()
-        velocity_max_label_layout.setContentsMargins(0, 0, 0, 0)
-        velocity_max_label_layout.setSpacing(5)
-        velocity_max_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity value (1-127)"))
-        velocity_max_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
-        velocity_max_label_layout.addStretch()
-        velocity_max_label_container.setLayout(velocity_max_label_layout)
-        base_layout.addWidget(velocity_max_label_container, row, 0)
-
-        self.global_velocity_max = QSlider(Qt.Horizontal)
-        self.global_velocity_max.setMinimum(1)
-        self.global_velocity_max.setMaximum(127)
-        self.global_velocity_max.setValue(127)
-        base_layout.addWidget(self.global_velocity_max, row, 1)
-        self.velocity_max_value_label = QLabel("127")
-        self.velocity_max_value_label.setMinimumWidth(30)
-        self.velocity_max_value_label.setAlignment(Qt.AlignCenter)
-        base_layout.addWidget(self.velocity_max_value_label, row, 2)
-        self.global_velocity_max.valueChanged.connect(
-            lambda v: self.velocity_max_value_label.setText(str(v))
-        )
-        row += 1
+        # Velocity min/max removed - now configured per velocity preset
 
         # Sustain with help
         sustain_label_container = QWidget()
@@ -1930,6 +1866,35 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.base_sustain.lineEdit().setReadOnly(True)
         self.base_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         base_layout.addWidget(self.base_sustain, row, 1)
+        row += 1
+
+        # SmartChord Ignore with help
+        sc_ignore_label_container = QWidget()
+        sc_ignore_label_layout = QHBoxLayout()
+        sc_ignore_label_layout.setContentsMargins(0, 0, 0, 0)
+        sc_ignore_label_layout.setSpacing(5)
+        sc_ignore_label_layout.addWidget(self.create_help_label(
+            "SmartChord behavior for base zone keys:\n"
+            "Allow: SmartChord adds harmony notes\n"
+            "Ignore: SmartChord has no effect on these keys"
+        ))
+        sc_ignore_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord:")))
+        sc_ignore_label_layout.addStretch()
+        sc_ignore_label_container.setLayout(sc_ignore_label_layout)
+        base_layout.addWidget(sc_ignore_label_container, row, 0)
+
+        self.base_smartchord_ignore = ArrowComboBox()
+        self.base_smartchord_ignore.setMinimumWidth(80)
+        self.base_smartchord_ignore.setMaximumWidth(120)
+        self.base_smartchord_ignore.setMinimumHeight(25)
+        self.base_smartchord_ignore.setMaximumHeight(25)
+        self.base_smartchord_ignore.addItem("Allow", 0)
+        self.base_smartchord_ignore.addItem("Ignore", 1)
+        self.base_smartchord_ignore.setCurrentIndex(0)
+        self.base_smartchord_ignore.setEditable(True)
+        self.base_smartchord_ignore.lineEdit().setReadOnly(True)
+        self.base_smartchord_ignore.lineEdit().setAlignment(Qt.AlignCenter)
+        base_layout.addWidget(self.base_smartchord_ignore, row, 1)
 
         # KeySplit Settings container
         self.keysplit_offshoot = QGroupBox()
@@ -2070,51 +2035,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         keysplit_layout.addWidget(self.keysplit_velocity_enable, ks_row, 2)
         ks_row += 1
 
-        # Velocity Min with help
-        vmin_label = QWidget()
-        vmin_label_layout = QHBoxLayout()
-        vmin_label_layout.setContentsMargins(0, 0, 0, 0)
-        vmin_label_layout.setSpacing(3)
-        vmin_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity (1-127) for KeySplit keys"))
-        vmin_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
-        vmin_label_layout.addStretch()
-        vmin_label.setLayout(vmin_label_layout)
-        keysplit_layout.addWidget(vmin_label, ks_row, 0)
-
-        self.velocity_min2 = QSlider(Qt.Horizontal)
-        self.velocity_min2.setMinimum(1)
-        self.velocity_min2.setMaximum(127)
-        self.velocity_min2.setValue(1)
-        keysplit_layout.addWidget(self.velocity_min2, ks_row, 1)
-        self.velocity_min2_value = QLabel("1")
-        self.velocity_min2_value.setMinimumWidth(30)
-        self.velocity_min2_value.setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_min2_value, ks_row, 2)
-        self.velocity_min2.valueChanged.connect(lambda v: self.velocity_min2_value.setText(str(v)))
-        ks_row += 1
-
-        # Velocity Max with help
-        vmax_label = QWidget()
-        vmax_label_layout = QHBoxLayout()
-        vmax_label_layout.setContentsMargins(0, 0, 0, 0)
-        vmax_label_layout.setSpacing(3)
-        vmax_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity (1-127) for KeySplit keys"))
-        vmax_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
-        vmax_label_layout.addStretch()
-        vmax_label.setLayout(vmax_label_layout)
-        keysplit_layout.addWidget(vmax_label, ks_row, 0)
-
-        self.velocity_max2 = QSlider(Qt.Horizontal)
-        self.velocity_max2.setMinimum(1)
-        self.velocity_max2.setMaximum(127)
-        self.velocity_max2.setValue(127)
-        keysplit_layout.addWidget(self.velocity_max2, ks_row, 1)
-        self.velocity_max2_value = QLabel("127")
-        self.velocity_max2_value.setMinimumWidth(30)
-        self.velocity_max2_value.setAlignment(Qt.AlignCenter)
-        keysplit_layout.addWidget(self.velocity_max2_value, ks_row, 2)
-        self.velocity_max2.valueChanged.connect(lambda v: self.velocity_max2_value.setText(str(v)))
-        ks_row += 1
+        # Velocity min/max removed - now configured per velocity preset
 
         # Sustain with help
         sus_label = QWidget()
@@ -2143,6 +2064,35 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.keysplit_sustain.lineEdit().setReadOnly(True)
         self.keysplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         keysplit_layout.addWidget(self.keysplit_sustain, ks_row, 1, 1, 2)
+        ks_row += 1
+
+        # SmartChord Ignore with help
+        ks_sc_label = QWidget()
+        ks_sc_label_layout = QHBoxLayout()
+        ks_sc_label_layout.setContentsMargins(0, 0, 0, 0)
+        ks_sc_label_layout.setSpacing(3)
+        ks_sc_label_layout.addWidget(self.create_help_label(
+            "SmartChord behavior for KeySplit keys:\n"
+            "Allow: SmartChord adds harmony notes\n"
+            "Ignore: SmartChord has no effect on these keys"
+        ))
+        ks_sc_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord:")))
+        ks_sc_label_layout.addStretch()
+        ks_sc_label.setLayout(ks_sc_label_layout)
+        keysplit_layout.addWidget(ks_sc_label, ks_row, 0)
+
+        self.keysplit_smartchord_ignore = ArrowComboBox()
+        self.keysplit_smartchord_ignore.setMinimumWidth(80)
+        self.keysplit_smartchord_ignore.setMaximumWidth(120)
+        self.keysplit_smartchord_ignore.setMinimumHeight(25)
+        self.keysplit_smartchord_ignore.setMaximumHeight(25)
+        self.keysplit_smartchord_ignore.addItem("Allow", 0)
+        self.keysplit_smartchord_ignore.addItem("Ignore", 1)
+        self.keysplit_smartchord_ignore.setCurrentIndex(0)
+        self.keysplit_smartchord_ignore.setEditable(True)
+        self.keysplit_smartchord_ignore.lineEdit().setReadOnly(True)
+        self.keysplit_smartchord_ignore.lineEdit().setAlignment(Qt.AlignCenter)
+        keysplit_layout.addWidget(self.keysplit_smartchord_ignore, ks_row, 1, 1, 2)
 
         # TripleSplit Settings container
         self.triplesplit_offshoot = QGroupBox()
@@ -2283,51 +2233,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         triplesplit_layout.addWidget(self.triplesplit_velocity_enable, ts_row, 2)
         ts_row += 1
 
-        # Velocity Min with help
-        ts_vmin_label = QWidget()
-        ts_vmin_label_layout = QHBoxLayout()
-        ts_vmin_label_layout.setContentsMargins(0, 0, 0, 0)
-        ts_vmin_label_layout.setSpacing(3)
-        ts_vmin_label_layout.addWidget(self.create_help_label("Minimum MIDI velocity (1-127) for TripleSplit keys"))
-        ts_vmin_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Min:")))
-        ts_vmin_label_layout.addStretch()
-        ts_vmin_label.setLayout(ts_vmin_label_layout)
-        triplesplit_layout.addWidget(ts_vmin_label, ts_row, 0)
-
-        self.velocity_min3 = QSlider(Qt.Horizontal)
-        self.velocity_min3.setMinimum(1)
-        self.velocity_min3.setMaximum(127)
-        self.velocity_min3.setValue(1)
-        triplesplit_layout.addWidget(self.velocity_min3, ts_row, 1)
-        self.velocity_min3_value = QLabel("1")
-        self.velocity_min3_value.setMinimumWidth(30)
-        self.velocity_min3_value.setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.velocity_min3_value, ts_row, 2)
-        self.velocity_min3.valueChanged.connect(lambda v: self.velocity_min3_value.setText(str(v)))
-        ts_row += 1
-
-        # Velocity Max with help
-        ts_vmax_label = QWidget()
-        ts_vmax_label_layout = QHBoxLayout()
-        ts_vmax_label_layout.setContentsMargins(0, 0, 0, 0)
-        ts_vmax_label_layout.setSpacing(3)
-        ts_vmax_label_layout.addWidget(self.create_help_label("Maximum MIDI velocity (1-127) for TripleSplit keys"))
-        ts_vmax_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Velocity Max:")))
-        ts_vmax_label_layout.addStretch()
-        ts_vmax_label.setLayout(ts_vmax_label_layout)
-        triplesplit_layout.addWidget(ts_vmax_label, ts_row, 0)
-
-        self.velocity_max3 = QSlider(Qt.Horizontal)
-        self.velocity_max3.setMinimum(1)
-        self.velocity_max3.setMaximum(127)
-        self.velocity_max3.setValue(127)
-        triplesplit_layout.addWidget(self.velocity_max3, ts_row, 1)
-        self.velocity_max3_value = QLabel("127")
-        self.velocity_max3_value.setMinimumWidth(30)
-        self.velocity_max3_value.setAlignment(Qt.AlignCenter)
-        triplesplit_layout.addWidget(self.velocity_max3_value, ts_row, 2)
-        self.velocity_max3.valueChanged.connect(lambda v: self.velocity_max3_value.setText(str(v)))
-        ts_row += 1
+        # Velocity min/max removed - now configured per velocity preset
 
         # Sustain with help
         ts_sus_label = QWidget()
@@ -2356,6 +2262,35 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.triplesplit_sustain.lineEdit().setReadOnly(True)
         self.triplesplit_sustain.lineEdit().setAlignment(Qt.AlignCenter)
         triplesplit_layout.addWidget(self.triplesplit_sustain, ts_row, 1, 1, 2)
+        ts_row += 1
+
+        # SmartChord Ignore with help
+        ts_sc_label = QWidget()
+        ts_sc_label_layout = QHBoxLayout()
+        ts_sc_label_layout.setContentsMargins(0, 0, 0, 0)
+        ts_sc_label_layout.setSpacing(3)
+        ts_sc_label_layout.addWidget(self.create_help_label(
+            "SmartChord behavior for TripleSplit keys:\n"
+            "Allow: SmartChord adds harmony notes\n"
+            "Ignore: SmartChord has no effect on these keys"
+        ))
+        ts_sc_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord:")))
+        ts_sc_label_layout.addStretch()
+        ts_sc_label.setLayout(ts_sc_label_layout)
+        triplesplit_layout.addWidget(ts_sc_label, ts_row, 0)
+
+        self.triplesplit_smartchord_ignore = ArrowComboBox()
+        self.triplesplit_smartchord_ignore.setMinimumWidth(80)
+        self.triplesplit_smartchord_ignore.setMaximumWidth(120)
+        self.triplesplit_smartchord_ignore.setMinimumHeight(25)
+        self.triplesplit_smartchord_ignore.setMaximumHeight(25)
+        self.triplesplit_smartchord_ignore.addItem("Allow", 0)
+        self.triplesplit_smartchord_ignore.addItem("Ignore", 1)
+        self.triplesplit_smartchord_ignore.setCurrentIndex(0)
+        self.triplesplit_smartchord_ignore.setEditable(True)
+        self.triplesplit_smartchord_ignore.lineEdit().setReadOnly(True)
+        self.triplesplit_smartchord_ignore.lineEdit().setAlignment(Qt.AlignCenter)
+        triplesplit_layout.addWidget(self.triplesplit_smartchord_ignore, ts_row, 1, 1, 2)
 
         # Create wrapper for keysplit with title above
         keysplit_wrapper = QWidget()
@@ -2500,7 +2435,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.sample_mode.addItem("On", True)
         loop_layout.addWidget(self.sample_mode, 0, 4)
 
-        # Loop Messaging with help
+        # ThruLoop on/off with help
         thruloop_label = QWidget()
         thruloop_label_layout = QHBoxLayout()
         thruloop_label_layout.setContentsMargins(0, 0, 0, 0)
@@ -2508,7 +2443,9 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         thruloop_label_layout.addWidget(self.create_help_label(
             "Pass MIDI messages through the looper.\n"
             "Off: MIDI is not passed through\n"
-            "On: MIDI messages are forwarded"
+            "On: MIDI messages are forwarded\n\n"
+            "Configure ThruLoop channel, restart messaging,\n"
+            "and CC mappings in the ThruLoop tab."
         ))
         thruloop_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop:")))
         thruloop_label.setLayout(thruloop_label_layout)
@@ -2524,77 +2461,29 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.loop_messaging_enabled.addItem("On", True)
         loop_layout.addWidget(self.loop_messaging_enabled, 1, 2)
 
-        # Messaging Channel with help
-        thruloop_ch_label = QWidget()
-        thruloop_ch_label_layout = QHBoxLayout()
-        thruloop_ch_label_layout.setContentsMargins(0, 0, 0, 0)
-        thruloop_ch_label_layout.setSpacing(5)
-        thruloop_ch_label_layout.addWidget(self.create_help_label(
-            "MIDI channel (1-16) used for ThruLoop messages.\n"
-            "ThruLoop messages will be sent on this channel."
+        # CC Loop Recording with help
+        cc_loop_rec_label = QWidget()
+        cc_loop_rec_label_layout = QHBoxLayout()
+        cc_loop_rec_label_layout.setContentsMargins(0, 0, 0, 0)
+        cc_loop_rec_label_layout.setSpacing(5)
+        cc_loop_rec_label_layout.addWidget(self.create_help_label(
+            "Record CC messages in loop recordings.\n"
+            "Off: Only note on/off recorded\n"
+            "On: CC messages also recorded"
         ))
-        thruloop_ch_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Channel:")))
-        thruloop_ch_label.setLayout(thruloop_ch_label_layout)
-        loop_layout.addWidget(thruloop_ch_label, 1, 3)
-        self.loop_messaging_channel = ArrowComboBox()
-        self.loop_messaging_channel.setMinimumWidth(120)
-        self.loop_messaging_channel.setMinimumHeight(25)
-        self.loop_messaging_channel.setMaximumHeight(25)
-        self.loop_messaging_channel.setEditable(True)
-        self.loop_messaging_channel.lineEdit().setReadOnly(True)
-        self.loop_messaging_channel.lineEdit().setAlignment(Qt.AlignCenter)
-        for i in range(1, 17):
-            self.loop_messaging_channel.addItem(str(i), i)
-        self.loop_messaging_channel.setCurrentIndex(15)
-        loop_layout.addWidget(self.loop_messaging_channel, 1, 4)
-
-        # Sync MIDI Mode with help
-        restart_msg_label = QWidget()
-        restart_msg_label_layout = QHBoxLayout()
-        restart_msg_label_layout.setContentsMargins(0, 0, 0, 0)
-        restart_msg_label_layout.setSpacing(5)
-        restart_msg_label_layout.addWidget(self.create_help_label(
-            "Send restart messages when loop restarts.\n"
-            "Off: No restart messages sent\n"
-            "On: Send restart messages to external devices"
-        ))
-        restart_msg_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "ThruLoop Restart Messaging:")))
-        restart_msg_label.setLayout(restart_msg_label_layout)
-        loop_layout.addWidget(restart_msg_label, 2, 1)
-        self.sync_midi_mode = ArrowComboBox()
-        self.sync_midi_mode.setMinimumWidth(120)
-        self.sync_midi_mode.setMinimumHeight(25)
-        self.sync_midi_mode.setMaximumHeight(25)
-        self.sync_midi_mode.setEditable(True)
-        self.sync_midi_mode.lineEdit().setReadOnly(True)
-        self.sync_midi_mode.lineEdit().setAlignment(Qt.AlignCenter)
-        self.sync_midi_mode.addItem("Off", False)
-        self.sync_midi_mode.addItem("On", True)
-        loop_layout.addWidget(self.sync_midi_mode, 2, 2)
-
-        # Restart Mode with help
-        restart_mode_label = QWidget()
-        restart_mode_label_layout = QHBoxLayout()
-        restart_mode_label_layout.setContentsMargins(0, 0, 0, 0)
-        restart_mode_label_layout.setSpacing(5)
-        restart_mode_label_layout.addWidget(self.create_help_label(
-            "How to signal loop restart to external devices.\n"
-            "Restart CC: Send a CC message to restart\n"
-            "Stop+Start: Send stop then start messages"
-        ))
-        restart_mode_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Thruloop Restart Mode:")))
-        restart_mode_label.setLayout(restart_mode_label_layout)
-        loop_layout.addWidget(restart_mode_label, 2, 3)
-        self.alternate_restart_mode = ArrowComboBox()
-        self.alternate_restart_mode.setMinimumWidth(120)
-        self.alternate_restart_mode.setMinimumHeight(25)
-        self.alternate_restart_mode.setMaximumHeight(25)
-        self.alternate_restart_mode.setEditable(True)
-        self.alternate_restart_mode.lineEdit().setReadOnly(True)
-        self.alternate_restart_mode.lineEdit().setAlignment(Qt.AlignCenter)
-        self.alternate_restart_mode.addItem("Restart CC", False)
-        self.alternate_restart_mode.addItem("Stop+Start", True)
-        loop_layout.addWidget(self.alternate_restart_mode, 2, 4)
+        cc_loop_rec_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")))
+        cc_loop_rec_label.setLayout(cc_loop_rec_label_layout)
+        loop_layout.addWidget(cc_loop_rec_label, 1, 3)
+        self.cc_loop_recording = ArrowComboBox()
+        self.cc_loop_recording.setMinimumWidth(120)
+        self.cc_loop_recording.setMinimumHeight(25)
+        self.cc_loop_recording.setMaximumHeight(25)
+        self.cc_loop_recording.setEditable(True)
+        self.cc_loop_recording.lineEdit().setReadOnly(True)
+        self.cc_loop_recording.lineEdit().setAlignment(Qt.AlignCenter)
+        self.cc_loop_recording.addItem("Off", False)
+        self.cc_loop_recording.addItem("On", True)
+        loop_layout.addWidget(self.cc_loop_recording, 1, 4)
 
         # Overdub Mode with help
         overdub_label = QWidget()
@@ -2608,7 +2497,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         ))
         overdub_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Overdub Mode:")))
         overdub_label.setLayout(overdub_label_layout)
-        loop_layout.addWidget(overdub_label, 3, 1)
+        loop_layout.addWidget(overdub_label, 2, 1)
         self.smart_chord_light = ArrowComboBox()
         self.smart_chord_light.setMinimumWidth(120)
         self.smart_chord_light.setMinimumHeight(25)
@@ -2618,7 +2507,31 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.smart_chord_light.lineEdit().setAlignment(Qt.AlignCenter)
         self.smart_chord_light.addItem("Default", 0)
         self.smart_chord_light.addItem("8 Track Looper", 1)
-        loop_layout.addWidget(self.smart_chord_light, 3, 2)
+        loop_layout.addWidget(self.smart_chord_light, 2, 2)
+
+        # Live Note Priority with help
+        macro_override_label = QWidget()
+        macro_override_label_layout = QHBoxLayout()
+        macro_override_label_layout.setContentsMargins(0, 0, 0, 0)
+        macro_override_label_layout.setSpacing(5)
+        macro_override_label_layout.addWidget(self.create_help_label(
+            "Control how macro playback interacts with live notes.\n"
+            "Off: Macro plays notes even when held live\n"
+            "On: Live notes take priority, macro skips held notes"
+        ))
+        macro_override_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "Live Note Priority:")))
+        macro_override_label.setLayout(macro_override_label_layout)
+        loop_layout.addWidget(macro_override_label, 2, 3)
+        self.macro_override_live_notes = ArrowComboBox()
+        self.macro_override_live_notes.setMinimumWidth(120)
+        self.macro_override_live_notes.setMinimumHeight(25)
+        self.macro_override_live_notes.setMaximumHeight(25)
+        self.macro_override_live_notes.setEditable(True)
+        self.macro_override_live_notes.lineEdit().setReadOnly(True)
+        self.macro_override_live_notes.lineEdit().setAlignment(Qt.AlignCenter)
+        self.macro_override_live_notes.addItem("Off", False)
+        self.macro_override_live_notes.addItem("On", True)
+        loop_layout.addWidget(self.macro_override_live_notes, 2, 4)
 
         # Advanced Settings Group with title on left, container centered
         advanced_row_container = QWidget()
@@ -2821,30 +2734,6 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.custom_layer_animations.addItem("On", True)
         advanced_layout.addWidget(self.custom_layer_animations, 3, 2)
 
-        # CC Loop Recording with help
-        cc_loop_label = QWidget()
-        cc_loop_label_layout = QHBoxLayout()
-        cc_loop_label_layout.setContentsMargins(0, 0, 0, 0)
-        cc_loop_label_layout.setSpacing(5)
-        cc_loop_label_layout.addWidget(self.create_help_label(
-            "Record Control Change messages in loops.\n"
-            "Off: Only record note events\n"
-            "On: Record CC messages alongside notes"
-        ))
-        cc_loop_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "CC Loop Recording:")))
-        cc_loop_label.setLayout(cc_loop_label_layout)
-        advanced_layout.addWidget(cc_loop_label, 3, 3)
-        self.cc_loop_recording = ArrowComboBox()
-        self.cc_loop_recording.setMinimumWidth(120)
-        self.cc_loop_recording.setMinimumHeight(25)
-        self.cc_loop_recording.setMaximumHeight(25)
-        self.cc_loop_recording.setEditable(True)
-        self.cc_loop_recording.lineEdit().setReadOnly(True)
-        self.cc_loop_recording.lineEdit().setAlignment(Qt.AlignCenter)
-        self.cc_loop_recording.addItem("Off", False)
-        self.cc_loop_recording.addItem("On", True)
-        advanced_layout.addWidget(self.cc_loop_recording, 3, 4)
-
         # True Sustain with help
         true_sustain_label = QWidget()
         true_sustain_label_layout = QHBoxLayout()
@@ -2869,6 +2758,30 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.true_sustain.addItem("On", True)
         advanced_layout.addWidget(self.true_sustain, 4, 2)
 
+        # SmartChord Mode with help
+        sc_mode_label = QWidget()
+        sc_mode_label_layout = QHBoxLayout()
+        sc_mode_label_layout.setContentsMargins(0, 0, 0, 0)
+        sc_mode_label_layout.setSpacing(5)
+        sc_mode_label_layout.addWidget(self.create_help_label(
+            "How the SmartChord button activates.\n"
+            "Hold: SmartChord active while button is held\n"
+            "Toggle: Button toggles SmartChord on/off"
+        ))
+        sc_mode_label_layout.addWidget(QLabel(tr("MIDIswitchSettingsConfigurator", "SmartChord Mode:")))
+        sc_mode_label.setLayout(sc_mode_label_layout)
+        advanced_layout.addWidget(sc_mode_label, 4, 3)
+        self.smartchord_mode = ArrowComboBox()
+        self.smartchord_mode.setMinimumWidth(120)
+        self.smartchord_mode.setMinimumHeight(25)
+        self.smartchord_mode.setMaximumHeight(25)
+        self.smartchord_mode.setEditable(True)
+        self.smartchord_mode.lineEdit().setReadOnly(True)
+        self.smartchord_mode.lineEdit().setAlignment(Qt.AlignCenter)
+        self.smartchord_mode.addItem("Hold", 0)
+        self.smartchord_mode.addItem("Toggle", 1)
+        advanced_layout.addWidget(self.smartchord_mode, 4, 4)
+
         # Aftertouch is now per-layer (configured in Layer Actuation section)
         aftertouch_note = QLabel(tr("MIDIswitchSettingsConfigurator", "Aftertouch: Per-Layer"))
         aftertouch_note.setStyleSheet("QLabel { color: #888; font-style: italic; }")
@@ -2877,7 +2790,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "Go to the Layer Actuation section to configure\n"
             "aftertouch mode and CC number for each layer."
         )
-        advanced_layout.addWidget(aftertouch_note, 4, 3, 1, 2)  # Spans cols 3-4
+        advanced_layout.addWidget(aftertouch_note, 5, 1, 1, 2)  # Moved to row 5
 
         # MIDI Routing Settings Group with title on left, container centered
         routing_row_container = QWidget()
@@ -3081,14 +2994,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.global_velocity_curve.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_HE_VELOCITY_CURVE, self.global_velocity_curve.currentData())
         )
-        self.global_velocity_min.valueChanged.connect(
-            lambda v: [self.velocity_min_value_label.setText(str(v)),
-                      self.send_param_update(PARAM_HE_VELOCITY_MIN, v)]
-        )
-        self.global_velocity_max.valueChanged.connect(
-            lambda v: [self.velocity_max_value_label.setText(str(v)),
-                      self.send_param_update(PARAM_HE_VELOCITY_MAX, v)]
-        )
+        # Velocity min/max connections removed - now per velocity preset
         self.base_sustain.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_BASE_SUSTAIN, self.base_sustain.currentData())
         )
@@ -3104,14 +3010,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_curve2.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_CURVE, self.velocity_curve2.currentData())
         )
-        self.velocity_min2.valueChanged.connect(
-            lambda v: [self.velocity_min2_value.setText(str(v)),
-                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MIN, v)]
-        )
-        self.velocity_max2.valueChanged.connect(
-            lambda v: [self.velocity_max2_value.setText(str(v)),
-                      self.send_param_update(PARAM_KEYSPLIT_HE_VELOCITY_MAX, v)]
-        )
+        # Velocity min/max connections removed - now per velocity preset
         self.keysplit_sustain.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_KEYSPLIT_SUSTAIN, self.keysplit_sustain.currentData())
         )
@@ -3126,14 +3025,7 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         self.velocity_curve3.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_CURVE, self.velocity_curve3.currentData())
         )
-        self.velocity_min3.valueChanged.connect(
-            lambda v: [self.velocity_min3_value.setText(str(v)),
-                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MIN, v)]
-        )
-        self.velocity_max3.valueChanged.connect(
-            lambda v: [self.velocity_max3_value.setText(str(v)),
-                      self.send_param_update(PARAM_TRIPLESPLIT_HE_VELOCITY_MAX, v)]
-        )
+        # Velocity min/max connections removed - now per velocity preset
         self.triplesplit_sustain.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_TRIPLESPLIT_SUSTAIN, self.triplesplit_sustain.currentData())
         )
@@ -3158,6 +3050,27 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         )
         self.midi_clock_source.currentIndexChanged.connect(
             lambda: self.send_param_update(PARAM_MIDI_CLOCK_SOURCE, self.midi_clock_source.currentData())
+        )
+
+        # Macro Override Live Notes
+        self.macro_override_live_notes.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_MACRO_OVERRIDE_LIVE_NOTES, 1 if self.macro_override_live_notes.currentData() else 0)
+        )
+
+        # SmartChord Mode
+        self.smartchord_mode.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_SMARTCHORD_MODE, self.smartchord_mode.currentData())
+        )
+
+        # SmartChord Ignore per zone
+        self.base_smartchord_ignore.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_BASE_SMARTCHORD_IGNORE, self.base_smartchord_ignore.currentData())
+        )
+        self.keysplit_smartchord_ignore.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_KEYSPLIT_SMARTCHORD_IGNORE, self.keysplit_smartchord_ignore.currentData())
+        )
+        self.triplesplit_smartchord_ignore.currentIndexChanged.connect(
+            lambda: self.send_param_update(PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE, self.triplesplit_smartchord_ignore.currentData())
         )
 
     def send_param_update(self, param_id, value):
@@ -3252,26 +3165,16 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "unsynced_mode_active": self.unsynced_mode.currentData(),
             "sample_mode_active": self.sample_mode.currentData(),
             "loop_messaging_enabled": self.loop_messaging_enabled.currentData(),
-            "loop_messaging_channel": self.loop_messaging_channel.currentData(),
-            "sync_midi_mode": self.sync_midi_mode.currentData(),
-            "alternate_restart_mode": self.alternate_restart_mode.currentData(),
             "colorblindmode": self.colorblind_mode.currentData(),
             "cclooprecording": self.cc_loop_recording.currentData(),
             "truesustain": self.true_sustain.currentData(),
-            # KeySplit/TripleSplit velocity settings
+            # KeySplit/TripleSplit velocity settings (curve only - min/max now per velocity preset)
             "velocity_curve2": self.velocity_curve2.currentData(),
-            "velocity_min2": self.velocity_min2.value(),  # Changed from currentData() to value()
-            "velocity_max2": self.velocity_max2.value(),  # Changed from currentData() to value()
             "velocity_curve3": self.velocity_curve3.currentData(),
-            "velocity_min3": self.velocity_min3.value(),  # Changed from currentData() to value()
-            "velocity_max3": self.velocity_max3.value(),  # Changed from currentData() to value()
             # Global MIDI settings
             "global_transpose": self.global_transpose.currentData(),
             "global_channel": self.global_channel.currentData(),
             "global_velocity_curve": self.global_velocity_curve.currentData(),
-            # global_aftertouch removed - now per-layer
-            "global_velocity_min": self.global_velocity_min.value(),  # Changed from currentData() to value()
-            "global_velocity_max": self.global_velocity_max.value(),  # Changed from currentData() to value()
             # global_aftertouch_cc removed - now per-layer
             # Sustain settings
             "base_sustain": self.base_sustain.currentData(),
@@ -3283,7 +3186,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "transpose_override": self.transpose_override.currentData(),
             "midi_in_mode": self.midi_in_mode.currentData(),
             "usb_midi_mode": self.usb_midi_mode.currentData(),
-            "midi_clock_source": self.midi_clock_source.currentData()
+            "midi_clock_source": self.midi_clock_source.currentData(),
+            # Macro override live notes
+            "macro_override_live_notes": self.macro_override_live_notes.currentData(),
+            # SmartChord settings
+            "smartchord_mode": self.smartchord_mode.currentData(),
+            "base_smartchord_ignore": self.base_smartchord_ignore.currentData(),
+            "keysplit_smartchord_ignore": self.keysplit_smartchord_ignore.currentData(),
+            "triplesplit_smartchord_ignore": self.triplesplit_smartchord_ignore.currentData()
         }
 
     def apply_settings(self, config):
@@ -3352,27 +3262,16 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.unsynced_mode, config.get("unsynced_mode_active"), False)
         set_combo_by_data(self.sample_mode, config.get("sample_mode_active"), False)
         set_combo_by_data(self.loop_messaging_enabled, config.get("loop_messaging_enabled"), False)
-        set_combo_by_data(self.loop_messaging_channel, config.get("loop_messaging_channel"), 16)
-        set_combo_by_data(self.sync_midi_mode, config.get("sync_midi_mode"), False)
-        set_combo_by_data(self.alternate_restart_mode, config.get("alternate_restart_mode"), False)
         set_combo_by_data(self.colorblind_mode, config.get("colorblindmode"), 0)
         set_combo_by_data(self.cc_loop_recording, config.get("cclooprecording"), False)
         set_combo_by_data(self.true_sustain, config.get("truesustain"), False)
-        # KeySplit/TripleSplit velocity settings
+        # KeySplit/TripleSplit velocity settings (curve only - min/max now per velocity preset)
         set_combo_by_data(self.velocity_curve2, config.get("velocity_curve2"), 2)
-        self.velocity_min2.setValue(config.get("velocity_min2", 1))  # Changed to slider setValue
-        self.velocity_max2.setValue(config.get("velocity_max2", 127))  # Changed to slider setValue
         set_combo_by_data(self.velocity_curve3, config.get("velocity_curve3"), 2)
-        self.velocity_min3.setValue(config.get("velocity_min3", 1))  # Changed to slider setValue
-        self.velocity_max3.setValue(config.get("velocity_max3", 127))  # Changed to slider setValue
         # Global MIDI settings
         set_combo_by_data(self.global_transpose, config.get("global_transpose"), 0)
         set_combo_by_data(self.global_channel, config.get("global_channel"), 0)
         set_combo_by_data(self.global_velocity_curve, config.get("global_velocity_curve"), 2)
-        # global_aftertouch removed - now per-layer
-        self.global_velocity_min.setValue(config.get("global_velocity_min", 1))  # Changed to slider setValue
-        self.global_velocity_max.setValue(config.get("global_velocity_max", 127))  # Changed to slider setValue
-        # global_aftertouch_cc removed - now per-layer
         # Sustain settings
         set_combo_by_data(self.base_sustain, config.get("base_sustain"), 0)
         set_combo_by_data(self.keysplit_sustain, config.get("keysplit_sustain"), 0)
@@ -3384,6 +3283,13 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         set_combo_by_data(self.midi_in_mode, config.get("midi_in_mode"), 0)
         set_combo_by_data(self.usb_midi_mode, config.get("usb_midi_mode"), 0)
         set_combo_by_data(self.midi_clock_source, config.get("midi_clock_source"), 0)
+        # Macro override live notes
+        set_combo_by_data(self.macro_override_live_notes, config.get("macro_override_live_notes"), False)
+        # SmartChord settings
+        set_combo_by_data(self.smartchord_mode, config.get("smartchord_mode"), 0)
+        set_combo_by_data(self.base_smartchord_ignore, config.get("base_smartchord_ignore"), 0)
+        set_combo_by_data(self.keysplit_smartchord_ignore, config.get("keysplit_smartchord_ignore"), 0)
+        set_combo_by_data(self.triplesplit_smartchord_ignore, config.get("triplesplit_smartchord_ignore"), 0)
 
     def pack_basic_data(self, settings):
         """Pack basic settings into 22-byte structure
@@ -3426,8 +3332,12 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 21-byte structure (expanded for MIDI routing overrides)"""
-        data = bytearray(21)
+        """Pack advanced settings into 23-byte structure
+
+        Note: loop_messaging_channel, sync_midi_mode, alternate_restart_mode
+        are now managed by the ThruLoop tab (0xB0 packet), not the advanced packet.
+        """
+        data = bytearray(23)
 
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
@@ -3439,19 +3349,23 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings["unsynced_mode_active"]; offset += 1
         data[offset] = 1 if settings["sample_mode_active"] else 0; offset += 1
         data[offset] = 1 if settings["loop_messaging_enabled"] else 0; offset += 1
-        data[offset] = settings["loop_messaging_channel"]; offset += 1
-        data[offset] = 1 if settings["sync_midi_mode"] else 0; offset += 1
-        data[offset] = 1 if settings["alternate_restart_mode"] else 0; offset += 1
         data[offset] = settings["colorblindmode"]; offset += 1
         data[offset] = 1 if settings["cclooprecording"] else 0; offset += 1
         data[offset] = 1 if settings["truesustain"] else 0; offset += 1
-        # MIDI Routing Override settings (bytes 15-20)
+        # MIDI Routing Override settings (bytes 12-17)
         data[offset] = 1 if settings.get("channel_override", False) else 0; offset += 1
         data[offset] = 1 if settings.get("velocity_override", False) else 0; offset += 1
         data[offset] = 1 if settings.get("transpose_override", False) else 0; offset += 1
         data[offset] = settings.get("midi_in_mode", 0); offset += 1
         data[offset] = settings.get("usb_midi_mode", 0); offset += 1
         data[offset] = settings.get("midi_clock_source", 0); offset += 1
+        # Macro override live notes (byte 18)
+        data[offset] = 1 if settings.get("macro_override_live_notes", False) else 0; offset += 1
+        # SmartChord settings (bytes 19-22)
+        data[offset] = settings.get("smartchord_mode", 0); offset += 1
+        data[offset] = settings.get("base_smartchord_ignore", 0); offset += 1
+        data[offset] = settings.get("keysplit_smartchord_ignore", 0); offset += 1
+        data[offset] = settings.get("triplesplit_smartchord_ignore", 0); offset += 1
 
         return data
     
@@ -3460,16 +3374,19 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
-            
+
             settings = self.get_current_settings()
-            
+
             basic_data = self.pack_basic_data(settings)
+            print(f"[MIDI Settings] Saving slot {slot}: basic_data={len(basic_data)} bytes: {basic_data.hex()}")
             if not self.device.keyboard.save_midi_slot(slot, basic_data):
-                raise RuntimeError(f"Failed to save to slot {slot}")
-            
+                raise RuntimeError(f"Failed to save basic data to slot {slot}")
+
+            print(f"[MIDI Settings] Basic data saved OK, sending advanced data in 50ms...")
             QtCore.QTimer.singleShot(50, lambda: self._send_advanced_data(settings))
-            
+
         except Exception as e:
+            print(f"[MIDI Settings] Save error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to save to slot {slot}: {str(e)}")
     
     def _send_advanced_data(self, settings):
@@ -3477,11 +3394,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 return
-                
+
             advanced_data = self.pack_advanced_data(settings)
+            print(f"[MIDI Settings] Sending advanced data: {len(advanced_data)} bytes: {advanced_data.hex()}")
             if not self.device.keyboard.set_midi_advanced_config(advanced_data):
                 raise RuntimeError("Failed to send advanced config")
+            print(f"[MIDI Settings] Advanced data sent OK")
         except Exception as e:
+            print(f"[MIDI Settings] Advanced data error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to send advanced data: {str(e)}")
     
     def on_load_slot(self, slot):
@@ -3489,27 +3409,33 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         try:
             if not self.device or not isinstance(self.device, VialKeyboard):
                 raise RuntimeError("Device not connected")
-                
+
+            print(f"[MIDI Settings] Loading slot {slot}...")
             if not self.device.keyboard.load_midi_slot(slot):
                 raise RuntimeError(f"Failed to load from slot {slot}")
-                
+
+            print(f"[MIDI Settings] Slot {slot} load command OK, fetching config in 100ms...")
             # Small delay then get the loaded configuration
             QtCore.QTimer.singleShot(100, lambda: self._load_config_after_slot_load(slot))
-                
+
         except Exception as e:
+            print(f"[MIDI Settings] Load error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to load from slot {slot}: {str(e)}")
-    
+
     def _load_config_after_slot_load(self, slot):
         """Get and apply configuration after slot load"""
         try:
             config = self.device.keyboard.get_midi_config()
-            
+
             if not config:
                 raise RuntimeError("Failed to get config after slot load")
-            
+
+            print(f"[MIDI Settings] Loaded config from slot {slot}: {config}")
             self.apply_settings(config)
-            
+            print(f"[MIDI Settings] Settings applied to UI")
+
         except Exception as e:
+            print(f"[MIDI Settings] Apply config error: {e}")
             QMessageBox.critical(None, "Error", f"Failed to apply loaded config: {str(e)}")
     
     def on_load_current_settings(self):
@@ -3565,25 +3491,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "unsynced_mode_active": 0,
             "sample_mode_active": False,
             "loop_messaging_enabled": False,
-            "loop_messaging_channel": 16,
-            "sync_midi_mode": False,
-            "alternate_restart_mode": False,
             "colorblindmode": 0,
             "cclooprecording": False,
             "truesustain": False,
             "velocity_curve2": 2,
-            "velocity_min2": 1,
-            "velocity_max2": 127,
             "velocity_curve3": 2,
-            "velocity_min3": 1,
-            "velocity_max3": 127,
             "global_transpose": 0,
             "global_channel": 0,
             "global_velocity_curve": 2,
-            # global_aftertouch removed - now per-layer
-            "global_velocity_min": 1,
-            "global_velocity_max": 127,
-            # global_aftertouch_cc removed - now per-layer
             "base_sustain": 0,
             "keysplit_sustain": 0,
             "triplesplit_sustain": 0,
@@ -3593,7 +3508,14 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
             "transpose_override": False,
             "midi_in_mode": 0,
             "usb_midi_mode": 0,
-            "midi_clock_source": 0
+            "midi_clock_source": 0,
+            # Macro override live notes
+            "macro_override_live_notes": False,
+            # SmartChord settings
+            "smartchord_mode": 0,
+            "base_smartchord_ignore": 0,
+            "keysplit_smartchord_ignore": 0,
+            "triplesplit_smartchord_ignore": 0
         }
         self.apply_settings(defaults)
     
@@ -3604,6 +3526,10 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         super().rebuild(device)
         if not self.valid():
             return
+
+        # Propagate device to embedded ThruLoop tab
+        if hasattr(self, 'thruloop_tab'):
+            self.thruloop_tab.rebuild(device)
 
         # Load MIDI configuration from keyboard
         if hasattr(self.device.keyboard, 'midi_config') and self.device.keyboard.midi_config:
