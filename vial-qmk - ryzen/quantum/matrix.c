@@ -842,18 +842,32 @@ static void update_calibration(uint32_t key_idx) {
     }
 
     // Auto-calibrate rest position when stable, not pressed, AND near rest position
-    // Requires stability for full AUTO_CALIB_VALID_RELEASE_TIME (10 seconds)
-    // The distance check (< 5% of travel) prevents recalibration during slow presses
-    if (key->is_stable && !key->is_pressed &&
-        key->distance < AUTO_CALIB_MAX_DISTANCE &&
-        timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-        // Use a small threshold for the rest value update decision.
-        // The stability detection (above) already confirmed the reading is stable,
-        // so we just need enough hysteresis to avoid chasing 1-2 unit ADC noise.
-        // Using CALIBRATION_EPSILON (5) prevents constant micro-updates while
-        // still catching real drift (e.g. 27 ADC units over time).
-        if (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON ||
-            key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON) {
+    if (key->is_stable && !key->is_pressed && key->distance < AUTO_CALIB_MAX_DISTANCE) {
+        bool inverted = (key->adc_rest_value > key->adc_bottom_out_value);
+
+        // Determine if ADC has drifted toward the "pressed" direction from rest.
+        // For inverted Hall effect (rest > bottom): lower ADC = more pressed.
+        // For normal orientation (rest < bottom): higher ADC = more pressed.
+        bool drifted_toward_pressed = inverted
+            ? (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON)
+            : (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON);
+
+        bool drifted_away_from_pressed = inverted
+            ? (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON)
+            : (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON);
+
+        if (drifted_toward_pressed) {
+            // Rest has shifted toward pressed direction - update immediately.
+            // Prevents the key from appearing partially pressed at its resting
+            // position (rest value must never exceed actual rest ADC).
+            key->adc_rest_value = key->adc_filtered;
+            calibration_dirty = true;
+            last_calibration_change = timer_read();
+        } else if (drifted_away_from_pressed &&
+                   timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
+            // Rest has shifted away from pressed direction - safe to wait.
+            // Requires full 10-second stability period to prevent slow presses
+            // from inflating the rest value.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
