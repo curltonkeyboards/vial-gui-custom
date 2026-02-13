@@ -3427,8 +3427,8 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         return data
     
     def pack_advanced_data(self, settings):
-        """Pack advanced settings into 22-byte structure"""
-        data = bytearray(22)
+        """Pack advanced settings into 26-byte structure"""
+        data = bytearray(26)
 
         offset = 0
         data[offset] = settings["key_split_channel"]; offset += 1
@@ -3455,6 +3455,11 @@ class MIDIswitchSettingsConfigurator(BasicEditor):
         data[offset] = settings.get("midi_clock_source", 0); offset += 1
         # Macro override live notes (byte 21)
         data[offset] = 1 if settings.get("macro_override_live_notes", False) else 0; offset += 1
+        # SmartChord settings (bytes 22-25)
+        data[offset] = settings.get("smartchord_mode", 0); offset += 1
+        data[offset] = settings.get("base_smartchord_ignore", 0); offset += 1
+        data[offset] = settings.get("keysplit_smartchord_ignore", 0); offset += 1
+        data[offset] = settings.get("triplesplit_smartchord_ignore", 0); offset += 1
 
         return data
     

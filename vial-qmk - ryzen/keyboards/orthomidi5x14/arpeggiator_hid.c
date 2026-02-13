@@ -1264,6 +1264,31 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 settings_changed = true;
                 dprintf("SET param 43 (max_press_time) = %d\n", value16);
                 break;
+            case 45:  // PARAM_MACRO_OVERRIDE_LIVE_NOTES
+                macro_override_live_notes = (value8 != 0);
+                keyboard_settings.macro_override_live_notes = macro_override_live_notes;
+                dprintf("SET param 45 (macro_override_live_notes) = %d\n", value8);
+                break;
+            case 46:  // PARAM_SMARTCHORD_MODE (0=Hold, 1=Toggle)
+                smartchord_mode = value8;
+                keyboard_settings.smartchord_mode = smartchord_mode;
+                dprintf("SET param 46 (smartchord_mode) = %d\n", value8);
+                break;
+            case 47:  // PARAM_BASE_SMARTCHORD_IGNORE (0=Allow, 1=Ignore)
+                base_smartchord_ignore = value8;
+                keyboard_settings.base_smartchord_ignore = base_smartchord_ignore;
+                dprintf("SET param 47 (base_smartchord_ignore) = %d\n", value8);
+                break;
+            case 48:  // PARAM_KEYSPLIT_SMARTCHORD_IGNORE (0=Allow, 1=Ignore)
+                keysplit_smartchord_ignore = value8;
+                keyboard_settings.keysplit_smartchord_ignore = keysplit_smartchord_ignore;
+                dprintf("SET param 48 (keysplit_smartchord_ignore) = %d\n", value8);
+                break;
+            case 49:  // PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE (0=Allow, 1=Ignore)
+                triplesplit_smartchord_ignore = value8;
+                keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
+                dprintf("SET param 49 (triplesplit_smartchord_ignore) = %d\n", value8);
+                break;
             default:
                 success = false;
                 dprintf("SET param %d: UNKNOWN param_id\n", param_id);

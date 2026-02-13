@@ -13080,6 +13080,11 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     usb_midi_mode = (usb_midi_mode_t)*ptr++;
     midi_clock_source = (midi_clock_source_t)*ptr++;
     macro_override_live_notes = (*ptr++ != 0);
+    // SmartChord settings (bytes 22-25)
+    smartchord_mode = *ptr++;
+    base_smartchord_ignore = *ptr++;
+    keysplit_smartchord_ignore = *ptr++;
+    triplesplit_smartchord_ignore = *ptr++;
 
     // Update advanced keyboard settings structure
     keyboard_settings.keysplitchannel = keysplitchannel;
@@ -13105,6 +13110,10 @@ static void handle_set_keyboard_config_advanced(const uint8_t* data) {
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
     keyboard_settings.macro_override_live_notes = macro_override_live_notes;
+    keyboard_settings.smartchord_mode = smartchord_mode;
+    keyboard_settings.base_smartchord_ignore = base_smartchord_ignore;
+    keyboard_settings.keysplit_smartchord_ignore = keysplit_smartchord_ignore;
+    keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
 
     if (pending_slot_save != 255) {
         save_keyboard_settings_to_slot(pending_slot_save);
@@ -13354,9 +13363,9 @@ static void handle_get_keyboard_config(void) {
 
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
-    
-    // Packet 2: Advanced settings (22 bytes - expanded for macro override live notes)
-    uint8_t config_packet2[22];
+
+    // Packet 2: Advanced settings (26 bytes - expanded for smartchord settings)
+    uint8_t config_packet2[26];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13382,9 +13391,14 @@ static void handle_get_keyboard_config(void) {
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
     *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
+    // SmartChord settings (bytes 22-25)
+    *ptr++ = keyboard_settings.smartchord_mode;
+    *ptr++ = keyboard_settings.base_smartchord_ignore;
+    *ptr++ = keyboard_settings.keysplit_smartchord_ignore;
+    *ptr++ = keyboard_settings.triplesplit_smartchord_ignore;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 22);
-    
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 26);
+
     dprintf("HID: Sent keyboard configuration to web app (2 packets)\n");
 }
 
@@ -13536,9 +13550,9 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
 
     send_hid_response(HID_CMD_GET_KEYBOARD_CONFIG, 0, 0, config_packet1, 22);
     wait_ms(5);
-    
-    // Packet 2: Advanced settings (22 bytes - expanded for macro override live notes)
-    uint8_t config_packet2[22];
+
+    // Packet 2: Advanced settings (26 bytes - expanded for smartchord settings)
+    uint8_t config_packet2[26];
     ptr = config_packet2;
 
     *ptr++ = keyboard_settings.keysplitchannel;
@@ -13564,9 +13578,14 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     *ptr++ = keyboard_settings.usb_midi_mode;
     *ptr++ = keyboard_settings.midi_clock_source;
     *ptr++ = keyboard_settings.macro_override_live_notes ? 1 : 0;
+    // SmartChord settings (bytes 22-25)
+    *ptr++ = keyboard_settings.smartchord_mode;
+    *ptr++ = keyboard_settings.base_smartchord_ignore;
+    *ptr++ = keyboard_settings.keysplit_smartchord_ignore;
+    *ptr++ = keyboard_settings.triplesplit_smartchord_ignore;
 
-    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 22);
-    
+    send_hid_response(HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED, 0, 0, config_packet2, 26);
+
     // FIXED: Now update global variables AFTER sending both packets
     velocity_sensitivity = keyboard_settings.velocity_sensitivity;
     cc_sensitivity = keyboard_settings.cc_sensitivity;
@@ -13603,6 +13622,11 @@ static void handle_load_keyboard_slot(const uint8_t* data) {
     midi_in_mode = (midi_in_mode_t)keyboard_settings.midi_in_mode;
     usb_midi_mode = (usb_midi_mode_t)keyboard_settings.usb_midi_mode;
     midi_clock_source = (midi_clock_source_t)keyboard_settings.midi_clock_source;
+    macro_override_live_notes = keyboard_settings.macro_override_live_notes;
+    smartchord_mode = keyboard_settings.smartchord_mode;
+    base_smartchord_ignore = keyboard_settings.base_smartchord_ignore;
+    keysplit_smartchord_ignore = keyboard_settings.keysplit_smartchord_ignore;
+    triplesplit_smartchord_ignore = keyboard_settings.triplesplit_smartchord_ignore;
 
     dprintf("HID: Applied loaded settings from slot %d to active configuration\n", slot);
 }

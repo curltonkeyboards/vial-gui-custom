@@ -1758,7 +1758,12 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                     "usb_midi_mode": data[19] if len(data) > 19 else 0,
                     "midi_clock_source": data[20] if len(data) > 20 else 0,
                     # Macro override live notes (byte 21)
-                    "macro_override_live_notes": data[21] != 0 if len(data) > 21 else False
+                    "macro_override_live_notes": data[21] != 0 if len(data) > 21 else False,
+                    # SmartChord settings (bytes 22-25)
+                    "smartchord_mode": data[22] if len(data) > 22 else 0,
+                    "base_smartchord_ignore": data[23] if len(data) > 23 else 0,
+                    "keysplit_smartchord_ignore": data[24] if len(data) > 24 else 0,
+                    "triplesplit_smartchord_ignore": data[25] if len(data) > 25 else 0
                 })
                 
             return config if config else None
