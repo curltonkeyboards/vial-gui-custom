@@ -13,13 +13,14 @@ from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLa
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QFrame, QScrollArea, QSlider, QSpinBox, QButtonGroup,
                            QRadioButton, QMessageBox, QTabWidget, QListWidget, QListWidgetItem)
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QRect
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont
+from PyQt5.QtGui import QPainter, QColor, QBrush, QPen, QFont, QLinearGradient
 
 from widgets.combo_box import ArrowComboBox
 from widgets.curve_editor import CurveEditorWidget
 from widgets.range_slider import DualRangeSlider
+from widgets.square_button import SquareButton
 from editor.basic_editor import BasicEditor
 from widgets.keyboard_widget import KeyboardWidgetSimple
 from themes import Theme
@@ -116,17 +117,26 @@ def get_midi_key_type(keycode):
 
 
 class VelocityKeyboardWidget(KeyboardWidgetSimple):
-    """Extended keyboard widget that displays velocity values on keys"""
+    """Extended keyboard widget that displays velocity values on keys.
+
+    For MIDI keys, each key shows:
+    - Velocity value (0-127) at the top of the key
+    - Press time (ms) at the bottom of the key
+    - A vertical volume bar on the right edge visualizing velocity level
+    """
 
     def __init__(self, layout_editor):
         super().__init__(layout_editor)
-        self.velocity_values = {}  # {(row, col): velocity}
-        self.midi_keys = set()     # Set of (row, col) that have MIDI notes
+        self.velocity_values = {}   # {(row, col): velocity}
+        self.press_time_values = {} # {(row, col): travel_time_ms}
+        self.midi_keys = set()      # Set of (row, col) that have MIDI notes
         self.show_velocity = True
 
-    def set_velocity(self, row, col, velocity):
-        """Set velocity value for a specific key"""
+    def set_velocity(self, row, col, velocity, press_time_ms=0):
+        """Set velocity and press time for a specific key"""
         self.velocity_values[(row, col)] = velocity
+        if press_time_ms > 0:
+            self.press_time_values[(row, col)] = press_time_ms
         self.update()
 
     def set_midi_keys(self, midi_keys):
@@ -135,9 +145,20 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
         self.update()
 
     def clear_velocities(self):
-        """Clear all velocity values"""
+        """Clear all velocity and press time values"""
         self.velocity_values = {}
+        self.press_time_values = {}
         self.update()
+
+    def _velocity_color(self, velocity):
+        """Get color for a velocity value (blue=low, red=high)"""
+        if velocity > 0:
+            ratio = velocity / 127.0
+            r = int(50 + ratio * 205)
+            g = int(150 - ratio * 100)
+            b = int(255 - ratio * 205)
+            return QColor(r, g, b)
+        return QColor(100, 100, 100)
 
     def paintEvent(self, event):
         # Call parent paint first
@@ -153,12 +174,7 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
         light_themes = ["Light", "Lavender Dream", "Mint Fresh", "Peachy Keen", "Sky Serenity", "Rose Garden"]
         is_light = Theme.get_theme() in light_themes
 
-        font = QFont()
-        font.setBold(True)
-        font.setPointSize(8)
-        painter.setFont(font)
-
-        # Draw velocity values on keys
+        # Draw velocity overlay on keys
         for widget in self.widgets:
             if not hasattr(widget, 'desc'):
                 continue
@@ -166,57 +182,77 @@ class VelocityKeyboardWidget(KeyboardWidgetSimple):
             row = widget.desc.row
             col = widget.desc.col
 
-            # KeyWidget2 uses rect property, not geometry() method
-            # Also need to account for scale and shift transforms
             scale = self.scale * 1.3
             rect_x = int((widget.x + widget.shift_x) * scale)
             rect_y = int((widget.y + widget.shift_y) * scale)
             rect_w = int(widget.w * scale)
             rect_h = int(widget.h * scale)
 
-            center_x = rect_x + rect_w // 2
-            center_y = rect_y + rect_h // 2
-
-            # Check if this is a MIDI key
             is_midi = (row, col) in self.midi_keys
 
             if is_midi:
-                # Draw velocity value for MIDI keys
                 velocity = self.velocity_values.get((row, col), 0)
+                press_time = self.press_time_values.get((row, col), 0)
+                color = self._velocity_color(velocity)
 
-                # Color based on velocity (low = blue, high = red)
-                if velocity > 0:
-                    # Interpolate from blue (low) to red (high)
-                    ratio = velocity / 127.0
-                    r = int(50 + ratio * 205)
-                    g = int(150 - ratio * 100)
-                    b = int(255 - ratio * 205)
-                    color = QColor(r, g, b)
-                else:
-                    color = QColor(100, 100, 100)  # Gray for 0
+                # --- Volume bar on right side ---
+                bar_width = max(4, int(rect_w * 0.10))
+                bar_margin = 2
+                bar_x = rect_x + rect_w - bar_width - bar_margin
+                bar_y = rect_y + bar_margin
+                bar_h = rect_h - 2 * bar_margin
 
-                # Draw background circle
+                # Draw bar background (dark track)
                 painter.setPen(Qt.NoPen)
-                painter.setBrush(QBrush(color))
-                circle_size = min(rect_w, rect_h) * 0.6
-                painter.drawEllipse(
-                    int(center_x - circle_size/2),
-                    int(center_y - circle_size/2),
-                    int(circle_size),
-                    int(circle_size)
-                )
+                painter.setBrush(QBrush(QColor(60, 60, 60, 140)))
+                painter.drawRoundedRect(bar_x, bar_y, bar_width, bar_h, 2, 2)
 
-                # Draw velocity text
-                painter.setPen(QPen(QColor(255, 255, 255) if velocity > 60 else QColor(0, 0, 0)))
-                painter.drawText(
-                    rect_x, rect_y, rect_w, rect_h,
-                    Qt.AlignCenter,
-                    str(velocity) if velocity > 0 else "-"
-                )
+                # Draw filled portion (bottom-up)
+                if velocity > 0:
+                    fill_ratio = velocity / 127.0
+                    fill_h = int(bar_h * fill_ratio)
+                    fill_y = bar_y + bar_h - fill_h
+
+                    # Gradient from bottom (blue) to top (red)
+                    gradient = QLinearGradient(bar_x, bar_y + bar_h, bar_x, bar_y)
+                    gradient.setColorAt(0.0, QColor(50, 150, 255))
+                    gradient.setColorAt(1.0, QColor(255, 50, 50))
+                    painter.setBrush(QBrush(gradient))
+                    painter.drawRoundedRect(bar_x, fill_y, bar_width, fill_h, 2, 2)
+
+                # --- Velocity text at top of key ---
+                text_area_w = rect_w - bar_width - bar_margin - 2
+                vel_font = QFont()
+                vel_font.setBold(True)
+                vel_font.setPointSize(8)
+                painter.setFont(vel_font)
+
+                text_color = QColor(0, 0, 0) if is_light else QColor(255, 255, 255)
+                painter.setPen(QPen(text_color))
+
+                vel_rect = QRect(rect_x, rect_y + 2, text_area_w, int(rect_h * 0.45))
+                vel_text = str(velocity) if velocity > 0 else "-"
+                painter.drawText(vel_rect, Qt.AlignCenter, vel_text)
+
+                # --- Press time text at bottom of key ---
+                time_font = QFont()
+                time_font.setPointSize(6)
+                painter.setFont(time_font)
+
+                time_color = QColor(80, 80, 80) if is_light else QColor(180, 180, 180)
+                painter.setPen(QPen(time_color))
+
+                time_rect = QRect(rect_x, rect_y + int(rect_h * 0.55), text_area_w, int(rect_h * 0.40))
+                time_text = f"{press_time}ms" if press_time > 0 else "-"
+                painter.drawText(time_rect, Qt.AlignCenter, time_text)
+
             else:
                 # Non-MIDI keys - show grayed out indicator
                 painter.setPen(QPen(QColor(120, 120, 120, 100)))
                 painter.setBrush(Qt.NoBrush)
+                dim_font = QFont()
+                dim_font.setPointSize(7)
+                painter.setFont(dim_font)
                 painter.drawText(
                     rect_x, rect_y, rect_w, rect_h,
                     Qt.AlignCenter,
@@ -809,14 +845,23 @@ class VelocityTab(BasicEditor):
         desc_label.setAlignment(QtCore.Qt.AlignCenter)
         main_layout.addWidget(desc_label)
 
-        # Layer info label (auto-detected from keyboard)
-        self.layer_info_label = QLabel(tr("VelocityTab", "Layer: Auto"))
-        self.layer_info_label.setStyleSheet("color: #888; font-size: 9pt;")
-        self.layer_info_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_layout.addWidget(self.layer_info_label)
+        # Layer chooser (row of buttons like keymap editor)
+        layer_chooser_layout = QHBoxLayout()
+        layer_chooser_layout.setSpacing(4)
+        layer_chooser_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Store current layer (default 0, will be auto-detected)
-        self.current_layer = 0
+        layer_chooser_layout.addStretch()
+        layer_label = QLabel(tr("VelocityTab", "Layer:"))
+        layer_label.setStyleSheet("font-weight: bold; font-size: 10pt;")
+        layer_chooser_layout.addWidget(layer_label)
+
+        self.layer_buttons = []
+        self.layout_layers_velocity = QHBoxLayout()
+        self.layout_layers_velocity.setSpacing(2)
+        layer_chooser_layout.addLayout(self.layout_layers_velocity)
+
+        layer_chooser_layout.addStretch()
+        main_layout.addLayout(layer_chooser_layout)
 
         # MIDI keys info label
         self.midi_info_label = QLabel(tr("VelocityTab", "MIDI Keys: 0"))
@@ -1018,6 +1063,8 @@ class VelocityTab(BasicEditor):
         try:
             # Rebuild keyboard widget
             self.keyboard_widget.set_keys(self.keyboard.keys, self.keyboard.encoders)
+            # Rebuild layer chooser buttons
+            self.rebuild_layer_buttons()
             # Load velocity curve from keyboard
             self.load_velocity_curve()
             # Load advanced settings from keyboard
@@ -1026,6 +1073,43 @@ class VelocityTab(BasicEditor):
             self.scan_midi_keys()
         except Exception as e:
             print(f"VelocityTab rebuild error: {e}")
+
+    def rebuild_layer_buttons(self):
+        """Create layer chooser buttons matching the keyboard's layer count"""
+        # Remove old buttons
+        for btn in self.layer_buttons:
+            btn.hide()
+            btn.deleteLater()
+        self.layer_buttons = []
+
+        if not self.keyboard:
+            return
+
+        for x in range(self.keyboard.layers):
+            btn = SquareButton(str(x))
+            btn.setFocusPolicy(Qt.NoFocus)
+            btn.setRelSize(1.667)
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda state, idx=x: self.on_layer_button_clicked(idx))
+            self.layout_layers_velocity.addWidget(btn)
+            self.layer_buttons.append(btn)
+
+        # Select layer 0 by default
+        self.current_layer = 0
+        self.refresh_layer_buttons()
+
+    def on_layer_button_clicked(self, idx):
+        """Handle layer button click"""
+        self.current_layer = idx
+        self.refresh_layer_buttons()
+        self.keyboard_widget.clear_velocities()
+        self.scan_midi_keys()
+
+    def refresh_layer_buttons(self):
+        """Update layer button checked/enabled states"""
+        for idx, btn in enumerate(self.layer_buttons):
+            btn.setEnabled(idx != self.current_layer)
+            btn.setChecked(idx == self.current_layer)
 
     def activate(self):
         """Called when tab becomes active"""
@@ -1041,9 +1125,10 @@ class VelocityTab(BasicEditor):
         self.keyboard_widget.clear_velocities()
 
     def set_layer(self, layer):
-        """Set the current layer (can be called when layer is auto-detected)"""
+        """Set the current layer (can be called externally)"""
         self.current_layer = layer
-        self.layer_info_label.setText(tr("VelocityTab", f"Layer: {layer}"))
+        self.refresh_layer_buttons()
+        self.keyboard_widget.clear_velocities()
         self.scan_midi_keys()
 
     def scan_midi_keys(self):
@@ -1071,7 +1156,7 @@ class VelocityTab(BasicEditor):
         )
 
     def poll_velocity(self):
-        """Poll velocity values from keyboard"""
+        """Poll velocity and press time values from keyboard"""
         if not self.keyboard or not self.is_active:
             return
 
@@ -1086,7 +1171,8 @@ class VelocityTab(BasicEditor):
             if result:
                 for (row, col), data in result.items():
                     velocity = data.get('velocity', 0)
-                    self.keyboard_widget.set_velocity(row, col, velocity)
+                    press_time = data.get('travel_time_ms', 0)
+                    self.keyboard_widget.set_velocity(row, col, velocity, press_time)
 
     def load_advanced_settings(self):
         """Load advanced settings from keyboard (same approach as keymap_editor)"""
