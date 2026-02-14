@@ -289,6 +289,12 @@ uint16_t analog_matrix_get_bottom_adc(uint8_t row, uint8_t col);
 // Refresh cached layer settings (call when layer actuations change)
 void analog_matrix_refresh_settings(void);
 
+// Rebuild a specific layer's per-key cache from per_key_actuations (call after HID updates)
+void rebuild_per_key_cache_layer(uint8_t layer);
+
+// Pre-populate all 12 layers' key type caches at startup (before USB active)
+void preload_all_key_type_caches(void);
+
 // EQ curve EEPROM persistence
 void eq_curve_save_to_eeprom(void);
 void eq_curve_load_from_eeprom(void);

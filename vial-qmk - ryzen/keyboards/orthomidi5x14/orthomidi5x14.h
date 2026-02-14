@@ -83,6 +83,7 @@ void reset_keyboard_settings(void);
 void load_keyboard_settings_from_slot(uint8_t slot);
 void scan_current_layer_midi_leds(void);
 void scan_keycode_categories(void);
+void preload_layer_rgb_cache(void);
 void update_layer_animations_setting_slot0_direct(bool new_value);
 extern bool truekey_effects_active;
 
