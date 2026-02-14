@@ -1327,13 +1327,22 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
 
-                    if (elapsed_ms > 0) {
-                        // New min/max time-based velocity calculation:
-                        // elapsed_ms <= max_time → raw = 255 (max velocity)
-                        // elapsed_ms >= min_time → raw = 1 (min velocity, NOT 0 - see below)
-                        // Otherwise → linear interpolation
-                        // NOTE: We use 1 instead of 0 for minimum because raw_velocity=0
-                        // is reserved as "not yet captured" sentinel in get_he_velocity_from_position()
+                    if (state->release_travel > 0 && state->release_travel < midi_threshold) {
+                        // Partial re-press: use fixed midpoint velocity (no speed calculation)
+                        // Assume midline speed, then scale by distance traveled
+                        uint32_t raw = 128;  // Midpoint between min(1) and max(255)
+                        uint16_t distance_traveled = midi_threshold - state->release_travel;
+                        raw = (raw * distance_traveled) / midi_threshold;
+                        if (raw < 1) raw = 1;
+
+                        state->raw_velocity = (uint8_t)raw;
+                        state->velocity_captured = true;
+
+                        // Update base_velocity for RT
+                        key->base_velocity = (state->raw_velocity * 127) / 255;
+                        if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                    } else if (elapsed_ms > 0) {
+                        // Full press from rest: use speed-based velocity
                         uint32_t raw;
                         if (elapsed_ms <= max_press_time) {
                             raw = 255;  // Fastest press = max velocity
@@ -1341,18 +1350,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                             raw = 1;    // Slowest press = min velocity (use 1, not 0!)
                         } else {
                             // Linear interpolation between max_time and min_time
-                            // raw = 255 * (min_time - elapsed_ms) / (min_time - max_time)
                             raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
-                            if (raw < 1) raw = 1;  // Ensure minimum of 1
-                        }
-
-                        // Scale velocity by fraction of distance traveled (for partial re-presses)
-                        // Full press from 0 to actuation = full velocity
-                        // Partial press (e.g., release at 1mm, actuation at 2mm) = scaled velocity
-                        if (state->release_travel > 0 && state->release_travel < midi_threshold) {
-                            uint16_t distance_traveled = midi_threshold - state->release_travel;
-                            raw = (raw * distance_traveled) / midi_threshold;
-                            if (raw < 1) raw = 1;  // Ensure minimum of 1
+                            if (raw < 1) raw = 1;
                         }
 
                         state->raw_velocity = (uint8_t)raw;
@@ -1362,20 +1361,10 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         key->base_velocity = (state->raw_velocity * 127) / 255;
                         if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                     } else {
-                        // Instant press (sub-1ms) - max velocity
-                        uint32_t raw = 255;
-
-                        // Scale velocity for partial re-presses
-                        if (state->release_travel > 0 && state->release_travel < midi_threshold) {
-                            uint16_t distance_traveled = midi_threshold - state->release_travel;
-                            raw = (raw * distance_traveled) / midi_threshold;
-                            if (raw < 1) raw = 1;
-                        }
-
-                        state->raw_velocity = (uint8_t)raw;
+                        // Instant press (sub-1ms) from rest - max velocity
+                        state->raw_velocity = 255;
                         state->velocity_captured = true;
-                        key->base_velocity = (state->raw_velocity * 127) / 255;
-                        if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
+                        key->base_velocity = MAX_VELOCITY;
                         state->travel_time_ms = 0;
                     }
                 }
@@ -1525,8 +1514,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // MIDI RETRIGGER PROCESSING (velocity preset feature)
     // Re-triggers note-on by sending note-off + note-on directly (bypasses QMK matrix)
     // Eligibility: key rises by retrigger_distance from peak (distance-based, any position)
-    // 10% hysteresis: must press 10% of actuation distance past eligible point to fire
-    // Speed-based velocity with distance cap based on available travel
+    // Fires when key is pressed retrigger_distance from eligible point, or reaches 3.8mm
+    // Fixed midpoint velocity (128) with distance cap based on available travel
     // ========================================================================
     if (retrigger_travel > 0 && state->velocity_captured) {
         // Track peak travel for retrigger eligibility
@@ -1554,28 +1543,15 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = (uint32_t)chVTGetSystemTimeX();
                 }
 
-                // 10% hysteresis: must press 10% of actuation distance past eligible point
-                uint8_t hysteresis = midi_threshold / 10;
-                if (hysteresis < 1) hysteresis = 1;
-
+                // Must press retrigger_travel distance from eligible point, or reach 3.8mm (228 units)
+                const uint8_t RETRIGGER_MAX_TRAVEL = 228;  // 3.8mm in travel units (240 = 4.0mm)
                 uint8_t repress_distance = travel - state->retrigger_eligible_point;
 
-                if (repress_distance >= hysteresis) {
-                    // --- Speed-based velocity ---
-                    // Measure from eligible point to current (where hysteresis threshold crossed)
-                    uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->retrigger_move_start;
-                    uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
-                    uint32_t elapsed_ms = elapsed_us / 1000;
-
-                    uint32_t speed_raw;
-                    if (elapsed_ms == 0 || elapsed_ms <= max_press_time) {
-                        speed_raw = 255;
-                    } else if (elapsed_ms >= min_press_time) {
-                        speed_raw = 1;
-                    } else {
-                        speed_raw = (255 * (min_press_time - elapsed_ms)) / (min_press_time - max_press_time);
-                        if (speed_raw < 1) speed_raw = 1;
-                    }
+                if (repress_distance >= retrigger_travel || travel >= RETRIGGER_MAX_TRAVEL) {
+                    // --- Fixed midpoint velocity for retriggered notes ---
+                    // Use midline speed (128) instead of measuring actual speed
+                    // to avoid retriggered notes being too loud from fast taps
+                    uint32_t speed_raw = 128;  // Midpoint between min(1) and max(255)
 
                     // --- Velocity cap based on available travel ---
                     // Cap = (actuation - release_point) / actuation
@@ -1588,7 +1564,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     }
                     if (velocity_cap > 255) velocity_cap = 255;
 
-                    // Apply cap to speed velocity
+                    // Apply cap to midpoint velocity
                     uint16_t capped_raw = (speed_raw * velocity_cap) / 255;
                     if (capped_raw < 1) capped_raw = 1;
                     if (capped_raw > 255) capped_raw = 255;
