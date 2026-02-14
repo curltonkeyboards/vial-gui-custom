@@ -83,13 +83,14 @@ void dks_set_behavior(dks_slot_t* slot, uint8_t action_index, dks_behavior_t beh
 // ============================================================================
 
 /**
- * Convert user actuation point (0-100) to internal travel units (0-240)
- * User scale: 0 = 0mm, 100 = 2.5mm
+ * Convert user actuation point (0-255) to internal travel units (0-240)
+ * User scale: 0 = 0mm, 255 = 4.0mm
  * Internal scale: 0-240 (with 6x precision)
  */
 static inline uint8_t actuation_to_travel(uint8_t actuation) {
-    // actuation (0-100) * FULL_TRAVEL_UNIT (40) * TRAVEL_SCALE (6) / 100
-    return (uint8_t)((actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 100);
+    // actuation (0-255) * FULL_TRAVEL_UNIT (40) * TRAVEL_SCALE (6) / 255
+    // Use uint16_t intermediate to avoid overflow (255 * 240 = 61200, fits uint16_t)
+    return (uint8_t)(((uint16_t)actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255);
 }
 
 // ============================================================================
@@ -123,18 +124,18 @@ void dks_reset_all_slots(void) {
         memset(slot->press_keycode, 0, sizeof(slot->press_keycode));
         memset(slot->release_keycode, 0, sizeof(slot->release_keycode));
 
-        // Set default actuation points (evenly distributed)
-        // Press: 0.6mm, 1.2mm, 1.8mm, 2.4mm
-        slot->press_actuation[0] = 24;  // 0.6mm
-        slot->press_actuation[1] = 48;  // 1.2mm
-        slot->press_actuation[2] = 72;  // 1.8mm
-        slot->press_actuation[3] = 96;  // 2.4mm
+        // Set default actuation points (evenly distributed, 0-255 = 0-4.0mm)
+        // Press: 1.0mm, 2.0mm, 3.0mm, 4.0mm
+        slot->press_actuation[0] = 64;   // 1.0mm
+        slot->press_actuation[1] = 128;  // 2.0mm
+        slot->press_actuation[2] = 191;  // 3.0mm
+        slot->press_actuation[3] = 255;  // 4.0mm
 
-        // Release: 2.4mm, 1.8mm, 1.2mm, 0.6mm (mirror of press)
-        slot->release_actuation[0] = 96;  // 2.4mm
-        slot->release_actuation[1] = 72;  // 1.8mm
-        slot->release_actuation[2] = 48;  // 1.2mm
-        slot->release_actuation[3] = 24;  // 0.6mm
+        // Release: 4.0mm, 3.0mm, 2.0mm, 1.0mm (mirror of press)
+        slot->release_actuation[0] = 255;  // 4.0mm
+        slot->release_actuation[1] = 191;  // 3.0mm
+        slot->release_actuation[2] = 128;  // 2.0mm
+        slot->release_actuation[3] = 64;   // 1.0mm
 
         // Set all behaviors to TAP (default)
         slot->behaviors = 0x0000;  // All 0s = TAP for all actions
