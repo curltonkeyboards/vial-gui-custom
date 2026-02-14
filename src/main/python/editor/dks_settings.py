@@ -12,15 +12,34 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLa
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap, QImage
 
+import logging
+from datetime import datetime
+
 from editor.basic_editor import BasicEditor
+from editor.arpeggiator import DebugConsole
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_BEHAVIOR_PRESS, DKS_BEHAVIOR_RELEASE,
-                                   DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
+                                   DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE,
+                                   HID_CMD_DKS_GET_SLOT, HID_CMD_DKS_SET_ACTION,
+                                   HID_CMD_DKS_SAVE_EEPROM, HID_CMD_DKS_LOAD_EEPROM,
+                                   HID_CMD_DKS_RESET_SLOT, HID_CMD_DKS_RESET_ALL)
 from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
 from tabbed_keycodes import TabbedKeycodes
 from vial_device import VialKeyboard
 import widgets.resources  # Import Qt resources for switch crossection image
+
+logger = logging.getLogger(__name__)
+
+# DKS HID command name lookup for debug logging
+DKS_CMD_NAMES = {
+    HID_CMD_DKS_GET_SLOT: "GET_SLOT",
+    HID_CMD_DKS_SET_ACTION: "SET_ACTION",
+    HID_CMD_DKS_SAVE_EEPROM: "SAVE_EEPROM",
+    HID_CMD_DKS_LOAD_EEPROM: "LOAD_EEPROM",
+    HID_CMD_DKS_RESET_SLOT: "RESET_SLOT",
+    HID_CMD_DKS_RESET_ALL: "RESET_ALL",
+}
 
 
 class DKSKeyWidget(KeyWidget):
@@ -271,9 +290,9 @@ class VerticalTravelBarWidget(QWidget):
         """Convert y position to actuation value (0-255)"""
         bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
         if bar_height <= 0:
-            return 50
-        actuation = ((y - margin_top) / bar_height) * 100
-        return max(0, min(100, int(actuation)))
+            return 127
+        actuation = ((y - margin_top) / bar_height) * 255
+        return max(0, min(255, int(actuation)))
 
     def _actuation_to_y(self, actuation):
         """Convert actuation value (0-255) to y position"""
@@ -892,7 +911,7 @@ class DKSActionEditor(QWidget):
 
         self.actuation_slider = QSlider(Qt.Horizontal)
         self.actuation_slider.setMinimum(0)
-        self.actuation_slider.setMaximum(100)
+        self.actuation_slider.setMaximum(255)
         self.actuation_slider.setValue(127)
         self.actuation_slider.setFixedWidth(70)
         self.actuation_slider.valueChanged.connect(self._update_actuation_label)
@@ -1141,6 +1160,7 @@ class DKSEntryUI(QWidget):
         super().__init__()
         self.slot_idx = slot_idx
         self.dks_protocol = None
+        self.debug_console = None  # Shared debug console reference
         self.selected_key_widget = None  # Track which key widget is selected
 
         # Set minimum height to prevent squishing - allows scroll instead
@@ -1216,17 +1236,31 @@ class DKSEntryUI(QWidget):
         """Set the DKS protocol handler"""
         self.dks_protocol = protocol
 
+    def set_debug_console(self, console):
+        """Set the shared debug console reference"""
+        self.debug_console = console
+
+    def debug_log(self, message, level="DEBUG"):
+        """Log a message to the debug console"""
+        logger.debug(message)
+        if self.debug_console:
+            self.debug_console.log(message, level)
+
     def _on_load(self):
         """Load slot from keyboard"""
         if not self.dks_protocol:
+            self.debug_log("LOAD: No protocol set, skipping", "WARN")
             return
 
+        self.debug_log(f"LOAD: Reading slot {self.slot_idx} from keyboard", "INFO")
         slot = self.dks_protocol.get_slot(self.slot_idx)
         if not slot:
             # Silently fail if firmware doesn't support DKS - don't show error popup
             # This allows the tab to show even if firmware doesn't have DKS enabled
+            self.debug_log(f"LOAD: Slot {self.slot_idx} returned None (firmware may not support DKS)", "WARN")
             return
 
+        self.debug_log(f"LOAD: Slot {self.slot_idx} loaded successfully", "INFO")
         self.load_from_slot(slot)
 
     def load_from_slot(self, slot):
@@ -1234,11 +1268,15 @@ class DKSEntryUI(QWidget):
         # Press actions
         for i, editor in enumerate(self.press_editors):
             action = slot.press_actions[i]
+            mm = (action.actuation / 255.0) * 4.0
+            self.debug_log(f"  Press[{i}]: keycode=0x{action.keycode:04X} actuation={action.actuation} ({mm:.2f}mm) behavior={action.behavior}", "DATA")
             editor.set_action(action.keycode, action.actuation, action.behavior)
 
         # Release actions
         for i, editor in enumerate(self.release_editors):
             action = slot.release_actions[i]
+            mm = (action.actuation / 255.0) * 4.0
+            self.debug_log(f"  Release[{i}]: keycode=0x{action.keycode:04X} actuation={action.actuation} ({mm:.2f}mm) behavior={action.behavior}", "DATA")
             editor.set_action(action.keycode, action.actuation, action.behavior)
 
         self._update_travel_bar()
@@ -1279,21 +1317,32 @@ class DKSEntryUI(QWidget):
     def _send_to_keyboard(self):
         """Send current configuration to keyboard"""
         if not self.dks_protocol:
+            self.debug_log("SEND: No protocol set, skipping", "WARN")
             return
+
+        self.debug_log(f"SEND: Updating slot {self.slot_idx} on keyboard", "INFO")
 
         # Send press actions
         for i, editor in enumerate(self.press_editors):
             keycode, actuation, behavior = editor.get_action()
-            self.dks_protocol.set_action(
+            mm = (actuation / 255.0) * 4.0
+            self.debug_log(f"  SET_ACTION press[{i}]: slot={self.slot_idx} keycode=0x{keycode:04X} actuation={actuation} ({mm:.2f}mm) behavior={behavior}", "HID_TX")
+            result = self.dks_protocol.set_action(
                 self.slot_idx, True, i, keycode, actuation, behavior
             )
+            if not result:
+                self.debug_log(f"  SET_ACTION press[{i}]: FAILED", "ERROR")
 
         # Send release actions
         for i, editor in enumerate(self.release_editors):
             keycode, actuation, behavior = editor.get_action()
-            self.dks_protocol.set_action(
+            mm = (actuation / 255.0) * 4.0
+            self.debug_log(f"  SET_ACTION release[{i}]: slot={self.slot_idx} keycode=0x{keycode:04X} actuation={actuation} ({mm:.2f}mm) behavior={behavior}", "HID_TX")
+            result = self.dks_protocol.set_action(
                 self.slot_idx, False, i, keycode, actuation, behavior
             )
+            if not result:
+                self.debug_log(f"  SET_ACTION release[{i}]: FAILED", "ERROR")
 
     def _update_travel_bar(self):
         """Update travel bar visualization"""
@@ -1323,10 +1372,19 @@ class DKSEntryUI(QWidget):
         )
 
         if reply == QMessageBox.Yes:
+            if self.debug_console:
+                self.debug_console.mark_operation_start()
+            self.debug_log(f"RESET: Resetting slot {self.slot_idx} to defaults", "INFO")
             if self.dks_protocol.reset_slot(self.slot_idx):
+                self.debug_log(f"RESET: Slot {self.slot_idx} reset OK", "INFO")
+                if self.debug_console:
+                    self.debug_console.mark_operation_end(success=True)
                 QMessageBox.information(self, "Success", "Slot reset to defaults")
                 self._on_load()
             else:
+                self.debug_log(f"RESET: Slot {self.slot_idx} reset FAILED", "ERROR")
+                if self.debug_console:
+                    self.debug_console.mark_operation_end(success=False)
                 QMessageBox.warning(self, "Error", "Failed to reset slot")
 
     def _on_save_eeprom(self):
@@ -1334,9 +1392,29 @@ class DKSEntryUI(QWidget):
         if not self.dks_protocol:
             return
 
+        if self.debug_console:
+            self.debug_console.mark_operation_start()
+        self.debug_log(f"SAVE: Saving all DKS configs to EEPROM", "INFO")
+
+        # Log current slot state being saved
+        for i, editor in enumerate(self.press_editors):
+            keycode, actuation, behavior = editor.get_action()
+            mm = (actuation / 255.0) * 4.0
+            self.debug_log(f"  Current press[{i}]: keycode=0x{keycode:04X} actuation={actuation} ({mm:.2f}mm) behavior={behavior}", "DATA")
+        for i, editor in enumerate(self.release_editors):
+            keycode, actuation, behavior = editor.get_action()
+            mm = (actuation / 255.0) * 4.0
+            self.debug_log(f"  Current release[{i}]: keycode=0x{keycode:04X} actuation={actuation} ({mm:.2f}mm) behavior={behavior}", "DATA")
+
         if self.dks_protocol.save_to_eeprom():
+            self.debug_log(f"SAVE: EEPROM write OK", "INFO")
+            if self.debug_console:
+                self.debug_console.mark_operation_end(success=True)
             QMessageBox.information(self, "Success", "DKS configuration saved to EEPROM")
         else:
+            self.debug_log(f"SAVE: EEPROM write FAILED", "ERROR")
+            if self.debug_console:
+                self.debug_console.mark_operation_end(success=False)
             QMessageBox.warning(self, "Error", "Failed to save to EEPROM")
 
     def _on_reset_all(self):
@@ -1351,10 +1429,19 @@ class DKSEntryUI(QWidget):
         )
 
         if reply == QMessageBox.Yes:
+            if self.debug_console:
+                self.debug_console.mark_operation_start()
+            self.debug_log(f"RESET_ALL: Resetting all DKS slots to defaults", "INFO")
             if self.dks_protocol.reset_all_slots():
+                self.debug_log(f"RESET_ALL: All slots reset OK", "INFO")
+                if self.debug_console:
+                    self.debug_console.mark_operation_end(success=True)
                 QMessageBox.information(self, "Success", "All slots reset to defaults")
                 self._on_load()
             else:
+                self.debug_log(f"RESET_ALL: Reset FAILED", "ERROR")
+                if self.debug_console:
+                    self.debug_console.mark_operation_end(success=False)
                 QMessageBox.warning(self, "Error", "Failed to reset slots")
 
     def _on_load_eeprom(self):
@@ -1362,10 +1449,19 @@ class DKSEntryUI(QWidget):
         if not self.dks_protocol:
             return
 
+        if self.debug_console:
+            self.debug_console.mark_operation_start()
+        self.debug_log(f"LOAD_EEPROM: Loading all DKS configs from EEPROM", "INFO")
         if self.dks_protocol.load_from_eeprom():
+            self.debug_log(f"LOAD_EEPROM: Load OK, refreshing slot {self.slot_idx}", "INFO")
+            if self.debug_console:
+                self.debug_console.mark_operation_end(success=True)
             QMessageBox.information(self, "Success", "DKS configurations loaded from EEPROM")
             self._on_load()
         else:
+            self.debug_log(f"LOAD_EEPROM: Load FAILED", "ERROR")
+            if self.debug_console:
+                self.debug_console.mark_operation_end(success=False)
             QMessageBox.warning(self, "Error", "Failed to load from EEPROM")
 
 
@@ -1410,6 +1506,20 @@ class DKSSettingsTab(BasicEditor):
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
         self.addWidget(self.tabbed_keycodes)
 
+        # Debug console at the very bottom
+        self.debug_console = DebugConsole("DKS Settings Debug Console")
+        self.addWidget(self.debug_console)
+
+        # Wire up debug console to all entries
+        for entry in self.dks_entries:
+            entry.set_debug_console(self.debug_console)
+
+    def debug_log(self, message, level="DEBUG"):
+        """Log a message to the debug console"""
+        logger.debug(message)
+        if hasattr(self, 'debug_console'):
+            self.debug_console.log(message, level)
+
     def on_entry_changed(self):
         """Handle entry change (can be used for modified indicators)"""
         # Future: Add modified state tracking like TapDance
@@ -1448,6 +1558,7 @@ class DKSSettingsTab(BasicEditor):
 
         # Create DKS protocol handler
         self.dks_protocol = ProtocolDKS(device)
+        self.dks_protocol.set_debug_callback(self.debug_log)
 
         # Set protocol for all entries
         for entry in self.dks_entries:
@@ -1481,6 +1592,8 @@ class DKSSettingsTab(BasicEditor):
         if not self.dks_protocol:
             return
 
+        self.debug_log(f"SCAN: Scanning all {DKS_NUM_SLOTS} DKS slots for content", "INFO")
+
         # Load all slots to find which have content
         last_used = -1
         for i in range(DKS_NUM_SLOTS):
@@ -1490,7 +1603,9 @@ class DKSSettingsTab(BasicEditor):
                 self.loaded_slots.add(i)
                 if self._dks_slot_has_content(slot):
                     last_used = i
+                    self.debug_log(f"SCAN: Slot {i} has content", "DATA")
 
+        self.debug_log(f"SCAN: Last used slot index={last_used}, showing {max(1, last_used + 1)} tabs", "INFO")
         self._update_visible_tabs_with_last_used(last_used)
 
     def _find_last_used_index(self):
