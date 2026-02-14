@@ -1304,7 +1304,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         // Partial press (e.g., release at 1mm, actuation at 2mm) = scaled velocity
                         if (state->release_travel > 0 && state->release_travel < midi_threshold) {
                             uint16_t distance_traveled = midi_threshold - state->release_travel;
-                            raw = (raw * distance_traveled) / midi_threshold;
+                            raw = (raw * distance_traveled) / midi_threshold / 2;
                             if (raw < 1) raw = 1;  // Ensure minimum of 1
                         }
 
@@ -1321,7 +1321,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         // Scale velocity for partial re-presses
                         if (state->release_travel > 0 && state->release_travel < midi_threshold) {
                             uint16_t distance_traveled = midi_threshold - state->release_travel;
-                            raw = (raw * distance_traveled) / midi_threshold;
+                            raw = (raw * distance_traveled) / midi_threshold / 2;
                             if (raw < 1) raw = 1;
                         }
 
@@ -1535,7 +1535,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     if (velocity_cap > 255) velocity_cap = 255;
 
                     // Apply cap to speed velocity
-                    uint16_t capped_raw = (speed_raw * velocity_cap) / 255;
+                    uint16_t capped_raw = (speed_raw * velocity_cap) / 255 / 2;
                     if (capped_raw < 1) capped_raw = 1;
                     if (capped_raw > 255) capped_raw = 255;
 
