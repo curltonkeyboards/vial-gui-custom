@@ -1447,10 +1447,12 @@ class VelocityTab(BasicEditor):
             # Custom - don't change anything
             return
         elif curve_index < 7:
-            # Factory curve - load points and apply per-preset settings
+            # Factory curve - apply per-preset settings, then set curve points last
+            # (must be after _apply_factory_preset_settings because
+            # update_zone_controls_from_settings overwrites the curve editor)
+            self._apply_factory_preset_settings(curve_index)
             points = CurveEditorWidget.FACTORY_CURVE_POINTS[curve_index]
             self.curve_editor.set_points(points)
-            self._apply_factory_preset_settings(curve_index)
         else:
             # User curve (7-16) - load full preset from keyboard
             slot_index = curve_index - 7  # Convert to 0-9 slot index
