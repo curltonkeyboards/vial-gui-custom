@@ -218,7 +218,7 @@ class ProtocolDKS:
             is_press: True for press action, False for release
             action_index: Action index (0-3)
             keycode: Keycode to send
-            actuation: Actuation point (0-255 = 0-4.0mm)
+            actuation: Actuation point (0-100)
             behavior: Behavior type (TAP/PRESS/RELEASE)
 
         Returns:
