@@ -355,23 +355,32 @@ typedef enum {
     KEY_TYPE_MIDI = 2
 } key_type_t;
 
-// Cache: stores key type for each key (refreshed on layer change)
-static uint8_t key_type_cache[NUM_KEYS];
-static uint16_t dks_keycode_cache[NUM_KEYS];  // Cache DKS keycodes for processing
+// ============================================================================
+// MULTI-LAYER KEY TYPE CACHE (eliminates EEPROM reads on layer switch)
+// ============================================================================
+// All 12 layers are cached in RAM. On layer switch, we swap pointers instead
+// of re-reading 168 EEPROM bytes. Populated at startup and on keymap changes.
+static uint8_t key_type_cache_all[12][NUM_KEYS];        // 1,008 bytes
+static uint16_t dks_keycode_cache_all[12][NUM_KEYS];    // 2,016 bytes
+static uint8_t *key_type_cache = key_type_cache_all[0];
+static uint16_t *dks_keycode_cache = dks_keycode_cache_all[0];
 static uint8_t key_type_cache_layer = 0xFF;   // Layer the cache was built for
+static uint16_t key_type_cache_loaded = 0;    // Bitmask: bit N = layer N populated
 
 // Forward declaration
 static void refresh_key_type_cache(uint8_t layer);
 
 // ============================================================================
-// PER-KEY ACTUATION CACHE (280 bytes - fits in L1 cache)
+// MULTI-LAYER PER-KEY ACTUATION CACHE (eliminates copy loop on layer switch)
 // ============================================================================
-// This cache holds the essential per-key settings for the active layer only.
-// It's refreshed on layer change and used during the matrix scan hot path.
+// All 12 layers are cached in RAM (3,360 bytes). On layer switch, we swap a
+// pointer instead of copying 280 bytes from the scattered per_key_actuations
+// array. This makes layer switching near-zero-cost for the scan loop.
 // The full per_key_actuations[12][70] array is still used for EEPROM/HID.
-
-per_key_config_lite_t active_per_key_cache[70];
+static per_key_config_lite_t all_layer_per_key_cache[12][70];  // 3,360 bytes
+per_key_config_lite_t *active_per_key_cache = all_layer_per_key_cache[0];
 uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
+static uint16_t per_key_cache_loaded = 0;   // Bitmask: bit N = layer N populated
 
 // Deferred EEPROM loading - load on first keypress instead of at init
 static bool per_key_eeprom_loaded = false;
@@ -409,16 +418,18 @@ static uint8_t incremental_load_layer = 0xFF;
 void force_load_per_key_cache_at_init(uint8_t layer) {
     if (layer >= 12) layer = 0;
 
-    // Load all 70 keys from the array
+    // Load all 70 keys into the multi-layer cache
     for (uint8_t i = 0; i < 70; i++) {
         per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-        active_per_key_cache[i].actuation = full->actuation;
-        active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-        active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-        active_per_key_cache[i].flags = full->flags;
+        all_layer_per_key_cache[layer][i].actuation = full->actuation;
+        all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
+        all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
+        all_layer_per_key_cache[layer][i].flags = full->flags;
     }
+    per_key_cache_loaded |= (1 << layer);
 
-    // Mark cache as valid for this layer
+    // Point active cache at this layer
+    active_per_key_cache = all_layer_per_key_cache[layer];
     active_per_key_cache_layer = layer;
 }
 
@@ -454,26 +465,28 @@ void process_chunked_eeprom_load(void) {
             chunked_load_active = false;
             per_key_eeprom_loaded = true;
 
-            // Refresh cache with defaults
-            for (uint8_t i = 0; i < 70; i++) {
-                active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-                active_per_key_cache[i].rt_down = 0;
-                active_per_key_cache[i].rt_up = 0;
-                active_per_key_cache[i].flags = 0;
+            // Fill ALL layers of the multi-layer cache with defaults
+            for (uint8_t l = 0; l < 12; l++) {
+                for (uint8_t i = 0; i < 70; i++) {
+                    all_layer_per_key_cache[l][i].actuation = DEFAULT_ACTUATION_VALUE;
+                    all_layer_per_key_cache[l][i].rt_down = 0;
+                    all_layer_per_key_cache[l][i].rt_up = 0;
+                    all_layer_per_key_cache[l][i].flags = 0;
+                }
             }
+            per_key_cache_loaded = 0x0FFF;  // All 12 layers
             return;
         }
 
-        // Refresh cache if we just loaded the currently active layer
-        if (active_per_key_cache_layer == layer) {
-            for (uint8_t i = 0; i < 70; i++) {
-                per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-                active_per_key_cache[i].actuation = full->actuation;
-                active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-                active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-                active_per_key_cache[i].flags = full->flags;
-            }
+        // Populate this layer's slot in the multi-layer cache
+        for (uint8_t i = 0; i < 70; i++) {
+            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+            all_layer_per_key_cache[layer][i].actuation = full->actuation;
+            all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
+            all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
+            all_layer_per_key_cache[layer][i].flags = full->flags;
         }
+        per_key_cache_loaded |= (1 << layer);
 
         // Move to next layer
         chunked_load_layer++;
@@ -499,17 +512,15 @@ void process_chunked_eeprom_load(void) {
                       (void*)eeprom_offset,
                       BYTES_PER_ROW);
 
-    // Update active cache for these 14 keys (if we're loading the active layer)
-    if (active_per_key_cache_layer == layer) {
-        for (uint8_t i = 0; i < KEYS_PER_ROW; i++) {
-            uint8_t key_idx = start_key + i;
-            if (key_idx < 70) {
-                per_key_actuation_t *full = &per_key_actuations[layer].keys[key_idx];
-                active_per_key_cache[key_idx].actuation = full->actuation;
-                active_per_key_cache[key_idx].rt_down = full->rapidfire_press_sens;
-                active_per_key_cache[key_idx].rt_up = full->rapidfire_release_sens;
-                active_per_key_cache[key_idx].flags = full->flags;
-            }
+    // Update this layer's slot in multi-layer cache as rows are loaded
+    for (uint8_t i = 0; i < KEYS_PER_ROW; i++) {
+        uint8_t key_idx = start_key + i;
+        if (key_idx < 70) {
+            per_key_actuation_t *full = &per_key_actuations[layer].keys[key_idx];
+            all_layer_per_key_cache[layer][key_idx].actuation = full->actuation;
+            all_layer_per_key_cache[layer][key_idx].rt_down = full->rapidfire_press_sens;
+            all_layer_per_key_cache[layer][key_idx].rt_up = full->rapidfire_release_sens;
+            all_layer_per_key_cache[layer][key_idx].flags = full->flags;
         }
     }
 
@@ -543,36 +554,39 @@ void incremental_load_per_key_cache(void) {
 }
 
 // Refresh the per-key cache on layer change
-// If all layers loaded from EEPROM, copies from per_key_actuations array
-// Otherwise uses defaults (before first keypress triggers EEPROM load)
+// With multi-layer cache, this is just a pointer swap (near-zero cost).
+// If the layer hasn't been populated yet, fills it with defaults first.
 void refresh_per_key_cache(uint8_t layer) {
-    if (layer == active_per_key_cache_layer) return;  // Already cached
+    if (layer == active_per_key_cache_layer) return;  // Already pointing here
     if (layer >= 12) layer = 0;
 
-    // Check if this layer has been loaded from EEPROM
-    bool layer_loaded = (layers_eeprom_loaded & (1 << layer)) != 0;
-
-    if (layer_loaded) {
-        // Layer loaded from EEPROM - copy from per_key_actuations array
+    // If this layer's cache slot hasn't been populated yet, fill with defaults
+    if (!(per_key_cache_loaded & (1 << layer))) {
         for (uint8_t i = 0; i < 70; i++) {
-            per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
-            active_per_key_cache[i].actuation = full->actuation;
-            active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
-            active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
-            active_per_key_cache[i].flags = full->flags;
+            all_layer_per_key_cache[layer][i].actuation = DEFAULT_ACTUATION_VALUE;
+            all_layer_per_key_cache[layer][i].rt_down = 0;
+            all_layer_per_key_cache[layer][i].rt_up = 0;
+            all_layer_per_key_cache[layer][i].flags = 0;
         }
-    } else {
-        // Layer not loaded yet (before first keypress) - use defaults
-        for (uint8_t i = 0; i < 70; i++) {
-            active_per_key_cache[i].actuation = DEFAULT_ACTUATION_VALUE;
-            active_per_key_cache[i].rt_down = 0;
-            active_per_key_cache[i].rt_up = 0;
-            active_per_key_cache[i].flags = 0;
-        }
+        per_key_cache_loaded |= (1 << layer);
     }
 
-    // Set cache layer IMMEDIATELY so next 70 calls return early
+    // Pointer swap: near-zero cost, no data copying
+    active_per_key_cache = all_layer_per_key_cache[layer];
     active_per_key_cache_layer = layer;
+}
+
+// Rebuild a specific layer's cache from per_key_actuations (call after HID updates)
+void rebuild_per_key_cache_layer(uint8_t layer) {
+    if (layer >= 12) return;
+    for (uint8_t i = 0; i < 70; i++) {
+        per_key_actuation_t *full = &per_key_actuations[layer].keys[i];
+        all_layer_per_key_cache[layer][i].actuation = full->actuation;
+        all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
+        all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
+        all_layer_per_key_cache[layer][i].flags = full->flags;
+    }
+    per_key_cache_loaded |= (1 << layer);
 }
 
 // Old diagnostic modes (0-25) removed - see PER_KEY_ACTUATION_USB_DISCONNECT_DIAGNOSIS.md
@@ -707,7 +721,18 @@ static inline uint8_t distance_to_travel_compat(uint8_t distance) {
 
 void analog_matrix_refresh_settings(void) {
     cached_layer_settings_layer = 0xFF;  // Force refresh layer settings
-    active_per_key_cache_layer = 0xFF;   // Force refresh per-key cache
+
+    // Rebuild all populated per-key cache layers from per_key_actuations
+    // (HID may have changed per-key settings for any layer)
+    for (uint8_t l = 0; l < 12; l++) {
+        if (per_key_cache_loaded & (1 << l)) {
+            rebuild_per_key_cache_layer(l);
+        }
+    }
+
+    // Invalidate key type caches (keycodes may have changed)
+    key_type_cache_loaded = 0;
+    key_type_cache_layer = 0xFF;
 }
 
 static inline void update_active_settings(uint8_t current_layer) {
@@ -728,13 +753,10 @@ static inline void update_active_settings(uint8_t current_layer) {
 // KEY TYPE CACHE REFRESH (eliminates 140 EEPROM reads per scan)
 // ============================================================================
 
-// Refresh key type cache when layer changes
-// This reads keycodes from EEPROM once per layer change instead of 140x per scan
-static void refresh_key_type_cache(uint8_t layer) {
+// Populate key type cache for a specific layer from EEPROM
+// Called at startup for all layers and on keymap changes
+static void populate_key_type_cache_layer(uint8_t layer) {
     if (layer >= 12) layer = 0;
-
-    // Skip if cache is already valid for this layer
-    if (key_type_cache_layer == layer) return;
 
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -743,8 +765,8 @@ static void refresh_key_type_cache(uint8_t layer) {
 
             // Check if DKS key
             if (is_dks_keycode(keycode)) {
-                key_type_cache[key_idx] = KEY_TYPE_DKS;
-                dks_keycode_cache[key_idx] = keycode;
+                key_type_cache_all[layer][key_idx] = KEY_TYPE_DKS;
+                dks_keycode_cache_all[layer][key_idx] = keycode;
             }
             // Check if MIDI key by keycode on current layer (not permanent is_midi_key flag)
             // Only actual MIDI note keycodes - NOT function keys (octave, transpose, velocity, channel)
@@ -754,18 +776,43 @@ static void refresh_key_type_cache(uint8_t layer) {
             else if ((keycode >= 0x7103 && keycode <= 0x714A) ||
                      (keycode >= 0xC600 && keycode <= 0xC647) ||
                      (keycode >= 0xC670 && keycode <= 0xC6B7)) {
-                key_type_cache[key_idx] = KEY_TYPE_MIDI;
-                dks_keycode_cache[key_idx] = 0;
+                key_type_cache_all[layer][key_idx] = KEY_TYPE_MIDI;
+                dks_keycode_cache_all[layer][key_idx] = 0;
             }
             // Normal key
             else {
-                key_type_cache[key_idx] = KEY_TYPE_NORMAL;
-                dks_keycode_cache[key_idx] = 0;
+                key_type_cache_all[layer][key_idx] = KEY_TYPE_NORMAL;
+                dks_keycode_cache_all[layer][key_idx] = 0;
             }
         }
     }
 
+    key_type_cache_loaded |= (1 << layer);
+}
+
+// Refresh key type cache on layer change - pointer swap if already populated
+static void refresh_key_type_cache(uint8_t layer) {
+    if (layer >= 12) layer = 0;
+
+    // Skip if cache is already pointing at this layer
+    if (key_type_cache_layer == layer) return;
+
+    // Populate from EEPROM if this layer hasn't been cached yet
+    if (!(key_type_cache_loaded & (1 << layer))) {
+        populate_key_type_cache_layer(layer);
+    }
+
+    // Pointer swap: near-zero cost
+    key_type_cache = key_type_cache_all[layer];
+    dks_keycode_cache = dks_keycode_cache_all[layer];
     key_type_cache_layer = layer;
+}
+
+// Pre-populate all 12 layers' key type caches at startup (before USB active)
+void preload_all_key_type_caches(void) {
+    for (uint8_t layer = 0; layer < 12; layer++) {
+        populate_key_type_cache_layer(layer);
+    }
 }
 
 // ============================================================================

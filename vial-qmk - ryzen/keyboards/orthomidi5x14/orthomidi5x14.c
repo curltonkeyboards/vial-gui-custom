@@ -505,13 +505,14 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
 uint8_t get_key_velocity_curve(uint8_t layer, uint8_t row, uint8_t col, uint8_t split_type) {
     uint8_t key_index = row * 14 + col;
     if (key_index < 70 && layer < 12) {
-        // DIAGNOSTIC: Only use cache, never access large per_key_actuations[] array
-        // This tests whether accessing that array is causing USB disconnect
+        // Multi-layer cache: all layers are always available via pointer swap
+        // active_per_key_cache points to current layer, but we can access any
+        // layer directly through the extern all_layer_per_key_cache if needed.
+        // For now, only use active layer's flags (same behavior as before).
         uint8_t flags;
         if (layer == active_per_key_cache_layer) {
             flags = active_per_key_cache[key_index].flags;
         } else {
-            // Don't access large array - use 0 (no per-key velocity flag set)
             flags = 0;
         }
 
@@ -3018,9 +3019,28 @@ void scan_keycode_categories(void) {
     }
 }
 
+// ============================================================================
+// RGB LAYER SETTINGS CACHE (eliminates EEPROM reads on layer switch)
+// ============================================================================
+// All 12 layers' RGB settings cached in RAM (108 bytes).
+// On layer switch, reads from RAM cache instead of 9 EEPROM byte reads.
+static uint8_t layer_rgb_cache[NUM_LAYERS][LAYER_BLOCK_SIZE];  // 108 bytes
+static bool layer_rgb_cache_loaded = false;
+
+// Pre-load all layer RGB settings from EEPROM into RAM cache
+void preload_layer_rgb_cache(void) {
+    for (uint8_t layer = 0; layer < NUM_LAYERS; layer++) {
+        uint16_t addr = LAYER_SETTINGS_EEPROM_ADDR + (layer * LAYER_BLOCK_SIZE);
+        for (int i = 0; i < LAYER_BLOCK_SIZE; i++) {
+            layer_rgb_cache[layer][i] = eeprom_read_byte((uint8_t*)(addr + i));
+        }
+    }
+    layer_rgb_cache_loaded = true;
+}
+
 void save_current_rgb_settings(uint8_t layer) {
     if (layer >= NUM_LAYERS) return;
-    
+
     uint8_t block_data[LAYER_BLOCK_SIZE] = {
         rgb_matrix_get_mode(),    // Index 0: Mode
         rgb_matrix_get_hue(),     // Index 1: Hue
@@ -3032,8 +3052,13 @@ void save_current_rgb_settings(uint8_t layer) {
         0,
         0
     };
-    
+
     save_layer_block(layer, block_data);
+
+    // Also update the RAM cache so layer switches use the new settings
+    for (int i = 0; i < LAYER_BLOCK_SIZE; i++) {
+        layer_rgb_cache[layer][i] = block_data[i];
+    }
 }
 
 void save_layer_block(uint8_t layer, uint8_t data[LAYER_BLOCK_SIZE]) {
@@ -3041,12 +3066,26 @@ void save_layer_block(uint8_t layer, uint8_t data[LAYER_BLOCK_SIZE]) {
     for (int i = 0; i < LAYER_BLOCK_SIZE; i++) {
         eeprom_update_byte((uint8_t*)(addr + i), data[i]);
     }
+
+    // Also update the RAM cache
+    if (layer < NUM_LAYERS) {
+        for (int i = 0; i < LAYER_BLOCK_SIZE; i++) {
+            layer_rgb_cache[layer][i] = data[i];
+        }
+    }
 }
 
 void load_layer_block(uint8_t layer, uint8_t data[LAYER_BLOCK_SIZE]) {
-    uint16_t addr = LAYER_SETTINGS_EEPROM_ADDR + (layer * LAYER_BLOCK_SIZE);
-    for (int i = 0; i < LAYER_BLOCK_SIZE; i++) {
-        data[i] = eeprom_read_byte((uint8_t*)(addr + i));
+    // Use RAM cache if available (avoids EEPROM reads)
+    if (layer_rgb_cache_loaded && layer < NUM_LAYERS) {
+        for (int i = 0; i < LAYER_BLOCK_SIZE; i++) {
+            data[i] = layer_rgb_cache[layer][i];
+        }
+    } else {
+        uint16_t addr = LAYER_SETTINGS_EEPROM_ADDR + (layer * LAYER_BLOCK_SIZE);
+        for (int i = 0; i < LAYER_BLOCK_SIZE; i++) {
+            data[i] = eeprom_read_byte((uint8_t*)(addr + i));
+        }
     }
 }
 
@@ -3060,10 +3099,11 @@ void apply_layer_block(uint8_t data[LAYER_BLOCK_SIZE]) {
 
 void apply_layer_rgb_settings(uint8_t layer) {
     if (layer >= NUM_LAYERS) return;
-    
+
+    // Read from RAM cache (no EEPROM access on layer switch)
     uint8_t block_data[LAYER_BLOCK_SIZE];
     load_layer_block(layer, block_data);
-    
+
     // Check if this layer has settings saved (index 5 is our is_set flag)
     if (block_data[5]) {
         apply_layer_block(block_data);
@@ -3359,8 +3399,8 @@ void load_per_key_actuations(void) {
                       (uint8_t*)PER_KEY_ACTUATION_EEPROM_ADDR,
                       PER_KEY_ACTUATION_SIZE);
     // NOTE: Mode flags removed - firmware always uses per-key per-layer
-    // Invalidate per-key cache so loaded values take effect
-    active_per_key_cache_layer = 0xFF;
+    // Rebuild all multi-layer caches so loaded values take effect
+    analog_matrix_refresh_settings();
 }
 
 // Reset all per-key actuations to default
@@ -3368,8 +3408,8 @@ void reset_per_key_actuations(void) {
     initialize_per_key_actuations();
     // Full save is acceptable here - reset is a rare user-initiated action
     save_per_key_actuations();
-    // Invalidate per-key cache so changes take effect immediately
-    active_per_key_cache_layer = 0xFF;
+    // Rebuild all multi-layer caches so changes take effect immediately
+    analog_matrix_refresh_settings();
 }
 
 // Get actuation point for a specific key
@@ -5353,8 +5393,16 @@ void keyboard_post_init_user(void) {
 	initialize_per_key_actuations();
 
 	// Load per-key cache for layer 0 from defaults
-	// This populates the 280-byte fast cache used during scan loop
+	// This populates the multi-layer cache slot for layer 0
 	force_load_per_key_cache_at_init(0);
+
+	// Pre-populate all 12 layers' key type caches from EEPROM (before USB active)
+	// This eliminates 168 EEPROM reads per layer switch during operation
+	preload_all_key_type_caches();
+
+	// Pre-load all RGB layer settings into RAM cache (108 bytes)
+	// This eliminates 9 EEPROM reads per layer switch during operation
+	preload_layer_rgb_cache();
 
 	// TODO: Implement deferred EEPROM loading during idle time
 	// For now, changes are saved per-key (8 bytes) but not restored on boot

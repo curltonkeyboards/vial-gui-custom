@@ -993,12 +993,13 @@ extern layer_key_actuations_t per_key_actuations[12];  // 6720 bytes total (560 
 // NOTE: per_key_mode_enabled and per_key_per_layer_enabled have been REMOVED
 // Firmware now ALWAYS uses per-key per-layer settings.
 
-// Optimized per-key cache for active layer (280 bytes - fits in L1 cache)
-// This cache is refreshed on layer change and used during matrix scan.
-extern per_key_config_lite_t active_per_key_cache[70];
+// Multi-layer per-key cache: all 12 layers cached in RAM (3,360 bytes).
+// active_per_key_cache is a pointer into the correct layer's slot.
+// On layer switch, pointer is swapped (near-zero cost, no data copying).
+extern per_key_config_lite_t *active_per_key_cache;
 extern uint8_t active_per_key_cache_layer;
 
-// Refresh the per-key cache for a given layer
+// Refresh the per-key cache for a given layer (pointer swap if already populated)
 void refresh_per_key_cache(uint8_t layer);
 
 void save_layer_actuations(void);
