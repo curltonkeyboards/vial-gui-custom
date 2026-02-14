@@ -12058,16 +12058,16 @@ static void handle_dks_reset_slot(const uint8_t* data) {
     memset(slot->press_keycode, 0, sizeof(slot->press_keycode));
     memset(slot->release_keycode, 0, sizeof(slot->release_keycode));
 
-    // Set default actuation points (0-255 = 0-4.0mm)
-    slot->press_actuation[0] = 64;   // 1.0mm
-    slot->press_actuation[1] = 128;  // 2.0mm
-    slot->press_actuation[2] = 191;  // 3.0mm
-    slot->press_actuation[3] = 255;  // 4.0mm
+    // Set default actuation points
+    slot->press_actuation[0] = 24;  // 0.6mm
+    slot->press_actuation[1] = 48;  // 1.2mm
+    slot->press_actuation[2] = 72;  // 1.8mm
+    slot->press_actuation[3] = 96;  // 2.4mm
 
-    slot->release_actuation[0] = 255;  // 4.0mm
-    slot->release_actuation[1] = 191;  // 3.0mm
-    slot->release_actuation[2] = 128;  // 2.0mm
-    slot->release_actuation[3] = 64;   // 1.0mm
+    slot->release_actuation[0] = 96;  // 2.4mm
+    slot->release_actuation[1] = 72;  // 1.8mm
+    slot->release_actuation[2] = 48;  // 1.2mm
+    slot->release_actuation[3] = 24;  // 0.6mm
 
     slot->behaviors = 0x0000;  // All TAP
 
@@ -12287,21 +12287,9 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_SAVE_EEPROM: // 0xAC - Save DKS config to EEPROM (per-slot or all)
-            {
-                uint8_t slot_num = data[6];
-                if (slot_num < DKS_NUM_SLOTS) {
-                    // Per-slot save: only write the specified slot
-                    dks_save_slot_to_eeprom(slot_num);
-                    send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0);
-                } else if (slot_num == 0xFF) {
-                    // Save all slots (legacy / full save)
-                    dks_save_to_eeprom();
-                    send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0);
-                } else {
-                    send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 1, NULL, 0); // Error: invalid slot
-                }
-            }
+        case HID_CMD_DKS_SAVE_EEPROM: // 0xAC - Save all DKS configs to EEPROM
+            dks_save_to_eeprom();
+            send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0); // Success
             break;
 
         case HID_CMD_DKS_LOAD_EEPROM: // 0xAD - Load all DKS configs from EEPROM
