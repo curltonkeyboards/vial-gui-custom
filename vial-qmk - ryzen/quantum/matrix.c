@@ -747,8 +747,11 @@ static void refresh_key_type_cache(uint8_t layer) {
                 dks_keycode_cache[key_idx] = keycode;
             }
             // Check if MIDI key by keycode on current layer (not permanent is_midi_key flag)
-            // Covers all MIDI ranges: base notes, keysplit, and triplesplit
-            else if ((keycode >= 0x7103 && keycode <= 0x71FF) ||
+            // Only actual MIDI note keycodes - NOT function keys (octave, transpose, velocity, channel)
+            // Base notes: 0x7103 (QK_MIDI_NOTE_C_0) to 0x714A (QK_MIDI_NOTE_B_5)
+            // Keysplit notes: 0xC600 to 0xC647
+            // Triplesplit notes: 0xC670 to 0xC6B7
+            else if ((keycode >= 0x7103 && keycode <= 0x714A) ||
                      (keycode >= 0xC600 && keycode <= 0xC647) ||
                      (keycode >= 0xC670 && keycode <= 0xC6B7)) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
