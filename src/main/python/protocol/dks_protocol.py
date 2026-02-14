@@ -13,7 +13,7 @@ from typing import Optional, Dict, List, Tuple
 # DKS HID Command Codes (0xAA-0xAF)
 # NOTE: Moved from 0xE5-0xEA to avoid conflict with arpeggiator_hid.c handlers
 # (0xE5-0xE6 used for per-key actuation, 0xE7-0xE9 for distance/calibration/EQ)
-HID_CMD_DKS_GET_SLOT = 0xAA        # Get DKS slot configuration (26 bytes)
+HID_CMD_DKS_GET_SLOT = 0xAA        # Get DKS slot configuration (32 bytes)
 HID_CMD_DKS_SET_ACTION = 0xAB      # Set a single DKS action
 HID_CMD_DKS_SAVE_EEPROM = 0xAC     # Save all DKS configs to EEPROM
 HID_CMD_DKS_LOAD_EEPROM = 0xAD     # Load all DKS configs from EEPROM
@@ -23,7 +23,7 @@ HID_CMD_DKS_RESET_ALL = 0xAF       # Reset all slots to defaults
 # DKS Constants
 DKS_NUM_SLOTS = 50                  # Number of DKS slots (DKS_00 - DKS_49)
 DKS_ACTIONS_PER_STAGE = 4           # 4 press + 4 release
-DKS_SLOT_SIZE = 26                  # Bytes per slot (8 press KC + 4 press act + 8 rel KC + 4 rel act + 2 behaviors)
+DKS_SLOT_SIZE = 32                  # Bytes per slot
 
 # Behavior Types
 DKS_BEHAVIOR_TAP = 0                # Press + immediate release
@@ -69,7 +69,7 @@ class DKSSlot:
         self.release_actions = [DKSAction() for _ in range(DKS_ACTIONS_PER_STAGE)]
 
     def to_bytes(self):
-        """Pack slot into 26-byte firmware format"""
+        """Pack slot into 32-byte firmware format"""
         data = bytearray(DKS_SLOT_SIZE)
         offset = 0
 
@@ -106,7 +106,7 @@ class DKSSlot:
 
     @staticmethod
     def from_bytes(data):
-        """Unpack slot from 26-byte firmware format"""
+        """Unpack slot from 32-byte firmware format"""
         if len(data) < DKS_SLOT_SIZE:
             raise ValueError(f"DKS slot data must be {DKS_SLOT_SIZE} bytes, got {len(data)}")
 
@@ -163,16 +163,6 @@ class DKSSlot:
 class ProtocolDKS:
     """DKS protocol handler - manages communication with firmware"""
 
-    # Command name lookup for debug logging
-    CMD_NAMES = {
-        HID_CMD_DKS_GET_SLOT: "GET_SLOT",
-        HID_CMD_DKS_SET_ACTION: "SET_ACTION",
-        HID_CMD_DKS_SAVE_EEPROM: "SAVE_EEPROM",
-        HID_CMD_DKS_LOAD_EEPROM: "LOAD_EEPROM",
-        HID_CMD_DKS_RESET_SLOT: "RESET_SLOT",
-        HID_CMD_DKS_RESET_ALL: "RESET_ALL",
-    }
-
     def __init__(self, keyboard):
         """Initialize DKS protocol
 
@@ -181,26 +171,6 @@ class ProtocolDKS:
         """
         self.keyboard = keyboard
         self.slots_cache = {}  # Cache of loaded slots
-        self._debug_callback = None  # Optional debug logging callback
-
-    def set_debug_callback(self, callback):
-        """Set a debug logging callback function.
-
-        Args:
-            callback: Function(message, level) to call for debug logging
-        """
-        self._debug_callback = callback
-
-    def _log(self, message, level="DEBUG"):
-        """Log a message through the debug callback if set"""
-        if self._debug_callback:
-            self._debug_callback(message, level)
-
-    def _log_packet(self, label, packet):
-        """Log a HID packet as hex dump"""
-        if self._debug_callback and packet:
-            hex_str = ' '.join(f'{b:02X}' for b in packet[:32])
-            self._log(f"{label}: [{hex_str}]", "HID_TX" if "TX" in label else "HID_RX")
 
     def get_slot(self, slot_num: int) -> Optional[DKSSlot]:
         """Get DKS slot configuration from keyboard
@@ -212,32 +182,19 @@ class ProtocolDKS:
             DKSSlot object or None on error
         """
         if slot_num < 0 or slot_num >= DKS_NUM_SLOTS:
-            self._log(f"GET_SLOT: Invalid slot_num={slot_num}", "ERROR")
             return None
 
         try:
             # Create HID packet with slot number
-            self._log(f"HID TX: cmd=0x{HID_CMD_DKS_GET_SLOT:02X} (GET_SLOT) slot={slot_num}", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_GET_SLOT, 0, [slot_num])
-            self._log_packet("HID TX RAW", packet)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response:
-                self._log(f"HID RX: empty response for GET_SLOT slot={slot_num}", "WARN")
-                return None
-
-            self._log_packet("HID RX RAW", response)
-
-            if len(response) < (6 + DKS_SLOT_SIZE):
-                self._log(f"HID RX: response too short ({len(response)} bytes, need {6 + DKS_SLOT_SIZE})", "WARN")
+            if not response or len(response) < (6 + DKS_SLOT_SIZE):
                 return None
 
             # Check status byte (response[5])
             if response[5] != 0:  # 0 = success
-                self._log(f"HID RX: GET_SLOT returned error status 0x{response[5]:02X}", "ERROR")
                 return None
-
-            self._log(f"HID RX: GET_SLOT status=0x00 (OK)", "HID_RX")
 
             # Extract 32-byte slot data (starts at response[6])
             slot_data = response[6:6 + DKS_SLOT_SIZE]
@@ -249,7 +206,6 @@ class ProtocolDKS:
             return slot
 
         except Exception as e:
-            self._log(f"GET_SLOT: Exception: {type(e).__name__}: {e}", "ERROR")
             print(f"DKS: Error getting slot {slot_num}: {e}")
             return None
 
@@ -262,26 +218,18 @@ class ProtocolDKS:
             is_press: True for press action, False for release
             action_index: Action index (0-3)
             keycode: Keycode to send
-            actuation: Actuation point (0-255)
+            actuation: Actuation point (0-100)
             behavior: Behavior type (TAP/PRESS/RELEASE)
 
         Returns:
             True if successful
         """
         if slot_num < 0 or slot_num >= DKS_NUM_SLOTS:
-            self._log(f"SET_ACTION: Invalid slot_num={slot_num}", "ERROR")
             return False
         if action_index < 0 or action_index >= DKS_ACTIONS_PER_STAGE:
-            self._log(f"SET_ACTION: Invalid action_index={action_index}", "ERROR")
             return False
 
         try:
-            stage = "press" if is_press else "release"
-            mm = (actuation / 255.0) * 4.0
-            self._log(f"HID TX: cmd=0x{HID_CMD_DKS_SET_ACTION:02X} (SET_ACTION) "
-                      f"slot={slot_num} {stage}[{action_index}] "
-                      f"keycode=0x{keycode:04X} actuation={actuation} ({mm:.2f}mm) behavior={behavior}", "HID_TX")
-
             # Packet format: [slot_num] [is_press] [action_index] [keycode_low] [keycode_high] [actuation] [behavior]
             data = bytearray([
                 slot_num,
@@ -294,21 +242,9 @@ class ProtocolDKS:
             ])
 
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_SET_ACTION, 0, data)
-            self._log_packet("HID TX RAW", packet)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response:
-                self._log(f"HID RX: empty response for SET_ACTION", "WARN")
-                return False
-
-            self._log_packet("HID RX RAW", response)
-
-            success = len(response) > 5 and response[5] == 0
-            if success:
-                self._log(f"HID RX: SET_ACTION status=0x00 (OK)", "HID_RX")
-            else:
-                status = response[5] if len(response) > 5 else -1
-                self._log(f"HID RX: SET_ACTION returned error status 0x{status:02X}", "ERROR")
+            success = response and len(response) > 5 and response[5] == 0
 
             # Update cache if successful
             if success and slot_num in self.slots_cache:
@@ -325,44 +261,20 @@ class ProtocolDKS:
             return success
 
         except Exception as e:
-            self._log(f"SET_ACTION: Exception: {type(e).__name__}: {e}", "ERROR")
             print(f"DKS: Error setting action: {e}")
             return False
 
-    def save_to_eeprom(self, slot_num: int = 0xFF) -> bool:
-        """Save DKS configuration to EEPROM
-
-        Args:
-            slot_num: Slot number (0-49) for per-slot save, or 0xFF for all slots
+    def save_to_eeprom(self) -> bool:
+        """Save all DKS configurations to EEPROM
 
         Returns:
             True if successful
         """
         try:
-            if slot_num == 0xFF:
-                self._log(f"HID TX: cmd=0x{HID_CMD_DKS_SAVE_EEPROM:02X} (SAVE_EEPROM) ALL SLOTS", "HID_TX")
-            else:
-                self._log(f"HID TX: cmd=0x{HID_CMD_DKS_SAVE_EEPROM:02X} (SAVE_EEPROM) slot={slot_num}", "HID_TX")
-            packet = self.keyboard._create_hid_packet(HID_CMD_DKS_SAVE_EEPROM, 0, [slot_num])
-            self._log_packet("HID TX RAW", packet)
+            packet = self.keyboard._create_hid_packet(HID_CMD_DKS_SAVE_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
-
-            if not response:
-                self._log(f"HID RX: empty response for SAVE_EEPROM", "WARN")
-                return False
-
-            self._log_packet("HID RX RAW", response)
-
-            success = len(response) > 5 and response[5] == 0
-            if success:
-                self._log(f"HID RX: SAVE_EEPROM status=0x00 (OK)", "HID_RX")
-            else:
-                status = response[5] if len(response) > 5 else -1
-                self._log(f"HID RX: SAVE_EEPROM returned error status 0x{status:02X}", "ERROR")
-
-            return success
+            return response and len(response) > 5 and response[5] == 0
         except Exception as e:
-            self._log(f"SAVE_EEPROM: Exception: {type(e).__name__}: {e}", "ERROR")
             print(f"DKS: Error saving to EEPROM: {e}")
             return False
 
@@ -373,23 +285,10 @@ class ProtocolDKS:
             True if successful
         """
         try:
-            self._log(f"HID TX: cmd=0x{HID_CMD_DKS_LOAD_EEPROM:02X} (LOAD_EEPROM)", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_LOAD_EEPROM, 0, None)
-            self._log_packet("HID TX RAW", packet)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response:
-                self._log(f"HID RX: empty response for LOAD_EEPROM", "WARN")
-                return False
-
-            self._log_packet("HID RX RAW", response)
-
-            success = len(response) > 5 and response[5] == 0
-            if success:
-                self._log(f"HID RX: LOAD_EEPROM status=0x00 (OK)", "HID_RX")
-            else:
-                status = response[5] if len(response) > 5 else -1
-                self._log(f"HID RX: LOAD_EEPROM returned error status 0x{status:02X}", "ERROR")
+            success = response and len(response) > 5 and response[5] == 0
 
             # Clear cache on successful load
             if success:
@@ -397,7 +296,6 @@ class ProtocolDKS:
 
             return success
         except Exception as e:
-            self._log(f"LOAD_EEPROM: Exception: {type(e).__name__}: {e}", "ERROR")
             print(f"DKS: Error loading from EEPROM: {e}")
             return False
 
@@ -411,27 +309,13 @@ class ProtocolDKS:
             True if successful
         """
         if slot_num < 0 or slot_num >= DKS_NUM_SLOTS:
-            self._log(f"RESET_SLOT: Invalid slot_num={slot_num}", "ERROR")
             return False
 
         try:
-            self._log(f"HID TX: cmd=0x{HID_CMD_DKS_RESET_SLOT:02X} (RESET_SLOT) slot={slot_num}", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_RESET_SLOT, 0, [slot_num])
-            self._log_packet("HID TX RAW", packet)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response:
-                self._log(f"HID RX: empty response for RESET_SLOT", "WARN")
-                return False
-
-            self._log_packet("HID RX RAW", response)
-
-            success = len(response) > 5 and response[5] == 0
-            if success:
-                self._log(f"HID RX: RESET_SLOT status=0x00 (OK)", "HID_RX")
-            else:
-                status = response[5] if len(response) > 5 else -1
-                self._log(f"HID RX: RESET_SLOT returned error status 0x{status:02X}", "ERROR")
+            success = response and len(response) > 5 and response[5] == 0
 
             # Clear from cache
             if success and slot_num in self.slots_cache:
@@ -439,7 +323,6 @@ class ProtocolDKS:
 
             return success
         except Exception as e:
-            self._log(f"RESET_SLOT: Exception: {type(e).__name__}: {e}", "ERROR")
             print(f"DKS: Error resetting slot: {e}")
             return False
 
@@ -450,23 +333,10 @@ class ProtocolDKS:
             True if successful
         """
         try:
-            self._log(f"HID TX: cmd=0x{HID_CMD_DKS_RESET_ALL:02X} (RESET_ALL)", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_RESET_ALL, 0, None)
-            self._log_packet("HID TX RAW", packet)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response:
-                self._log(f"HID RX: empty response for RESET_ALL", "WARN")
-                return False
-
-            self._log_packet("HID RX RAW", response)
-
-            success = len(response) > 5 and response[5] == 0
-            if success:
-                self._log(f"HID RX: RESET_ALL status=0x00 (OK)", "HID_RX")
-            else:
-                status = response[5] if len(response) > 5 else -1
-                self._log(f"HID RX: RESET_ALL returned error status 0x{status:02X}", "ERROR")
+            success = response and len(response) > 5 and response[5] == 0
 
             # Clear cache
             if success:
@@ -474,7 +344,6 @@ class ProtocolDKS:
 
             return success
         except Exception as e:
-            self._log(f"RESET_ALL: Exception: {type(e).__name__}: {e}", "ERROR")
             print(f"DKS: Error resetting all slots: {e}")
             return False
 
