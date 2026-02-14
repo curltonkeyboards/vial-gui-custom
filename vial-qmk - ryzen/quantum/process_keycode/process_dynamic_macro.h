@@ -411,6 +411,7 @@ extern uint8_t vibrato_sensitivity;
 extern uint16_t vibrato_decay_time;
 extern uint16_t min_press_time;
 extern uint16_t max_press_time;
+extern uint8_t preset_speed_peak_ratio;
 extern uint8_t he_velocity_curve;
 extern uint8_t he_velocity_min;
 extern uint8_t he_velocity_max;
