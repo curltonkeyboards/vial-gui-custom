@@ -33,7 +33,7 @@
 #define DKS_KEY_MAX             (DKS_KEY_BASE + DKS_NUM_SLOTS - 1)  // 0xED31
 
 // EEPROM Configuration
-#define EEPROM_DKS_BASE         52000
+#define EEPROM_DKS_BASE         52000   // Was 75000 - MOVED: CAT24C512 is 64KB (max addr 65535)
 #define EEPROM_DKS_MAGIC        0xDC57  // "DKS" magic number
 #define EEPROM_DKS_VERSION      0x01
 
@@ -60,11 +60,11 @@ typedef enum {
 typedef struct {
     // Press actions (downstroke) - 16 bytes
     uint16_t press_keycode[DKS_ACTIONS_PER_STAGE];      // 8 bytes: keycodes to send
-    uint8_t  press_actuation[DKS_ACTIONS_PER_STAGE];    // 4 bytes: actuation points (0-100)
+    uint8_t  press_actuation[DKS_ACTIONS_PER_STAGE];    // 4 bytes: actuation points (0-255 = 0-4.0mm)
 
     // Release actions (upstroke) - 16 bytes
     uint16_t release_keycode[DKS_ACTIONS_PER_STAGE];    // 8 bytes: keycodes to send
-    uint8_t  release_actuation[DKS_ACTIONS_PER_STAGE];  // 4 bytes: actuation points (0-100)
+    uint8_t  release_actuation[DKS_ACTIONS_PER_STAGE];  // 4 bytes: actuation points (0-255 = 0-4.0mm)
 
     // Behaviors - 2 bytes (bit-packed: 2 bits per action × 8 actions = 16 bits)
     // Bits 0-1:   press_behavior[0]
@@ -171,6 +171,12 @@ bool dks_load_from_eeprom(void);
  * Save all DKS configurations to EEPROM
  */
 void dks_save_to_eeprom(void);
+
+/**
+ * Save a single DKS slot to EEPROM
+ * @param slot_num Slot number (0-49)
+ */
+void dks_save_slot_to_eeprom(uint8_t slot_num);
 
 /**
  * Reset all DKS configurations to default (all KC_NO)
