@@ -28,42 +28,93 @@ from vial_device import VialKeyboard
 from protocol.keyboard_comm import PARAM_SPEED_PEAK_RATIO
 
 
-# MIDI note keycode range (from keycodes_v6.py)
-MIDI_NOTE_MIN = 0x7103  # MI_C
-MIDI_NOTE_MAX = 0x714A  # MI_B_5
+# MIDI note keycode ranges (from keycodes_v6.py)
+# Only actual note keycodes - excludes octave, transpose, velocity, channel controls
+MIDI_NOTE_MIN = 0x7103        # MI_C
+MIDI_NOTE_MAX = 0x714A        # MI_B_5
+MIDI_SPLIT_NOTE_MIN = 0xC600  # MI_SPLIT_C
+MIDI_SPLIT_NOTE_MAX = 0xC647  # MI_SPLIT_B_5
+MIDI_SPLIT2_NOTE_MIN = 0xC670 # MI_SPLIT2_C
+MIDI_SPLIT2_NOTE_MAX = 0xC6B7 # MI_SPLIT2_B_5
+
+
+def _is_midi_note_name(remaining):
+    """Check if the remaining string after a MI_ / MI_SPLIT_ / MI_SPLIT2_ prefix is a note name.
+
+    Valid note suffixes: empty (e.g. MI_C), sharp (e.g. MI_Cs), octave (e.g. MI_C_1),
+    sharp+octave (e.g. MI_Cs_1), digit octave (e.g. MI_C1).
+    Rejects control codes like MI_CHANNEL, MI_CHORD, MI_CC, MI_OCTD, MI_TRNSD, etc.
+    """
+    if not remaining:
+        return True  # e.g. MI_C, MI_SPLIT_C
+    # Sharp notes: MI_Cs, MI_Cs_1, etc.
+    if remaining[0] == 's':
+        # After 's', only allow empty, underscore+digit, or digit (e.g. Cs, Cs_1, Cs1)
+        after_s = remaining[1:]
+        if not after_s or after_s[0] in '_0123456789':
+            return True
+        return False
+    # Octave suffix: MI_C_1, MI_C_5, etc.
+    if remaining[0] == '_' and len(remaining) >= 2 and remaining[1].isdigit():
+        return True
+    # Direct digit octave: MI_C1, MI_C5, etc.
+    if remaining[0].isdigit():
+        return True
+    return False
 
 
 def is_midi_note_keycode(keycode):
-    """Check if a keycode is a MIDI note (not control codes like octave/transpose)"""
+    """Check if a keycode is a MIDI note (not control codes like octave/transpose).
+
+    Returns True ONLY for actual MIDI note keycodes:
+    - Base notes: MI_C through MI_B_5 (0x7103-0x714A)
+    - Keysplit notes: MI_SPLIT_C through MI_SPLIT_B_5 (0xC600-0xC647)
+    - Triplesplit notes: MI_SPLIT2_C through MI_SPLIT2_B_5 (0xC670-0xC6B7)
+
+    Returns False for all MIDI function/control keys including:
+    - Octave: MI_OCTD, MI_OCTU, MI_OCT_*, MI_OCTAVE2_*, MI_OCTAVE3_*
+    - Transpose: MI_TRNSD, MI_TRNSU, MI_TRNS_*, MI_TRANSPOSE2_*, MI_TRANSPOSE3_*
+    - Velocity: MI_VELD, MI_VELU, MI_VEL_*, MI_VELOCITY2_*, MI_VELOCITY3_*
+    - Channel: MI_CH*, MI_CHANNEL_KEYSPLIT_*, KS_CHAN_*
+    - Effects: MI_SUS, MI_PORT, MI_MOD, MI_BENDD, MI_BENDU, etc.
+    - CC/Program: MI_CC_*, MI_PROG_*, MI_CCENCODER_*
+    - Chord: MI_CHORD_*
+    - Toggles: KS_TOGGLE, KS_TRANSPOSE_TOGGLE, KS_VELOCITY_TOGGLE, etc.
+    """
     if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
         return False
 
     # Handle string keycodes (most common case from keyboard.layout)
     if isinstance(keycode, str):
-        # Check for MI_SPLIT_ (keysplit) and MI_SPLIT2_ (triplesplit) first
-        if keycode.startswith("MI_SPLIT2_") or keycode.startswith("MI_SPLIT_"):
-            if keycode.startswith("MI_SPLIT2_"):
-                remaining = keycode[10:]
-            else:
-                remaining = keycode[9:]
-            if remaining and remaining[0] in 'CDEFGAB':
-                return True
-            return False
+        # Check for MI_SPLIT2_ (triplesplit notes) first since prefix is longer
+        if keycode.startswith("MI_SPLIT2_"):
+            remaining = keycode[10:]
+            return bool(remaining) and remaining[0] in 'CDEFGAB' and _is_midi_note_name(remaining[1:])
+
+        # Check for MI_SPLIT_ (keysplit notes)
+        if keycode.startswith("MI_SPLIT_"):
+            remaining = keycode[9:]
+            return bool(remaining) and remaining[0] in 'CDEFGAB' and _is_midi_note_name(remaining[1:])
 
         # Check for MI_ prefix (base MIDI notes like MI_C, MI_C_1, MI_Cs, etc.)
         if keycode.startswith("MI_"):
-            note_prefixes = ['MI_C', 'MI_D', 'MI_E', 'MI_F', 'MI_G', 'MI_A', 'MI_B']
-            for prefix in note_prefixes:
-                if keycode.startswith(prefix):
-                    # Make sure it's not a control code like MI_CHANNEL
-                    remaining = keycode[len(prefix):]
-                    if not remaining or remaining[0] in 'sS_0123456789':
-                        return True
-            return False
+            # Only match if the character after MI_ is a note letter (C,D,E,F,G,A,B)
+            if len(keycode) < 4 or keycode[3] not in 'CDEFGAB':
+                return False
+            # Validate the rest after the note letter
+            remaining = keycode[4:]
+            return _is_midi_note_name(remaining)
+
         return False
 
-    # Handle numeric keycodes
-    return MIDI_NOTE_MIN <= keycode <= MIDI_NOTE_MAX
+    # Handle numeric keycodes - use exact ranges, not broad blocks
+    if MIDI_NOTE_MIN <= keycode <= MIDI_NOTE_MAX:
+        return True
+    if MIDI_SPLIT_NOTE_MIN <= keycode <= MIDI_SPLIT_NOTE_MAX:
+        return True
+    if MIDI_SPLIT2_NOTE_MIN <= keycode <= MIDI_SPLIT2_NOTE_MAX:
+        return True
+    return False
 
 
 def get_midi_key_type(keycode):
@@ -71,6 +122,9 @@ def get_midi_key_type(keycode):
 
     NOTE: Currently unused. Firmware now handles zone-specific overrides directly.
     Kept for potential future use or debugging.
+
+    Uses the same strict criteria as is_midi_note_keycode() - only actual note keycodes,
+    not octave/transpose/velocity/channel controls.
     """
     if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
         return None
@@ -79,37 +133,36 @@ def get_midi_key_type(keycode):
         # Check for MI_SPLIT2_ (triplesplit) first since it's longer
         if keycode.startswith("MI_SPLIT2_"):
             remaining = keycode[10:]
-            if remaining and remaining[0] in 'CDEFGAB':
+            if remaining and remaining[0] in 'CDEFGAB' and _is_midi_note_name(remaining[1:]):
                 return 'triplesplit'
             return None
 
         # Check for MI_SPLIT_ (keysplit)
         if keycode.startswith("MI_SPLIT_"):
             remaining = keycode[9:]
-            if remaining and remaining[0] in 'CDEFGAB':
+            if remaining and remaining[0] in 'CDEFGAB' and _is_midi_note_name(remaining[1:]):
                 return 'keysplit'
             return None
 
         # Check for MI_ prefix (base MIDI notes)
         if keycode.startswith("MI_"):
-            note_prefixes = ['MI_C', 'MI_D', 'MI_E', 'MI_F', 'MI_G', 'MI_A', 'MI_B']
-            for prefix in note_prefixes:
-                if keycode.startswith(prefix):
-                    remaining = keycode[len(prefix):]
-                    if not remaining or remaining[0] in 'sS_0123456789':
-                        return 'base'
+            if len(keycode) < 4 or keycode[3] not in 'CDEFGAB':
+                return None
+            remaining = keycode[4:]
+            if _is_midi_note_name(remaining):
+                return 'base'
             return None
         return None
 
-    # Numeric keycodes - check ranges
-    # Base MIDI notes: 0x7103 - 0x714A
+    # Numeric keycodes - use exact note ranges only
+    # Base MIDI notes: MI_C (0x7103) - MI_B_5 (0x714A)
     if MIDI_NOTE_MIN <= keycode <= MIDI_NOTE_MAX:
         return 'base'
-    # Keysplit notes: 0xC600 - 0xC6FF range (MI_SPLIT_*)
-    if 0xC600 <= keycode <= 0xC6FF:
+    # Keysplit notes: MI_SPLIT_C (0xC600) - MI_SPLIT_B_5 (0xC647)
+    if MIDI_SPLIT_NOTE_MIN <= keycode <= MIDI_SPLIT_NOTE_MAX:
         return 'keysplit'
-    # Triplesplit notes: 0xC700 - 0xC7FF range (MI_SPLIT2_*)
-    if 0xC700 <= keycode <= 0xC7FF:
+    # Triplesplit notes: MI_SPLIT2_C (0xC670) - MI_SPLIT2_B_5 (0xC6B7)
+    if MIDI_SPLIT2_NOTE_MIN <= keycode <= MIDI_SPLIT2_NOTE_MAX:
         return 'triplesplit'
 
     return None

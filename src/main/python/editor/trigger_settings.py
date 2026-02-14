@@ -2637,42 +2637,25 @@ class TriggerSettingsTab(BasicEditor):
         pass
 
     def is_midi_keycode(self, keycode):
-        """Check if a keycode is a MIDI note keycode (base, keysplit, or triplesplit)"""
-        if not keycode or keycode == "KC_NO" or keycode == "KC_TRNS":
-            return False
+        """Check if a keycode is a MIDI note keycode (base, keysplit, or triplesplit).
 
-        # Check for MI_SPLIT_ (keysplit) and MI_SPLIT2_ (triplesplit) first
-        if keycode.startswith("MI_SPLIT2_") or keycode.startswith("MI_SPLIT_"):
-            # These are keysplit/triplesplit MIDI notes - check for note suffix
-            # Format: MI_SPLIT_C, MI_SPLIT_Cs, MI_SPLIT_C_1, MI_SPLIT2_C, etc.
-            if keycode.startswith("MI_SPLIT2_"):
-                remaining = keycode[10:]  # After "MI_SPLIT2_"
-            else:
-                remaining = keycode[9:]   # After "MI_SPLIT_"
+        Returns True ONLY for actual MIDI note keycodes:
+        - Base notes: MI_C through MI_B_5
+        - Keysplit notes: MI_SPLIT_C through MI_SPLIT_B_5
+        - Triplesplit notes: MI_SPLIT2_C through MI_SPLIT2_B_5
 
-            # Check if it starts with a note letter (C, D, E, F, G, A, B)
-            if remaining and remaining[0] in 'CDEFGAB':
-                return True
-            return False
-
-        # Check for MI_ prefix (base MIDI notes like MI_C, MI_C_1, MI_Cs, etc.)
-        if keycode.startswith("MI_"):
-            # Filter out non-note MIDI keycodes (controls, channels, etc.)
-            # Note keycodes are: MI_C, MI_Cs/MI_Db, MI_D, MI_Ds/MI_Eb, MI_E, MI_F, MI_Fs/MI_Gb,
-            #                    MI_G, MI_Gs/MI_Ab, MI_A, MI_As/MI_Bb, MI_B
-            # And their octave variants: MI_C_1, MI_C1, MI_C_2, MI_C2, etc.
-            note_prefixes = ['MI_C', 'MI_D', 'MI_E', 'MI_F', 'MI_G', 'MI_A', 'MI_B']
-            for prefix in note_prefixes:
-                if keycode.startswith(prefix):
-                    # Make sure it's actually a note (not MI_CH1, MI_CHORD, etc.)
-                    remaining = keycode[len(prefix):]
-                    if remaining == '' or remaining.startswith('s') or remaining.startswith('b'):
-                        return True  # MI_C, MI_Cs, MI_Cb, MI_Db, etc.
-                    if remaining.startswith('_') or remaining[0].isdigit():
-                        return True  # MI_C_1, MI_C1, MI_Cs_1, etc.
-            return False
-
-        return False
+        Returns False for all MIDI function/control keys including:
+        - Octave: MI_OCTD, MI_OCTU, MI_OCT_*, MI_OCTAVE2_*, MI_OCTAVE3_*
+        - Transpose: MI_TRNSD, MI_TRNSU, MI_TRNS_*, MI_TRANSPOSE2_*, MI_TRANSPOSE3_*
+        - Velocity: MI_VELD, MI_VELU, MI_VEL_*, MI_VELOCITY2_*, MI_VELOCITY3_*
+        - Channel: MI_CH*, MI_CHANNEL_KEYSPLIT_*, KS_CHAN_*
+        - Effects: MI_SUS, MI_PORT, MI_MOD, MI_BENDD, MI_BENDU, etc.
+        - CC/Program: MI_CC_*, MI_PROG_*, MI_CCENCODER_*
+        - Chord: MI_CHORD_*
+        - Toggles: KS_TOGGLE, KS_TRANSPOSE_TOGGLE, KS_VELOCITY_TOGGLE, etc.
+        """
+        from editor.velocity_tab import is_midi_note_keycode
+        return is_midi_note_keycode(keycode)
 
     def apply_keymap_based_actuations(self):
         """Apply actuation and deadzone values to all layers based on each layer's keymap.
