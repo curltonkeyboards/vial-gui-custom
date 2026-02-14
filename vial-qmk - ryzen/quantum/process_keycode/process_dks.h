@@ -33,7 +33,7 @@
 #define DKS_KEY_MAX             (DKS_KEY_BASE + DKS_NUM_SLOTS - 1)  // 0xED31
 
 // EEPROM Configuration
-#define EEPROM_DKS_BASE         75000
+#define EEPROM_DKS_BASE         52000
 #define EEPROM_DKS_MAGIC        0xDC57  // "DKS" magic number
 #define EEPROM_DKS_VERSION      0x01
 
