@@ -1372,7 +1372,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->peak_travel = travel;
                 }
 
-                // Actuation point reached: trigger using ONLY speed (ignore peak since it's maxed)
+                // Actuation point reached: blend speed + peak travel using zone_speed_peak_ratio
                 if (!state->velocity_captured && travel >= midi_threshold) {
                     // Calculate elapsed time from start to actuation
                     uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
@@ -1382,7 +1382,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
 
-                    // Use ONLY speed component (peak is maxed, so ignore it)
+                    // Calculate speed component
                     uint32_t speed_raw;
                     if (elapsed_ms > 0) {
                         if (elapsed_ms <= max_press_time) {
@@ -1398,7 +1398,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         state->travel_time_ms = 0;
                     }
 
-                    state->raw_velocity = (uint8_t)speed_raw;
+                    // Calculate peak travel component (0-255)
+                    uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
+                    if (travel_raw > 255) travel_raw = 255;
+
+                    // Blend speed and peak travel using zone_speed_peak_ratio
+                    // 0 = all peak travel, 100 = all speed
+                    uint8_t blended = (uint8_t)(((uint16_t)speed_raw * zone_speed_peak_ratio + travel_raw * (100 - zone_speed_peak_ratio)) / 100);
+                    state->raw_velocity = (blended < 1) ? 1 : blended;
                     state->velocity_captured = true;
                     state->send_on_release = true;  // Note ON
 
