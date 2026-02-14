@@ -33,7 +33,7 @@
 #define DKS_KEY_MAX             (DKS_KEY_BASE + DKS_NUM_SLOTS - 1)  // 0xED31
 
 // EEPROM Configuration
-#define EEPROM_DKS_BASE         75000
+#define EEPROM_DKS_BASE         52000   // Was 75000 - MOVED: CAT24C512 is 64KB (max addr 65535)
 #define EEPROM_DKS_MAGIC        0xDC57  // "DKS" magic number
 #define EEPROM_DKS_VERSION      0x01
 
@@ -171,6 +171,12 @@ bool dks_load_from_eeprom(void);
  * Save all DKS configurations to EEPROM
  */
 void dks_save_to_eeprom(void);
+
+/**
+ * Save a single DKS slot to EEPROM
+ * @param slot_num Slot number (0-49)
+ */
+void dks_save_slot_to_eeprom(uint8_t slot_num);
 
 /**
  * Reset all DKS configurations to default (all KC_NO)

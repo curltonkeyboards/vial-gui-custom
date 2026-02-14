@@ -185,6 +185,28 @@ void dks_save_to_eeprom(void) {
 }
 
 /**
+ * Save a single DKS slot to EEPROM
+ * @param slot_num Slot number (0-49)
+ */
+void dks_save_slot_to_eeprom(uint8_t slot_num) {
+    if (slot_num >= DKS_NUM_SLOTS) {
+        return;
+    }
+
+    // Ensure header is written (in case EEPROM was never initialized)
+    dks_eeprom_header_t header = {
+        .magic = EEPROM_DKS_MAGIC,
+        .version = EEPROM_DKS_VERSION,
+        .reserved = 0
+    };
+    eeprom_update_block(&header, (void*)(EEPROM_DKS_BASE + EEPROM_DKS_HEADER_OFFSET), sizeof(header));
+
+    // Write only the specified slot
+    uint32_t slot_addr = EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET + (slot_num * sizeof(dks_slot_t));
+    eeprom_update_block(&dks_slots[slot_num], (void*)slot_addr, sizeof(dks_slot_t));
+}
+
+/**
  * Reset all DKS states
  */
 void dks_reset_states(void) {

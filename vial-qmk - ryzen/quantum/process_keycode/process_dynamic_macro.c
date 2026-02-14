@@ -12287,9 +12287,21 @@ void dynamic_macro_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
 
-        case HID_CMD_DKS_SAVE_EEPROM: // 0xAC - Save all DKS configs to EEPROM
-            dks_save_to_eeprom();
-            send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0); // Success
+        case HID_CMD_DKS_SAVE_EEPROM: // 0xAC - Save DKS config to EEPROM (per-slot or all)
+            {
+                uint8_t slot_num = data[6];
+                if (slot_num < DKS_NUM_SLOTS) {
+                    // Per-slot save: only write the specified slot
+                    dks_save_slot_to_eeprom(slot_num);
+                    send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0);
+                } else if (slot_num == 0xFF) {
+                    // Save all slots (legacy / full save)
+                    dks_save_to_eeprom();
+                    send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 0, NULL, 0);
+                } else {
+                    send_hid_response(HID_CMD_DKS_SAVE_EEPROM, 0, 1, NULL, 0); // Error: invalid slot
+                }
+            }
             break;
 
         case HID_CMD_DKS_LOAD_EEPROM: // 0xAD - Load all DKS configs from EEPROM

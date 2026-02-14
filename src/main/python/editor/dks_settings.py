@@ -1388,13 +1388,13 @@ class DKSEntryUI(QWidget):
                 QMessageBox.warning(self, "Error", "Failed to reset slot")
 
     def _on_save_eeprom(self):
-        """Save to EEPROM"""
+        """Save current slot to EEPROM (per-slot save, not all 50)"""
         if not self.dks_protocol:
             return
 
         if self.debug_console:
             self.debug_console.mark_operation_start()
-        self.debug_log(f"SAVE: Saving all DKS configs to EEPROM", "INFO")
+        self.debug_log(f"SAVE: Saving DKS slot {self.slot_idx} to EEPROM (per-slot)", "INFO")
 
         # Log current slot state being saved
         for i, editor in enumerate(self.press_editors):
@@ -1406,16 +1406,16 @@ class DKSEntryUI(QWidget):
             mm = (actuation / 255.0) * 4.0
             self.debug_log(f"  Current release[{i}]: keycode=0x{keycode:04X} actuation={actuation} ({mm:.2f}mm) behavior={behavior}", "DATA")
 
-        if self.dks_protocol.save_to_eeprom():
-            self.debug_log(f"SAVE: EEPROM write OK", "INFO")
+        if self.dks_protocol.save_to_eeprom(self.slot_idx):
+            self.debug_log(f"SAVE: EEPROM write OK for slot {self.slot_idx}", "INFO")
             if self.debug_console:
                 self.debug_console.mark_operation_end(success=True)
-            QMessageBox.information(self, "Success", "DKS configuration saved to EEPROM")
+            QMessageBox.information(self, "Success", f"DKS slot {self.slot_idx} saved to EEPROM")
         else:
-            self.debug_log(f"SAVE: EEPROM write FAILED", "ERROR")
+            self.debug_log(f"SAVE: EEPROM write FAILED for slot {self.slot_idx}", "ERROR")
             if self.debug_console:
                 self.debug_console.mark_operation_end(success=False)
-            QMessageBox.warning(self, "Error", "Failed to save to EEPROM")
+            QMessageBox.warning(self, "Error", f"Failed to save slot {self.slot_idx} to EEPROM")
 
     def _on_reset_all(self):
         """Reset all slots to defaults"""

@@ -329,17 +329,23 @@ class ProtocolDKS:
             print(f"DKS: Error setting action: {e}")
             return False
 
-    def save_to_eeprom(self) -> bool:
-        """Save all DKS configurations to EEPROM
+    def save_to_eeprom(self, slot_num: int = 0xFF) -> bool:
+        """Save DKS configuration to EEPROM
+
+        Args:
+            slot_num: Slot number (0-49) for per-slot save, or 0xFF for all slots
 
         Returns:
             True if successful
         """
         try:
-            self._log(f"HID TX: cmd=0x{HID_CMD_DKS_SAVE_EEPROM:02X} (SAVE_EEPROM)", "HID_TX")
-            packet = self.keyboard._create_hid_packet(HID_CMD_DKS_SAVE_EEPROM, 0, None)
+            if slot_num == 0xFF:
+                self._log(f"HID TX: cmd=0x{HID_CMD_DKS_SAVE_EEPROM:02X} (SAVE_EEPROM) ALL SLOTS", "HID_TX")
+            else:
+                self._log(f"HID TX: cmd=0x{HID_CMD_DKS_SAVE_EEPROM:02X} (SAVE_EEPROM) slot={slot_num}", "HID_TX")
+            packet = self.keyboard._create_hid_packet(HID_CMD_DKS_SAVE_EEPROM, 0, [slot_num])
             self._log_packet("HID TX RAW", packet)
-            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=20)
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             if not response:
                 self._log(f"HID RX: empty response for SAVE_EEPROM", "WARN")
@@ -370,7 +376,7 @@ class ProtocolDKS:
             self._log(f"HID TX: cmd=0x{HID_CMD_DKS_LOAD_EEPROM:02X} (LOAD_EEPROM)", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_LOAD_EEPROM, 0, None)
             self._log_packet("HID TX RAW", packet)
-            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=20)
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             if not response:
                 self._log(f"HID RX: empty response for LOAD_EEPROM", "WARN")
