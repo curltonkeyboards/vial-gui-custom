@@ -1514,8 +1514,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // MIDI RETRIGGER PROCESSING (velocity preset feature)
     // Re-triggers note-on by sending note-off + note-on directly (bypasses QMK matrix)
     // Eligibility: key rises by retrigger_distance from peak (distance-based, any position)
-    // 10% hysteresis: must press 10% of actuation distance past eligible point to fire
-    // Speed-based velocity with distance cap based on available travel
+    // Fires when key is pressed retrigger_distance from eligible point, or reaches 3.8mm
+    // Fixed midpoint velocity (128) with distance cap based on available travel
     // ========================================================================
     if (retrigger_travel > 0 && state->velocity_captured) {
         // Track peak travel for retrigger eligibility
@@ -1543,13 +1543,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = (uint32_t)chVTGetSystemTimeX();
                 }
 
-                // 10% hysteresis: must press 10% of actuation distance past eligible point
-                uint8_t hysteresis = midi_threshold / 10;
-                if (hysteresis < 1) hysteresis = 1;
-
+                // Must press retrigger_travel distance from eligible point, or reach 3.8mm (228 units)
+                const uint8_t RETRIGGER_MAX_TRAVEL = 228;  // 3.8mm in travel units (240 = 4.0mm)
                 uint8_t repress_distance = travel - state->retrigger_eligible_point;
 
-                if (repress_distance >= hysteresis) {
+                if (repress_distance >= retrigger_travel || travel >= RETRIGGER_MAX_TRAVEL) {
                     // --- Fixed midpoint velocity for retriggered notes ---
                     // Use midline speed (128) instead of measuring actual speed
                     // to avoid retriggered notes being too loud from fast taps
