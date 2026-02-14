@@ -956,7 +956,7 @@ class DKSActionEditor(QWidget):
         self.key_selected.emit(widget)
 
     def set_action(self, keycode, actuation, behavior):
-        """Set action values"""
+        """Set action values without triggering intermediate changed signals"""
         # Convert keycode integer to string qmk_id
         if isinstance(keycode, int):
             if keycode == 0:
@@ -966,9 +966,24 @@ class DKSActionEditor(QWidget):
         else:
             keycode_str = keycode
 
+        # Block signals to prevent 3 separate _on_changed triggers per widget
+        self.key_widget.blockSignals(True)
+        self.actuation_slider.blockSignals(True)
+        self.behavior_combo.blockSignals(True)
+
         self.key_widget.set_keycode(keycode_str)
         self.actuation_slider.setValue(actuation)
         self.behavior_combo.setCurrentIndex(behavior)
+
+        self.key_widget.blockSignals(False)
+        self.actuation_slider.blockSignals(False)
+        self.behavior_combo.blockSignals(False)
+
+        # Update actuation label since slider signal was blocked
+        self._update_actuation_label()
+
+        # Emit a single changed signal now that all values are set
+        self.changed.emit()
 
     def get_action(self):
         """Get action values as (keycode, actuation, behavior) tuple"""
@@ -1161,6 +1176,7 @@ class DKSEntryUI(QWidget):
         self.slot_idx = slot_idx
         self.dks_protocol = None
         self.debug_console = None  # Shared debug console reference
+        self._loading = False  # Guard: suppress _send_to_keyboard during load
         self.selected_key_widget = None  # Track which key widget is selected
 
         # Set minimum height to prevent squishing - allows scroll instead
@@ -1264,7 +1280,11 @@ class DKSEntryUI(QWidget):
         self.load_from_slot(slot)
 
     def load_from_slot(self, slot):
-        """Load UI from slot data"""
+        """Load UI from slot data without sending back to keyboard"""
+        # Guard: prevent _send_to_keyboard during load to avoid overwriting
+        # firmware RAM with partially-loaded editor defaults
+        self._loading = True
+
         # Press actions
         for i, editor in enumerate(self.press_editors):
             action = slot.press_actions[i]
@@ -1279,6 +1299,7 @@ class DKSEntryUI(QWidget):
             self.debug_log(f"  Release[{i}]: keycode=0x{action.keycode:04X} actuation={action.actuation} ({mm:.2f}mm) behavior={action.behavior}", "DATA")
             editor.set_action(action.keycode, action.actuation, action.behavior)
 
+        self._loading = False
         self._update_travel_bar()
 
     def save_to_slot(self):
@@ -1294,9 +1315,10 @@ class DKSEntryUI(QWidget):
         return (press_actions, release_actions)
 
     def _on_action_changed(self):
-        """Handle action change"""
+        """Handle action change - skip sending during load to prevent cascade"""
         self._update_travel_bar()
-        self._send_to_keyboard()
+        if not self._loading:
+            self._send_to_keyboard()
         self.changed.emit()
 
     def _on_key_selected(self, widget):
@@ -1395,6 +1417,10 @@ class DKSEntryUI(QWidget):
         if self.debug_console:
             self.debug_console.mark_operation_start()
         self.debug_log(f"SAVE: Saving DKS slot {self.slot_idx} to EEPROM (per-slot)", "INFO")
+
+        # First: sync all GUI editor values to firmware RAM
+        self.debug_log(f"SAVE: Syncing all 8 actions to firmware RAM before EEPROM write", "INFO")
+        self._send_to_keyboard()
 
         # Log current slot state being saved
         for i, editor in enumerate(self.press_editors):
