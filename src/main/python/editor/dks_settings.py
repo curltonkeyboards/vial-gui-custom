@@ -1557,7 +1557,8 @@ class DKSSettingsTab(BasicEditor):
             return
 
         # Create DKS protocol handler
-        self.dks_protocol = ProtocolDKS(device)
+        # Pass device.keyboard (Keyboard comm object) not device (VialKeyboard wrapper)
+        self.dks_protocol = ProtocolDKS(device.keyboard)
         self.dks_protocol.set_debug_callback(self.debug_log)
 
         # Set protocol for all entries
