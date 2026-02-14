@@ -13300,6 +13300,10 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             if (max_press_time > 100) max_press_time = 100;
             keyboard_settings.max_press_time = max_press_time;
             break;
+        case PARAM_SPEED_PEAK_RATIO:
+            preset_speed_peak_ratio = *value_ptr;
+            if (preset_speed_peak_ratio > 100) preset_speed_peak_ratio = 100;
+            break;
 
         // Macro override live notes
         case PARAM_MACRO_OVERRIDE_LIVE_NOTES:

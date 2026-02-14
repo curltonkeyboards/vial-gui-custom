@@ -1545,14 +1545,6 @@ class VelocityTab(BasicEditor):
                 self.global_midi_settings['speed_peak_ratio'] = base_zone.get('speed_peak_ratio', 50)
                 self.global_midi_settings['retrigger_distance'] = base_zone.get('retrigger_distance', 0)
 
-                # Send speed_peak_ratio to firmware since update_zone_controls_from_settings
-                # blocks signals, so the slider's valueChanged won't trigger the firmware update
-                if self.keyboard:
-                    self.keyboard.set_keyboard_param_single(
-                        PARAM_SPEED_PEAK_RATIO,
-                        base_zone.get('speed_peak_ratio', 50)
-                    )
-
                 # Load keysplit zone data if enabled
                 if keysplit_enabled:
                     keysplit_zone = result.get('keysplit', {})
