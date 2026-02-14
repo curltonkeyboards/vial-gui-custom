@@ -13,7 +13,7 @@ from typing import Optional, Dict, List, Tuple
 # DKS HID Command Codes (0xAA-0xAF)
 # NOTE: Moved from 0xE5-0xEA to avoid conflict with arpeggiator_hid.c handlers
 # (0xE5-0xE6 used for per-key actuation, 0xE7-0xE9 for distance/calibration/EQ)
-HID_CMD_DKS_GET_SLOT = 0xAA        # Get DKS slot configuration (32 bytes)
+HID_CMD_DKS_GET_SLOT = 0xAA        # Get DKS slot configuration (26 bytes)
 HID_CMD_DKS_SET_ACTION = 0xAB      # Set a single DKS action
 HID_CMD_DKS_SAVE_EEPROM = 0xAC     # Save all DKS configs to EEPROM
 HID_CMD_DKS_LOAD_EEPROM = 0xAD     # Load all DKS configs from EEPROM
@@ -23,7 +23,7 @@ HID_CMD_DKS_RESET_ALL = 0xAF       # Reset all slots to defaults
 # DKS Constants
 DKS_NUM_SLOTS = 50                  # Number of DKS slots (DKS_00 - DKS_49)
 DKS_ACTIONS_PER_STAGE = 4           # 4 press + 4 release
-DKS_SLOT_SIZE = 32                  # Bytes per slot
+DKS_SLOT_SIZE = 26                  # Bytes per slot (8 press KC + 4 press act + 8 rel KC + 4 rel act + 2 behaviors)
 
 # Behavior Types
 DKS_BEHAVIOR_TAP = 0                # Press + immediate release
@@ -69,7 +69,7 @@ class DKSSlot:
         self.release_actions = [DKSAction() for _ in range(DKS_ACTIONS_PER_STAGE)]
 
     def to_bytes(self):
-        """Pack slot into 32-byte firmware format"""
+        """Pack slot into 26-byte firmware format"""
         data = bytearray(DKS_SLOT_SIZE)
         offset = 0
 
@@ -106,7 +106,7 @@ class DKSSlot:
 
     @staticmethod
     def from_bytes(data):
-        """Unpack slot from 32-byte firmware format"""
+        """Unpack slot from 26-byte firmware format"""
         if len(data) < DKS_SLOT_SIZE:
             raise ValueError(f"DKS slot data must be {DKS_SLOT_SIZE} bytes, got {len(data)}")
 
@@ -339,7 +339,7 @@ class ProtocolDKS:
             self._log(f"HID TX: cmd=0x{HID_CMD_DKS_SAVE_EEPROM:02X} (SAVE_EEPROM)", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_SAVE_EEPROM, 0, None)
             self._log_packet("HID TX RAW", packet)
-            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=20)
 
             if not response:
                 self._log(f"HID RX: empty response for SAVE_EEPROM", "WARN")
@@ -370,7 +370,7 @@ class ProtocolDKS:
             self._log(f"HID TX: cmd=0x{HID_CMD_DKS_LOAD_EEPROM:02X} (LOAD_EEPROM)", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_LOAD_EEPROM, 0, None)
             self._log_packet("HID TX RAW", packet)
-            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=20)
 
             if not response:
                 self._log(f"HID RX: empty response for LOAD_EEPROM", "WARN")
