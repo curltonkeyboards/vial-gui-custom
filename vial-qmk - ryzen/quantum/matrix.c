@@ -69,16 +69,19 @@ extern layer_key_actuations_t per_key_actuations[12];
 extern bool preset_actuation_override;
 extern uint8_t preset_actuation_point;  // 0-40 = 0.0-4.0mm
 extern uint8_t preset_retrigger_distance;  // 0=off, 5-20 = 0.5-2.0mm
+extern uint8_t preset_speed_peak_ratio;  // 0-100 = ratio of speed to peak (0=all peak, 100=all speed)
 
 // Velocity preset actuation override - KEYSPLIT zone
 extern bool keysplit_preset_actuation_override;
 extern uint8_t keysplit_preset_actuation_point;
 extern uint8_t keysplit_preset_retrigger_distance;
+extern uint8_t keysplit_preset_speed_peak_ratio;
 
 // Velocity preset actuation override - TRIPLESPLIT zone
 extern bool triplesplit_preset_actuation_override;
 extern uint8_t triplesplit_preset_actuation_point;
 extern uint8_t triplesplit_preset_retrigger_distance;
+extern uint8_t triplesplit_preset_speed_peak_ratio;
 
 // Keysplit velocity status (controls which zones have separate velocity)
 // 0=disabled (all zones same), 1=keysplit only, 2=triplesplit only, 3=both
@@ -1141,22 +1144,26 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     bool zone_actuation_override = false;
     uint8_t zone_actuation_point = 0;
     uint8_t zone_retrigger_distance = 0;
+    uint8_t zone_speed_peak_ratio = 50;
 
     if (zone_type == ZONE_TYPE_KEYSPLIT && (keysplitvelocitystatus == 1 || keysplitvelocitystatus == 3)) {
         // Use keysplit zone settings
         zone_actuation_override = keysplit_preset_actuation_override;
         zone_actuation_point = keysplit_preset_actuation_point;
         zone_retrigger_distance = keysplit_preset_retrigger_distance;
+        zone_speed_peak_ratio = keysplit_preset_speed_peak_ratio;
     } else if (zone_type == ZONE_TYPE_TRIPLESPLIT && (keysplitvelocitystatus == 2 || keysplitvelocitystatus == 3)) {
         // Use triplesplit zone settings
         zone_actuation_override = triplesplit_preset_actuation_override;
         zone_actuation_point = triplesplit_preset_actuation_point;
         zone_retrigger_distance = triplesplit_preset_retrigger_distance;
+        zone_speed_peak_ratio = triplesplit_preset_speed_peak_ratio;
     } else {
         // Use base zone settings
         zone_actuation_override = preset_actuation_override;
         zone_actuation_point = preset_actuation_point;
         zone_retrigger_distance = preset_retrigger_distance;
+        zone_speed_peak_ratio = preset_speed_peak_ratio;
     }
 
     // Apply actuation override if enabled for this zone
@@ -1350,7 +1357,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         case 3:  // Speed + Peak Combined - Direction Reversal
             // Triggers on direction reversal like Mode 1
             // OR when key reaches actuation point (uses ONLY speed, ignores peak)
-            // Velocity = 50% speed + 50% peak travel (on reversal)
+            // Velocity = blend of speed + peak travel based on zone_speed_peak_ratio (on reversal)
             // Velocity = 100% speed only (on actuation)
             {
                 const uint8_t MIN_PEAK3 = 12;             // ~0.2mm minimum depth to trigger
@@ -1433,8 +1440,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     uint16_t travel_raw = ((uint16_t)state->peak_travel * 255) / 240;
                     if (travel_raw > 255) travel_raw = 255;
 
-                    // Blend: 50% speed + 50% travel
-                    uint8_t blended = (uint8_t)(((uint16_t)speed_raw * 50 + travel_raw * 50) / 100);
+                    // Blend speed and peak travel using zone_speed_peak_ratio
+                    // 0 = all peak travel, 100 = all speed
+                    uint8_t blended = (uint8_t)(((uint16_t)speed_raw * zone_speed_peak_ratio + travel_raw * (100 - zone_speed_peak_ratio)) / 100);
                     state->raw_velocity = (blended < 1) ? 1 : blended;
                     state->velocity_captured = true;
                     state->send_on_release = true;  // Note ON
