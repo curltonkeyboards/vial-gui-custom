@@ -743,9 +743,10 @@ static void refresh_key_type_cache(uint8_t layer) {
                 key_type_cache[key_idx] = KEY_TYPE_DKS;
                 dks_keycode_cache[key_idx] = keycode;
             }
-            // Check if MIDI key by keycode on current layer (not permanent is_midi_key flag)
-            // Covers all MIDI ranges: base notes, keysplit, and triplesplit
-            else if ((keycode >= 0x7103 && keycode <= 0x71FF) ||
+            // Check if MIDI key by resolved keycode (handles KC_TRNS fallthrough)
+            // Only actual MIDI note keycodes - excludes control codes (octave, transpose,
+            // velocity, channel, etc.) which should be processed as normal keys
+            else if ((keycode >= 0x7103 && keycode <= 0x714A) ||
                      (keycode >= 0xC600 && keycode <= 0xC647) ||
                      (keycode >= 0xC670 && keycode <= 0xC6B7)) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
@@ -1091,7 +1092,11 @@ static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out,
     uint8_t array_index = layer_to_index_map[current_layer];
     if (array_index == 255) return false;
 
-    if (optimized_midi_positions == NULL) return false;
+    // Check if the resolved keycode is a MIDI note keycode (excludes control codes)
+    bool is_midi = (keycode >= 0x7103 && keycode <= 0x714A) ||
+                   (keycode >= 0xC600 && keycode <= 0xC647) ||
+                   (keycode >= 0xC670 && keycode <= 0xC6B7);
+    if (!is_midi) return false;
 
     uint8_t led_index = g_led_config.matrix_co[row][col];
 
