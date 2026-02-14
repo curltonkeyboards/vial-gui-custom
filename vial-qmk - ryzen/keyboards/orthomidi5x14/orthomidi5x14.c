@@ -479,6 +479,9 @@ void cycle_he_velocity_curve(bool forward) {
             he_velocity_curve--;
         }
     }
+    keyboard_settings.he_velocity_curve = he_velocity_curve;
+    // Apply all preset settings for the new curve
+    velocity_preset_apply(he_velocity_curve);
 }
 
 // Set velocity range with validation
@@ -4826,7 +4829,21 @@ static void apply_zone_settings_to_globals(zone_settings_t* zone, bool is_keyspl
 // Apply velocity preset settings to global variables
 // Called when user selects a preset from the GUI or loads from EEPROM
 void velocity_preset_apply(uint8_t preset_index) {
-    // Only apply user presets (7-16), not factory curves (0-6)
+    if (preset_index <= CURVE_FACTORY_DIGITAL) {
+        // Factory curve (0-6): reset all zone settings to defaults
+        zone_settings_t defaults;
+        init_zone_defaults(&defaults);
+        apply_zone_settings_to_globals(&defaults, false, false);
+
+        // Factory curves have no keysplit/triplesplit zones - disable them
+        keysplitvelocitystatus = 0;
+        keyboard_settings.keysplitvelocitystatus = 0;
+
+        dprintf("Factory curve %d applied: vel reset to %d-%d\n",
+                preset_index, defaults.velocity_min, defaults.velocity_max);
+        return;
+    }
+
     if (preset_index < CURVE_USER_START || preset_index > CURVE_USER_END) {
         return;
     }
