@@ -1533,13 +1533,126 @@ class VelocityTab(BasicEditor):
             # Custom - don't change anything
             return
         elif curve_index < 7:
-            # Factory curve - load points directly
+            # Factory curve - apply per-preset settings, then set curve points last
+            # (must be after _apply_factory_preset_settings because
+            # update_zone_controls_from_settings overwrites the curve editor)
+            self._apply_factory_preset_settings(curve_index)
             points = CurveEditorWidget.FACTORY_CURVE_POINTS[curve_index]
             self.curve_editor.set_points(points)
         else:
             # User curve (7-16) - load full preset from keyboard
             slot_index = curve_index - 7  # Convert to 0-9 slot index
             self.on_user_curve_selected(slot_index)
+
+    # Factory preset settings table - must match firmware factory_preset_zones[] in orthomidi5x14.c
+    # Each factory curve has its own velocity range, press times, and other zone settings.
+    # Extensible: add aftertouch, vibrato, etc. per-preset here in the future.
+    FACTORY_PRESET_SETTINGS = {
+        0: {  # Softest
+            'velocity_min': 1, 'velocity_max': 60,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        1: {  # Soft
+            'velocity_min': 1, 'velocity_max': 90,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        2: {  # Linear
+            'velocity_min': 1, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        3: {  # Hard
+            'velocity_min': 30, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        4: {  # Hardest
+            'velocity_min': 60, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        5: {  # Aggro
+            'velocity_min': 80, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        6: {  # Digital
+            'velocity_min': 127, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+    }
+
+    def _apply_factory_preset_settings(self, curve_index):
+        """Apply per-factory-preset zone settings when selecting a factory curve.
+        Each factory curve has its own velocity range, press times, etc."""
+        zone_data = self.FACTORY_PRESET_SETTINGS.get(curve_index, self.FACTORY_PRESET_SETTINGS[2])
+
+        # Update base zone controls
+        self.update_zone_controls_from_settings('base', zone_data)
+
+        # Store in global_midi_settings
+        self.global_midi_settings['velocity_min'] = zone_data['velocity_min']
+        self.global_midi_settings['velocity_max'] = zone_data['velocity_max']
+        self.global_midi_settings['min_press_time'] = zone_data['slow_press_time']
+        self.global_midi_settings['max_press_time'] = zone_data['fast_press_time']
+        self.global_midi_settings['aftertouch_mode'] = zone_data['aftertouch_mode']
+        self.global_midi_settings['aftertouch_cc'] = zone_data['aftertouch_cc']
+        self.global_midi_settings['vibrato_sensitivity'] = zone_data['vibrato_sensitivity']
+        self.global_midi_settings['vibrato_decay_time'] = zone_data['vibrato_decay']
+        self.global_midi_settings['actuation_override'] = zone_data['actuation_override']
+        self.global_midi_settings['actuation_point'] = zone_data['actuation_point']
+        self.global_midi_settings['speed_peak_ratio'] = zone_data['speed_peak_ratio']
+        self.global_midi_settings['retrigger_distance'] = zone_data['retrigger_distance']
+
+        # Disable keysplit/triplesplit zones (factory curves have no zone overrides)
+        self.global_midi_settings['keysplit_enabled'] = False
+        self.global_midi_settings['triplesplit_enabled'] = False
+
+        self.keysplit_enable_checkbox.blockSignals(True)
+        self.triplesplit_enable_checkbox.blockSignals(True)
+        self.keysplit_enable_checkbox.setChecked(False)
+        self.triplesplit_enable_checkbox.setChecked(False)
+        self.keysplit_enable_checkbox.blockSignals(False)
+        self.triplesplit_enable_checkbox.blockSignals(False)
+
+        # Remove keysplit/triplesplit tabs if present
+        if self.keysplit_tab_index != -1:
+            for i in range(self.zone_tab_widget.count()):
+                if self.zone_tab_widget.widget(i) == self.keysplit_tab_widget:
+                    self.zone_tab_widget.removeTab(i)
+                    break
+            self.keysplit_tab_index = -1
+
+        if self.triplesplit_tab_index != -1:
+            for i in range(self.zone_tab_widget.count()):
+                if self.zone_tab_widget.widget(i) == self.triplesplit_tab_widget:
+                    self.zone_tab_widget.removeTab(i)
+                    break
+            self.triplesplit_tab_index = -1
 
     def on_save_as_preset(self):
         """Show dialog to save current settings as a user preset"""

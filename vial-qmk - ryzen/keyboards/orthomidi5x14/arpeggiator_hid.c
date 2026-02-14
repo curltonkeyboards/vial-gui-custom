@@ -1207,10 +1207,9 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
             case 4:  // PARAM_HE_VELOCITY_CURVE (0-16)
                 keyboard_settings.he_velocity_curve = value8;
                 he_velocity_curve = value8;  // Also update global for OLED display
-                // If selecting a user curve (7-16), apply all preset settings
-                if (value8 >= CURVE_USER_START && value8 <= CURVE_USER_END) {
-                    velocity_preset_apply(value8);
-                }
+                // Apply all preset settings (factory curves reset to defaults,
+                // user curves apply their stored settings)
+                velocity_preset_apply(value8);
                 settings_changed = true;
                 dprintf("SET param 4 (velocity_curve) = %d\n", value8);
                 break;
