@@ -783,8 +783,9 @@ static void refresh_key_type_cache(uint8_t layer) {
                 dks_keycode_cache[key_idx] = keycode;
             }
             // Check if MIDI key by resolved keycode (handles KC_TRNS fallthrough)
-            // Covers all MIDI ranges: base notes, keysplit, and triplesplit
-            else if ((keycode >= 0x7103 && keycode <= 0x71FF) ||
+            // Only actual MIDI note keycodes - excludes control codes (octave, transpose,
+            // velocity, channel, etc.) which should be processed as normal keys
+            else if ((keycode >= 0x7103 && keycode <= 0x714A) ||
                      (keycode >= 0xC600 && keycode <= 0xC647) ||
                      (keycode >= 0xC670 && keycode <= 0xC6B7)) {
                 key_type_cache[key_idx] = KEY_TYPE_MIDI;
@@ -1147,8 +1148,8 @@ static bool check_is_midi_key(uint8_t row, uint8_t col, uint8_t *note_index_out,
     // Resolve the actual keycode through the layer stack (handles KC_TRNS fallthrough)
     uint16_t keycode = resolve_keycode_through_layers(row, col);
 
-    // Check if the resolved keycode is a MIDI keycode
-    bool is_midi = (keycode >= 0x7103 && keycode <= 0x71FF) ||
+    // Check if the resolved keycode is a MIDI note keycode (excludes control codes)
+    bool is_midi = (keycode >= 0x7103 && keycode <= 0x714A) ||
                    (keycode >= 0xC600 && keycode <= 0xC647) ||
                    (keycode >= 0xC670 && keycode <= 0xC6B7);
     if (!is_midi) return false;
