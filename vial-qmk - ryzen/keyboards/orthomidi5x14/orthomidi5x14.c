@@ -4826,21 +4826,91 @@ static void apply_zone_settings_to_globals(zone_settings_t* zone, bool is_keyspl
     }
 }
 
+// Factory preset zone settings table (one per factory curve 0-6)
+// Each factory curve has its own velocity range, press times, etc.
+// This table is extensible - add aftertouch/vibrato settings here in the future.
+static const zone_settings_t factory_preset_zones[7] = {
+    [CURVE_FACTORY_SOFTEST] = {
+        .points = {{0, 0}, {85, 28}, {170, 85}, {255, 255}},
+        .velocity_min = 1, .velocity_max = 60,
+        .slow_press_time = 100, .fast_press_time = 1,
+        .aftertouch_mode = 0, .aftertouch_cc = 255,
+        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .flags = 0, .actuation_point = 20,
+        .speed_peak_ratio = 50, .retrigger_distance = 0,
+    },
+    [CURVE_FACTORY_SOFT] = {
+        .points = {{0, 0}, {85, 42}, {170, 128}, {255, 255}},
+        .velocity_min = 1, .velocity_max = 90,
+        .slow_press_time = 100, .fast_press_time = 1,
+        .aftertouch_mode = 0, .aftertouch_cc = 255,
+        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .flags = 0, .actuation_point = 20,
+        .speed_peak_ratio = 50, .retrigger_distance = 0,
+    },
+    [CURVE_FACTORY_LINEAR] = {
+        .points = {{0, 0}, {85, 85}, {170, 170}, {255, 255}},
+        .velocity_min = 1, .velocity_max = 127,
+        .slow_press_time = 100, .fast_press_time = 1,
+        .aftertouch_mode = 0, .aftertouch_cc = 255,
+        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .flags = 0, .actuation_point = 20,
+        .speed_peak_ratio = 50, .retrigger_distance = 0,
+    },
+    [CURVE_FACTORY_HARD] = {
+        .points = {{0, 0}, {85, 128}, {170, 213}, {255, 255}},
+        .velocity_min = 30, .velocity_max = 127,
+        .slow_press_time = 100, .fast_press_time = 1,
+        .aftertouch_mode = 0, .aftertouch_cc = 255,
+        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .flags = 0, .actuation_point = 20,
+        .speed_peak_ratio = 50, .retrigger_distance = 0,
+    },
+    [CURVE_FACTORY_HARDEST] = {
+        .points = {{0, 0}, {64, 160}, {128, 230}, {255, 255}},
+        .velocity_min = 60, .velocity_max = 127,
+        .slow_press_time = 100, .fast_press_time = 1,
+        .aftertouch_mode = 0, .aftertouch_cc = 255,
+        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .flags = 0, .actuation_point = 20,
+        .speed_peak_ratio = 50, .retrigger_distance = 0,
+    },
+    [CURVE_FACTORY_AGGRO] = {
+        .points = {{0, 0}, {42, 170}, {85, 220}, {255, 255}},
+        .velocity_min = 80, .velocity_max = 127,
+        .slow_press_time = 100, .fast_press_time = 1,
+        .aftertouch_mode = 0, .aftertouch_cc = 255,
+        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .flags = 0, .actuation_point = 20,
+        .speed_peak_ratio = 50, .retrigger_distance = 0,
+    },
+    [CURVE_FACTORY_DIGITAL] = {
+        .points = {{0, 0}, {10, 255}, {20, 255}, {255, 255}},
+        .velocity_min = 127, .velocity_max = 127,
+        .slow_press_time = 100, .fast_press_time = 1,
+        .aftertouch_mode = 0, .aftertouch_cc = 255,
+        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .flags = 0, .actuation_point = 20,
+        .speed_peak_ratio = 50, .retrigger_distance = 0,
+    },
+};
+
 // Apply velocity preset settings to global variables
 // Called when user selects a preset from the GUI or loads from EEPROM
 void velocity_preset_apply(uint8_t preset_index) {
     if (preset_index <= CURVE_FACTORY_DIGITAL) {
-        // Factory curve (0-6): reset all zone settings to defaults
-        zone_settings_t defaults;
-        init_zone_defaults(&defaults);
-        apply_zone_settings_to_globals(&defaults, false, false);
+        // Factory curve (0-6): apply per-preset settings from table
+        zone_settings_t factory_zone;
+        memcpy(&factory_zone, &factory_preset_zones[preset_index], sizeof(zone_settings_t));
+        apply_zone_settings_to_globals(&factory_zone, false, false);
 
         // Factory curves have no keysplit/triplesplit zones - disable them
         keysplitvelocitystatus = 0;
         keyboard_settings.keysplitvelocitystatus = 0;
 
-        dprintf("Factory curve %d applied: vel reset to %d-%d\n",
-                preset_index, defaults.velocity_min, defaults.velocity_max);
+        dprintf("Factory curve %d applied: vel=%d-%d, time=%d-%dms\n",
+                preset_index, factory_zone.velocity_min, factory_zone.velocity_max,
+                factory_zone.fast_press_time, factory_zone.slow_press_time);
         return;
     }
 

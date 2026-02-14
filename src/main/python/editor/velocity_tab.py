@@ -1447,49 +1447,98 @@ class VelocityTab(BasicEditor):
             # Custom - don't change anything
             return
         elif curve_index < 7:
-            # Factory curve - load points and reset all settings to defaults
+            # Factory curve - load points and apply per-preset settings
             points = CurveEditorWidget.FACTORY_CURVE_POINTS[curve_index]
             self.curve_editor.set_points(points)
-            self._apply_factory_defaults()
+            self._apply_factory_preset_settings(curve_index)
         else:
             # User curve (7-16) - load full preset from keyboard
             slot_index = curve_index - 7  # Convert to 0-9 slot index
             self.on_user_curve_selected(slot_index)
 
-    def _apply_factory_defaults(self):
-        """Reset all zone controls and settings to defaults when selecting a factory curve.
-        Factory curves don't store per-preset settings, so we reset everything."""
-        default_zone = {
-            'velocity_min': 1,
-            'velocity_max': 127,
-            'slow_press_time': 200,
-            'fast_press_time': 20,
-            'aftertouch_mode': 0,
-            'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100,
-            'vibrato_decay': 200,
-            'actuation_override': False,
-            'actuation_point': 20,
-            'speed_peak_ratio': 50,
-            'retrigger_distance': 0,
-        }
+    # Factory preset settings table - must match firmware factory_preset_zones[] in orthomidi5x14.c
+    # Each factory curve has its own velocity range, press times, and other zone settings.
+    # Extensible: add aftertouch, vibrato, etc. per-preset here in the future.
+    FACTORY_PRESET_SETTINGS = {
+        0: {  # Softest
+            'velocity_min': 1, 'velocity_max': 60,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        1: {  # Soft
+            'velocity_min': 1, 'velocity_max': 90,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        2: {  # Linear
+            'velocity_min': 1, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        3: {  # Hard
+            'velocity_min': 30, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        4: {  # Hardest
+            'velocity_min': 60, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        5: {  # Aggro
+            'velocity_min': 80, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+        6: {  # Digital
+            'velocity_min': 127, 'velocity_max': 127,
+            'slow_press_time': 100, 'fast_press_time': 1,
+            'aftertouch_mode': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'actuation_override': False, 'actuation_point': 20,
+            'speed_peak_ratio': 50, 'retrigger_distance': 0,
+        },
+    }
+
+    def _apply_factory_preset_settings(self, curve_index):
+        """Apply per-factory-preset zone settings when selecting a factory curve.
+        Each factory curve has its own velocity range, press times, etc."""
+        zone_data = self.FACTORY_PRESET_SETTINGS.get(curve_index, self.FACTORY_PRESET_SETTINGS[2])
 
         # Update base zone controls
-        self.update_zone_controls_from_settings('base', default_zone)
+        self.update_zone_controls_from_settings('base', zone_data)
 
-        # Store defaults in global_midi_settings
-        self.global_midi_settings['velocity_min'] = default_zone['velocity_min']
-        self.global_midi_settings['velocity_max'] = default_zone['velocity_max']
-        self.global_midi_settings['min_press_time'] = default_zone['slow_press_time']
-        self.global_midi_settings['max_press_time'] = default_zone['fast_press_time']
-        self.global_midi_settings['aftertouch_mode'] = default_zone['aftertouch_mode']
-        self.global_midi_settings['aftertouch_cc'] = default_zone['aftertouch_cc']
-        self.global_midi_settings['vibrato_sensitivity'] = default_zone['vibrato_sensitivity']
-        self.global_midi_settings['vibrato_decay_time'] = default_zone['vibrato_decay']
-        self.global_midi_settings['actuation_override'] = default_zone['actuation_override']
-        self.global_midi_settings['actuation_point'] = default_zone['actuation_point']
-        self.global_midi_settings['speed_peak_ratio'] = default_zone['speed_peak_ratio']
-        self.global_midi_settings['retrigger_distance'] = default_zone['retrigger_distance']
+        # Store in global_midi_settings
+        self.global_midi_settings['velocity_min'] = zone_data['velocity_min']
+        self.global_midi_settings['velocity_max'] = zone_data['velocity_max']
+        self.global_midi_settings['min_press_time'] = zone_data['slow_press_time']
+        self.global_midi_settings['max_press_time'] = zone_data['fast_press_time']
+        self.global_midi_settings['aftertouch_mode'] = zone_data['aftertouch_mode']
+        self.global_midi_settings['aftertouch_cc'] = zone_data['aftertouch_cc']
+        self.global_midi_settings['vibrato_sensitivity'] = zone_data['vibrato_sensitivity']
+        self.global_midi_settings['vibrato_decay_time'] = zone_data['vibrato_decay']
+        self.global_midi_settings['actuation_override'] = zone_data['actuation_override']
+        self.global_midi_settings['actuation_point'] = zone_data['actuation_point']
+        self.global_midi_settings['speed_peak_ratio'] = zone_data['speed_peak_ratio']
+        self.global_midi_settings['retrigger_distance'] = zone_data['retrigger_distance']
 
         # Disable keysplit/triplesplit zones (factory curves have no zone overrides)
         self.global_midi_settings['keysplit_enabled'] = False
