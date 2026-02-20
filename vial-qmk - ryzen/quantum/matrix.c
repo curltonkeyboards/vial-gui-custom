@@ -1255,7 +1255,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             {
                 const uint8_t MIN_PEAK = 12;              // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD = 3;    // Must decrease by 3 units to count as reversal
-                const uint8_t NOTE_OFF_TRAVEL = 6;       // ~0.1mm - note off when below this
+                const uint8_t NOTE_OFF_TRAVEL = 30;      // ~0.5mm - note off when below this
 
                 // Track peak travel during press
                 if (travel > state->peak_travel) {
@@ -1396,7 +1396,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             {
                 const uint8_t MIN_PEAK3 = 12;             // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD3 = 3;   // Must decrease by 3 units to count as reversal
-                const uint8_t NOTE_OFF_TRAVEL3 = 6;      // ~0.1mm - note off when below this
+                const uint8_t NOTE_OFF_TRAVEL3 = 30;     // ~0.5mm - note off when below this
 
                 // Track when key starts moving from rest (for speed calculation)
                 if (state->last_travel == 0 && travel > 0) {
