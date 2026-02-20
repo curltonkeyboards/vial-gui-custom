@@ -1255,7 +1255,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             {
                 const uint8_t MIN_PEAK = 12;              // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD = 3;    // Must decrease by 3 units to count as reversal
-                const uint8_t NOTE_OFF_TRAVEL = 6;       // ~0.1mm - note off when below this
+
+                // Note-off threshold: 95% of actuation point (within 5% of key reset)
+                // e.g. 2mm actuation (120 units) → note-off at 114 (1.9mm), key rises just 0.1mm
+                // Minimum gap of 3 units to prevent oscillation near threshold
+                uint8_t note_off_threshold = (uint8_t)((uint16_t)midi_threshold * 95 / 100);
+                if (midi_threshold > 3 && (midi_threshold - note_off_threshold) < 3) {
+                    note_off_threshold = midi_threshold - 3;
+                }
 
                 // Track peak travel during press
                 if (travel > state->peak_travel) {
@@ -1288,8 +1295,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                 }
 
-                // Note OFF when key returns close to rest
-                if (state->send_on_release && travel < NOTE_OFF_TRAVEL) {
+                // Note OFF when key rises to within 5% of the actuation point
+                if (state->send_on_release && travel < note_off_threshold) {
                     state->send_on_release = false;
                     state->peak_travel = 0;
                     state->velocity_captured = false;
@@ -1396,7 +1403,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             {
                 const uint8_t MIN_PEAK3 = 12;             // ~0.2mm minimum depth to trigger
                 const uint8_t REVERSAL_THRESHOLD3 = 3;   // Must decrease by 3 units to count as reversal
-                const uint8_t NOTE_OFF_TRAVEL3 = 6;      // ~0.1mm - note off when below this
+
+                // Note-off threshold: 95% of actuation point (within 5% of key reset)
+                // e.g. 2mm actuation (120 units) → note-off at 114 (1.9mm), key rises just 0.1mm
+                // Minimum gap of 3 units to prevent oscillation near threshold
+                uint8_t note_off_threshold3 = (uint8_t)((uint16_t)midi_threshold * 95 / 100);
+                if (midi_threshold > 3 && (midi_threshold - note_off_threshold3) < 3) {
+                    note_off_threshold3 = midi_threshold - 3;
+                }
 
                 // Track when key starts moving from rest (for speed calculation)
                 if (state->last_travel == 0 && travel > 0) {
@@ -1493,8 +1507,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     if (key->base_velocity < MIN_VELOCITY) key->base_velocity = MIN_VELOCITY;
                 }
 
-                // Note OFF when key returns close to rest
-                if (state->send_on_release && travel < NOTE_OFF_TRAVEL3) {
+                // Note OFF when key rises to within 5% of the actuation point
+                if (state->send_on_release && travel < note_off_threshold3) {
                     state->send_on_release = false;
                     state->peak_travel = 0;
                     state->velocity_captured = false;
