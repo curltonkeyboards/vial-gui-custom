@@ -124,8 +124,8 @@ typedef uint32_t matrix_row_t;
 // Auto-calibration thresholds
 #define AUTO_CALIB_ZERO_TRAVEL_JITTER 50
 #define AUTO_CALIB_FULL_TRAVEL_JITTER 100
-#define AUTO_CALIB_VALID_RELEASE_TIME 10000  // ms - must be stable for 10 seconds before recalibrating rest
-#define AUTO_CALIB_MAX_DISTANCE 13           // ~5% of 255 max distance - only recalibrate near rest
+#define AUTO_CALIB_VALID_RELEASE_TIME 5000   // ms - must be stable for 5 seconds before recalibrating rest
+#define AUTO_CALIB_MAX_REST_DRIFT_PERCENT 10 // Only recalibrate if ADC is within 10% of rest value (raw ADC check)
 #define AUTO_CALIB_STABILITY_PERCENT 2       // Must be within 2% of stable value to count as stable
 
 // Smart warm-up estimation using linear formula: bottom = rest * SLOPE / 1000 + OFFSET
