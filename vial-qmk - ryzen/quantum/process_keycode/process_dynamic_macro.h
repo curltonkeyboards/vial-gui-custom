@@ -337,7 +337,7 @@ typedef struct {
 	bool truesustain;
     // Global MIDI Velocity/Aftertouch Settings (not per-layer)
     uint8_t velocity_mode;                // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
-    uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+    uint8_t aftertouch_mode;              // 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
     uint8_t aftertouch_cc;                // 0-127=CC number, 255=off (poly AT only)
     uint8_t vibrato_sensitivity;          // 50-200 (percentage, 100=normal)
     uint16_t vibrato_decay_time;          // 0-2000 (milliseconds)

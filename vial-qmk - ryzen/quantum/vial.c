@@ -1057,7 +1057,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
-					case 14:  // PARAM_AFTERTOUCH_MODE (0-4)
+					case 14:  // PARAM_AFTERTOUCH_MODE (0-6)
 						aftertouch_mode = value8;
 						settings_changed = true;
 						msg[0] = 0x01;

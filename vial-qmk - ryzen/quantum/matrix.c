@@ -1705,18 +1705,16 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         uint8_t normal_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
 
         switch (active_settings.aftertouch_mode) {
-            case 1:  // Reverse
-                if (aftertouch_pedal_active) {
-                    aftertouch_value = 127 - ((travel * 127) / 240);
-                    send_aftertouch = true;
-                }
+            case 1:  // Bottom-out (sustain suppresses note-on/off)
+            case 4:  // Bottom-out (no sustain suppression)
+                aftertouch_value = (travel * 127) / 240;
+                send_aftertouch = true;
                 break;
 
-            case 2:  // Bottom-out
-                if (aftertouch_pedal_active) {
-                    aftertouch_value = (travel * 127) / 240;
-                    send_aftertouch = true;
-                }
+            case 2:  // Reverse (sustain suppresses note-on/off)
+            case 5:  // Reverse (no sustain suppression)
+                aftertouch_value = 127 - ((travel * 127) / 240);
+                send_aftertouch = true;
                 break;
 
             case 3:  // Post-actuation
@@ -1730,7 +1728,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 }
                 break;
 
-            case 4:  // Vibrato with sensitivity and decay
+            case 6:  // Vibrato with sensitivity and decay
                 if (travel >= normal_threshold) {
                     uint16_t time_delta = now - state->last_time;
                     uint8_t travel_delta = abs((int)travel - (int)state->last_travel);
@@ -2108,8 +2106,9 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                         break;
                 }
 
+                // Modes 1 & 2: sustain suppresses note-on/off - keep key pressed while sustain active
                 if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
-                    aftertouch_pedal_active && state->was_pressed) {
+                    get_live_sustain_state() && state->was_pressed) {
                     pressed = true;
                 }
             } else {
