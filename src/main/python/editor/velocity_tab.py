@@ -279,7 +279,7 @@ class VelocityTab(BasicEditor):
         self.global_midi_settings = {
             'velocity_min': 1,          # 1-127 (minimum MIDI velocity)
             'velocity_max': 127,        # 1-127 (maximum MIDI velocity)
-            'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
+            'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
             'vibrato_sensitivity': 100, # 50-200 (percentage)
             'vibrato_decay_time': 200,  # 0-2000 (milliseconds)
@@ -474,11 +474,13 @@ class VelocityTab(BasicEditor):
         controls['aftertouch_mode_combo'].lineEdit().setAlignment(Qt.AlignCenter)
         controls['aftertouch_mode_combo'].addItem("Off", 0)
         controls['aftertouch_mode_combo'].addItem("Bottom-Out", 1)
-        controls['aftertouch_mode_combo'].addItem("Reverse", 2)
-        controls['aftertouch_mode_combo'].addItem("Post-Actuation", 3)
-        controls['aftertouch_mode_combo'].addItem("Bottom-Out (NS)", 4)
-        controls['aftertouch_mode_combo'].addItem("Reverse (NS)", 5)
-        controls['aftertouch_mode_combo'].addItem("Vibrato", 6)
+        controls['aftertouch_mode_combo'].addItem("Bottom-Out (NS)", 2)
+        controls['aftertouch_mode_combo'].addItem("Reverse", 3)
+        controls['aftertouch_mode_combo'].addItem("Reverse (NS)", 4)
+        controls['aftertouch_mode_combo'].addItem("Post-Actuation", 5)
+        controls['aftertouch_mode_combo'].addItem("Post-Actuation (NS)", 6)
+        controls['aftertouch_mode_combo'].addItem("Vibrato", 7)
+        controls['aftertouch_mode_combo'].addItem("Vibrato (NS)", 8)
         controls['aftertouch_mode_combo'].setCurrentIndex(0)
         controls['aftertouch_mode_combo'].setProperty('zone', zone_name)
         mode_layout.addWidget(controls['aftertouch_mode_combo'], 1)
@@ -736,7 +738,7 @@ class VelocityTab(BasicEditor):
         # Aftertouch mode
         def on_aftertouch_mode_changed(index):
             mode = controls['aftertouch_mode_combo'].currentData()
-            is_vibrato = (mode == 6)
+            is_vibrato = (mode in (7, 8))
             is_off = (mode == 0)
             controls['vibrato_sens_widget'].setVisible(is_vibrato)
             controls['vibrato_decay_widget'].setVisible(is_vibrato)
@@ -1235,7 +1237,7 @@ class VelocityTab(BasicEditor):
                 break
 
         # Show/hide vibrato controls and aftertouch CC
-        is_vibrato = (mode == 6)
+        is_vibrato = (mode in (7, 8))
         is_off = (mode == 0)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
@@ -1268,7 +1270,7 @@ class VelocityTab(BasicEditor):
     def on_aftertouch_mode_changed(self, index):
         """Handle aftertouch mode change - show/hide vibrato and CC controls"""
         mode = self.aftertouch_mode_combo.currentData()
-        is_vibrato = (mode == 6)
+        is_vibrato = (mode in (7, 8))
         is_off = (mode == 0)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
@@ -1403,7 +1405,7 @@ class VelocityTab(BasicEditor):
                 break
 
         # Show/hide vibrato controls and aftertouch CC based on mode
-        is_vibrato = (at_mode == 6)
+        is_vibrato = (at_mode in (7, 8))
         is_off = (at_mode == 0)
         controls['vibrato_sens_widget'].setVisible(is_vibrato)
         controls['vibrato_decay_widget'].setVisible(is_vibrato)

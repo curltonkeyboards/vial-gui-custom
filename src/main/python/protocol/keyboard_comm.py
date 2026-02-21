@@ -80,7 +80,7 @@ PARAM_TRIPLESPLIT_HE_VELOCITY_MIN = 11
 PARAM_TRIPLESPLIT_HE_VELOCITY_MAX = 12
 # Global MIDI Settings (velocity, aftertouch, vibrato)
 PARAM_VELOCITY_MODE = 13             # 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
-PARAM_AFTERTOUCH_MODE = 14           # 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
+PARAM_AFTERTOUCH_MODE = 14           # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
 PARAM_BASE_SUSTAIN = 15
 PARAM_KEYSPLIT_SUSTAIN = 16
 PARAM_TRIPLESPLIT_SUSTAIN = 17
@@ -2084,7 +2084,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             velocity_max: Maximum MIDI velocity (1-127) for base zone
             slow_press_time: Slow press threshold in ms (50-500) for base zone
             fast_press_time: Fast press threshold in ms (5-100) for base zone
-            aftertouch_mode: 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
+            aftertouch_mode: 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             aftertouch_cc: CC number (0-127) or 255 for poly AT only
             vibrato_sensitivity: Percentage (50-200)
             vibrato_decay: Decay time in ms (0-2000)

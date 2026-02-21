@@ -288,7 +288,7 @@ bool truesustain = false;
 uint8_t velocity_mode = 3;           // Fixed: Speed+Peak combined mode (legacy variable kept for compatibility)
 
 // BASE zone velocity settings
-uint8_t aftertouch_mode = 0;         // 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
+uint8_t aftertouch_mode = 0;         // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
 uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
 uint8_t vibrato_sensitivity = 100;   // 50-200 (percentage, 100=normal)
 uint16_t vibrato_decay_time = 200;   // 0-2000 (milliseconds)

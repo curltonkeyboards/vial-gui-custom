@@ -186,9 +186,11 @@ typedef struct {
     uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
     uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
 
-    // Vibrato decay tracking
-    uint8_t vibrato_value;       // Current vibrato value (for decay)
+    // Vibrato tracking (leaky integrator)
+    uint8_t vibrato_value;       // Current vibrato accumulator (0-127)
     uint16_t vibrato_last_time;  // Last time vibrato was updated (for decay calculation)
+    uint8_t vibrato_last_travel; // Last travel value for vibrato delta (independent of velocity mode)
+    uint16_t vibrato_decay_accum; // Sub-unit decay accumulator for smooth "lose 1 every X ms"
 } midi_key_state_t;
 
 // ============================================================================
@@ -1716,7 +1718,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     }
 
     // Also account for sustain: if sustain is held and note was active, keep it active
-    if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
+    // Odd modes (1,3,5,7) have sustain suppression; even NS modes (2,4,6,8) do not
+    if ((active_settings.aftertouch_mode & 1) &&
         get_live_sustain_state() && state->note_active) {
         note_is_active = true;
     }
@@ -1736,20 +1739,24 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
         uint8_t normal_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
 
+        // Mode numbering: odd = sustain suppression, even = no suppression (NS)
+        // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS),
+        // 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
         switch (active_settings.aftertouch_mode) {
-            case 1:  // Bottom-out (sustain suppresses note-on/off)
-            case 4:  // Bottom-out (no sustain suppression)
+            case 1:  // Bottom-out (sustain suppression)
+            case 2:  // Bottom-out (NS)
                 aftertouch_value = (travel * 127) / 240;
                 send_aftertouch = true;
                 break;
 
-            case 2:  // Reverse (sustain suppresses note-on/off)
-            case 5:  // Reverse (no sustain suppression)
+            case 3:  // Reverse (sustain suppression)
+            case 4:  // Reverse (NS)
                 aftertouch_value = 127 - ((travel * 127) / 240);
                 send_aftertouch = true;
                 break;
 
-            case 3:  // Post-actuation
+            case 5:  // Post-actuation (sustain suppression)
+            case 6:  // Post-actuation (NS)
                 if (travel >= normal_threshold) {
                     uint8_t additional_travel = travel - normal_threshold;
                     uint8_t range = 240 - normal_threshold;
@@ -1760,57 +1767,56 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 }
                 break;
 
-            case 6:  // Vibrato with sensitivity and decay
-                if (travel >= normal_threshold) {
-                    uint16_t time_delta = now - state->last_time;
-                    uint8_t travel_delta = abs((int)travel - (int)state->last_travel);
+            case 7:  // Vibrato (sustain suppression)
+            case 8:  // Vibrato (NS)
+            {
+                // Leaky integrator: accumulate travel deltas, constantly drain
+                // Uses dedicated vibrato_last_travel (independent of velocity mode's last_travel)
+                uint8_t raw_delta = abs((int)travel - (int)state->vibrato_last_travel);
+                state->vibrato_last_travel = travel;
 
-                    // Calculate new vibrato value from movement
-                    uint8_t new_vibrato = 0;
-                    if (time_delta > 0 && travel_delta > 0) {
-                        // Apply sensitivity scaling (50-200, where 100 = normal)
-                        uint16_t sensitivity = active_settings.vibrato_sensitivity;
-                        if (sensitivity < 50) sensitivity = 50;
-                        if (sensitivity > 200) sensitivity = 200;
+                // Noise floor: ignore small deltas (~20 ADC counts normalized)
+                if (raw_delta >= 5) {
+                    // Apply sensitivity scaling (50-200, where 100 = normal)
+                    uint16_t sensitivity = active_settings.vibrato_sensitivity;
+                    if (sensitivity < 50) sensitivity = 50;
+                    if (sensitivity > 200) sensitivity = 200;
 
-                        // movement_speed with sensitivity: (travel_delta * sensitivity) / time_delta
-                        uint16_t movement_speed = ((uint16_t)travel_delta * sensitivity) / time_delta;
-                        new_vibrato = (movement_speed > 127) ? 127 : (uint8_t)movement_speed;
-                    }
+                    uint16_t scaled_delta = ((uint16_t)raw_delta * sensitivity) / 100;
 
-                    // Apply decay to current vibrato value
-                    uint16_t decay_time = active_settings.vibrato_decay_time;
-                    if (decay_time > 0 && state->vibrato_value > 0) {
-                        // Calculate how much to decay based on time elapsed
-                        uint16_t decay_elapsed = now - state->vibrato_last_time;
-                        // Linear decay: reduce by (127 * elapsed_ms / decay_time) per cycle
-                        uint16_t decay_amount = ((uint32_t)127 * decay_elapsed) / decay_time;
-                        if (decay_amount >= state->vibrato_value) {
+                    // Add to accumulator, clamp at 127
+                    uint16_t new_val = (uint16_t)state->vibrato_value + scaled_delta;
+                    state->vibrato_value = (new_val > 127) ? 127 : (uint8_t)new_val;
+                }
+
+                // Constant decay: lose 1 aftertouch unit every vibrato_decay_time ms
+                uint16_t decay_time = active_settings.vibrato_decay_time;
+                if (decay_time > 0 && state->vibrato_value > 0) {
+                    uint16_t elapsed = now - state->vibrato_last_time;
+                    state->vibrato_decay_accum += elapsed;
+
+                    if (state->vibrato_decay_accum >= decay_time) {
+                        uint16_t units_to_decay = state->vibrato_decay_accum / decay_time;
+                        state->vibrato_decay_accum %= decay_time;
+
+                        if (units_to_decay >= state->vibrato_value) {
                             state->vibrato_value = 0;
                         } else {
-                            state->vibrato_value -= decay_amount;
-                        }
-                    } else if (decay_time == 0) {
-                        // Instant decay when no movement
-                        if (new_vibrato == 0) {
-                            state->vibrato_value = 0;
+                            state->vibrato_value -= (uint8_t)units_to_decay;
                         }
                     }
-
-                    // Take the max of new vibrato and decayed value
-                    if (new_vibrato > state->vibrato_value) {
-                        state->vibrato_value = new_vibrato;
+                } else if (decay_time == 0) {
+                    // Instant decay: no movement = immediate zero
+                    if (raw_delta < 5) {
+                        state->vibrato_value = 0;
                     }
-
-                    state->vibrato_last_time = now;
-                    aftertouch_value = state->vibrato_value;
-                    send_aftertouch = true;
-                } else {
-                    // Below threshold - decay to zero
-                    state->vibrato_value = 0;
-                    state->vibrato_last_time = now;
                 }
+
+                state->vibrato_last_time = now;
+                aftertouch_value = state->vibrato_value;
+                send_aftertouch = true;
                 break;
+            }
         }
 
         if (send_aftertouch && abs((int)aftertouch_value - (int)state->last_aftertouch) > 2) {
@@ -2138,10 +2144,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                         break;
                 }
 
-                // Modes 1 & 2: sustain suppresses note-on/off - keep key pressed while sustain active
+                // Odd modes (1,3,5,7): sustain suppresses note-on/off - keep key pressed while sustain active
                 // Uses note_active (set in process_midi_key_analog) which persists across cycles
                 // unlike was_pressed which only tracks raw is_pressed for one cycle
-                if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
+                if ((active_settings.aftertouch_mode & 1) &&
                     get_live_sustain_state() && state->note_active) {
                     pressed = true;
                 }

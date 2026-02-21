@@ -76,7 +76,7 @@ class QuickActuationWidget(QWidget):
                 'midi': 80,
                 'velocity': 3,  # Velocity mode: 3=Speed+Peak (only supported mode)
                 'vel_speed': 10,  # Velocity speed scale
-                'aftertouch_mode': 0,  # 0=Off, 1=Bottom-Out, 2=Reverse, 3=Post-Act, 4=Bottom-Out(NS), 5=Reverse(NS), 6=Vibrato
+                'aftertouch_mode': 0,  # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
                 'aftertouch_cc': 255,  # 255=Off (no CC), 0-127=CC number
                 'vibrato_sensitivity': 100,  # 50-200 (percentage)
                 'vibrato_decay_time': 200  # 0-2000 (milliseconds)
@@ -110,7 +110,7 @@ class QuickActuationWidget(QWidget):
         # Global MIDI settings for velocity/aftertouch (not per-layer)
         self.global_midi_settings = {
             'velocity_mode': 3,         # 3=Speed+Peak (only supported mode)
-            'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
+            'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
             'vibrato_sensitivity': 100, # 50-200 (percentage)
             'vibrato_decay_time': 200,  # 0-2000 (milliseconds)

@@ -3799,11 +3799,13 @@ class LayerActuationConfigurator(BasicEditor):
         aftertouch_combo.setStyleSheet("QComboBox { padding: 0px; text-align: center; }")
         aftertouch_combo.addItem("Off", 0)
         aftertouch_combo.addItem("Bottom-Out", 1)
-        aftertouch_combo.addItem("Reverse", 2)
-        aftertouch_combo.addItem("Post-Actuation", 3)
-        aftertouch_combo.addItem("Bottom-Out (NS)", 4)
-        aftertouch_combo.addItem("Reverse (NS)", 5)
-        aftertouch_combo.addItem("Vibrato", 6)
+        aftertouch_combo.addItem("Bottom-Out (NS)", 2)
+        aftertouch_combo.addItem("Reverse", 3)
+        aftertouch_combo.addItem("Reverse (NS)", 4)
+        aftertouch_combo.addItem("Post-Actuation", 5)
+        aftertouch_combo.addItem("Post-Actuation (NS)", 6)
+        aftertouch_combo.addItem("Vibrato", 7)
+        aftertouch_combo.addItem("Vibrato (NS)", 8)
         aftertouch_combo.setCurrentIndex(0)
         aftertouch_combo.setEditable(True)
         aftertouch_combo.lineEdit().setReadOnly(True)
@@ -4784,7 +4786,7 @@ class LayerActuationConfigurator(BasicEditor):
     def on_aftertouch_mode_changed(self, combo, vibrato_sens_widget, vibrato_decay_widget):
         """Handle aftertouch mode changes - show/hide vibrato controls"""
         mode = combo.currentData()
-        is_vibrato = (mode == 6)  # Mode 6 = Vibrato
+        is_vibrato = (mode in (7, 8))  # Mode 6 = Vibrato
         vibrato_sens_widget.setVisible(is_vibrato)
         vibrato_decay_widget.setVisible(is_vibrato)
 
@@ -5025,7 +5027,7 @@ class LayerActuationConfigurator(BasicEditor):
             self.master_widgets['vibrato_decay_time_slider'].setValue(first_values['vibrato_decay_time'])
 
             # Show/hide vibrato controls based on mode
-            is_vibrato = (first_values['aftertouch'] == 6)
+            is_vibrato = (first_values['aftertouch'] in (7, 8))
             self.master_widgets['vibrato_sensitivity_widget'].setVisible(is_vibrato)
             self.master_widgets['vibrato_decay_time_widget'].setVisible(is_vibrato)
 

@@ -495,7 +495,7 @@ typedef struct {
     uint8_t velocity_max;      // 1 byte: Maximum MIDI velocity (1-127)
     uint16_t slow_press_time;  // 2 bytes: Slow press threshold ms (50-500)
     uint16_t fast_press_time;  // 2 bytes: Fast press threshold ms (5-100)
-    uint8_t aftertouch_mode;   // 1 byte: 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
+    uint8_t aftertouch_mode;   // 1 byte: 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
     uint8_t aftertouch_cc;     // 1 byte: 0-127=CC number, 255=poly AT only
     uint8_t vibrato_sensitivity; // 1 byte: 50-200 (percentage)
     uint16_t vibrato_decay;    // 2 bytes: 0-2000ms decay time

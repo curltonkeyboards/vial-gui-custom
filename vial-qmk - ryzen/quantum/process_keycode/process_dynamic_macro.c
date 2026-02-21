@@ -13189,7 +13189,7 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             break;
         case PARAM_AFTERTOUCH_MODE:
             aftertouch_mode = *value_ptr;
-            if (aftertouch_mode > 6) aftertouch_mode = 0;  // 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
+            if (aftertouch_mode > 8) aftertouch_mode = 0;  // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             keyboard_settings.aftertouch_mode = aftertouch_mode;
             break;
 
@@ -13692,7 +13692,7 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
     if (velocity > 3) velocity = 3;
     if (vel_speed < 1) vel_speed = 1;
     if (vel_speed > 20) vel_speed = 20;
-    if (aftertouch_mode > 6) aftertouch_mode = 0;
+    if (aftertouch_mode > 8) aftertouch_mode = 0;
     if (vibrato_sensitivity < 50) vibrato_sensitivity = 50;
     if (vibrato_sensitivity > 200) vibrato_sensitivity = 200;
     if (vibrato_decay_time > 2000) vibrato_decay_time = 2000;
