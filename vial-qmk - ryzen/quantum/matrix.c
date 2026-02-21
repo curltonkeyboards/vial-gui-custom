@@ -894,9 +894,25 @@ static void update_calibration(uint32_t key_idx) {
         key->is_stable = false;
     }
 
-    // Auto-calibrate rest position when stable, not pressed, AND near rest position
-    if (key->is_stable && !key->is_pressed && key->distance < AUTO_CALIB_MAX_DISTANCE) {
-        bool inverted = (key->adc_rest_value > key->adc_bottom_out_value);
+    // Auto-calibrate rest position when stable and not pressed.
+    // Use raw ADC proximity to rest value instead of derived distance to avoid
+    // deadlock: if rest drifts toward pressed, distance (computed from stale rest)
+    // stays high, which would block recalibration, which keeps rest stale forever.
+    // Instead, check that raw ADC is within 10% of the current rest value.
+    bool inverted = (key->adc_rest_value > key->adc_bottom_out_value);
+    uint16_t adc_range = inverted
+        ? (key->adc_rest_value - key->adc_bottom_out_value)
+        : (key->adc_bottom_out_value - key->adc_rest_value);
+    uint16_t near_rest_threshold = (adc_range * AUTO_CALIB_MAX_REST_DRIFT_PERCENT) / 100;
+    if (near_rest_threshold < AUTO_CALIB_ZERO_TRAVEL_JITTER) {
+        near_rest_threshold = AUTO_CALIB_ZERO_TRAVEL_JITTER;
+    }
+
+    // Raw ADC distance from current rest value (works regardless of drift direction)
+    uint16_t adc_dist_from_rest = (uint16_t)abs((int)key->adc_filtered - (int)key->adc_rest_value);
+    bool near_rest = (adc_dist_from_rest <= near_rest_threshold);
+
+    if (key->is_stable && !key->is_pressed && near_rest) {
 
         // Determine if ADC has drifted away from pressed (toward rest/release).
         // For inverted Hall effect (rest > bottom): higher ADC = more released.
@@ -918,9 +934,9 @@ static void update_calibration(uint32_t key_idx) {
             last_calibration_change = timer_read();
         } else if (drifted_toward_pressed &&
                    timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-            // ADC has dropped below rest - could be a slow press or genuine
-            // downward temperature drift. Require full 10-second stability
-            // to distinguish real drift from slow presses.
+            // ADC has moved toward pressed but key is stable for 5 seconds.
+            // A slow press would not stay perfectly stable for this long, so
+            // this is genuine temperature/magnetic drift. Safe to recalibrate.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
