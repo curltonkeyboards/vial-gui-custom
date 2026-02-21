@@ -2084,7 +2084,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             velocity_max: Maximum MIDI velocity (1-127) for base zone
             slow_press_time: Slow press threshold in ms (50-500) for base zone
             fast_press_time: Fast press threshold in ms (5-100) for base zone
-            aftertouch_mode: 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+            aftertouch_mode: 0=Off, 1=Bottom-out, 2=Reverse, 3=Post-actuation, 4=Bottom-out(no sus), 5=Reverse(no sus), 6=Vibrato
             aftertouch_cc: CC number (0-127) or 255 for poly AT only
             vibrato_sensitivity: Percentage (50-200)
             vibrato_decay: Decay time in ms (0-2000)
