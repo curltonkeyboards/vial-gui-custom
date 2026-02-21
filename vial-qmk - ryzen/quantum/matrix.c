@@ -347,6 +347,9 @@ static struct {
     uint16_t vibrato_decay_time;
 } active_settings;
 
+// Global CC aftertouch tracking: CC sends the max value across all active keys
+static uint8_t last_sent_cc_value = 0;
+
 // ============================================================================
 // KEY TYPE CACHE (eliminates EEPROM reads in scan loop)
 // ============================================================================
@@ -1771,8 +1774,10 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             case 8:  // Vibrato (NS)
             {
                 // Leaky integrator: accumulate travel deltas, constantly drain
+                // Only upward travel (pressing deeper) contributes to vibrato
                 // Uses dedicated vibrato_last_travel (independent of velocity mode's last_travel)
-                uint8_t raw_delta = abs((int)travel - (int)state->vibrato_last_travel);
+                int travel_diff = (int)travel - (int)state->vibrato_last_travel;
+                uint8_t raw_delta = (travel_diff > 0) ? (uint8_t)travel_diff : 0;
                 state->vibrato_last_travel = travel;
 
                 // Noise floor: ignore small deltas (~20 ADC counts normalized)
@@ -1806,8 +1811,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                         }
                     }
                 } else if (decay_time == 0) {
-                    // Instant decay: no movement = immediate zero
-                    if (raw_delta < 5) {
+                    // Instant decay: no upward movement = immediate zero
+                    if (raw_delta == 0) {
                         state->vibrato_value = 0;
                     }
                 }
@@ -1819,30 +1824,56 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
         }
 
+        // Update per-key aftertouch value if changed significantly
         if (send_aftertouch && abs((int)aftertouch_value - (int)state->last_aftertouch) > 2) {
-            #ifdef MIDI_ENABLE
-            // Always send polyphonic aftertouch (per-note pressure)
-            midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, aftertouch_value);
-
-            // Optionally also send CC if aftertouch_cc is not "off" (255)
-            if (active_settings.aftertouch_cc != 255) {
-                midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, aftertouch_value);
-            }
-
             state->last_aftertouch = aftertouch_value;
+
+            #ifdef MIDI_ENABLE
+            if (active_settings.aftertouch_cc != 255) {
+                // CC mode: find the max aftertouch across all active keys
+                // Only the highest value gets sent as CC (one global CC output)
+                uint8_t max_at = 0;
+                for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
+                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
+                        max_at = midi_key_states[i].last_aftertouch;
+                    }
+                }
+                if (max_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
+                    last_sent_cc_value = max_at;
+                }
+            } else {
+                // Poly AT mode: send per-note aftertouch (no CC)
+                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, aftertouch_value);
+            }
             #endif
         }
     } else if (!note_is_active && was_note_active) {
-        // Note stopped sounding - send aftertouch reset (value 0) for all modes
+        // Note stopped sounding - reset this key's aftertouch
         if (active_settings.aftertouch_mode > 0 && state->last_aftertouch > 0) {
+            state->last_aftertouch = 0;
+
             #ifdef MIDI_ENABLE
-            midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             if (active_settings.aftertouch_cc != 255) {
-                midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, 0);
+                // CC mode: recompute global max now that this key is at 0
+                uint8_t max_at = 0;
+                for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
+                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
+                        max_at = midi_key_states[i].last_aftertouch;
+                    }
+                }
+                if (max_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
+                    last_sent_cc_value = max_at;
+                }
+            } else {
+                // Poly AT mode: send per-note reset
+                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             }
             #endif
+        } else {
+            state->last_aftertouch = 0;
         }
-        state->last_aftertouch = 0;
         state->vibrato_value = 0;
     }
 }
