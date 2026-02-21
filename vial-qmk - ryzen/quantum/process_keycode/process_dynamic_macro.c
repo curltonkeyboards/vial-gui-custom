@@ -13188,8 +13188,9 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             keyboard_settings.velocity_mode = velocity_mode;
             break;
         case PARAM_AFTERTOUCH_MODE:
+            // Bitpacked: lower 4 bits = mode (0-8), upper 4 bits = smoothness (0-15)
             aftertouch_mode = *value_ptr;
-            if (aftertouch_mode > 8) aftertouch_mode = 0;  // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
+            if ((aftertouch_mode & 0x0F) > 8) aftertouch_mode &= 0xF0;  // Reset mode to Off, keep smoothness
             keyboard_settings.aftertouch_mode = aftertouch_mode;
             break;
 
@@ -13691,7 +13692,7 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
     if (velocity > 3) velocity = 3;
     if (vel_speed < 1) vel_speed = 1;
     if (vel_speed > 20) vel_speed = 20;
-    if (aftertouch_mode > 8) aftertouch_mode = 0;
+    if ((aftertouch_mode & 0x0F) > 8) aftertouch_mode &= 0xF0;  // Validate mode bits, keep smoothness
     if (vibrato_sensitivity > 100) vibrato_sensitivity = 100;
     if (vibrato_decay_time > 50) vibrato_decay_time = 50;
 

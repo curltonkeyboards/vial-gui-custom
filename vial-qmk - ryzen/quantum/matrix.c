@@ -183,6 +183,7 @@ typedef struct {
 
     // Aftertouch
     uint8_t last_aftertouch;
+    uint8_t smoothed_aftertouch; // EMA-smoothed aftertouch value for output
     uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
     uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
 
@@ -340,8 +341,9 @@ static uint8_t cached_layer_settings_layer = 0xFF;
 static struct {
     uint8_t velocity_mode;
     uint8_t velocity_speed_scale;
-    // Per-layer aftertouch settings
-    uint8_t aftertouch_mode;
+    // Per-layer aftertouch settings (aftertouch_mode unpacked from bitpacked byte)
+    uint8_t aftertouch_mode;       // Lower 4 bits of packed byte (0-8)
+    uint8_t aftertouch_smoothness; // Upper 4 bits of packed byte (0-15)
     uint8_t aftertouch_cc;
     uint8_t vibrato_sensitivity;
     uint16_t vibrato_decay_time;
@@ -748,7 +750,9 @@ static inline void update_active_settings(uint8_t current_layer) {
     // These are updated immediately when HID commands are received
     active_settings.velocity_mode = velocity_mode;
     active_settings.velocity_speed_scale = 10;  // Deprecated, using min/max_press_time now
-    active_settings.aftertouch_mode = aftertouch_mode;
+    // Unpack bitpacked aftertouch_mode: lower 4 bits = mode, upper 4 bits = smoothness
+    active_settings.aftertouch_mode = aftertouch_mode & 0x0F;
+    active_settings.aftertouch_smoothness = (aftertouch_mode >> 4) & 0x0F;
     active_settings.aftertouch_cc = aftertouch_cc;
     active_settings.vibrato_sensitivity = vibrato_sensitivity;
     active_settings.vibrato_decay_time = vibrato_decay_time;
@@ -1824,14 +1828,23 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
         }
 
-        // Update per-key aftertouch value if changed significantly
-        if (send_aftertouch && abs((int)aftertouch_value - (int)state->last_aftertouch) > 2) {
-            state->last_aftertouch = aftertouch_value;
+        // Apply EMA smoothing: smoothed = (smoothed * S + raw * (16 - S)) >> 4
+        // S=0: no smoothing, S=15: very heavy smoothing (~94% previous retained)
+        if (send_aftertouch) {
+            uint8_t smoothness = active_settings.aftertouch_smoothness;
+            if (smoothness > 0) {
+                state->smoothed_aftertouch = (uint8_t)(((uint16_t)state->smoothed_aftertouch * smoothness +
+                                                         (uint16_t)aftertouch_value * (16 - smoothness)) >> 4);
+            } else {
+                state->smoothed_aftertouch = aftertouch_value;
+            }
 
             #ifdef MIDI_ENABLE
             if (active_settings.aftertouch_cc != 255) {
-                // CC mode: find the max aftertouch across all active keys
-                // Only the highest value gets sent as CC (one global CC output)
+                // CC mode: store smoothed value, then find global max
+                // last_aftertouch holds the per-key smoothed value for max lookup
+                state->last_aftertouch = state->smoothed_aftertouch;
+
                 uint8_t max_at = 0;
                 for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
                     if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
@@ -1843,8 +1856,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     last_sent_cc_value = max_at;
                 }
             } else {
-                // Poly AT mode: send per-note aftertouch (no CC)
-                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, aftertouch_value);
+                // Poly AT mode: send per-note smoothed aftertouch if changed (> 2 hysteresis)
+                // last_aftertouch tracks what was last sent for hysteresis comparison
+                if (abs((int)state->smoothed_aftertouch - (int)state->last_aftertouch) > 2) {
+                    midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, state->smoothed_aftertouch);
+                    state->last_aftertouch = state->smoothed_aftertouch;
+                }
             }
             #endif
         }
@@ -1852,6 +1869,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         // Note stopped sounding - reset this key's aftertouch
         if (active_settings.aftertouch_mode > 0 && state->last_aftertouch > 0) {
             state->last_aftertouch = 0;
+            state->smoothed_aftertouch = 0;
 
             #ifdef MIDI_ENABLE
             if (active_settings.aftertouch_cc != 255) {
@@ -1873,6 +1891,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             #endif
         } else {
             state->last_aftertouch = 0;
+            state->smoothed_aftertouch = 0;
         }
         state->vibrato_value = 0;
     }

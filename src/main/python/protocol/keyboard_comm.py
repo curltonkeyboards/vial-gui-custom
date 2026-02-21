@@ -1815,7 +1815,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'vel_speed': response[9],
                 'flags': flags,
                 'use_per_key_velocity_curve': (flags & 0x08) != 0,
-                'aftertouch_mode': response[11],
+                'aftertouch_mode': response[11] & 0x0F,
+                'aftertouch_smoothness': (response[11] >> 4) & 0x0F,
                 'aftertouch_cc': response[12],
                 'vibrato_sensitivity': response[13],
                 'vibrato_decay_time': vibrato_decay_time
@@ -2052,7 +2053,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         fast = int(zone.get('fast_press_time', 20))
         data.append(fast & 0xFF)
         data.append((fast >> 8) & 0xFF)
-        data.append(int(zone.get('aftertouch_mode', 0)) & 0xFF)
+        # Bitpack: lower 4 bits = mode, upper 4 bits = smoothness
+        at_mode = int(zone.get('aftertouch_mode', 0)) & 0x0F
+        at_smooth = (int(zone.get('aftertouch_smoothness', 0)) & 0x0F) << 4
+        data.append((at_smooth | at_mode) & 0xFF)
         data.append(int(zone.get('aftertouch_cc', 255)) & 0xFF)
         data.append(int(zone.get('vibrato_sensitivity', 50)) & 0xFF)
         vib = int(zone.get('vibrato_decay', 10))
@@ -2067,7 +2071,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
     def set_velocity_preset(self, slot, points, name, velocity_min=1, velocity_max=127,
                             slow_press_time=200, fast_press_time=20, aftertouch_mode=0,
-                            aftertouch_cc=255, vibrato_sensitivity=100, vibrato_decay=200,
+                            aftertouch_smoothness=0, aftertouch_cc=255,
+                            vibrato_sensitivity=100, vibrato_decay=200,
                             actuation_override=False, actuation_point=20,
                             speed_peak_ratio=50, retrigger_distance=0,
                             keysplit_enabled=False, triplesplit_enabled=False,
@@ -2085,6 +2090,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             slow_press_time: Slow press threshold in ms (50-500) for base zone
             fast_press_time: Fast press threshold in ms (5-100) for base zone
             aftertouch_mode: 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
+            aftertouch_smoothness: EMA smoothing level (0-15, bitpacked into upper 4 bits of aftertouch_mode byte)
             aftertouch_cc: CC number (0-127) or 255 for poly AT only
             vibrato_sensitivity: Percentage (0-100, 100% = 30% effective)
             vibrato_decay: ms per unit of aftertouch decay (0-50)
@@ -2114,6 +2120,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             'slow_press_time': slow_press_time,
             'fast_press_time': fast_press_time,
             'aftertouch_mode': aftertouch_mode,
+            'aftertouch_smoothness': aftertouch_smoothness,
             'aftertouch_cc': aftertouch_cc,
             'vibrato_sensitivity': vibrato_sensitivity,
             'vibrato_decay': vibrato_decay,
@@ -2199,7 +2206,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             'velocity_max': data[offset + 9],
             'slow_press_time': data[offset + 10] | (data[offset + 11] << 8),
             'fast_press_time': data[offset + 12] | (data[offset + 13] << 8),
-            'aftertouch_mode': data[offset + 14],
+            'aftertouch_mode': data[offset + 14] & 0x0F,
+            'aftertouch_smoothness': (data[offset + 14] >> 4) & 0x0F,
             'aftertouch_cc': data[offset + 15],
             'vibrato_sensitivity': data[offset + 16],
             'vibrato_decay': data[offset + 17] | (data[offset + 18] << 8),

@@ -3573,6 +3573,7 @@ class LayerActuationConfigurator(BasicEditor):
                 'midi_rapid_sens': 10,
                 'midi_rapid_vel': 10,
                 'vel_speed': 10,
+                'aftertouch_smoothness': 0,  # 0 = no smoothing
                 'aftertouch_cc': 255,  # 255 = off (no CC sent)
                 'vibrato_sensitivity': 50,   # 50% (mid-range)
                 'vibrato_decay_time': 10,    # 10ms decay
@@ -3817,6 +3818,33 @@ class LayerActuationConfigurator(BasicEditor):
             lambda: self.on_master_combo_changed('aftertouch', aftertouch_combo)
         )
 
+        # Aftertouch Smoothness slider (visible when aftertouch is not Off)
+        smoothness_widget = QWidget()
+        smoothness_layout = QHBoxLayout()
+        smoothness_layout.setContentsMargins(0, 0, 0, 0)
+        smoothness_widget.setLayout(smoothness_layout)
+
+        smoothness_label = QLabel(tr("LayerActuationConfigurator", "Smoothness:"))
+        smoothness_label.setMinimumWidth(200)
+        smoothness_layout.addWidget(smoothness_label)
+
+        smoothness_slider = QSlider(Qt.Horizontal)
+        smoothness_slider.setMinimum(0)
+        smoothness_slider.setMaximum(15)
+        smoothness_slider.setValue(0)
+        smoothness_layout.addWidget(smoothness_slider)
+
+        smoothness_value_label = QLabel("0")
+        smoothness_value_label.setMinimumWidth(60)
+        smoothness_value_label.setStyleSheet("QLabel { font-weight: bold; }")
+        smoothness_layout.addWidget(smoothness_value_label)
+
+        layout.addWidget(smoothness_widget)
+        smoothness_widget.setVisible(False)
+        smoothness_slider.valueChanged.connect(
+            lambda v, lbl=smoothness_value_label: self.on_master_slider_changed('aftertouch_smoothness', v, lbl)
+        )
+
         # Aftertouch CC dropdown
         aftertouch_cc_layout = QHBoxLayout()
         aftertouch_cc_label = QLabel(tr("LayerActuationConfigurator", "Aftertouch CC:"))
@@ -3893,9 +3921,9 @@ class LayerActuationConfigurator(BasicEditor):
             lambda v, lbl=vibrato_decay_value_label: self.on_master_slider_changed('vibrato_decay_time', v, lbl)
         )
 
-        # Connect aftertouch mode to show/hide vibrato controls
+        # Connect aftertouch mode to show/hide vibrato controls and smoothness
         aftertouch_combo.currentIndexChanged.connect(
-            lambda idx: self.on_aftertouch_mode_changed(aftertouch_combo, vibrato_sens_widget, vibrato_decay_widget)
+            lambda idx: self.on_aftertouch_mode_changed(aftertouch_combo, vibrato_sens_widget, vibrato_decay_widget, smoothness_widget)
         )
 
         # === ADVANCED OPTIONS (hidden by default) ===
@@ -4224,6 +4252,9 @@ class LayerActuationConfigurator(BasicEditor):
             'midi_slider': midi_slider,
             'midi_label': midi_value_label,
             'aftertouch_combo': aftertouch_combo,
+            'aftertouch_smoothness_slider': smoothness_slider,
+            'aftertouch_smoothness_label': smoothness_value_label,
+            'aftertouch_smoothness_widget': smoothness_widget,
             'aftertouch_cc_combo': aftertouch_cc_combo,
             'vibrato_sensitivity_slider': vibrato_sens_slider,
             'vibrato_sensitivity_label': vibrato_sens_value_label,
@@ -4783,12 +4814,15 @@ class LayerActuationConfigurator(BasicEditor):
             for layer_data in self.layer_data:
                 layer_data['use_fixed_velocity'] = enabled
 
-    def on_aftertouch_mode_changed(self, combo, vibrato_sens_widget, vibrato_decay_widget):
-        """Handle aftertouch mode changes - show/hide vibrato controls"""
+    def on_aftertouch_mode_changed(self, combo, vibrato_sens_widget, vibrato_decay_widget, smoothness_widget=None):
+        """Handle aftertouch mode changes - show/hide vibrato controls and smoothness"""
         mode = combo.currentData()
-        is_vibrato = (mode in (7, 8))  # Mode 6 = Vibrato
+        is_vibrato = (mode in (7, 8))
+        is_off = (mode == 0)
         vibrato_sens_widget.setVisible(is_vibrato)
         vibrato_decay_widget.setVisible(is_vibrato)
+        if smoothness_widget is not None:
+            smoothness_widget.setVisible(not is_off)
 
     def on_master_slider_changed(self, key, value, label):
         """Handle master slider changes"""
@@ -4800,6 +4834,8 @@ class LayerActuationConfigurator(BasicEditor):
             label.setText(f"{value}%")
         elif key == 'vibrato_decay_time':
             label.setText(f"{value}ms")
+        elif key == 'aftertouch_smoothness':
+            label.setText(f"{value}")
         else:
             label.setText(str(value))
         
@@ -4850,6 +4886,7 @@ class LayerActuationConfigurator(BasicEditor):
             'normal': self.master_widgets['normal_slider'].value(),
             'midi': self.master_widgets['midi_slider'].value(),
             'aftertouch': self.master_widgets['aftertouch_combo'].currentData(),
+            'aftertouch_smoothness': self.master_widgets['aftertouch_smoothness_slider'].value(),
             'velocity': self.master_widgets['velocity_combo'].currentData(),
             'rapid': self.master_widgets['rapid_slider'].value(),
             'midi_rapid_sens': self.master_widgets['midi_rapid_sens_slider'].value(),
@@ -4883,10 +4920,13 @@ class LayerActuationConfigurator(BasicEditor):
             if layer_data['use_fixed_velocity']:
                 flags |= 0x04
 
+            # Bitpack aftertouch mode (lower 4 bits) + smoothness (upper 4 bits)
+            at_mode = layer_data.get('aftertouch', 0) & 0x0F
+            at_smooth = (layer_data.get('aftertouch_smoothness', 0) & 0x0F) << 4
             data_dict = {
                 'normal': layer_data['normal'],
                 'midi': layer_data['midi'],
-                'aftertouch': layer_data.get('aftertouch', 0),
+                'aftertouch': (at_smooth | at_mode) & 0xFF,
                 'velocity': layer_data['velocity'],
                 'rapid': layer_data['rapid'],
                 'midi_rapid_sens': layer_data['midi_rapid_sens'],
@@ -4984,18 +5024,25 @@ class LayerActuationConfigurator(BasicEditor):
             # Compute vibrato_decay_time from low/high bytes
             first_values['vibrato_decay_time'] = first_values['vibrato_decay_low'] | (first_values['vibrato_decay_high'] << 8)
 
+            # Unpack aftertouch byte: lower 4 bits = mode, upper 4 bits = smoothness
+            raw_at = first_values['aftertouch']
+            first_values['aftertouch'] = raw_at & 0x0F
+            first_values['aftertouch_smoothness'] = (raw_at >> 4) & 0x0F
+
             # Load into layer data
             for layer in range(12):
                 offset = layer * 10
                 flags = actuations[offset + 4]
                 vibrato_decay = actuations[offset + 8] | (actuations[offset + 9] << 8)
 
+                raw_at_byte = actuations[offset + 5]
                 self.layer_data[layer] = {
                     'normal': actuations[offset + 0],
                     'midi': actuations[offset + 1],
                     'velocity': actuations[offset + 2],
                     'vel_speed': actuations[offset + 3],
-                    'aftertouch': actuations[offset + 5],
+                    'aftertouch': raw_at_byte & 0x0F,
+                    'aftertouch_smoothness': (raw_at_byte >> 4) & 0x0F,
                     'aftertouch_cc': actuations[offset + 6],
                     'vibrato_sensitivity': actuations[offset + 7],
                     'vibrato_decay_time': vibrato_decay,
@@ -5022,14 +5069,20 @@ class LayerActuationConfigurator(BasicEditor):
                         combo.setCurrentIndex(i)
                         break
 
+            # Smoothness
+            self.master_widgets['aftertouch_smoothness_slider'].setValue(first_values.get('aftertouch_smoothness', 0))
+            self.master_widgets['aftertouch_smoothness_label'].setText(f"{first_values.get('aftertouch_smoothness', 0)}")
+
             # Vibrato sensitivity and decay
             self.master_widgets['vibrato_sensitivity_slider'].setValue(first_values['vibrato_sensitivity'])
             self.master_widgets['vibrato_decay_time_slider'].setValue(first_values['vibrato_decay_time'])
 
-            # Show/hide vibrato controls based on mode
+            # Show/hide vibrato controls and smoothness based on mode
             is_vibrato = (first_values['aftertouch'] in (7, 8))
+            is_off = (first_values['aftertouch'] == 0)
             self.master_widgets['vibrato_sensitivity_widget'].setVisible(is_vibrato)
             self.master_widgets['vibrato_decay_time_widget'].setVisible(is_vibrato)
+            self.master_widgets['aftertouch_smoothness_widget'].setVisible(not is_off)
 
             # Rapidfire (flags-based)
             first_flags = first_values['flags']
@@ -5084,6 +5137,7 @@ class LayerActuationConfigurator(BasicEditor):
                     'midi_rapid_sens': 10,
                     'midi_rapid_vel': 10,
                     'vel_speed': 10,
+                    'aftertouch_smoothness': 0,  # 0 = no smoothing
                     'aftertouch_cc': 255,  # 255 = off (no CC sent)
                     'vibrato_sensitivity': 50,   # 50% (mid-range)
                     'vibrato_decay_time': 10,    # 10ms decay
@@ -5105,6 +5159,11 @@ class LayerActuationConfigurator(BasicEditor):
                         if combo.itemData(i) == defaults[key]:
                             combo.setCurrentIndex(i)
                             break
+
+                # Smoothness
+                self.master_widgets['aftertouch_smoothness_slider'].setValue(0)
+                self.master_widgets['aftertouch_smoothness_label'].setText("0")
+                self.master_widgets['aftertouch_smoothness_widget'].setVisible(False)
 
                 # Vibrato controls
                 self.master_widgets['vibrato_sensitivity_slider'].setValue(defaults['vibrato_sensitivity'])
@@ -5164,11 +5223,11 @@ class LayerActuationConfigurator(BasicEditor):
         all_same = True
         first_values = {}
         
-        for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid', 
-                                      'midi_rapid_sens', 'midi_rapid_vel', 'vel_speed', 
+        for key_idx, key in enumerate(['normal', 'midi', 'aftertouch', 'velocity', 'rapid',
+                                      'midi_rapid_sens', 'midi_rapid_vel', 'vel_speed',
                                       'aftertouch_cc', 'flags']):
             first_values[key] = actuations[key_idx]
-            
+
             for layer in range(1, 12):
                 offset = layer * 10 + key_idx
                 if actuations[offset] != first_values[key]:
@@ -5176,15 +5235,22 @@ class LayerActuationConfigurator(BasicEditor):
                     break
             if not all_same:
                 break
-        
+
+        # Unpack aftertouch byte: lower 4 bits = mode, upper 4 bits = smoothness
+        raw_at_old = first_values.get('aftertouch', 0)
+        first_values['aftertouch'] = raw_at_old & 0x0F
+        first_values['aftertouch_smoothness'] = (raw_at_old >> 4) & 0x0F
+
         for layer in range(12):
             offset = layer * 10
             flags = actuations[offset + 9]
             
+            raw_at_old = actuations[offset + 2]
             self.layer_data[layer] = {
                 'normal': actuations[offset + 0],
                 'midi': actuations[offset + 1],
-                'aftertouch': actuations[offset + 2],
+                'aftertouch': raw_at_old & 0x0F,
+                'aftertouch_smoothness': (raw_at_old >> 4) & 0x0F,
                 'velocity': actuations[offset + 3],
                 'rapid': actuations[offset + 4],
                 'midi_rapid_sens': actuations[offset + 5],

@@ -77,6 +77,7 @@ class QuickActuationWidget(QWidget):
                 'velocity': 3,  # Velocity mode: 3=Speed+Peak (only supported mode)
                 'vel_speed': 10,  # Velocity speed scale
                 'aftertouch_mode': 0,  # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
+                'aftertouch_smoothness': 0,  # 0-15 EMA smoothing (bitpacked into upper 4 bits of aftertouch_mode byte)
                 'aftertouch_cc': 255,  # 255=Off (no CC), 0-127=CC number
                 'vibrato_sensitivity': 50,   # 0-100 (percentage, 100% = 30% effective)
                 'vibrato_decay_time': 10    # 0-50 (ms per unit decay)
@@ -111,6 +112,7 @@ class QuickActuationWidget(QWidget):
         self.global_midi_settings = {
             'velocity_mode': 3,         # 3=Speed+Peak (only supported mode)
             'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
+            'aftertouch_smoothness': 0, # 0-15 EMA smoothing (bitpacked into upper 4 bits of aftertouch_mode byte)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
             'vibrato_sensitivity': 50,  # 0-100 (percentage, 100% = 30% effective)
             'vibrato_decay_time': 10,   # 0-50 (ms per unit decay)
@@ -1565,6 +1567,9 @@ class QuickActuationWidget(QWidget):
                     flags |= 0x02
 
                 vibrato_decay = global_settings.get('vibrato_decay_time', 10)
+                # Bitpack: lower 4 bits = mode, upper 4 bits = smoothness
+                at_mode = global_settings.get('aftertouch_mode', 0) & 0x0F
+                at_smooth = (global_settings.get('aftertouch_smoothness', 0) & 0x0F) << 4
                 # Protocol: 11 bytes (layer + 10 data bytes)
                 # velocity/aftertouch fields use GLOBAL settings
                 payload = bytearray([
@@ -1574,7 +1579,7 @@ class QuickActuationWidget(QWidget):
                     global_settings.get('velocity_mode', 3),   # GLOBAL: Speed+Peak
                     10,  # vel_speed deprecated, use default
                     flags,
-                    global_settings.get('aftertouch_mode', 0),      # GLOBAL
+                    (at_smooth | at_mode) & 0xFF,                   # GLOBAL
                     global_settings.get('aftertouch_cc', 255),      # GLOBAL
                     global_settings.get('vibrato_sensitivity', 50), # GLOBAL
                     vibrato_decay & 0xFF,
@@ -1589,6 +1594,9 @@ class QuickActuationWidget(QWidget):
             else:
                 # Save to all 12 layers
                 vibrato_decay = global_settings.get('vibrato_decay_time', 10)
+                # Bitpack: lower 4 bits = mode, upper 4 bits = smoothness
+                at_mode_all = global_settings.get('aftertouch_mode', 0) & 0x0F
+                at_smooth_all = (global_settings.get('aftertouch_smoothness', 0) & 0x0F) << 4
                 for layer in range(12):
                     data = self.layer_data[layer]
                     flags = 0
@@ -1606,7 +1614,7 @@ class QuickActuationWidget(QWidget):
                         global_settings.get('velocity_mode', 3),   # GLOBAL: Speed+Peak
                         10,  # vel_speed deprecated, use default
                         flags,
-                        global_settings.get('aftertouch_mode', 0),      # GLOBAL
+                        (at_smooth_all | at_mode_all) & 0xFF,           # GLOBAL
                         global_settings.get('aftertouch_cc', 255),      # GLOBAL
                         global_settings.get('vibrato_sensitivity', 50), # GLOBAL
                         vibrato_decay & 0xFF,
@@ -1693,7 +1701,8 @@ class QuickActuationWidget(QWidget):
                     'vel_speed': actuations[offset + 3],
                     'rapidfire_enabled': (flags & 0x01) != 0,
                     'midi_rapidfire_enabled': (flags & 0x02) != 0,
-                    'aftertouch_mode': actuations[offset + 5],
+                    'aftertouch_mode': actuations[offset + 5] & 0x0F,
+                    'aftertouch_smoothness': (actuations[offset + 5] >> 4) & 0x0F,
                     'aftertouch_cc': actuations[offset + 6],
                     'vibrato_sensitivity': actuations[offset + 7],
                     'vibrato_decay_time': vibrato_decay
