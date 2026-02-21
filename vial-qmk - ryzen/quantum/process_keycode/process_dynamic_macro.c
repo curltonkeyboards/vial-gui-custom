@@ -13276,14 +13276,13 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             break;
         case PARAM_VIBRATO_SENSITIVITY:
             vibrato_sensitivity = *value_ptr;
-            if (vibrato_sensitivity < 50) vibrato_sensitivity = 50;
-            if (vibrato_sensitivity > 200) vibrato_sensitivity = 200;
+            if (vibrato_sensitivity > 100) vibrato_sensitivity = 100;
             keyboard_settings.vibrato_sensitivity = vibrato_sensitivity;
             break;
         case PARAM_VIBRATO_DECAY_TIME:
             // 16-bit value (little-endian)
             vibrato_decay_time = value_ptr[0] | (value_ptr[1] << 8);
-            if (vibrato_decay_time > 2000) vibrato_decay_time = 2000;
+            if (vibrato_decay_time > 50) vibrato_decay_time = 50;
             keyboard_settings.vibrato_decay_time = vibrato_decay_time;
             break;
         case PARAM_MIN_PRESS_TIME:
@@ -13672,8 +13671,8 @@ __attribute__((weak)) void reset_layer_actuations(void) {
         // Per-layer aftertouch settings
         layer_actuations[layer].aftertouch_mode = 0;       // Off
         layer_actuations[layer].aftertouch_cc = 255;       // Off (no CC)
-        layer_actuations[layer].vibrato_sensitivity = 100; // Normal (100%)
-        layer_actuations[layer].vibrato_decay_time = 200;  // 200ms decay
+        layer_actuations[layer].vibrato_sensitivity = 50;  // 50% (mid-range)
+        layer_actuations[layer].vibrato_decay_time = 10;   // 10ms decay
     }
     save_layer_actuations();
     dprintf("Reset all layer actuations to defaults\n");
@@ -13693,9 +13692,8 @@ __attribute__((weak)) void set_layer_actuation(uint8_t layer, uint8_t normal, ui
     if (vel_speed < 1) vel_speed = 1;
     if (vel_speed > 20) vel_speed = 20;
     if (aftertouch_mode > 8) aftertouch_mode = 0;
-    if (vibrato_sensitivity < 50) vibrato_sensitivity = 50;
-    if (vibrato_sensitivity > 200) vibrato_sensitivity = 200;
-    if (vibrato_decay_time > 2000) vibrato_decay_time = 2000;
+    if (vibrato_sensitivity > 100) vibrato_sensitivity = 100;
+    if (vibrato_decay_time > 50) vibrato_decay_time = 50;
 
     layer_actuations[layer].normal_actuation = normal;
     layer_actuations[layer].midi_actuation = midi;
@@ -13725,8 +13723,8 @@ __attribute__((weak)) void get_layer_actuation(uint8_t layer, uint8_t *normal, u
         *flags = 0;
         *aftertouch_mode = 0;
         *aftertouch_cc = 255;
-        *vibrato_sensitivity = 100;
-        *vibrato_decay_time = 200;
+        *vibrato_sensitivity = 50;
+        *vibrato_decay_time = 10;
         return;
     }
 

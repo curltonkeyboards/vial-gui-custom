@@ -3574,8 +3574,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'midi_rapid_vel': 10,
                 'vel_speed': 10,
                 'aftertouch_cc': 255,  # 255 = off (no CC sent)
-                'vibrato_sensitivity': 100,  # 100% = normal
-                'vibrato_decay_time': 200,   # 200ms decay
+                'vibrato_sensitivity': 50,   # 50% (mid-range)
+                'vibrato_decay_time': 10,    # 10ms decay
                 'rapidfire_enabled': False,
                 'midi_rapidfire_enabled': False,
                 # HE Velocity defaults
@@ -3850,12 +3850,12 @@ class LayerActuationConfigurator(BasicEditor):
         vibrato_sens_layout.addWidget(vibrato_sens_label)
 
         vibrato_sens_slider = QSlider(Qt.Horizontal)
-        vibrato_sens_slider.setMinimum(50)
-        vibrato_sens_slider.setMaximum(200)
-        vibrato_sens_slider.setValue(100)
+        vibrato_sens_slider.setMinimum(0)
+        vibrato_sens_slider.setMaximum(100)
+        vibrato_sens_slider.setValue(50)
         vibrato_sens_layout.addWidget(vibrato_sens_slider)
 
-        vibrato_sens_value_label = QLabel("100%")
+        vibrato_sens_value_label = QLabel("50%")
         vibrato_sens_value_label.setMinimumWidth(60)
         vibrato_sens_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         vibrato_sens_layout.addWidget(vibrato_sens_value_label)
@@ -3878,11 +3878,11 @@ class LayerActuationConfigurator(BasicEditor):
 
         vibrato_decay_slider = QSlider(Qt.Horizontal)
         vibrato_decay_slider.setMinimum(0)
-        vibrato_decay_slider.setMaximum(2000)
-        vibrato_decay_slider.setValue(200)
+        vibrato_decay_slider.setMaximum(50)
+        vibrato_decay_slider.setValue(10)
         vibrato_decay_layout.addWidget(vibrato_decay_slider)
 
-        vibrato_decay_value_label = QLabel("200ms")
+        vibrato_decay_value_label = QLabel("10ms")
         vibrato_decay_value_label.setMinimumWidth(60)
         vibrato_decay_value_label.setStyleSheet("QLabel { font-weight: bold; }")
         vibrato_decay_layout.addWidget(vibrato_decay_value_label)
@@ -4893,8 +4893,8 @@ class LayerActuationConfigurator(BasicEditor):
                 'midi_rapid_vel': layer_data['midi_rapid_vel'],
                 'vel_speed': layer_data['vel_speed'],
                 'aftertouch_cc': layer_data.get('aftertouch_cc', 255),
-                'vibrato_sensitivity': layer_data.get('vibrato_sensitivity', 100),
-                'vibrato_decay_time': layer_data.get('vibrato_decay_time', 200),
+                'vibrato_sensitivity': layer_data.get('vibrato_sensitivity', 50),
+                'vibrato_decay_time': layer_data.get('vibrato_decay_time', 10),
                 'flags': flags,
                 # HE Velocity settings
                 'he_curve': layer_data['he_curve'],
@@ -5085,8 +5085,8 @@ class LayerActuationConfigurator(BasicEditor):
                     'midi_rapid_vel': 10,
                     'vel_speed': 10,
                     'aftertouch_cc': 255,  # 255 = off (no CC sent)
-                    'vibrato_sensitivity': 100,  # 100% = normal
-                    'vibrato_decay_time': 200,   # 200ms decay
+                    'vibrato_sensitivity': 50,   # 50% (mid-range)
+                    'vibrato_decay_time': 10,    # 10ms decay
                     'rapidfire_enabled': False,
                     'midi_rapidfire_enabled': False,
                     'use_fixed_velocity': False,

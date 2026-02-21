@@ -2054,8 +2054,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         data.append((fast >> 8) & 0xFF)
         data.append(int(zone.get('aftertouch_mode', 0)) & 0xFF)
         data.append(int(zone.get('aftertouch_cc', 255)) & 0xFF)
-        data.append(int(zone.get('vibrato_sensitivity', 100)) & 0xFF)
-        vib = int(zone.get('vibrato_decay', 200))
+        data.append(int(zone.get('vibrato_sensitivity', 50)) & 0xFF)
+        vib = int(zone.get('vibrato_decay', 10))
         data.append(vib & 0xFF)
         data.append((vib >> 8) & 0xFF)
         flags = 0x01 if zone.get('actuation_override', False) else 0x00
@@ -2086,8 +2086,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             fast_press_time: Fast press threshold in ms (5-100) for base zone
             aftertouch_mode: 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             aftertouch_cc: CC number (0-127) or 255 for poly AT only
-            vibrato_sensitivity: Percentage (50-200)
-            vibrato_decay: Decay time in ms (0-2000)
+            vibrato_sensitivity: Percentage (0-100, 100% = 30% effective)
+            vibrato_decay: ms per unit of aftertouch decay (0-50)
             actuation_override: Enable per-key actuation override for MIDI keys
             actuation_point: Actuation point (0-40 = 0.0-4.0mm in 0.1mm steps)
             speed_peak_ratio: Ratio of speed to peak for velocity (0-100)

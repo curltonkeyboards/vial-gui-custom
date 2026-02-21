@@ -281,8 +281,8 @@ class VelocityTab(BasicEditor):
             'velocity_max': 127,        # 1-127 (maximum MIDI velocity)
             'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
-            'vibrato_sensitivity': 100, # 50-200 (percentage)
-            'vibrato_decay_time': 200,  # 0-2000 (milliseconds)
+            'vibrato_sensitivity': 50,  # 0-100 (percentage, 100% = 30% effective)
+            'vibrato_decay_time': 10,   # 0-50 (ms per unit decay)
             'min_press_time': 200,      # 50-500ms (slow press threshold)
             'max_press_time': 20,       # 5-100ms (fast press threshold)
             'actuation_override': False, # Override per-key actuation for MIDI keys
@@ -296,7 +296,7 @@ class VelocityTab(BasicEditor):
             'keysplit_zone': {
                 'velocity_min': 1, 'velocity_max': 127,
                 'aftertouch_mode': 0, 'aftertouch_cc': 255,
-                'vibrato_sensitivity': 100, 'vibrato_decay_time': 200,
+                'vibrato_sensitivity': 50, 'vibrato_decay_time': 10,
                 'min_press_time': 200, 'max_press_time': 20,
                 'actuation_override': False, 'actuation_point': 20,
                 'speed_peak_ratio': 50, 'retrigger_distance': 0,
@@ -306,7 +306,7 @@ class VelocityTab(BasicEditor):
             'triplesplit_zone': {
                 'velocity_min': 1, 'velocity_max': 127,
                 'aftertouch_mode': 0, 'aftertouch_cc': 255,
-                'vibrato_sensitivity': 100, 'vibrato_decay_time': 200,
+                'vibrato_sensitivity': 50, 'vibrato_decay_time': 10,
                 'min_press_time': 200, 'max_press_time': 20,
                 'actuation_override': False, 'actuation_point': 20,
                 'speed_peak_ratio': 50, 'retrigger_distance': 0,
@@ -520,19 +520,19 @@ class VelocityTab(BasicEditor):
         sens_layout.setContentsMargins(0, 0, 0, 0)
         controls['vibrato_sens_widget'].setLayout(sens_layout)
 
-        sens_layout.addWidget(self.create_help_label("Wiggle sensitivity.\n50%=Less, 200%=Very sensitive"))
+        sens_layout.addWidget(self.create_help_label("Wiggle sensitivity.\n0%=Off, 100%=Maximum"))
         sens_label = QLabel(tr("VelocityTab", "Vib Sens:"))
         sens_label.setMinimumWidth(85)
         sens_layout.addWidget(sens_label)
 
         controls['vibrato_sens_slider'] = QSlider(Qt.Horizontal)
-        controls['vibrato_sens_slider'].setMinimum(50)
-        controls['vibrato_sens_slider'].setMaximum(200)
-        controls['vibrato_sens_slider'].setValue(100)
+        controls['vibrato_sens_slider'].setMinimum(0)
+        controls['vibrato_sens_slider'].setMaximum(100)
+        controls['vibrato_sens_slider'].setValue(50)
         controls['vibrato_sens_slider'].setProperty('zone', zone_name)
         sens_layout.addWidget(controls['vibrato_sens_slider'], 1)
 
-        controls['vibrato_sens_value'] = QLabel("100%")
+        controls['vibrato_sens_value'] = QLabel("50%")
         controls['vibrato_sens_value'].setMinimumWidth(45)
         controls['vibrato_sens_value'].setStyleSheet("QLabel { font-weight: bold; }")
         sens_layout.addWidget(controls['vibrato_sens_value'])
@@ -546,19 +546,19 @@ class VelocityTab(BasicEditor):
         decay_layout.setContentsMargins(0, 0, 0, 0)
         controls['vibrato_decay_widget'].setLayout(decay_layout)
 
-        decay_layout.addWidget(self.create_help_label("How long aftertouch lasts after wiggle stops."))
+        decay_layout.addWidget(self.create_help_label("Decay rate: ms per unit of aftertouch lost.\n0=Instant, higher=slower decay"))
         decay_label = QLabel(tr("VelocityTab", "Vib Decay:"))
         decay_label.setMinimumWidth(85)
         decay_layout.addWidget(decay_label)
 
         controls['vibrato_decay_slider'] = QSlider(Qt.Horizontal)
         controls['vibrato_decay_slider'].setMinimum(0)
-        controls['vibrato_decay_slider'].setMaximum(2000)
-        controls['vibrato_decay_slider'].setValue(200)
+        controls['vibrato_decay_slider'].setMaximum(50)
+        controls['vibrato_decay_slider'].setValue(10)
         controls['vibrato_decay_slider'].setProperty('zone', zone_name)
         decay_layout.addWidget(controls['vibrato_decay_slider'], 1)
 
-        controls['vibrato_decay_value'] = QLabel("200ms")
+        controls['vibrato_decay_value'] = QLabel("10ms")
         controls['vibrato_decay_value'].setMinimumWidth(50)
         controls['vibrato_decay_value'].setStyleSheet("QLabel { font-weight: bold; }")
         decay_layout.addWidget(controls['vibrato_decay_value'])
@@ -1195,9 +1195,9 @@ class VelocityTab(BasicEditor):
                 self.global_midi_settings['aftertouch_mode'] = aftertouch_mode
                 aftertouch_cc = result.get('aftertouch_cc', 255)
                 self.global_midi_settings['aftertouch_cc'] = aftertouch_cc
-                vibrato_sens = result.get('vibrato_sensitivity', 100)
+                vibrato_sens = result.get('vibrato_sensitivity', 50)
                 self.global_midi_settings['vibrato_sensitivity'] = vibrato_sens
-                vibrato_decay = result.get('vibrato_decay_time', 200)
+                vibrato_decay = result.get('vibrato_decay_time', 10)
                 self.global_midi_settings['vibrato_decay_time'] = vibrato_decay
 
                 # Update UI from settings
@@ -1251,11 +1251,11 @@ class VelocityTab(BasicEditor):
                 break
 
         # Set vibrato settings
-        sens = settings.get('vibrato_sensitivity', 100)
+        sens = settings.get('vibrato_sensitivity', 50)
         self.vibrato_sens_slider.setValue(sens)
         self.vibrato_sens_value.setText(f"{sens}%")
 
-        decay = settings.get('vibrato_decay_time', 200)
+        decay = settings.get('vibrato_decay_time', 10)
         self.vibrato_decay_slider.setValue(decay)
         self.vibrato_decay_value.setText(f"{decay}ms")
 
@@ -1419,8 +1419,8 @@ class VelocityTab(BasicEditor):
                 break
 
         # Update vibrato settings
-        vib_sens = zone_data.get('vibrato_sensitivity', 100)
-        vib_decay = zone_data.get('vibrato_decay', zone_data.get('vibrato_decay_time', 200))
+        vib_sens = zone_data.get('vibrato_sensitivity', 50)
+        vib_decay = zone_data.get('vibrato_decay', zone_data.get('vibrato_decay_time', 10))
         controls['vibrato_sens_slider'].setValue(vib_sens)
         controls['vibrato_sens_value'].setText(f"{vib_sens}%")
         controls['vibrato_decay_slider'].setValue(vib_decay)
@@ -1558,7 +1558,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 1, 'velocity_max': 60,
             'slow_press_time': 100, 'fast_press_time': 1,
             'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1566,7 +1566,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 1, 'velocity_max': 90,
             'slow_press_time': 100, 'fast_press_time': 1,
             'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1574,7 +1574,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 1, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
             'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1582,7 +1582,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 30, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
             'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1590,7 +1590,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 60, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
             'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1598,7 +1598,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 80, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
             'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1606,7 +1606,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 127, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
             'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1743,8 +1743,8 @@ class VelocityTab(BasicEditor):
                 self.global_midi_settings['max_press_time'] = base_zone.get('fast_press_time', 20)
                 self.global_midi_settings['aftertouch_mode'] = base_zone.get('aftertouch_mode', 0)
                 self.global_midi_settings['aftertouch_cc'] = base_zone.get('aftertouch_cc', 255)
-                self.global_midi_settings['vibrato_sensitivity'] = base_zone.get('vibrato_sensitivity', 100)
-                self.global_midi_settings['vibrato_decay_time'] = base_zone.get('vibrato_decay', 200)
+                self.global_midi_settings['vibrato_sensitivity'] = base_zone.get('vibrato_sensitivity', 50)
+                self.global_midi_settings['vibrato_decay_time'] = base_zone.get('vibrato_decay', 10)
                 self.global_midi_settings['actuation_override'] = base_zone.get('actuation_override', False)
                 self.global_midi_settings['actuation_point'] = base_zone.get('actuation_point', 20)
                 self.global_midi_settings['speed_peak_ratio'] = base_zone.get('speed_peak_ratio', 50)
@@ -1835,8 +1835,8 @@ class VelocityTab(BasicEditor):
                 fast_press_time=settings.get('max_press_time', 20),
                 aftertouch_mode=settings.get('aftertouch_mode', 0),
                 aftertouch_cc=settings.get('aftertouch_cc', 255),
-                vibrato_sensitivity=settings.get('vibrato_sensitivity', 100),
-                vibrato_decay=settings.get('vibrato_decay_time', 200),
+                vibrato_sensitivity=settings.get('vibrato_sensitivity', 50),
+                vibrato_decay=settings.get('vibrato_decay_time', 10),
                 actuation_override=settings.get('actuation_override', False),
                 actuation_point=settings.get('actuation_point', 20),
                 speed_peak_ratio=settings.get('speed_peak_ratio', 50),

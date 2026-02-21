@@ -1777,12 +1777,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
                 // Noise floor: ignore small deltas (~20 ADC counts normalized)
                 if (raw_delta >= 5) {
-                    // Apply sensitivity scaling (50-200, where 100 = normal)
+                    // Apply sensitivity scaling (0-100 from GUI, where 100% = 30% effective)
+                    // This prevents a single keypress from maxing out the accumulator
                     uint16_t sensitivity = active_settings.vibrato_sensitivity;
-                    if (sensitivity < 50) sensitivity = 50;
-                    if (sensitivity > 200) sensitivity = 200;
+                    if (sensitivity > 100) sensitivity = 100;
 
-                    uint16_t scaled_delta = ((uint16_t)raw_delta * sensitivity) / 100;
+                    uint16_t scaled_delta = ((uint32_t)raw_delta * sensitivity * 30) / 10000;
 
                     // Add to accumulator, clamp at 127
                     uint16_t new_val = (uint16_t)state->vibrato_value + scaled_delta;

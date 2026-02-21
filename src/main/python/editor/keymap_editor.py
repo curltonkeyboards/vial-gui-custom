@@ -78,8 +78,8 @@ class QuickActuationWidget(QWidget):
                 'vel_speed': 10,  # Velocity speed scale
                 'aftertouch_mode': 0,  # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
                 'aftertouch_cc': 255,  # 255=Off (no CC), 0-127=CC number
-                'vibrato_sensitivity': 100,  # 50-200 (percentage)
-                'vibrato_decay_time': 200  # 0-2000 (milliseconds)
+                'vibrato_sensitivity': 50,   # 0-100 (percentage, 100% = 30% effective)
+                'vibrato_decay_time': 10    # 0-50 (ms per unit decay)
             })
 
         # MIDI settings (global, per keyboard)
@@ -112,8 +112,8 @@ class QuickActuationWidget(QWidget):
             'velocity_mode': 3,         # 3=Speed+Peak (only supported mode)
             'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
-            'vibrato_sensitivity': 100, # 50-200 (percentage)
-            'vibrato_decay_time': 200,  # 0-2000 (milliseconds)
+            'vibrato_sensitivity': 50,  # 0-100 (percentage, 100% = 30% effective)
+            'vibrato_decay_time': 10,   # 0-50 (ms per unit decay)
             'min_press_time': 200,      # 50-500ms (slow press threshold)
             'max_press_time': 20        # 5-100ms (fast press threshold)
         }
@@ -1564,7 +1564,7 @@ class QuickActuationWidget(QWidget):
                 if data.get('midi_rapidfire_enabled', False):
                     flags |= 0x02
 
-                vibrato_decay = global_settings.get('vibrato_decay_time', 200)
+                vibrato_decay = global_settings.get('vibrato_decay_time', 10)
                 # Protocol: 11 bytes (layer + 10 data bytes)
                 # velocity/aftertouch fields use GLOBAL settings
                 payload = bytearray([
@@ -1576,7 +1576,7 @@ class QuickActuationWidget(QWidget):
                     flags,
                     global_settings.get('aftertouch_mode', 0),      # GLOBAL
                     global_settings.get('aftertouch_cc', 255),      # GLOBAL
-                    global_settings.get('vibrato_sensitivity', 100), # GLOBAL
+                    global_settings.get('vibrato_sensitivity', 50), # GLOBAL
                     vibrato_decay & 0xFF,
                     (vibrato_decay >> 8) & 0xFF
                 ])
@@ -1588,7 +1588,7 @@ class QuickActuationWidget(QWidget):
                     f"Layer {self.current_layer} actuation saved successfully!")
             else:
                 # Save to all 12 layers
-                vibrato_decay = global_settings.get('vibrato_decay_time', 200)
+                vibrato_decay = global_settings.get('vibrato_decay_time', 10)
                 for layer in range(12):
                     data = self.layer_data[layer]
                     flags = 0
@@ -1608,7 +1608,7 @@ class QuickActuationWidget(QWidget):
                         flags,
                         global_settings.get('aftertouch_mode', 0),      # GLOBAL
                         global_settings.get('aftertouch_cc', 255),      # GLOBAL
-                        global_settings.get('vibrato_sensitivity', 100), # GLOBAL
+                        global_settings.get('vibrato_sensitivity', 50), # GLOBAL
                         vibrato_decay & 0xFF,
                         (vibrato_decay >> 8) & 0xFF
                     ])
