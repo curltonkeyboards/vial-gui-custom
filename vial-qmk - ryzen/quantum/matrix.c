@@ -148,6 +148,7 @@ typedef struct {
     uint8_t zone_type;           // Zone type: ZONE_TYPE_BASE, ZONE_TYPE_KEYSPLIT, or ZONE_TYPE_TRIPLESPLIT
     bool pressed;
     bool was_pressed;
+    bool note_active;            // True when note is sounding (accounts for velocity mode + sustain)
 
     // Mode 1: Peak travel at apex
     uint8_t peak_travel;
@@ -1694,9 +1695,40 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         if (state->midi_note > 127) state->midi_note = 127;
     }
 
+    // Determine if the note is actually active (matches velocity mode logic from matrix scan)
+    // This is used for aftertouch: we want aftertouch while the note is sounding,
+    // not just while the key is below the actuation point.
+    bool note_is_active;
+    switch (analog_mode) {
+        case 0:  // Fixed
+            note_is_active = pressed && (travel >= midi_threshold);
+            break;
+        case 1:  // Peak
+        case 3:  // Speed+Peak
+            note_is_active = state->send_on_release;
+            break;
+        case 2:  // Speed
+            note_is_active = (travel >= midi_threshold) && state->velocity_captured;
+            break;
+        default:
+            note_is_active = pressed;
+            break;
+    }
+
+    // Also account for sustain: if sustain is held and note was active, keep it active
+    if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
+        get_live_sustain_state() && state->note_active) {
+        note_is_active = true;
+    }
+
+    // Track note_active for sustain hold across cycles
+    bool was_note_active = state->note_active;
+    state->note_active = note_is_active;
+
     // Aftertouch handling - now sends polyphonic aftertouch + optional CC
-    // Uses per-key actuation from cache for threshold
-    if (active_settings.aftertouch_mode > 0 && pressed) {
+    // Uses note_is_active instead of raw pressed so aftertouch tracks full key travel
+    // while the note is sounding (not just while below actuation point)
+    if (active_settings.aftertouch_mode > 0 && note_is_active) {
         uint8_t aftertouch_value = 0;
         bool send_aftertouch = false;
 
@@ -1794,8 +1826,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             state->last_aftertouch = aftertouch_value;
             #endif
         }
-    } else if (!pressed && state->was_pressed) {
-        // Key released - send aftertouch reset (value 0) for all modes
+    } else if (!note_is_active && was_note_active) {
+        // Note stopped sounding - send aftertouch reset (value 0) for all modes
         if (active_settings.aftertouch_mode > 0 && state->last_aftertouch > 0) {
             #ifdef MIDI_ENABLE
             midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
@@ -2107,8 +2139,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 }
 
                 // Modes 1 & 2: sustain suppresses note-on/off - keep key pressed while sustain active
+                // Uses note_active (set in process_midi_key_analog) which persists across cycles
+                // unlike was_pressed which only tracks raw is_pressed for one cycle
                 if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
-                    get_live_sustain_state() && state->was_pressed) {
+                    get_live_sustain_state() && state->note_active) {
                     pressed = true;
                 }
             } else {
