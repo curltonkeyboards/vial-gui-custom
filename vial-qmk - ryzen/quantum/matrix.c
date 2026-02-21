@@ -1314,6 +1314,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_eligible = false;
                     state->retrigger_eligible_point = 0;
                     state->retrigger_move_start = 0;
+                    // Reset last_travel so speed timer restarts on next press
+                    // (prevents drift from keeping last_travel > 0 between presses)
+                    state->last_travel = 0;
                 }
 
                 state->last_travel = travel;
@@ -1397,6 +1400,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_eligible = false;
                     state->retrigger_eligible_point = 0;
                     state->retrigger_move_start = 0;
+                    // Reset last_travel so speed timer restarts on next press
+                    // (prevents drift from keeping last_travel > 0 between presses)
+                    state->last_travel = 0;
                 }
 
                 state->last_travel = travel;
@@ -1519,6 +1525,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_eligible = false;
                     state->retrigger_eligible_point = 0;
                     state->retrigger_move_start = 0;
+                    // Reset last_travel so speed timer restarts on next press
+                    // (prevents drift from keeping last_travel > 0 between presses)
+                    state->last_travel = 0;
                 }
 
                 state->last_travel = travel;
