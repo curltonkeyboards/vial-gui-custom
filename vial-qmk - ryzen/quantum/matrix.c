@@ -1885,7 +1885,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
                 uint8_t max_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > max_at) {
                         max_at = midi_key_states[i].last_aftertouch;
                     }
                 }
@@ -1910,7 +1910,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 // CC mode: this key released, find max from remaining active keys
                 uint8_t max_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > max_at) {
                         max_at = midi_key_states[i].last_aftertouch;
                     }
                 }
