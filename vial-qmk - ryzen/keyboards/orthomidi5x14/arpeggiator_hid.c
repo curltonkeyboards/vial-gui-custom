@@ -1288,6 +1288,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
                 dprintf("SET param 49 (triplesplit_smartchord_ignore) = %d\n", value8);
                 break;
+            case 50:  // PARAM_VELOCITY_AS_AT (bool: pre-load aftertouch from velocity)
+                velocity_as_at = (value8 != 0);
+                keyboard_settings.velocity_as_at = velocity_as_at;
+                settings_changed = true;
+                dprintf("SET param 50 (velocity_as_at) = %d\n", value8);
+                break;
             default:
                 success = false;
                 dprintf("SET param %d: UNKNOWN param_id\n", param_id);
