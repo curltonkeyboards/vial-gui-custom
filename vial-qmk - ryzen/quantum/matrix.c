@@ -1913,18 +1913,21 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->last_aftertouch = state->smoothed_aftertouch;
                 }
             } else {
-                // CC mode: always keep per-key value current, send highest across all keys
+                // CC mode: always keep per-key value current, send average across all active keys
                 state->last_aftertouch = state->smoothed_aftertouch;
 
-                uint8_t max_at = 0;
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > max_at) {
-                        max_at = midi_key_states[i].last_aftertouch;
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
                     }
                 }
-                if (abs((int)max_at - (int)last_sent_cc_value) > 2) {
-                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
-                    last_sent_cc_value = max_at;
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (abs((int)avg_at - (int)last_sent_cc_value) > 2) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
                 }
             }
             #endif
@@ -1952,15 +1955,18 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             if (active_settings.aftertouch_cc == 255) {
                 midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             } else {
-                uint8_t max_at = 0;
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > max_at) {
-                        max_at = midi_key_states[i].last_aftertouch;
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
                     }
                 }
-                if (max_at != last_sent_cc_value) {
-                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
-                    last_sent_cc_value = max_at;
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (avg_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
                 }
             }
         } else if (abs((int)state->smoothed_aftertouch - (int)state->last_aftertouch) > 2) {
@@ -1970,15 +1976,18 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 state->last_aftertouch = state->smoothed_aftertouch;
             } else {
                 state->last_aftertouch = state->smoothed_aftertouch;
-                uint8_t max_at = 0;
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > max_at) {
-                        max_at = midi_key_states[i].last_aftertouch;
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
                     }
                 }
-                if (abs((int)max_at - (int)last_sent_cc_value) > 2) {
-                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
-                    last_sent_cc_value = max_at;
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (abs((int)avg_at - (int)last_sent_cc_value) > 2) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
                 }
             }
         }
@@ -1999,16 +2008,19 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 // Poly AT: send per-note zero
                 midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             } else {
-                // CC mode: this key released, find max from remaining active keys
-                uint8_t max_at = 0;
+                // CC mode: this key released, average remaining active keys
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > max_at) {
-                        max_at = midi_key_states[i].last_aftertouch;
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
                     }
                 }
-                if (max_at != last_sent_cc_value) {
-                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
-                    last_sent_cc_value = max_at;
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (avg_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
                 }
             }
             #endif
