@@ -1248,6 +1248,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     if (active_settings.aftertouch_mode > 0) {
         aftertouch_smoothness = zone_retrigger_distance;  // 0-100%
         if (aftertouch_smoothness > 100) aftertouch_smoothness = 100;
+        // Scale: GUI 100% = effective 80%, so full smoothness isn't too sluggish
+        aftertouch_smoothness = (aftertouch_smoothness * 80) / 100;
         zone_retrigger_distance = 0;  // Disable retrigger
     }
 
