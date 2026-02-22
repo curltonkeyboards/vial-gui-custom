@@ -1873,11 +1873,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
 
             #ifdef MIDI_ENABLE
-            if (active_settings.aftertouch_cc != 255) {
-                // CC mode: store smoothed value, then find global max
-                // last_aftertouch holds the per-key smoothed value for max lookup
+            // Always send poly AT per-note if changed (> 2 hysteresis)
+            if (abs((int)state->smoothed_aftertouch - (int)state->last_aftertouch) > 2) {
+                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, state->smoothed_aftertouch);
                 state->last_aftertouch = state->smoothed_aftertouch;
+            }
 
+            // Also send CC if configured
+            if (active_settings.aftertouch_cc != 255) {
                 uint8_t max_at = 0;
                 for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
                     if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
@@ -1887,13 +1890,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 if (max_at != last_sent_cc_value) {
                     midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
                     last_sent_cc_value = max_at;
-                }
-            } else {
-                // Poly AT mode: send per-note smoothed aftertouch if changed (> 2 hysteresis)
-                // last_aftertouch tracks what was last sent for hysteresis comparison
-                if (abs((int)state->smoothed_aftertouch - (int)state->last_aftertouch) > 2) {
-                    midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, state->smoothed_aftertouch);
-                    state->last_aftertouch = state->smoothed_aftertouch;
                 }
             }
             #endif
@@ -1905,8 +1901,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             state->smoothed_aftertouch = 0;
 
             #ifdef MIDI_ENABLE
+            // Always send poly AT per-note reset
+            midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
+
+            // Also recompute and send CC if configured
             if (active_settings.aftertouch_cc != 255) {
-                // CC mode: recompute global max now that this key is at 0
                 uint8_t max_at = 0;
                 for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
                     if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
@@ -1917,9 +1916,6 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
                     last_sent_cc_value = max_at;
                 }
-            } else {
-                // Poly AT mode: send per-note reset
-                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             }
             #endif
         } else {
