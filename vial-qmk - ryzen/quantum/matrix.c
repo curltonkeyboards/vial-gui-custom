@@ -1881,8 +1881,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         }
 
         // Apply slew rate limiter: caps max change per millisecond
-        // 0% = no limit (instant), 100% = full 0-127 range takes 4000ms
-        // At X%: max_change_per_ms = 127 / (X/100 * 4000) = 12700 / (X * 40)
+        // 0% = no limit (instant), 100% = full 0-127 range takes 10000ms
+        // At X%: max_change_per_ms = 127 / (X/100 * 10000) = 12700 / (X * 100)
         if (send_aftertouch) {
             if (aftertouch_smoothness > 0) {
                 uint16_t elapsed = timer_elapsed(state->slew_last_time);
@@ -1892,9 +1892,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 int16_t diff = (int16_t)aftertouch_value - (int16_t)state->smoothed_aftertouch;
 
                 if (diff != 0) {
-                    // Max change allowed = (127 * elapsed) / (smoothness_pct * 40)
+                    // Max change allowed = (127 * elapsed) / (smoothness_pct * 100)
                     // Use 32-bit to avoid overflow: 127 * elapsed can be up to 127*65535
-                    uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 40);
+                    uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 100);
                     if (max_change < 1) max_change = 1;  // Always allow at least 1 unit change
 
                     if (diff > 0) {
@@ -1952,7 +1952,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         uint16_t elapsed = timer_elapsed(state->slew_last_time);
         state->slew_last_time = now;
 
-        uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 40);
+        uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 100);
         if (max_change < 1) max_change = 1;
 
         if (state->smoothed_aftertouch <= (uint8_t)max_change) {
