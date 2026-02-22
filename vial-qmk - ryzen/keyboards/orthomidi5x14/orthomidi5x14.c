@@ -2769,6 +2769,9 @@ void reset_keyboard_settings(void) {
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
+    // Velocity as Aftertouch
+    velocity_as_at = false;
+    keyboard_settings.velocity_as_at = false;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
@@ -11341,6 +11344,7 @@ break;
 		keyboard_settings.colorblindmode = colorblindmode;
 	keyboard_settings.cclooprecording = cclooprecording;
 	keyboard_settings.truesustain = truesustain;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(0);
 		snprintf(name, sizeof(name), "Saved as default settings");
 
@@ -11374,6 +11378,7 @@ break;
 		keyboard_settings.colorblindmode = colorblindmode;
 	keyboard_settings.cclooprecording = cclooprecording;
 	keyboard_settings.truesustain = truesustain;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(1);
 		snprintf(name, sizeof(name), "Saved to Preset 1");
 
@@ -11407,6 +11412,7 @@ break;
 		keyboard_settings.colorblindmode = colorblindmode;
 	keyboard_settings.cclooprecording = cclooprecording;
 	keyboard_settings.truesustain = truesustain;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(2);
 		snprintf(name, sizeof(name), "Saved to Preset 2");
 
@@ -11437,6 +11443,7 @@ break;
     keyboard_settings.loop_messaging_channel = loop_messaging_channel;
     keyboard_settings.sync_midi_mode = sync_midi_mode;
     keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(3);
 		snprintf(name, sizeof(name), "Saved to Preset 3");
 
@@ -11467,6 +11474,7 @@ break;
     keyboard_settings.loop_messaging_channel = loop_messaging_channel;
     keyboard_settings.sync_midi_mode = sync_midi_mode;
     keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(4);
 		snprintf(name, sizeof(name), "Saved to Preset 4");
 

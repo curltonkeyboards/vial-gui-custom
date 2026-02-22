@@ -13343,7 +13343,17 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
 
 
 static void handle_get_keyboard_config(void) {
+    // Preserve HID-set parameters before EEPROM reload.
+    // load_keyboard_settings() resets ALL globals from EEPROM, which destroys
+    // runtime values set via set_keyboard_param_single (e.g. velocity_as_at).
+    // EEPROM may contain garbage for newer fields not yet saved.
+    bool saved_velocity_as_at = velocity_as_at;
+
     load_keyboard_settings();
+
+    // Restore HID-set parameters (EEPROM may have stale/garbage values)
+    velocity_as_at = saved_velocity_as_at;
+    keyboard_settings.velocity_as_at = saved_velocity_as_at;
 
     // Packet 1: Basic settings (22 bytes)
     uint8_t config_packet1[22];
