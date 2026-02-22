@@ -280,7 +280,7 @@ class VelocityTab(BasicEditor):
             'velocity_min': 1,          # 1-127 (minimum MIDI velocity)
             'velocity_max': 127,        # 1-127 (maximum MIDI velocity)
             'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
-            'aftertouch_smoothness': 0, # 0-15 EMA smoothing (bitpacked into upper 4 bits of aftertouch_mode byte)
+            'aftertouch_smoothness': 0, # 0-100% EMA smoothing (shares retrigger byte when aftertouch active)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
             'vibrato_sensitivity': 50,  # 0-100 (percentage, 100% = 30% effective)
             'vibrato_decay_time': 10,   # 0-50 (ms per unit decay)
@@ -487,26 +487,29 @@ class VelocityTab(BasicEditor):
         mode_layout.addWidget(controls['aftertouch_mode_combo'], 1)
         layout.addLayout(mode_layout)
 
-        # Aftertouch Smoothness (hidden when aftertouch is Off)
+        # Aftertouch Smoothness slider (shares retrigger byte, visible when aftertouch is on)
         controls['smoothness_widget'] = QWidget()
         smooth_layout = QHBoxLayout()
         smooth_layout.setContentsMargins(0, 0, 0, 0)
         controls['smoothness_widget'].setLayout(smooth_layout)
 
-        smooth_layout.addWidget(self.create_help_label("EMA smoothing filter.\n0=Off, 15=Very smooth"))
-        smooth_label = QLabel(tr("VelocityTab", "Smooth:"))
+        smooth_layout.addWidget(self.create_help_label(
+            "EMA smoothing filter for aftertouch output.\n"
+            "0% = instant (no smoothing)\n"
+            "100% = very smooth (slow response)"))
+        smooth_label = QLabel(tr("VelocityTab", "Smoothness:"))
         smooth_label.setMinimumWidth(85)
         smooth_layout.addWidget(smooth_label)
 
         controls['smoothness_slider'] = QSlider(Qt.Horizontal)
         controls['smoothness_slider'].setMinimum(0)
-        controls['smoothness_slider'].setMaximum(15)
+        controls['smoothness_slider'].setMaximum(100)
         controls['smoothness_slider'].setValue(0)
         controls['smoothness_slider'].setProperty('zone', zone_name)
         smooth_layout.addWidget(controls['smoothness_slider'], 1)
 
-        controls['smoothness_value'] = QLabel("0")
-        controls['smoothness_value'].setMinimumWidth(30)
+        controls['smoothness_value'] = QLabel("0%")
+        controls['smoothness_value'].setMinimumWidth(40)
         controls['smoothness_value'].setStyleSheet("QLabel { font-weight: bold; }")
         smooth_layout.addWidget(controls['smoothness_value'])
 
@@ -692,6 +695,12 @@ class VelocityTab(BasicEditor):
         controls['retrigger_checkbox'].setChecked(False)
         controls['retrigger_checkbox'].setProperty('zone', zone_name)
         retrigger_layout.addWidget(controls['retrigger_checkbox'])
+
+        controls['retrigger_disabled_label'] = QLabel("(disabled when aftertouch is enabled)")
+        controls['retrigger_disabled_label'].setStyleSheet("QLabel { color: #888; font-style: italic; font-size: 10px; }")
+        controls['retrigger_disabled_label'].setVisible(False)
+        retrigger_layout.addWidget(controls['retrigger_disabled_label'])
+
         retrigger_layout.addStretch()
         layout.addLayout(retrigger_layout)
 
@@ -769,15 +778,22 @@ class VelocityTab(BasicEditor):
             is_off = (mode == 0)
             controls['vibrato_sens_widget'].setVisible(is_vibrato)
             controls['vibrato_decay_widget'].setVisible(is_vibrato)
-            controls['smoothness_widget'].setVisible(not is_off)
             controls['aftertouch_cc_widget'].setVisible(not is_off)
+            # Smoothness replaces retrigger when aftertouch is active
+            controls['smoothness_widget'].setVisible(not is_off)
+            # Disable retrigger when aftertouch is enabled
+            controls['retrigger_checkbox'].setEnabled(is_off)
+            controls['retrigger_disabled_label'].setVisible(not is_off)
+            if not is_off:
+                controls['retrigger_checkbox'].setChecked(False)
+                controls['retrigger_widget'].setVisible(False)
             set_setting('aftertouch_mode', mode)
 
         controls['aftertouch_mode_combo'].currentIndexChanged.connect(on_aftertouch_mode_changed)
 
-        # Aftertouch smoothness
+        # Aftertouch smoothness (0-100%, shares retrigger byte in protocol)
         def on_smoothness_changed(value):
-            controls['smoothness_value'].setText(f"{value}")
+            controls['smoothness_value'].setText(f"{value}%")
             set_setting('aftertouch_smoothness', value)
 
         controls['smoothness_slider'].valueChanged.connect(on_smoothness_changed)
@@ -1066,6 +1082,7 @@ class VelocityTab(BasicEditor):
         self.speed_peak_slider = base_controls['speed_peak_slider']
         self.speed_peak_value = base_controls['speed_peak_value']
         self.retrigger_checkbox = base_controls['retrigger_checkbox']
+        self.retrigger_disabled_label = base_controls['retrigger_disabled_label']
         self.retrigger_widget = base_controls['retrigger_widget']
         self.retrigger_slider = base_controls['retrigger_slider']
         self.retrigger_value = base_controls['retrigger_value']
@@ -1230,8 +1247,7 @@ class VelocityTab(BasicEditor):
                 # Note: velocity_mode is fixed at Speed+Peak (3) and not configurable
                 aftertouch_mode = result.get('aftertouch_mode', 0)
                 self.global_midi_settings['aftertouch_mode'] = aftertouch_mode
-                aftertouch_smoothness = result.get('aftertouch_smoothness', 0)
-                self.global_midi_settings['aftertouch_smoothness'] = aftertouch_smoothness
+                # Note: aftertouch_smoothness comes from zone preset (retrigger byte), not layer actuation
                 aftertouch_cc = result.get('aftertouch_cc', 255)
                 self.global_midi_settings['aftertouch_cc'] = aftertouch_cc
                 vibrato_sens = result.get('vibrato_sensitivity', 50)
@@ -1284,10 +1300,17 @@ class VelocityTab(BasicEditor):
         self.aftertouch_cc_widget.setVisible(not is_off)
         self.smoothness_widget.setVisible(not is_off)
 
+        # Disable retrigger when aftertouch is enabled
+        self.retrigger_checkbox.setEnabled(is_off)
+        self.retrigger_disabled_label.setVisible(not is_off)
+        if not is_off:
+            self.retrigger_checkbox.setChecked(False)
+            self.retrigger_widget.setVisible(False)
+
         # Set smoothness
         smoothness = settings.get('aftertouch_smoothness', 0)
         self.smoothness_slider.setValue(smoothness)
-        self.smoothness_value.setText(f"{smoothness}")
+        self.smoothness_value.setText(f"{smoothness}%")
 
         # Set aftertouch CC
         cc = settings.get('aftertouch_cc', 255)
@@ -1322,7 +1345,14 @@ class VelocityTab(BasicEditor):
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
         self.aftertouch_cc_widget.setVisible(not is_off)
+        # Smoothness replaces retrigger when aftertouch is active
         self.smoothness_widget.setVisible(not is_off)
+        # Disable retrigger when aftertouch is enabled
+        self.retrigger_checkbox.setEnabled(is_off)
+        self.retrigger_disabled_label.setVisible(not is_off)
+        if not is_off:
+            self.retrigger_checkbox.setChecked(False)
+            self.retrigger_widget.setVisible(False)
         self.global_midi_settings['aftertouch_mode'] = mode
 
     def on_aftertouch_cc_changed(self, index):
@@ -1460,10 +1490,17 @@ class VelocityTab(BasicEditor):
         controls['aftertouch_cc_widget'].setVisible(not is_off)
         controls['smoothness_widget'].setVisible(not is_off)
 
+        # Disable retrigger when aftertouch is enabled
+        controls['retrigger_checkbox'].setEnabled(is_off)
+        controls['retrigger_disabled_label'].setVisible(not is_off)
+        if not is_off:
+            controls['retrigger_checkbox'].setChecked(False)
+            controls['retrigger_widget'].setVisible(False)
+
         # Update smoothness
         smoothness = zone_data.get('aftertouch_smoothness', 0)
         controls['smoothness_slider'].setValue(smoothness)
-        controls['smoothness_value'].setText(f"{smoothness}")
+        controls['smoothness_value'].setText(f"{smoothness}%")
 
         # Update aftertouch CC
         at_cc = zone_data.get('aftertouch_cc', 255)

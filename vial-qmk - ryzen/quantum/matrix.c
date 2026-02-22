@@ -341,9 +341,7 @@ static uint8_t cached_layer_settings_layer = 0xFF;
 static struct {
     uint8_t velocity_mode;
     uint8_t velocity_speed_scale;
-    // Per-layer aftertouch settings (aftertouch_mode unpacked from bitpacked byte)
-    uint8_t aftertouch_mode;       // Lower 4 bits of packed byte (0-8)
-    uint8_t aftertouch_smoothness; // Upper 4 bits of packed byte (0-15)
+    uint8_t aftertouch_mode;       // 0=Off, 1-8 = various modes
     uint8_t aftertouch_cc;
     uint8_t vibrato_sensitivity;
     uint16_t vibrato_decay_time;
@@ -750,9 +748,7 @@ static inline void update_active_settings(uint8_t current_layer) {
     // These are updated immediately when HID commands are received
     active_settings.velocity_mode = velocity_mode;
     active_settings.velocity_speed_scale = 10;  // Deprecated, using min/max_press_time now
-    // Unpack bitpacked aftertouch_mode: lower 4 bits = mode, upper 4 bits = smoothness
-    active_settings.aftertouch_mode = aftertouch_mode & 0x0F;
-    active_settings.aftertouch_smoothness = (aftertouch_mode >> 4) & 0x0F;
+    active_settings.aftertouch_mode = aftertouch_mode;
     active_settings.aftertouch_cc = aftertouch_cc;
     active_settings.vibrato_sensitivity = vibrato_sensitivity;
     active_settings.vibrato_decay_time = vibrato_decay_time;
@@ -1245,6 +1241,15 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
     uint8_t midi_threshold = (per_key_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
     uint8_t analog_mode = active_settings.velocity_mode;
+
+    // When aftertouch is active, the retrigger byte is repurposed as smoothness (0-100%).
+    // Retrigger is disabled when any aftertouch mode is enabled.
+    uint8_t aftertouch_smoothness = 0;
+    if (active_settings.aftertouch_mode > 0) {
+        aftertouch_smoothness = zone_retrigger_distance;  // 0-100%
+        if (aftertouch_smoothness > 100) aftertouch_smoothness = 100;
+        zone_retrigger_distance = 0;  // Disable retrigger
+    }
 
     // Convert retrigger_distance (0-20 = 0-2.0mm in 0.1mm steps) to travel units
     // Travel units: 240 = full travel (~4mm), so 1mm ≈ 60 units
@@ -1828,13 +1833,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
         }
 
-        // Apply EMA smoothing: smoothed = (smoothed * S + raw * (16 - S)) >> 4
-        // S=0: no smoothing, S=15: very heavy smoothing (~94% previous retained)
+        // Apply EMA smoothing: smoothed = (smoothed * S + raw * (100 - S)) / 100
+        // S=0: no smoothing (instant), S=100: maximum smoothing (never changes)
+        // Smoothness comes from zone's retrigger_distance byte when aftertouch is active
         if (send_aftertouch) {
-            uint8_t smoothness = active_settings.aftertouch_smoothness;
-            if (smoothness > 0) {
-                state->smoothed_aftertouch = (uint8_t)(((uint16_t)state->smoothed_aftertouch * smoothness +
-                                                         (uint16_t)aftertouch_value * (16 - smoothness)) >> 4);
+            if (aftertouch_smoothness > 0) {
+                state->smoothed_aftertouch = (uint8_t)(((uint16_t)state->smoothed_aftertouch * aftertouch_smoothness +
+                                                         (uint16_t)aftertouch_value * (100 - aftertouch_smoothness)) / 100);
             } else {
                 state->smoothed_aftertouch = aftertouch_value;
             }

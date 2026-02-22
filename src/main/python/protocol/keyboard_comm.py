@@ -1815,8 +1815,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'vel_speed': response[9],
                 'flags': flags,
                 'use_per_key_velocity_curve': (flags & 0x08) != 0,
-                'aftertouch_mode': response[11] & 0x0F,
-                'aftertouch_smoothness': (response[11] >> 4) & 0x0F,
+                'aftertouch_mode': response[11],
                 'aftertouch_cc': response[12],
                 'vibrato_sensitivity': response[13],
                 'vibrato_decay_time': vibrato_decay_time
@@ -2053,10 +2052,8 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         fast = int(zone.get('fast_press_time', 20))
         data.append(fast & 0xFF)
         data.append((fast >> 8) & 0xFF)
-        # Bitpack: lower 4 bits = mode, upper 4 bits = smoothness
-        at_mode = int(zone.get('aftertouch_mode', 0)) & 0x0F
-        at_smooth = (int(zone.get('aftertouch_smoothness', 0)) & 0x0F) << 4
-        data.append((at_smooth | at_mode) & 0xFF)
+        at_mode = int(zone.get('aftertouch_mode', 0)) & 0xFF
+        data.append(at_mode)
         data.append(int(zone.get('aftertouch_cc', 255)) & 0xFF)
         data.append(int(zone.get('vibrato_sensitivity', 50)) & 0xFF)
         vib = int(zone.get('vibrato_decay', 10))
@@ -2066,7 +2063,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         data.append(flags)
         data.append(int(zone.get('actuation_point', 20)) & 0xFF)
         data.append(int(zone.get('speed_peak_ratio', 50)) & 0xFF)
-        data.append(int(zone.get('retrigger_distance', 0)) & 0xFF)
+        # Dual-use byte: smoothness (0-100) when aftertouch active, retrigger (0-20) when off
+        if at_mode > 0:
+            data.append(int(zone.get('aftertouch_smoothness', 0)) & 0xFF)
+        else:
+            data.append(int(zone.get('retrigger_distance', 0)) & 0xFF)
         return data
 
     def set_velocity_preset(self, slot, points, name, velocity_min=1, velocity_max=127,
@@ -2090,7 +2091,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             slow_press_time: Slow press threshold in ms (50-500) for base zone
             fast_press_time: Fast press threshold in ms (5-100) for base zone
             aftertouch_mode: 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
-            aftertouch_smoothness: EMA smoothing level (0-15, bitpacked into upper 4 bits of aftertouch_mode byte)
+            aftertouch_smoothness: EMA smoothing level (0-100%), shares retrigger byte in protocol
             aftertouch_cc: CC number (0-127) or 255 for poly AT only
             vibrato_sensitivity: Percentage (0-100, 100% = 30% effective)
             vibrato_decay: ms per unit of aftertouch decay (0-50)
@@ -2206,15 +2207,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             'velocity_max': data[offset + 9],
             'slow_press_time': data[offset + 10] | (data[offset + 11] << 8),
             'fast_press_time': data[offset + 12] | (data[offset + 13] << 8),
-            'aftertouch_mode': data[offset + 14] & 0x0F,
-            'aftertouch_smoothness': (data[offset + 14] >> 4) & 0x0F,
+            'aftertouch_mode': data[offset + 14],
             'aftertouch_cc': data[offset + 15],
             'vibrato_sensitivity': data[offset + 16],
             'vibrato_decay': data[offset + 17] | (data[offset + 18] << 8),
             'actuation_override': (data[offset + 19] & 0x01) != 0,
             'actuation_point': data[offset + 20],
             'speed_peak_ratio': data[offset + 21],
-            'retrigger_distance': data[offset + 22]
+            # Dual-use byte: smoothness when aftertouch active, retrigger when off
+            'aftertouch_smoothness': data[offset + 22] if data[offset + 14] > 0 else 0,
+            'retrigger_distance': data[offset + 22] if data[offset + 14] == 0 else 0
         }
 
     def get_velocity_preset(self, slot):

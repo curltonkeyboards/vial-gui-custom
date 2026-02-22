@@ -502,7 +502,7 @@ typedef struct {
     uint8_t flags;             // 1 byte: bit 0 = actuation_override_enabled for this zone
     uint8_t actuation_point;   // 1 byte: 0-40 = 0.0-4.0mm in 0.1mm steps
     uint8_t speed_peak_ratio;  // 1 byte: 0-100 = ratio of speed to peak for velocity
-    uint8_t retrigger_distance; // 1 byte: 0=off, 5-20 = 0.5-2.0mm retrigger distance
+    uint8_t retrigger_distance; // 1 byte: dual use - when aftertouch_mode==0: retrigger (0=off, 5-20); when aftertouch_mode>0: smoothness (0-100%)
 } zone_settings_t;
 
 // Velocity Preset (90 bytes each)
