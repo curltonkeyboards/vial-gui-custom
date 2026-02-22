@@ -148,6 +148,7 @@ typedef struct {
     uint8_t zone_type;           // Zone type: ZONE_TYPE_BASE, ZONE_TYPE_KEYSPLIT, or ZONE_TYPE_TRIPLESPLIT
     bool pressed;
     bool was_pressed;
+    bool note_active;            // True when note is sounding (accounts for velocity mode + sustain)
 
     // Mode 1: Peak travel at apex
     uint8_t peak_travel;
@@ -182,12 +183,15 @@ typedef struct {
 
     // Aftertouch
     uint8_t last_aftertouch;
+    uint8_t smoothed_aftertouch; // EMA-smoothed aftertouch value for output
     uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
     uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
 
-    // Vibrato decay tracking
-    uint8_t vibrato_value;       // Current vibrato value (for decay)
+    // Vibrato tracking (leaky integrator)
+    uint8_t vibrato_value;       // Current vibrato accumulator (0-127)
     uint16_t vibrato_last_time;  // Last time vibrato was updated (for decay calculation)
+    uint8_t vibrato_last_travel; // Last travel value for vibrato delta (independent of velocity mode)
+    uint16_t vibrato_decay_accum; // Sub-unit decay accumulator for smooth "lose 1 every X ms"
 } midi_key_state_t;
 
 // ============================================================================
@@ -337,12 +341,14 @@ static uint8_t cached_layer_settings_layer = 0xFF;
 static struct {
     uint8_t velocity_mode;
     uint8_t velocity_speed_scale;
-    // Per-layer aftertouch settings
-    uint8_t aftertouch_mode;
+    uint8_t aftertouch_mode;       // 0=Off, 1-8 = various modes
     uint8_t aftertouch_cc;
     uint8_t vibrato_sensitivity;
     uint16_t vibrato_decay_time;
 } active_settings;
+
+// Global CC aftertouch tracking: CC sends the max value across all active keys
+static uint8_t last_sent_cc_value = 0;
 
 // ============================================================================
 // KEY TYPE CACHE (eliminates EEPROM reads in scan loop)
@@ -1236,6 +1242,15 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     uint8_t midi_threshold = (per_key_actuation * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
     uint8_t analog_mode = active_settings.velocity_mode;
 
+    // When aftertouch is active, the retrigger byte is repurposed as smoothness (0-100%).
+    // Retrigger is disabled when any aftertouch mode is enabled.
+    uint8_t aftertouch_smoothness = 0;
+    if (active_settings.aftertouch_mode > 0) {
+        aftertouch_smoothness = zone_retrigger_distance;  // 0-100%
+        if (aftertouch_smoothness > 100) aftertouch_smoothness = 100;
+        zone_retrigger_distance = 0;  // Disable retrigger
+    }
+
     // Convert retrigger_distance (0-20 = 0-2.0mm in 0.1mm steps) to travel units
     // Travel units: 240 = full travel (~4mm), so 1mm ≈ 60 units
     // retrigger_distance / 10.0 = mm, mm * 60 = travel units
@@ -1694,9 +1709,41 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         if (state->midi_note > 127) state->midi_note = 127;
     }
 
+    // Determine if the note is actually active (matches velocity mode logic from matrix scan)
+    // This is used for aftertouch: we want aftertouch while the note is sounding,
+    // not just while the key is below the actuation point.
+    bool note_is_active;
+    switch (analog_mode) {
+        case 0:  // Fixed
+            note_is_active = pressed && (travel >= midi_threshold);
+            break;
+        case 1:  // Peak
+        case 3:  // Speed+Peak
+            note_is_active = state->send_on_release;
+            break;
+        case 2:  // Speed
+            note_is_active = (travel >= midi_threshold) && state->velocity_captured;
+            break;
+        default:
+            note_is_active = pressed;
+            break;
+    }
+
+    // Also account for sustain: if sustain is held and note was active, keep it active
+    // Odd modes (1,3,5,7) have sustain suppression; even NS modes (2,4,6,8) do not
+    if ((active_settings.aftertouch_mode & 1) &&
+        get_live_sustain_state() && state->note_active) {
+        note_is_active = true;
+    }
+
+    // Track note_active for sustain hold across cycles
+    bool was_note_active = state->note_active;
+    state->note_active = note_is_active;
+
     // Aftertouch handling - now sends polyphonic aftertouch + optional CC
-    // Uses per-key actuation from cache for threshold
-    if (active_settings.aftertouch_mode > 0 && pressed) {
+    // Uses note_is_active instead of raw pressed so aftertouch tracks full key travel
+    // while the note is sounding (not just while below actuation point)
+    if (active_settings.aftertouch_mode > 0 && note_is_active) {
         uint8_t aftertouch_value = 0;
         bool send_aftertouch = false;
 
@@ -1704,22 +1751,24 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         uint8_t per_key_act = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
         uint8_t normal_threshold = (per_key_act * FULL_TRAVEL_UNIT * TRAVEL_SCALE) / 255;
 
+        // Mode numbering: odd = sustain suppression, even = no suppression (NS)
+        // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS),
+        // 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
         switch (active_settings.aftertouch_mode) {
-            case 1:  // Reverse
-                if (aftertouch_pedal_active) {
-                    aftertouch_value = 127 - ((travel * 127) / 240);
-                    send_aftertouch = true;
-                }
+            case 1:  // Bottom-out (sustain suppression)
+            case 2:  // Bottom-out (NS)
+                aftertouch_value = (travel * 127) / 240;
+                send_aftertouch = true;
                 break;
 
-            case 2:  // Bottom-out
-                if (aftertouch_pedal_active) {
-                    aftertouch_value = (travel * 127) / 240;
-                    send_aftertouch = true;
-                }
+            case 3:  // Reverse (sustain suppression)
+            case 4:  // Reverse (NS)
+                aftertouch_value = 127 - ((travel * 127) / 240);
+                send_aftertouch = true;
                 break;
 
-            case 3:  // Post-actuation
+            case 5:  // Post-actuation (sustain suppression)
+            case 6:  // Post-actuation (NS)
                 if (travel >= normal_threshold) {
                     uint8_t additional_travel = travel - normal_threshold;
                     uint8_t range = 240 - normal_threshold;
@@ -1730,83 +1779,125 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 }
                 break;
 
-            case 4:  // Vibrato with sensitivity and decay
-                if (travel >= normal_threshold) {
-                    uint16_t time_delta = now - state->last_time;
-                    uint8_t travel_delta = abs((int)travel - (int)state->last_travel);
+            case 7:  // Vibrato (sustain suppression)
+            case 8:  // Vibrato (NS)
+            {
+                // Leaky integrator: accumulate travel deltas, constantly drain
+                // Only upward travel (pressing deeper) contributes to vibrato
+                // Uses dedicated vibrato_last_travel (independent of velocity mode's last_travel)
+                int travel_diff = (int)travel - (int)state->vibrato_last_travel;
+                uint8_t raw_delta = (travel_diff > 0) ? (uint8_t)travel_diff : 0;
+                state->vibrato_last_travel = travel;
 
-                    // Calculate new vibrato value from movement
-                    uint8_t new_vibrato = 0;
-                    if (time_delta > 0 && travel_delta > 0) {
-                        // Apply sensitivity scaling (50-200, where 100 = normal)
-                        uint16_t sensitivity = active_settings.vibrato_sensitivity;
-                        if (sensitivity < 50) sensitivity = 50;
-                        if (sensitivity > 200) sensitivity = 200;
+                // Noise floor: ignore small deltas (~20 ADC counts normalized)
+                if (raw_delta >= 5) {
+                    // Apply sensitivity scaling (0-100 from GUI, where 100% = 30% effective)
+                    // This prevents a single keypress from maxing out the accumulator
+                    uint16_t sensitivity = active_settings.vibrato_sensitivity;
+                    if (sensitivity > 100) sensitivity = 100;
 
-                        // movement_speed with sensitivity: (travel_delta * sensitivity) / time_delta
-                        uint16_t movement_speed = ((uint16_t)travel_delta * sensitivity) / time_delta;
-                        new_vibrato = (movement_speed > 127) ? 127 : (uint8_t)movement_speed;
-                    }
+                    uint16_t scaled_delta = ((uint32_t)raw_delta * sensitivity * 30) / 10000;
 
-                    // Apply decay to current vibrato value
-                    uint16_t decay_time = active_settings.vibrato_decay_time;
-                    if (decay_time > 0 && state->vibrato_value > 0) {
-                        // Calculate how much to decay based on time elapsed
-                        uint16_t decay_elapsed = now - state->vibrato_last_time;
-                        // Linear decay: reduce by (127 * elapsed_ms / decay_time) per cycle
-                        uint16_t decay_amount = ((uint32_t)127 * decay_elapsed) / decay_time;
-                        if (decay_amount >= state->vibrato_value) {
+                    // Add to accumulator, clamp at 127
+                    uint16_t new_val = (uint16_t)state->vibrato_value + scaled_delta;
+                    state->vibrato_value = (new_val > 127) ? 127 : (uint8_t)new_val;
+                }
+
+                // Constant decay: lose 1 aftertouch unit every vibrato_decay_time ms
+                uint16_t decay_time = active_settings.vibrato_decay_time;
+                if (decay_time > 0 && state->vibrato_value > 0) {
+                    uint16_t elapsed = now - state->vibrato_last_time;
+                    state->vibrato_decay_accum += elapsed;
+
+                    if (state->vibrato_decay_accum >= decay_time) {
+                        uint16_t units_to_decay = state->vibrato_decay_accum / decay_time;
+                        state->vibrato_decay_accum %= decay_time;
+
+                        if (units_to_decay >= state->vibrato_value) {
                             state->vibrato_value = 0;
                         } else {
-                            state->vibrato_value -= decay_amount;
-                        }
-                    } else if (decay_time == 0) {
-                        // Instant decay when no movement
-                        if (new_vibrato == 0) {
-                            state->vibrato_value = 0;
+                            state->vibrato_value -= (uint8_t)units_to_decay;
                         }
                     }
-
-                    // Take the max of new vibrato and decayed value
-                    if (new_vibrato > state->vibrato_value) {
-                        state->vibrato_value = new_vibrato;
+                } else if (decay_time == 0) {
+                    // Instant decay: no upward movement = immediate zero
+                    if (raw_delta == 0) {
+                        state->vibrato_value = 0;
                     }
-
-                    state->vibrato_last_time = now;
-                    aftertouch_value = state->vibrato_value;
-                    send_aftertouch = true;
-                } else {
-                    // Below threshold - decay to zero
-                    state->vibrato_value = 0;
-                    state->vibrato_last_time = now;
                 }
+
+                state->vibrato_last_time = now;
+                aftertouch_value = state->vibrato_value;
+                send_aftertouch = true;
                 break;
+            }
         }
 
-        if (send_aftertouch && abs((int)aftertouch_value - (int)state->last_aftertouch) > 2) {
-            #ifdef MIDI_ENABLE
-            // Always send polyphonic aftertouch (per-note pressure)
-            midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, aftertouch_value);
-
-            // Optionally also send CC if aftertouch_cc is not "off" (255)
-            if (active_settings.aftertouch_cc != 255) {
-                midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, aftertouch_value);
+        // Apply EMA smoothing: smoothed = (smoothed * S + raw * (100 - S)) / 100
+        // S=0: no smoothing (instant), S=100: maximum smoothing (never changes)
+        // Smoothness comes from zone's retrigger_distance byte when aftertouch is active
+        if (send_aftertouch) {
+            if (aftertouch_smoothness > 0) {
+                state->smoothed_aftertouch = (uint8_t)(((uint16_t)state->smoothed_aftertouch * aftertouch_smoothness +
+                                                         (uint16_t)aftertouch_value * (100 - aftertouch_smoothness)) / 100);
+            } else {
+                state->smoothed_aftertouch = aftertouch_value;
             }
 
-            state->last_aftertouch = aftertouch_value;
+            #ifdef MIDI_ENABLE
+            if (active_settings.aftertouch_cc != 255) {
+                // CC mode: store smoothed value, then find global max
+                // last_aftertouch holds the per-key smoothed value for max lookup
+                state->last_aftertouch = state->smoothed_aftertouch;
+
+                uint8_t max_at = 0;
+                for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
+                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
+                        max_at = midi_key_states[i].last_aftertouch;
+                    }
+                }
+                if (max_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
+                    last_sent_cc_value = max_at;
+                }
+            } else {
+                // Poly AT mode: send per-note smoothed aftertouch if changed (> 2 hysteresis)
+                // last_aftertouch tracks what was last sent for hysteresis comparison
+                if (abs((int)state->smoothed_aftertouch - (int)state->last_aftertouch) > 2) {
+                    midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, state->smoothed_aftertouch);
+                    state->last_aftertouch = state->smoothed_aftertouch;
+                }
+            }
             #endif
         }
-    } else if (!pressed && state->was_pressed) {
-        // Key released - send aftertouch reset (value 0) for all modes
+    } else if (!note_is_active && was_note_active) {
+        // Note stopped sounding - reset this key's aftertouch
         if (active_settings.aftertouch_mode > 0 && state->last_aftertouch > 0) {
+            state->last_aftertouch = 0;
+            state->smoothed_aftertouch = 0;
+
             #ifdef MIDI_ENABLE
-            midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             if (active_settings.aftertouch_cc != 255) {
-                midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, 0);
+                // CC mode: recompute global max now that this key is at 0
+                uint8_t max_at = 0;
+                for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
+                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
+                        max_at = midi_key_states[i].last_aftertouch;
+                    }
+                }
+                if (max_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
+                    last_sent_cc_value = max_at;
+                }
+            } else {
+                // Poly AT mode: send per-note reset
+                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             }
             #endif
+        } else {
+            state->last_aftertouch = 0;
+            state->smoothed_aftertouch = 0;
         }
-        state->last_aftertouch = 0;
         state->vibrato_value = 0;
     }
 }
@@ -2108,8 +2199,11 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                         break;
                 }
 
-                if ((active_settings.aftertouch_mode == 1 || active_settings.aftertouch_mode == 2) &&
-                    aftertouch_pedal_active && state->was_pressed) {
+                // Odd modes (1,3,5,7): sustain suppresses note-on/off - keep key pressed while sustain active
+                // Uses note_active (set in process_midi_key_analog) which persists across cycles
+                // unlike was_pressed which only tracks raw is_pressed for one cycle
+                if ((active_settings.aftertouch_mode & 1) &&
+                    get_live_sustain_state() && state->note_active) {
                     pressed = true;
                 }
             } else {

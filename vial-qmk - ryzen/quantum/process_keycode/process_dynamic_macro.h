@@ -337,10 +337,10 @@ typedef struct {
 	bool truesustain;
     // Global MIDI Velocity/Aftertouch Settings (not per-layer)
     uint8_t velocity_mode;                // 0=Fixed, 1=Peak, 2=Speed, 3=Speed+Peak
-    uint8_t aftertouch_mode;              // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+    uint8_t aftertouch_mode;              // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
     uint8_t aftertouch_cc;                // 0-127=CC number, 255=off (poly AT only)
-    uint8_t vibrato_sensitivity;          // 50-200 (percentage, 100=normal)
-    uint16_t vibrato_decay_time;          // 0-2000 (milliseconds)
+    uint8_t vibrato_sensitivity;          // 0-100 (percentage, 100% GUI = 30% effective)
+    uint16_t vibrato_decay_time;          // 0-50 (ms per unit decay)
     uint16_t min_press_time;              // 50-500ms (slow press threshold for min velocity)
     uint16_t max_press_time;              // 1-100ms (fast press threshold for max velocity)
     // Base/Main MIDI HE Velocity curve and range

@@ -495,14 +495,14 @@ typedef struct {
     uint8_t velocity_max;      // 1 byte: Maximum MIDI velocity (1-127)
     uint16_t slow_press_time;  // 2 bytes: Slow press threshold ms (50-500)
     uint16_t fast_press_time;  // 2 bytes: Fast press threshold ms (5-100)
-    uint8_t aftertouch_mode;   // 1 byte: 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+    uint8_t aftertouch_mode;   // 1 byte: 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
     uint8_t aftertouch_cc;     // 1 byte: 0-127=CC number, 255=poly AT only
-    uint8_t vibrato_sensitivity; // 1 byte: 50-200 (percentage)
-    uint16_t vibrato_decay;    // 2 bytes: 0-2000ms decay time
+    uint8_t vibrato_sensitivity; // 1 byte: 0-100 (percentage, 100% GUI = 30% effective)
+    uint16_t vibrato_decay;    // 2 bytes: 0-50ms per unit decay
     uint8_t flags;             // 1 byte: bit 0 = actuation_override_enabled for this zone
     uint8_t actuation_point;   // 1 byte: 0-40 = 0.0-4.0mm in 0.1mm steps
     uint8_t speed_peak_ratio;  // 1 byte: 0-100 = ratio of speed to peak for velocity
-    uint8_t retrigger_distance; // 1 byte: 0=off, 5-20 = 0.5-2.0mm retrigger distance
+    uint8_t retrigger_distance; // 1 byte: dual use - when aftertouch_mode==0: retrigger (0=off, 5-20); when aftertouch_mode>0: smoothness (0-100%)
 } zone_settings_t;
 
 // Velocity Preset (90 bytes each)

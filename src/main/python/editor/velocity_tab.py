@@ -279,10 +279,11 @@ class VelocityTab(BasicEditor):
         self.global_midi_settings = {
             'velocity_min': 1,          # 1-127 (minimum MIDI velocity)
             'velocity_max': 127,        # 1-127 (maximum MIDI velocity)
-            'aftertouch_mode': 0,       # 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+            'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
+            'aftertouch_smoothness': 0, # 0-100% EMA smoothing (shares retrigger byte when aftertouch active)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
-            'vibrato_sensitivity': 100, # 50-200 (percentage)
-            'vibrato_decay_time': 200,  # 0-2000 (milliseconds)
+            'vibrato_sensitivity': 50,  # 0-100 (percentage, 100% = 30% effective)
+            'vibrato_decay_time': 10,   # 0-50 (ms per unit decay)
             'min_press_time': 200,      # 50-500ms (slow press threshold)
             'max_press_time': 20,       # 5-100ms (fast press threshold)
             'actuation_override': False, # Override per-key actuation for MIDI keys
@@ -295,8 +296,8 @@ class VelocityTab(BasicEditor):
             # Keysplit zone settings (used when keysplit_enabled is True)
             'keysplit_zone': {
                 'velocity_min': 1, 'velocity_max': 127,
-                'aftertouch_mode': 0, 'aftertouch_cc': 255,
-                'vibrato_sensitivity': 100, 'vibrato_decay_time': 200,
+                'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+                'vibrato_sensitivity': 50, 'vibrato_decay_time': 10,
                 'min_press_time': 200, 'max_press_time': 20,
                 'actuation_override': False, 'actuation_point': 20,
                 'speed_peak_ratio': 50, 'retrigger_distance': 0,
@@ -305,8 +306,8 @@ class VelocityTab(BasicEditor):
             # Triplesplit zone settings (used when triplesplit_enabled is True)
             'triplesplit_zone': {
                 'velocity_min': 1, 'velocity_max': 127,
-                'aftertouch_mode': 0, 'aftertouch_cc': 255,
-                'vibrato_sensitivity': 100, 'vibrato_decay_time': 200,
+                'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+                'vibrato_sensitivity': 50, 'vibrato_decay_time': 10,
                 'min_press_time': 200, 'max_press_time': 20,
                 'actuation_override': False, 'actuation_point': 20,
                 'speed_peak_ratio': 50, 'retrigger_distance': 0,
@@ -455,9 +456,11 @@ class VelocityTab(BasicEditor):
         mode_layout.addWidget(self.create_help_label(
             "Aftertouch pressure behavior:\n"
             "Off: No aftertouch\n"
-            "Reverse: Pressure on key release\n"
-            "Bottom-Out: Pressure when fully pressed\n"
-            "Post-Actuation: Pressure after actuation\n"
+            "Bottom-Out: Full travel 0-127, sustain suppresses note-on/off\n"
+            "Reverse: Full travel 127-0, sustain suppresses note-on/off\n"
+            "Post-Actuation: Pressure after actuation point\n"
+            "Bottom-Out (NS): Full travel 0-127, no sustain suppression\n"
+            "Reverse (NS): Full travel 127-0, no sustain suppression\n"
             "Vibrato: Wiggle key for aftertouch"
         ))
         mode_label = QLabel(tr("VelocityTab", "Aftertouch:"))
@@ -471,14 +474,47 @@ class VelocityTab(BasicEditor):
         controls['aftertouch_mode_combo'].lineEdit().setReadOnly(True)
         controls['aftertouch_mode_combo'].lineEdit().setAlignment(Qt.AlignCenter)
         controls['aftertouch_mode_combo'].addItem("Off", 0)
-        controls['aftertouch_mode_combo'].addItem("Reverse", 1)
-        controls['aftertouch_mode_combo'].addItem("Bottom-Out", 2)
-        controls['aftertouch_mode_combo'].addItem("Post-Actuation", 3)
-        controls['aftertouch_mode_combo'].addItem("Vibrato", 4)
+        controls['aftertouch_mode_combo'].addItem("Bottom-Out", 1)
+        controls['aftertouch_mode_combo'].addItem("Bottom-Out (NS)", 2)
+        controls['aftertouch_mode_combo'].addItem("Reverse", 3)
+        controls['aftertouch_mode_combo'].addItem("Reverse (NS)", 4)
+        controls['aftertouch_mode_combo'].addItem("Post-Actuation", 5)
+        controls['aftertouch_mode_combo'].addItem("Post-Actuation (NS)", 6)
+        controls['aftertouch_mode_combo'].addItem("Vibrato", 7)
+        controls['aftertouch_mode_combo'].addItem("Vibrato (NS)", 8)
         controls['aftertouch_mode_combo'].setCurrentIndex(0)
         controls['aftertouch_mode_combo'].setProperty('zone', zone_name)
         mode_layout.addWidget(controls['aftertouch_mode_combo'], 1)
         layout.addLayout(mode_layout)
+
+        # Aftertouch Smoothness slider (shares retrigger byte, visible when aftertouch is on)
+        controls['smoothness_widget'] = QWidget()
+        smooth_layout = QHBoxLayout()
+        smooth_layout.setContentsMargins(0, 0, 0, 0)
+        controls['smoothness_widget'].setLayout(smooth_layout)
+
+        smooth_layout.addWidget(self.create_help_label(
+            "EMA smoothing filter for aftertouch output.\n"
+            "0% = instant (no smoothing)\n"
+            "100% = very smooth (slow response)"))
+        smooth_label = QLabel(tr("VelocityTab", "Smoothness:"))
+        smooth_label.setMinimumWidth(85)
+        smooth_layout.addWidget(smooth_label)
+
+        controls['smoothness_slider'] = QSlider(Qt.Horizontal)
+        controls['smoothness_slider'].setMinimum(0)
+        controls['smoothness_slider'].setMaximum(100)
+        controls['smoothness_slider'].setValue(0)
+        controls['smoothness_slider'].setProperty('zone', zone_name)
+        smooth_layout.addWidget(controls['smoothness_slider'], 1)
+
+        controls['smoothness_value'] = QLabel("0%")
+        controls['smoothness_value'].setMinimumWidth(40)
+        controls['smoothness_value'].setStyleSheet("QLabel { font-weight: bold; }")
+        smooth_layout.addWidget(controls['smoothness_value'])
+
+        layout.addWidget(controls['smoothness_widget'])
+        controls['smoothness_widget'].setVisible(False)
 
         # Aftertouch CC (hidden when aftertouch is Off)
         controls['aftertouch_cc_widget'] = QWidget()
@@ -514,19 +550,19 @@ class VelocityTab(BasicEditor):
         sens_layout.setContentsMargins(0, 0, 0, 0)
         controls['vibrato_sens_widget'].setLayout(sens_layout)
 
-        sens_layout.addWidget(self.create_help_label("Wiggle sensitivity.\n50%=Less, 200%=Very sensitive"))
+        sens_layout.addWidget(self.create_help_label("Wiggle sensitivity.\n0%=Off, 100%=Maximum"))
         sens_label = QLabel(tr("VelocityTab", "Vib Sens:"))
         sens_label.setMinimumWidth(85)
         sens_layout.addWidget(sens_label)
 
         controls['vibrato_sens_slider'] = QSlider(Qt.Horizontal)
-        controls['vibrato_sens_slider'].setMinimum(50)
-        controls['vibrato_sens_slider'].setMaximum(200)
-        controls['vibrato_sens_slider'].setValue(100)
+        controls['vibrato_sens_slider'].setMinimum(0)
+        controls['vibrato_sens_slider'].setMaximum(100)
+        controls['vibrato_sens_slider'].setValue(50)
         controls['vibrato_sens_slider'].setProperty('zone', zone_name)
         sens_layout.addWidget(controls['vibrato_sens_slider'], 1)
 
-        controls['vibrato_sens_value'] = QLabel("100%")
+        controls['vibrato_sens_value'] = QLabel("50%")
         controls['vibrato_sens_value'].setMinimumWidth(45)
         controls['vibrato_sens_value'].setStyleSheet("QLabel { font-weight: bold; }")
         sens_layout.addWidget(controls['vibrato_sens_value'])
@@ -540,19 +576,19 @@ class VelocityTab(BasicEditor):
         decay_layout.setContentsMargins(0, 0, 0, 0)
         controls['vibrato_decay_widget'].setLayout(decay_layout)
 
-        decay_layout.addWidget(self.create_help_label("How long aftertouch lasts after wiggle stops."))
+        decay_layout.addWidget(self.create_help_label("Decay rate: ms per unit of aftertouch lost.\n0=Instant, higher=slower decay"))
         decay_label = QLabel(tr("VelocityTab", "Vib Decay:"))
         decay_label.setMinimumWidth(85)
         decay_layout.addWidget(decay_label)
 
         controls['vibrato_decay_slider'] = QSlider(Qt.Horizontal)
         controls['vibrato_decay_slider'].setMinimum(0)
-        controls['vibrato_decay_slider'].setMaximum(2000)
-        controls['vibrato_decay_slider'].setValue(200)
+        controls['vibrato_decay_slider'].setMaximum(50)
+        controls['vibrato_decay_slider'].setValue(10)
         controls['vibrato_decay_slider'].setProperty('zone', zone_name)
         decay_layout.addWidget(controls['vibrato_decay_slider'], 1)
 
-        controls['vibrato_decay_value'] = QLabel("200ms")
+        controls['vibrato_decay_value'] = QLabel("10ms")
         controls['vibrato_decay_value'].setMinimumWidth(50)
         controls['vibrato_decay_value'].setStyleSheet("QLabel { font-weight: bold; }")
         decay_layout.addWidget(controls['vibrato_decay_value'])
@@ -659,6 +695,12 @@ class VelocityTab(BasicEditor):
         controls['retrigger_checkbox'].setChecked(False)
         controls['retrigger_checkbox'].setProperty('zone', zone_name)
         retrigger_layout.addWidget(controls['retrigger_checkbox'])
+
+        controls['retrigger_disabled_label'] = QLabel("(disabled when aftertouch is enabled)")
+        controls['retrigger_disabled_label'].setStyleSheet("QLabel { color: #888; font-style: italic; font-size: 10px; }")
+        controls['retrigger_disabled_label'].setVisible(False)
+        retrigger_layout.addWidget(controls['retrigger_disabled_label'])
+
         retrigger_layout.addStretch()
         layout.addLayout(retrigger_layout)
 
@@ -732,15 +774,29 @@ class VelocityTab(BasicEditor):
         # Aftertouch mode
         def on_aftertouch_mode_changed(index):
             mode = controls['aftertouch_mode_combo'].currentData()
-            is_vibrato = (mode == 4)
+            is_vibrato = (mode in (7, 8))
             is_off = (mode == 0)
             controls['vibrato_sens_widget'].setVisible(is_vibrato)
             controls['vibrato_decay_widget'].setVisible(is_vibrato)
-            # Show aftertouch CC only when aftertouch is enabled
             controls['aftertouch_cc_widget'].setVisible(not is_off)
+            # Smoothness replaces retrigger when aftertouch is active
+            controls['smoothness_widget'].setVisible(not is_off)
+            # Disable retrigger when aftertouch is enabled
+            controls['retrigger_checkbox'].setEnabled(is_off)
+            controls['retrigger_disabled_label'].setVisible(not is_off)
+            if not is_off:
+                controls['retrigger_checkbox'].setChecked(False)
+                controls['retrigger_widget'].setVisible(False)
             set_setting('aftertouch_mode', mode)
 
         controls['aftertouch_mode_combo'].currentIndexChanged.connect(on_aftertouch_mode_changed)
+
+        # Aftertouch smoothness (0-100%, shares retrigger byte in protocol)
+        def on_smoothness_changed(value):
+            controls['smoothness_value'].setText(f"{value}%")
+            set_setting('aftertouch_smoothness', value)
+
+        controls['smoothness_slider'].valueChanged.connect(on_smoothness_changed)
 
         # Aftertouch CC
         def on_aftertouch_cc_changed(index):
@@ -1016,6 +1072,9 @@ class VelocityTab(BasicEditor):
         self.vibrato_decay_widget = base_controls['vibrato_decay_widget']
         self.vibrato_decay_slider = base_controls['vibrato_decay_slider']
         self.vibrato_decay_value = base_controls['vibrato_decay_value']
+        self.smoothness_widget = base_controls['smoothness_widget']
+        self.smoothness_slider = base_controls['smoothness_slider']
+        self.smoothness_value = base_controls['smoothness_value']
         self.actuation_override_checkbox = base_controls['actuation_override_checkbox']
         self.actuation_point_widget = base_controls['actuation_point_widget']
         self.actuation_point_slider = base_controls['actuation_point_slider']
@@ -1023,6 +1082,7 @@ class VelocityTab(BasicEditor):
         self.speed_peak_slider = base_controls['speed_peak_slider']
         self.speed_peak_value = base_controls['speed_peak_value']
         self.retrigger_checkbox = base_controls['retrigger_checkbox']
+        self.retrigger_disabled_label = base_controls['retrigger_disabled_label']
         self.retrigger_widget = base_controls['retrigger_widget']
         self.retrigger_slider = base_controls['retrigger_slider']
         self.retrigger_value = base_controls['retrigger_value']
@@ -1187,11 +1247,12 @@ class VelocityTab(BasicEditor):
                 # Note: velocity_mode is fixed at Speed+Peak (3) and not configurable
                 aftertouch_mode = result.get('aftertouch_mode', 0)
                 self.global_midi_settings['aftertouch_mode'] = aftertouch_mode
+                # Note: aftertouch_smoothness comes from zone preset (retrigger byte), not layer actuation
                 aftertouch_cc = result.get('aftertouch_cc', 255)
                 self.global_midi_settings['aftertouch_cc'] = aftertouch_cc
-                vibrato_sens = result.get('vibrato_sensitivity', 100)
+                vibrato_sens = result.get('vibrato_sensitivity', 50)
                 self.global_midi_settings['vibrato_sensitivity'] = vibrato_sens
-                vibrato_decay = result.get('vibrato_decay_time', 200)
+                vibrato_decay = result.get('vibrato_decay_time', 10)
                 self.global_midi_settings['vibrato_decay_time'] = vibrato_decay
 
                 # Update UI from settings
@@ -1208,6 +1269,7 @@ class VelocityTab(BasicEditor):
         self.press_time_range_slider.blockSignals(True)
         self.aftertouch_mode_combo.blockSignals(True)
         self.aftertouch_cc_combo.blockSignals(True)
+        self.smoothness_slider.blockSignals(True)
         self.vibrato_sens_slider.blockSignals(True)
         self.vibrato_decay_slider.blockSignals(True)
 
@@ -1230,12 +1292,25 @@ class VelocityTab(BasicEditor):
                 self.aftertouch_mode_combo.setCurrentIndex(i)
                 break
 
-        # Show/hide vibrato controls and aftertouch CC
-        is_vibrato = (mode == 4)
+        # Show/hide vibrato controls, smoothness, and aftertouch CC
+        is_vibrato = (mode in (7, 8))
         is_off = (mode == 0)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
         self.aftertouch_cc_widget.setVisible(not is_off)
+        self.smoothness_widget.setVisible(not is_off)
+
+        # Disable retrigger when aftertouch is enabled
+        self.retrigger_checkbox.setEnabled(is_off)
+        self.retrigger_disabled_label.setVisible(not is_off)
+        if not is_off:
+            self.retrigger_checkbox.setChecked(False)
+            self.retrigger_widget.setVisible(False)
+
+        # Set smoothness
+        smoothness = settings.get('aftertouch_smoothness', 0)
+        self.smoothness_slider.setValue(smoothness)
+        self.smoothness_value.setText(f"{smoothness}%")
 
         # Set aftertouch CC
         cc = settings.get('aftertouch_cc', 255)
@@ -1245,11 +1320,11 @@ class VelocityTab(BasicEditor):
                 break
 
         # Set vibrato settings
-        sens = settings.get('vibrato_sensitivity', 100)
+        sens = settings.get('vibrato_sensitivity', 50)
         self.vibrato_sens_slider.setValue(sens)
         self.vibrato_sens_value.setText(f"{sens}%")
 
-        decay = settings.get('vibrato_decay_time', 200)
+        decay = settings.get('vibrato_decay_time', 10)
         self.vibrato_decay_slider.setValue(decay)
         self.vibrato_decay_value.setText(f"{decay}ms")
 
@@ -1258,17 +1333,26 @@ class VelocityTab(BasicEditor):
         self.press_time_range_slider.blockSignals(False)
         self.aftertouch_mode_combo.blockSignals(False)
         self.aftertouch_cc_combo.blockSignals(False)
+        self.smoothness_slider.blockSignals(False)
         self.vibrato_sens_slider.blockSignals(False)
         self.vibrato_decay_slider.blockSignals(False)
 
     def on_aftertouch_mode_changed(self, index):
-        """Handle aftertouch mode change - show/hide vibrato and CC controls"""
+        """Handle aftertouch mode change - show/hide vibrato, smoothness, and CC controls"""
         mode = self.aftertouch_mode_combo.currentData()
-        is_vibrato = (mode == 4)
+        is_vibrato = (mode in (7, 8))
         is_off = (mode == 0)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
         self.aftertouch_cc_widget.setVisible(not is_off)
+        # Smoothness replaces retrigger when aftertouch is active
+        self.smoothness_widget.setVisible(not is_off)
+        # Disable retrigger when aftertouch is enabled
+        self.retrigger_checkbox.setEnabled(is_off)
+        self.retrigger_disabled_label.setVisible(not is_off)
+        if not is_off:
+            self.retrigger_checkbox.setChecked(False)
+            self.retrigger_widget.setVisible(False)
         self.global_midi_settings['aftertouch_mode'] = mode
 
     def on_aftertouch_cc_changed(self, index):
@@ -1398,12 +1482,25 @@ class VelocityTab(BasicEditor):
                 controls['aftertouch_mode_combo'].setCurrentIndex(i)
                 break
 
-        # Show/hide vibrato controls and aftertouch CC based on mode
-        is_vibrato = (at_mode == 4)
+        # Show/hide vibrato controls, smoothness, and aftertouch CC based on mode
+        is_vibrato = (at_mode in (7, 8))
         is_off = (at_mode == 0)
         controls['vibrato_sens_widget'].setVisible(is_vibrato)
         controls['vibrato_decay_widget'].setVisible(is_vibrato)
         controls['aftertouch_cc_widget'].setVisible(not is_off)
+        controls['smoothness_widget'].setVisible(not is_off)
+
+        # Disable retrigger when aftertouch is enabled
+        controls['retrigger_checkbox'].setEnabled(is_off)
+        controls['retrigger_disabled_label'].setVisible(not is_off)
+        if not is_off:
+            controls['retrigger_checkbox'].setChecked(False)
+            controls['retrigger_widget'].setVisible(False)
+
+        # Update smoothness
+        smoothness = zone_data.get('aftertouch_smoothness', 0)
+        controls['smoothness_slider'].setValue(smoothness)
+        controls['smoothness_value'].setText(f"{smoothness}%")
 
         # Update aftertouch CC
         at_cc = zone_data.get('aftertouch_cc', 255)
@@ -1413,8 +1510,8 @@ class VelocityTab(BasicEditor):
                 break
 
         # Update vibrato settings
-        vib_sens = zone_data.get('vibrato_sensitivity', 100)
-        vib_decay = zone_data.get('vibrato_decay', zone_data.get('vibrato_decay_time', 200))
+        vib_sens = zone_data.get('vibrato_sensitivity', 50)
+        vib_decay = zone_data.get('vibrato_decay', zone_data.get('vibrato_decay_time', 10))
         controls['vibrato_sens_slider'].setValue(vib_sens)
         controls['vibrato_sens_value'].setText(f"{vib_sens}%")
         controls['vibrato_decay_slider'].setValue(vib_decay)
@@ -1551,56 +1648,56 @@ class VelocityTab(BasicEditor):
         0: {  # Softest
             'velocity_min': 1, 'velocity_max': 60,
             'slow_press_time': 100, 'fast_press_time': 1,
-            'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
         1: {  # Soft
             'velocity_min': 1, 'velocity_max': 90,
             'slow_press_time': 100, 'fast_press_time': 1,
-            'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
         2: {  # Linear
             'velocity_min': 1, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
-            'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
         3: {  # Hard
             'velocity_min': 30, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
-            'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
         4: {  # Hardest
             'velocity_min': 60, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
-            'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
         5: {  # Aggro
             'velocity_min': 80, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
-            'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
         6: {  # Digital
             'velocity_min': 127, 'velocity_max': 127,
             'slow_press_time': 100, 'fast_press_time': 1,
-            'aftertouch_mode': 0, 'aftertouch_cc': 255,
-            'vibrato_sensitivity': 100, 'vibrato_decay': 200,
+            'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+            'vibrato_sensitivity': 50, 'vibrato_decay': 10,
             'actuation_override': False, 'actuation_point': 20,
             'speed_peak_ratio': 50, 'retrigger_distance': 0,
         },
@@ -1620,6 +1717,7 @@ class VelocityTab(BasicEditor):
         self.global_midi_settings['min_press_time'] = zone_data['slow_press_time']
         self.global_midi_settings['max_press_time'] = zone_data['fast_press_time']
         self.global_midi_settings['aftertouch_mode'] = zone_data['aftertouch_mode']
+        self.global_midi_settings['aftertouch_smoothness'] = zone_data.get('aftertouch_smoothness', 0)
         self.global_midi_settings['aftertouch_cc'] = zone_data['aftertouch_cc']
         self.global_midi_settings['vibrato_sensitivity'] = zone_data['vibrato_sensitivity']
         self.global_midi_settings['vibrato_decay_time'] = zone_data['vibrato_decay']
@@ -1736,9 +1834,10 @@ class VelocityTab(BasicEditor):
                 self.global_midi_settings['min_press_time'] = base_zone.get('slow_press_time', 200)
                 self.global_midi_settings['max_press_time'] = base_zone.get('fast_press_time', 20)
                 self.global_midi_settings['aftertouch_mode'] = base_zone.get('aftertouch_mode', 0)
+                self.global_midi_settings['aftertouch_smoothness'] = base_zone.get('aftertouch_smoothness', 0)
                 self.global_midi_settings['aftertouch_cc'] = base_zone.get('aftertouch_cc', 255)
-                self.global_midi_settings['vibrato_sensitivity'] = base_zone.get('vibrato_sensitivity', 100)
-                self.global_midi_settings['vibrato_decay_time'] = base_zone.get('vibrato_decay', 200)
+                self.global_midi_settings['vibrato_sensitivity'] = base_zone.get('vibrato_sensitivity', 50)
+                self.global_midi_settings['vibrato_decay_time'] = base_zone.get('vibrato_decay', 10)
                 self.global_midi_settings['actuation_override'] = base_zone.get('actuation_override', False)
                 self.global_midi_settings['actuation_point'] = base_zone.get('actuation_point', 20)
                 self.global_midi_settings['speed_peak_ratio'] = base_zone.get('speed_peak_ratio', 50)
@@ -1771,6 +1870,7 @@ class VelocityTab(BasicEditor):
             'slow_press_time': controls['press_time_range_slider'].highValue(),  # slow is high value
             'fast_press_time': controls['press_time_range_slider'].lowValue(),   # fast is low value
             'aftertouch_mode': controls['aftertouch_mode_combo'].currentData(),
+            'aftertouch_smoothness': controls['smoothness_slider'].value(),
             'aftertouch_cc': controls['aftertouch_cc_combo'].currentData(),
             'vibrato_sensitivity': controls['vibrato_sens_slider'].value(),
             'vibrato_decay': controls['vibrato_decay_slider'].value(),
@@ -1828,9 +1928,10 @@ class VelocityTab(BasicEditor):
                 slow_press_time=settings.get('min_press_time', 200),
                 fast_press_time=settings.get('max_press_time', 20),
                 aftertouch_mode=settings.get('aftertouch_mode', 0),
+                aftertouch_smoothness=settings.get('aftertouch_smoothness', 0),
                 aftertouch_cc=settings.get('aftertouch_cc', 255),
-                vibrato_sensitivity=settings.get('vibrato_sensitivity', 100),
-                vibrato_decay=settings.get('vibrato_decay_time', 200),
+                vibrato_sensitivity=settings.get('vibrato_sensitivity', 50),
+                vibrato_decay=settings.get('vibrato_decay_time', 10),
                 actuation_override=settings.get('actuation_override', False),
                 actuation_point=settings.get('actuation_point', 20),
                 speed_peak_ratio=settings.get('speed_peak_ratio', 50),

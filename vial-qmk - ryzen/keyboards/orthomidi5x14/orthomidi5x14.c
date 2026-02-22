@@ -288,26 +288,26 @@ bool truesustain = false;
 uint8_t velocity_mode = 3;           // Fixed: Speed+Peak combined mode (legacy variable kept for compatibility)
 
 // BASE zone velocity settings
-uint8_t aftertouch_mode = 0;         // 0=Off, 1=Reverse, 2=Bottom-out, 3=Post-actuation, 4=Vibrato
+uint8_t aftertouch_mode = 0;         // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
 uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
-uint8_t vibrato_sensitivity = 100;   // 50-200 (percentage, 100=normal)
-uint16_t vibrato_decay_time = 200;   // 0-2000 (milliseconds)
+uint8_t vibrato_sensitivity = 50;    // 0-100 (percentage, GUI 100% = 30% effective)
+uint16_t vibrato_decay_time = 10;    // 0-50 (ms per 1 unit decay)
 uint16_t min_press_time = 200;       // 50-500ms (slow press threshold)
 uint16_t max_press_time = 20;        // 5-100ms (fast press threshold)
 
 // KEYSPLIT zone velocity settings
 uint8_t keysplit_aftertouch_mode = 0;
 uint8_t keysplit_aftertouch_cc = 255;
-uint8_t keysplit_vibrato_sensitivity = 100;
-uint16_t keysplit_vibrato_decay_time = 200;
+uint8_t keysplit_vibrato_sensitivity = 50;
+uint16_t keysplit_vibrato_decay_time = 10;
 uint16_t keysplit_min_press_time = 200;
 uint16_t keysplit_max_press_time = 20;
 
 // TRIPLESPLIT zone velocity settings
 uint8_t triplesplit_aftertouch_mode = 0;
 uint8_t triplesplit_aftertouch_cc = 255;
-uint8_t triplesplit_vibrato_sensitivity = 100;
-uint16_t triplesplit_vibrato_decay_time = 200;
+uint8_t triplesplit_vibrato_sensitivity = 50;
+uint16_t triplesplit_vibrato_decay_time = 10;
 uint16_t triplesplit_min_press_time = 200;
 uint16_t triplesplit_max_press_time = 20;
 bool keysplitmodifierheld = false;
@@ -2354,8 +2354,8 @@ void initialize_layer_actuations(void) {
         layer_actuations[i].flags = 0;              // All flags off
         layer_actuations[i].aftertouch_mode = 0;    // Off
         layer_actuations[i].aftertouch_cc = 255;    // Off (no CC)
-        layer_actuations[i].vibrato_sensitivity = 100;  // 100% (normal)
-        layer_actuations[i].vibrato_decay_time = 200;   // 200ms
+        layer_actuations[i].vibrato_sensitivity = 50;   // 50% (mid-range)
+        layer_actuations[i].vibrato_decay_time = 10;    // 10ms decay
         // Note: Rapidfire settings are now per-key in per_key_actuations
         // Note: Velocity curve/min/max settings and aftertouch are now global in keyboard_settings
     }
@@ -4385,8 +4385,8 @@ void velocity_preset_display_oled(void) {
     extern uint8_t aftertouch_mode;
     extern uint8_t aftertouch_cc;
     oled_set_cursor(0, 1);
-    const char* at_modes[] = {"Off", "Rev", "Bot", "Post", "Vib"};
-    const char* at_mode_str = (aftertouch_mode < 5) ? at_modes[aftertouch_mode] : "???";
+    const char* at_modes[] = {"Off", "Bot", "Rev", "Post", "BotN", "RevN", "Vib"};
+    const char* at_mode_str = (aftertouch_mode < 7) ? at_modes[aftertouch_mode] : "???";
     if (aftertouch_cc == 255) {
         snprintf(buf, 22, "AT:%s CC:PolyAT", at_mode_str);
     } else {
@@ -4738,8 +4738,8 @@ static void init_zone_defaults(zone_settings_t* zone) {
     zone->aftertouch_cc = 255;    // Poly AT only
 
     // Default vibrato settings
-    zone->vibrato_sensitivity = 100;  // 100%
-    zone->vibrato_decay = 200;        // 200ms
+    zone->vibrato_sensitivity = 50;   // 50%
+    zone->vibrato_decay = 10;         // 10ms
 
     // Default: no actuation override (use per-key settings)
     zone->flags = 0;
@@ -4875,7 +4875,7 @@ static const zone_settings_t factory_preset_zones[7] = {
         .velocity_min = 1, .velocity_max = 60,
         .slow_press_time = 100, .fast_press_time = 1,
         .aftertouch_mode = 0, .aftertouch_cc = 255,
-        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .vibrato_sensitivity = 50, .vibrato_decay = 10,
         .flags = 0, .actuation_point = 20,
         .speed_peak_ratio = 50, .retrigger_distance = 0,
     },
@@ -4884,7 +4884,7 @@ static const zone_settings_t factory_preset_zones[7] = {
         .velocity_min = 1, .velocity_max = 90,
         .slow_press_time = 100, .fast_press_time = 1,
         .aftertouch_mode = 0, .aftertouch_cc = 255,
-        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .vibrato_sensitivity = 50, .vibrato_decay = 10,
         .flags = 0, .actuation_point = 20,
         .speed_peak_ratio = 50, .retrigger_distance = 0,
     },
@@ -4893,7 +4893,7 @@ static const zone_settings_t factory_preset_zones[7] = {
         .velocity_min = 1, .velocity_max = 127,
         .slow_press_time = 100, .fast_press_time = 1,
         .aftertouch_mode = 0, .aftertouch_cc = 255,
-        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .vibrato_sensitivity = 50, .vibrato_decay = 10,
         .flags = 0, .actuation_point = 20,
         .speed_peak_ratio = 50, .retrigger_distance = 0,
     },
@@ -4902,7 +4902,7 @@ static const zone_settings_t factory_preset_zones[7] = {
         .velocity_min = 30, .velocity_max = 127,
         .slow_press_time = 100, .fast_press_time = 1,
         .aftertouch_mode = 0, .aftertouch_cc = 255,
-        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .vibrato_sensitivity = 50, .vibrato_decay = 10,
         .flags = 0, .actuation_point = 20,
         .speed_peak_ratio = 50, .retrigger_distance = 0,
     },
@@ -4911,7 +4911,7 @@ static const zone_settings_t factory_preset_zones[7] = {
         .velocity_min = 60, .velocity_max = 127,
         .slow_press_time = 100, .fast_press_time = 1,
         .aftertouch_mode = 0, .aftertouch_cc = 255,
-        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .vibrato_sensitivity = 50, .vibrato_decay = 10,
         .flags = 0, .actuation_point = 20,
         .speed_peak_ratio = 50, .retrigger_distance = 0,
     },
@@ -4920,7 +4920,7 @@ static const zone_settings_t factory_preset_zones[7] = {
         .velocity_min = 80, .velocity_max = 127,
         .slow_press_time = 100, .fast_press_time = 1,
         .aftertouch_mode = 0, .aftertouch_cc = 255,
-        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .vibrato_sensitivity = 50, .vibrato_decay = 10,
         .flags = 0, .actuation_point = 20,
         .speed_peak_ratio = 50, .retrigger_distance = 0,
     },
@@ -4929,7 +4929,7 @@ static const zone_settings_t factory_preset_zones[7] = {
         .velocity_min = 127, .velocity_max = 127,
         .slow_press_time = 100, .fast_press_time = 1,
         .aftertouch_mode = 0, .aftertouch_cc = 255,
-        .vibrato_sensitivity = 100, .vibrato_decay = 200,
+        .vibrato_sensitivity = 50, .vibrato_decay = 10,
         .flags = 0, .actuation_point = 20,
         .speed_peak_ratio = 50, .retrigger_distance = 0,
     },
