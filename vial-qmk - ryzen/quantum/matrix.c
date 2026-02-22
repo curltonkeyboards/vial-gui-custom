@@ -1879,8 +1879,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 state->last_aftertouch = state->smoothed_aftertouch;
             }
 
-            // Also send CC if configured
+            // Also send CC if configured — always update last_aftertouch so
+            // the global-max scan sees the current smoothed value, not just
+            // the last value that passed the poly AT hysteresis check.
             if (active_settings.aftertouch_cc != 255) {
+                state->last_aftertouch = state->smoothed_aftertouch;
+
                 uint8_t max_at = 0;
                 for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
                     if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
