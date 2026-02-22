@@ -346,6 +346,7 @@ static struct {
     uint8_t aftertouch_cc;
     uint8_t vibrato_sensitivity;
     uint16_t vibrato_decay_time;
+    bool velocity_as_at;
 } active_settings;
 
 // CC mode: tracks the last CC value we actually sent, so we only send on change
@@ -759,6 +760,7 @@ static inline void update_active_settings(uint8_t current_layer) {
     active_settings.aftertouch_cc = aftertouch_cc;
     active_settings.vibrato_sensitivity = vibrato_sensitivity;
     active_settings.vibrato_decay_time = vibrato_decay_time;
+    active_settings.velocity_as_at = velocity_as_at;
     cached_layer_settings_layer = current_layer;
 }
 
@@ -1769,9 +1771,20 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     bool was_note_active = state->note_active;
     state->note_active = note_is_active;
 
-    // Initialize slew rate timer when note first becomes active
+    // Initialize slew rate timer and optionally pre-load aftertouch from velocity
     if (note_is_active && !was_note_active) {
         state->slew_last_time = now;
+
+        // Pre-load aftertouch from note-on velocity so it doesn't start from 0
+        if (active_settings.velocity_as_at && active_settings.aftertouch_mode > 0) {
+            uint8_t vel = key->base_velocity;  // 0-127, set at note trigger time
+            state->smoothed_aftertouch = vel;
+            state->last_aftertouch = vel;
+            // For vibrato mode, also seed the vibrato accumulator
+            if (active_settings.aftertouch_mode == 7 || active_settings.aftertouch_mode == 8) {
+                state->vibrato_value = vel;
+            }
+        }
     }
 
     // Aftertouch handling: poly AT mode (cc=255) or CC mode (cc=0-127, sends global max)

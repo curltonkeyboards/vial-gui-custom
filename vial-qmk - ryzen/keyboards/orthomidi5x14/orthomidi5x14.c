@@ -292,6 +292,7 @@ uint8_t aftertouch_mode = 0;         // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3
 uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
 uint8_t vibrato_sensitivity = 50;    // 0-100 (percentage, GUI 100% = 30% effective)
 uint16_t vibrato_decay_time = 10;    // 0-50 (ms per 1 unit decay)
+bool velocity_as_at = false;         // Pre-load aftertouch from velocity on note-on
 uint16_t min_press_time = 200;       // 50-500ms (slow press threshold)
 uint16_t max_press_time = 20;        // 5-100ms (fast press threshold)
 
@@ -2841,6 +2842,7 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     base_smartchord_ignore = keyboard_settings.base_smartchord_ignore;
     keysplit_smartchord_ignore = keyboard_settings.keysplit_smartchord_ignore;
     triplesplit_smartchord_ignore = keyboard_settings.triplesplit_smartchord_ignore;
+    velocity_as_at = keyboard_settings.velocity_as_at;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }

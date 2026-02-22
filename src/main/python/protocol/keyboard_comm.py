@@ -112,6 +112,7 @@ PARAM_SMARTCHORD_MODE = 46            # 0=Hold, 1=Toggle
 PARAM_BASE_SMARTCHORD_IGNORE = 47     # 0=Allow, 1=Ignore smartchord for base zone
 PARAM_KEYSPLIT_SMARTCHORD_IGNORE = 48 # 0=Allow, 1=Ignore smartchord for keysplit zone
 PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE = 49  # 0=Allow, 1=Ignore smartchord for triplesplit zone
+PARAM_VELOCITY_AS_AT = 50                # bool: pre-load aftertouch from velocity on note-on
 
 # Gaming/Joystick Commands (0xCE-0xD2)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off

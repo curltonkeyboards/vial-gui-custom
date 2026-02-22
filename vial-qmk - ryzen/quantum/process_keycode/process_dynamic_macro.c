@@ -146,6 +146,7 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_BASE_SMARTCHORD_IGNORE         47
 #define PARAM_KEYSPLIT_SMARTCHORD_IGNORE      48
 #define PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE   49
+#define PARAM_VELOCITY_AS_AT                 50
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -13326,6 +13327,10 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
         case PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE:
             triplesplit_smartchord_ignore = *value_ptr;
             keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
+            break;
+        case PARAM_VELOCITY_AS_AT:
+            velocity_as_at = *value_ptr ? true : false;
+            keyboard_settings.velocity_as_at = velocity_as_at;
             break;
 
         default:
