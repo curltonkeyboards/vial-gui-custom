@@ -3482,6 +3482,8 @@ void handle_set_per_key_actuation(const uint8_t* data) {
         active_per_key_cache[key_index].rt_down = data[7];   // rapidfire_press_sens
         active_per_key_cache[key_index].rt_up = data[8];     // rapidfire_release_sens
         active_per_key_cache[key_index].flags = data[6];
+        active_per_key_cache[key_index].dz_top = data[3];    // deadzone_top (noise ceiling)
+        active_per_key_cache[key_index].dz_bottom = data[4]; // deadzone_bottom (noise floor)
     }
     // If editing a different layer, no cache update needed - it will be loaded when that layer is activated
 
