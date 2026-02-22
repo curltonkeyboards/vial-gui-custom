@@ -379,11 +379,11 @@ static void refresh_key_type_cache(uint8_t layer);
 // ============================================================================
 // MULTI-LAYER PER-KEY ACTUATION CACHE (eliminates copy loop on layer switch)
 // ============================================================================
-// All 12 layers are cached in RAM (3,360 bytes). On layer switch, we swap a
-// pointer instead of copying 280 bytes from the scattered per_key_actuations
+// All 12 layers are cached in RAM (5,040 bytes). On layer switch, we swap a
+// pointer instead of copying 420 bytes from the scattered per_key_actuations
 // array. This makes layer switching near-zero-cost for the scan loop.
 // The full per_key_actuations[12][70] array is still used for EEPROM/HID.
-static per_key_config_lite_t all_layer_per_key_cache[12][70];  // 3,360 bytes
+static per_key_config_lite_t all_layer_per_key_cache[12][70];  // 5,040 bytes
 per_key_config_lite_t *active_per_key_cache = all_layer_per_key_cache[0];
 uint8_t active_per_key_cache_layer = 0xFF;  // Layer the cache was built for
 static uint16_t per_key_cache_loaded = 0;   // Bitmask: bit N = layer N populated
@@ -554,6 +554,8 @@ void incremental_load_per_key_cache(void) {
         active_per_key_cache[i].rt_down = full->rapidfire_press_sens;
         active_per_key_cache[i].rt_up = full->rapidfire_release_sens;
         active_per_key_cache[i].flags = full->flags;
+        active_per_key_cache[i].dz_bottom = full->deadzone_bottom;
+        active_per_key_cache[i].dz_top = full->deadzone_top;
     }
 
     incremental_load_index++;
@@ -573,6 +575,8 @@ void refresh_per_key_cache(uint8_t layer) {
             all_layer_per_key_cache[layer][i].rt_down = 0;
             all_layer_per_key_cache[layer][i].rt_up = 0;
             all_layer_per_key_cache[layer][i].flags = 0;
+            all_layer_per_key_cache[layer][i].dz_bottom = DEFAULT_DEADZONE_BOTTOM;
+            all_layer_per_key_cache[layer][i].dz_top = DEFAULT_DEADZONE_TOP;
         }
         per_key_cache_loaded |= (1 << layer);
     }
@@ -591,6 +595,8 @@ void rebuild_per_key_cache_layer(uint8_t layer) {
         all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
         all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
         all_layer_per_key_cache[layer][i].flags = full->flags;
+        all_layer_per_key_cache[layer][i].dz_bottom = full->deadzone_bottom;
+        all_layer_per_key_cache[layer][i].dz_top = full->deadzone_top;
     }
     per_key_cache_loaded |= (1 << layer);
 }
@@ -830,7 +836,7 @@ static inline void get_key_actuation_config(uint32_t key_idx, uint8_t layer,
                                             uint8_t *rt_down,
                                             uint8_t *rt_up,
                                             uint8_t *flags) {
-    // FIXED: Using optimized per-key cache (280 bytes, fits in L1 cache)
+    // FIXED: Using optimized per-key cache (420 bytes, fits in L1 cache)
     // The cache is refreshed on layer change, so we just read from it here.
     // This replaces the old 6.7KB per_key_actuations[] array access that
     // was causing USB disconnection.
@@ -999,10 +1005,30 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
         return;
     }
 
-    // Get per-key actuation config
+    // Get per-key actuation config (also refreshes cache for current layer)
     uint8_t actuation_point, rt_down, rt_up, flags;
     get_key_actuation_config(key_idx, current_layer,
                             &actuation_point, &rt_down, &rt_up, &flags);
+
+    // Apply per-key deadzone remapping (noise floor / noise ceiling)
+    // Linearly rescales the usable range [dz_bottom, 255-dz_top] → [0, 255]
+    // so the full 0-255 resolution is preserved within the trimmed range.
+    {
+        uint8_t dz_bottom = active_per_key_cache[key_idx].dz_bottom;
+        uint8_t dz_top = active_per_key_cache[key_idx].dz_top;
+        if (dz_bottom > 0 || dz_top > 0) {
+            uint8_t ceiling = 255 - dz_top;
+            if (key->distance <= dz_bottom) {
+                key->distance = 0;
+            } else if (key->distance >= ceiling) {
+                key->distance = 255;
+            } else {
+                // Remap: (distance - floor) * 255 / (ceiling - floor)
+                uint8_t range = ceiling - dz_bottom;
+                key->distance = (uint8_t)(((uint16_t)(key->distance - dz_bottom) * 255) / range);
+            }
+        }
+    }
 
     // Apply velocity preset actuation override if enabled (MIDI keys only)
     // Check zone type and keysplitvelocitystatus to determine which actuation to use
@@ -1248,6 +1274,8 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     if (active_settings.aftertouch_mode > 0) {
         aftertouch_smoothness = zone_retrigger_distance;  // 0-100%
         if (aftertouch_smoothness > 100) aftertouch_smoothness = 100;
+        // Scale: GUI 100% = effective 80%, so full smoothness isn't too sluggish
+        aftertouch_smoothness = (aftertouch_smoothness * 80) / 100;
         zone_retrigger_distance = 0;  // Disable retrigger
     }
 

@@ -935,9 +935,9 @@ typedef struct {
 
 // Per-key actuation settings (8 bytes per key) - FULL structure for EEPROM/HID
 typedef struct {
-    uint8_t actuation;              // 0-100 (0-2.5mm) - Default: 60 (1.5mm)
-    uint8_t deadzone_top;           // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
-    uint8_t deadzone_bottom;        // 0-100 (0-2.5mm) - Default: 4 (0.1mm), max ~20 (0.5mm)
+    uint8_t actuation;              // 0-255 (0-4.0mm) - Default: 127 (2.0mm)
+    uint8_t deadzone_top;           // 0-51 (0-0.8mm, 20% of travel) - noise ceiling, Default: 6 (~0.1mm)
+    uint8_t deadzone_bottom;        // 0-51 (0-0.8mm, 20% of travel) - noise floor, Default: 6 (~0.1mm)
     uint8_t velocity_curve;         // 0-16 (0-6: Factory curves, 7-16: User curves) - Default: 0 (Linear)
     uint8_t flags;                  // Bit 0: rapidfire_enabled, Bit 1: use_per_key_velocity_curve - Default: 0
     uint8_t rapidfire_press_sens;   // 0-100 (0-2.5mm) - Default: 4 (0.1mm)
@@ -946,21 +946,23 @@ typedef struct {
 } per_key_actuation_t;
 
 // ============================================================================
-// OPTIMIZED PER-KEY CACHE (4 bytes per key) - For fast matrix scan access
+// OPTIMIZED PER-KEY CACHE (6 bytes per key) - For fast matrix scan access
 // ============================================================================
 // This lightweight structure is cached in RAM for the active layer only.
-// Total cache size: 70 keys × 4 bytes = 280 bytes (fits in L1 cache)
+// Total cache size: 70 keys × 6 bytes = 420 bytes (fits in L1 cache)
 // The full per_key_actuation_t is still used for EEPROM and HID communication.
 
 typedef struct __attribute__((packed)) {
-    uint8_t actuation;      // 0-100 (0-2.5mm) actuation point
+    uint8_t actuation;      // 0-255 (0-4.0mm) actuation point
     uint8_t rt_down;        // Rapid trigger press sensitivity (0 = RT disabled)
     uint8_t rt_up;          // Rapid trigger release sensitivity
     uint8_t flags;          // Bit 0: RT enabled, Bit 1: per-key velocity, Bit 2: continuous RT
+    uint8_t dz_bottom;      // Bottom deadzone / noise floor (distance below this → 0)
+    uint8_t dz_top;         // Top deadzone / noise ceiling (distance above this → 255)
 } per_key_config_lite_t;
 
 // Compile-time size check
-_Static_assert(sizeof(per_key_config_lite_t) == 4, "per_key_config_lite_t must be exactly 4 bytes");
+_Static_assert(sizeof(per_key_config_lite_t) == 6, "per_key_config_lite_t must be exactly 6 bytes");
 
 // Per-key flag bit definitions
 #define PER_KEY_FLAG_RAPIDFIRE_ENABLED          (1 << 0)
@@ -993,7 +995,7 @@ extern layer_key_actuations_t per_key_actuations[12];  // 6720 bytes total (560 
 // NOTE: per_key_mode_enabled and per_key_per_layer_enabled have been REMOVED
 // Firmware now ALWAYS uses per-key per-layer settings.
 
-// Multi-layer per-key cache: all 12 layers cached in RAM (3,360 bytes).
+// Multi-layer per-key cache: all 12 layers cached in RAM (5,040 bytes).
 // active_per_key_cache is a pointer into the correct layer's slot.
 // On layer switch, pointer is swapped (near-zero cost, no data copying).
 extern per_key_config_lite_t *active_per_key_cache;

@@ -26,7 +26,10 @@ from widgets.keyboard_widget import KeyboardWidgetSimple
 from themes import Theme
 from util import tr
 from vial_device import VialKeyboard
-from protocol.keyboard_comm import PARAM_SPEED_PEAK_RATIO
+from protocol.keyboard_comm import (
+    PARAM_SPEED_PEAK_RATIO, PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
+    PARAM_VIBRATO_SENSITIVITY, PARAM_VIBRATO_DECAY_TIME
+)
 
 
 # MIDI note keycode range (from keycodes_v6.py)
@@ -1354,21 +1357,29 @@ class VelocityTab(BasicEditor):
             self.retrigger_checkbox.setChecked(False)
             self.retrigger_widget.setVisible(False)
         self.global_midi_settings['aftertouch_mode'] = mode
+        if self.keyboard:
+            self.keyboard.set_keyboard_param_single(PARAM_AFTERTOUCH_MODE, mode)
 
     def on_aftertouch_cc_changed(self, index):
         """Handle aftertouch CC change"""
         cc = self.aftertouch_cc_combo.currentData()
         self.global_midi_settings['aftertouch_cc'] = cc
+        if self.keyboard:
+            self.keyboard.set_keyboard_param_single(PARAM_AFTERTOUCH_CC, cc)
 
     def on_vibrato_sensitivity_changed(self, value):
         """Handle vibrato sensitivity slider change"""
         self.vibrato_sens_value.setText(f"{value}%")
         self.global_midi_settings['vibrato_sensitivity'] = value
+        if self.keyboard:
+            self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_SENSITIVITY, value)
 
     def on_vibrato_decay_changed(self, value):
         """Handle vibrato decay slider change"""
         self.vibrato_decay_value.setText(f"{value}ms")
         self.global_midi_settings['vibrato_decay_time'] = value
+        if self.keyboard:
+            self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_DECAY_TIME, value)
 
     def on_actuation_override_changed(self, state):
         """Handle actuation override checkbox change"""
