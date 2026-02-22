@@ -925,18 +925,13 @@ static void update_calibration(uint32_t key_idx) {
             ? (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON)
             : (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON);
 
-        if (drifted_away_from_pressed) {
-            // ADC has moved further into "released" territory than current rest.
-            // Update immediately - rest should always reflect the true resting
-            // position. A higher reading at rest means the baseline has shifted.
-            key->adc_rest_value = key->adc_filtered;
-            calibration_dirty = true;
-            last_calibration_change = timer_read();
-        } else if (drifted_toward_pressed &&
-                   timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-            // ADC has moved toward pressed but key is stable for 5 seconds.
-            // A slow press would not stay perfectly stable for this long, so
-            // this is genuine temperature/magnetic drift. Safe to recalibrate.
+        if (drifted_away_from_pressed || drifted_toward_pressed) {
+            // ADC has drifted from calibrated rest position (either direction).
+            // Update immediately - both upward and downward drift use the same
+            // criteria: key must be stable, not pressed, and near rest.
+            // Previously upward drift required 5 seconds of stability, but this
+            // caused stale rest values that kept distance/travel non-zero at rest,
+            // breaking velocity timer resets between repeated presses.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
@@ -1314,9 +1309,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_eligible = false;
                     state->retrigger_eligible_point = 0;
                     state->retrigger_move_start = 0;
-                    // Reset last_travel so speed timer restarts on next press
-                    // (prevents drift from keeping last_travel > 0 between presses)
-                    state->last_travel = 0;
+                    // Force travel to 0 so last_travel assignment below stores 0,
+                    // ensuring the speed timer restarts on the next press.
+                    // Without this, drift keeps travel > 0 at rest and the
+                    // timer-start condition (last_travel == 0) never fires.
+                    travel = 0;
                 }
 
                 state->last_travel = travel;
@@ -1400,9 +1397,10 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_eligible = false;
                     state->retrigger_eligible_point = 0;
                     state->retrigger_move_start = 0;
-                    // Reset last_travel so speed timer restarts on next press
-                    // (prevents drift from keeping last_travel > 0 between presses)
-                    state->last_travel = 0;
+                    // Force travel to 0 so last_travel assignment below stores 0,
+                    // ensuring the timer-start condition (last_travel == 0) fires
+                    // on the next press even if drift keeps real travel > 0.
+                    travel = 0;
                 }
 
                 state->last_travel = travel;
@@ -1525,9 +1523,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_eligible = false;
                     state->retrigger_eligible_point = 0;
                     state->retrigger_move_start = 0;
-                    // Reset last_travel so speed timer restarts on next press
-                    // (prevents drift from keeping last_travel > 0 between presses)
-                    state->last_travel = 0;
+                    // Force travel to 0 so last_travel assignment below stores 0,
+                    // ensuring the speed timer restarts on the next press.
+                    // Without this, drift keeps travel > 0 at rest and the
+                    // timer-start condition (last_travel == 0) never fires.
+                    travel = 0;
                 }
 
                 state->last_travel = travel;
