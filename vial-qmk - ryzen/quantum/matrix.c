@@ -1010,16 +1010,23 @@ static void process_rapid_trigger(uint32_t key_idx, uint8_t current_layer) {
     get_key_actuation_config(key_idx, current_layer,
                             &actuation_point, &rt_down, &rt_up, &flags);
 
-    // Apply per-key deadzone clamping (noise floor / noise ceiling)
-    // dz_bottom = noise floor: small distances near rest are clamped to 0
-    // dz_top = noise ceiling: distances near bottom-out are clamped to 255
+    // Apply per-key deadzone remapping (noise floor / noise ceiling)
+    // Linearly rescales the usable range [dz_bottom, 255-dz_top] → [0, 255]
+    // so the full 0-255 resolution is preserved within the trimmed range.
     {
         uint8_t dz_bottom = active_per_key_cache[key_idx].dz_bottom;
         uint8_t dz_top = active_per_key_cache[key_idx].dz_top;
-        if (dz_bottom > 0 && key->distance < dz_bottom) {
-            key->distance = 0;
-        } else if (dz_top > 0 && key->distance > (255 - dz_top)) {
-            key->distance = 255;
+        if (dz_bottom > 0 || dz_top > 0) {
+            uint8_t ceiling = 255 - dz_top;
+            if (key->distance <= dz_bottom) {
+                key->distance = 0;
+            } else if (key->distance >= ceiling) {
+                key->distance = 255;
+            } else {
+                // Remap: (distance - floor) * 255 / (ceiling - floor)
+                uint8_t range = ceiling - dz_bottom;
+                key->distance = (uint8_t)(((uint16_t)(key->distance - dz_bottom) * 255) / range);
+            }
         }
     }
 
