@@ -183,7 +183,8 @@ typedef struct {
 
     // Aftertouch
     uint8_t last_aftertouch;
-    uint8_t smoothed_aftertouch; // EMA-smoothed aftertouch value for output
+    uint8_t smoothed_aftertouch; // Slew-rate-limited aftertouch value for output
+    uint16_t slew_last_time;     // Last time slew rate limiter was updated
     uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
     uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
 
@@ -1270,12 +1271,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
     // When aftertouch is active, the retrigger byte is repurposed as smoothness (0-100%).
     // Retrigger is disabled when any aftertouch mode is enabled.
+    // Smoothness acts as a slew rate limiter:
+    //   0% = no limit (instant), 100% = full 0-127 range takes 2 seconds
     uint8_t aftertouch_smoothness = 0;
     if (active_settings.aftertouch_mode > 0) {
         aftertouch_smoothness = zone_retrigger_distance;  // 0-100%
         if (aftertouch_smoothness > 100) aftertouch_smoothness = 100;
-        // Scale: GUI 100% = effective 80%, so full smoothness isn't too sluggish
-        aftertouch_smoothness = (aftertouch_smoothness * 80) / 100;
         zone_retrigger_distance = 0;  // Disable retrigger
     }
 
@@ -1768,6 +1769,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     bool was_note_active = state->note_active;
     state->note_active = note_is_active;
 
+    // Initialize slew rate timer when note first becomes active
+    if (note_is_active && !was_note_active) {
+        state->slew_last_time = now;
+    }
+
     // Aftertouch handling: poly AT mode (cc=255) or CC mode (cc=0-127, sends global max)
     // Uses note_is_active instead of raw pressed so aftertouch tracks full key travel
     // while the note is sounding (not just while below actuation point)
@@ -1861,13 +1867,43 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
         }
 
-        // Apply EMA smoothing: smoothed = (smoothed * S + raw * (100 - S)) / 100
-        // S=0: no smoothing (instant), S=100: maximum smoothing (never changes)
-        // Smoothness comes from zone's retrigger_distance byte when aftertouch is active
+        // Apply slew rate limiter: caps max change per millisecond
+        // 0% = no limit (instant), 100% = full 0-127 range takes 2000ms
+        // At X%: max_change_per_ms = 127 / (X/100 * 2000) = 6350 / X
+        // We use a fixed-point accumulator to handle sub-unit changes per ms
         if (send_aftertouch) {
             if (aftertouch_smoothness > 0) {
-                state->smoothed_aftertouch = (uint8_t)(((uint16_t)state->smoothed_aftertouch * aftertouch_smoothness +
-                                                         (uint16_t)aftertouch_value * (100 - aftertouch_smoothness)) / 100);
+                uint16_t elapsed = timer_elapsed(state->slew_last_time);
+                state->slew_last_time = now;
+
+                // Target vs current
+                int16_t diff = (int16_t)aftertouch_value - (int16_t)state->smoothed_aftertouch;
+
+                if (diff != 0) {
+                    // Max change allowed = (127 * elapsed) / (smoothness_pct/100 * 2000)
+                    //                    = (127 * 100 * elapsed) / (smoothness_pct * 2000)
+                    //                    = (127 * elapsed) / (smoothness_pct * 20)
+                    // Use 32-bit to avoid overflow: 127 * elapsed can be up to 127*65535
+                    uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 20);
+                    if (max_change < 1) max_change = 1;  // Always allow at least 1 unit change
+
+                    if (diff > 0) {
+                        // Moving up
+                        if ((uint32_t)diff <= max_change) {
+                            state->smoothed_aftertouch = aftertouch_value;
+                        } else {
+                            state->smoothed_aftertouch += (uint8_t)max_change;
+                        }
+                    } else {
+                        // Moving down (diff is negative)
+                        uint16_t abs_diff = (uint16_t)(-diff);
+                        if ((uint32_t)abs_diff <= max_change) {
+                            state->smoothed_aftertouch = aftertouch_value;
+                        } else {
+                            state->smoothed_aftertouch -= (uint8_t)max_change;
+                        }
+                    }
+                }
             } else {
                 state->smoothed_aftertouch = aftertouch_value;
             }
@@ -1901,6 +1937,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         if (active_settings.aftertouch_mode > 0 && state->last_aftertouch > 0) {
             state->last_aftertouch = 0;
             state->smoothed_aftertouch = 0;
+            state->slew_last_time = now;
 
             #ifdef MIDI_ENABLE
             if (active_settings.aftertouch_cc == 255) {
@@ -1923,6 +1960,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
         } else {
             state->last_aftertouch = 0;
             state->smoothed_aftertouch = 0;
+            state->slew_last_time = now;
         }
         state->vibrato_value = 0;
     }
