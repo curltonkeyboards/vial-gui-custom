@@ -183,7 +183,8 @@ typedef struct {
 
     // Aftertouch
     uint8_t last_aftertouch;
-    uint8_t smoothed_aftertouch; // EMA-smoothed aftertouch value for output
+    uint8_t smoothed_aftertouch; // Slew-rate-limited aftertouch value for output
+    uint16_t slew_last_time;     // Last time slew rate limiter was updated
     uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
     uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
 
@@ -347,7 +348,7 @@ static struct {
     uint16_t vibrato_decay_time;
 } active_settings;
 
-// Global CC aftertouch tracking: CC sends the max value across all active keys
+// CC mode: tracks the last CC value we actually sent, so we only send on change
 static uint8_t last_sent_cc_value = 0;
 
 // ============================================================================
@@ -1270,12 +1271,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
     // When aftertouch is active, the retrigger byte is repurposed as smoothness (0-100%).
     // Retrigger is disabled when any aftertouch mode is enabled.
+    // Smoothness acts as a slew rate limiter:
+    //   0% = no limit (instant), 100% = full 0-127 range takes 4 seconds
     uint8_t aftertouch_smoothness = 0;
     if (active_settings.aftertouch_mode > 0) {
         aftertouch_smoothness = zone_retrigger_distance;  // 0-100%
         if (aftertouch_smoothness > 100) aftertouch_smoothness = 100;
-        // Scale: GUI 100% = effective 80%, so full smoothness isn't too sluggish
-        aftertouch_smoothness = (aftertouch_smoothness * 80) / 100;
         zone_retrigger_distance = 0;  // Disable retrigger
     }
 
@@ -1768,7 +1769,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     bool was_note_active = state->note_active;
     state->note_active = note_is_active;
 
-    // Aftertouch handling - now sends polyphonic aftertouch + optional CC
+    // Initialize slew rate timer when note first becomes active
+    if (note_is_active && !was_note_active) {
+        state->slew_last_time = now;
+    }
+
+    // Aftertouch handling: poly AT mode (cc=255) or CC mode (cc=0-127, sends global max)
     // Uses note_is_active instead of raw pressed so aftertouch tracks full key travel
     // while the note is sounding (not just while below actuation point)
     if (active_settings.aftertouch_mode > 0 && note_is_active) {
@@ -1861,70 +1867,167 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             }
         }
 
-        // Apply EMA smoothing: smoothed = (smoothed * S + raw * (100 - S)) / 100
-        // S=0: no smoothing (instant), S=100: maximum smoothing (never changes)
-        // Smoothness comes from zone's retrigger_distance byte when aftertouch is active
+        // Apply slew rate limiter: caps max change per millisecond
+        // 0% = no limit (instant), 100% = full 0-127 range takes 4000ms
+        // At X%: max_change_per_ms = 127 / (X/100 * 4000) = 12700 / (X * 40)
         if (send_aftertouch) {
             if (aftertouch_smoothness > 0) {
-                state->smoothed_aftertouch = (uint8_t)(((uint16_t)state->smoothed_aftertouch * aftertouch_smoothness +
-                                                         (uint16_t)aftertouch_value * (100 - aftertouch_smoothness)) / 100);
+                uint16_t elapsed = timer_elapsed(state->slew_last_time);
+                state->slew_last_time = now;
+
+                // Target vs current
+                int16_t diff = (int16_t)aftertouch_value - (int16_t)state->smoothed_aftertouch;
+
+                if (diff != 0) {
+                    // Max change allowed = (127 * elapsed) / (smoothness_pct * 40)
+                    // Use 32-bit to avoid overflow: 127 * elapsed can be up to 127*65535
+                    uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 40);
+                    if (max_change < 1) max_change = 1;  // Always allow at least 1 unit change
+
+                    if (diff > 0) {
+                        // Moving up
+                        if ((uint32_t)diff <= max_change) {
+                            state->smoothed_aftertouch = aftertouch_value;
+                        } else {
+                            state->smoothed_aftertouch += (uint8_t)max_change;
+                        }
+                    } else {
+                        // Moving down (diff is negative)
+                        uint16_t abs_diff = (uint16_t)(-diff);
+                        if ((uint32_t)abs_diff <= max_change) {
+                            state->smoothed_aftertouch = aftertouch_value;
+                        } else {
+                            state->smoothed_aftertouch -= (uint8_t)max_change;
+                        }
+                    }
+                }
             } else {
                 state->smoothed_aftertouch = aftertouch_value;
             }
 
             #ifdef MIDI_ENABLE
-            if (active_settings.aftertouch_cc != 255) {
-                // CC mode: store smoothed value, then find global max
-                // last_aftertouch holds the per-key smoothed value for max lookup
-                state->last_aftertouch = state->smoothed_aftertouch;
-
-                uint8_t max_at = 0;
-                for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
-                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
-                        max_at = midi_key_states[i].last_aftertouch;
-                    }
-                }
-                if (max_at != last_sent_cc_value) {
-                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
-                    last_sent_cc_value = max_at;
-                }
-            } else {
-                // Poly AT mode: send per-note smoothed aftertouch if changed (> 2 hysteresis)
-                // last_aftertouch tracks what was last sent for hysteresis comparison
+            if (active_settings.aftertouch_cc == 255) {
+                // Poly AT: send per-note aftertouch with per-key hysteresis
                 if (abs((int)state->smoothed_aftertouch - (int)state->last_aftertouch) > 2) {
                     midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, state->smoothed_aftertouch);
                     state->last_aftertouch = state->smoothed_aftertouch;
                 }
+            } else {
+                // CC mode: always keep per-key value current, send average across all active keys
+                state->last_aftertouch = state->smoothed_aftertouch;
+
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
+                for (uint8_t i = 0; i < NUM_KEYS; i++) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
+                    }
+                }
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (abs((int)avg_at - (int)last_sent_cc_value) > 2) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
+                }
             }
             #endif
         }
+    } else if (!note_is_active && active_settings.aftertouch_mode > 0 &&
+               aftertouch_smoothness > 0 && state->smoothed_aftertouch > 0) {
+        // Note inactive but smoothed value still ramping down to 0
+        // Apply slew rate limiter toward target of 0
+        uint16_t elapsed = timer_elapsed(state->slew_last_time);
+        state->slew_last_time = now;
+
+        uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 40);
+        if (max_change < 1) max_change = 1;
+
+        if (state->smoothed_aftertouch <= (uint8_t)max_change) {
+            state->smoothed_aftertouch = 0;
+        } else {
+            state->smoothed_aftertouch -= (uint8_t)max_change;
+        }
+
+        #ifdef MIDI_ENABLE
+        if (state->smoothed_aftertouch == 0) {
+            // Reached zero - send final zero and clean up
+            state->last_aftertouch = 0;
+            if (active_settings.aftertouch_cc == 255) {
+                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
+            } else {
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
+                for (uint8_t i = 0; i < NUM_KEYS; i++) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
+                    }
+                }
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (avg_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
+                }
+            }
+        } else if (abs((int)state->smoothed_aftertouch - (int)state->last_aftertouch) > 2) {
+            // Still ramping down - send intermediate value
+            if (active_settings.aftertouch_cc == 255) {
+                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, state->smoothed_aftertouch);
+                state->last_aftertouch = state->smoothed_aftertouch;
+            } else {
+                state->last_aftertouch = state->smoothed_aftertouch;
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
+                for (uint8_t i = 0; i < NUM_KEYS; i++) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
+                    }
+                }
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (abs((int)avg_at - (int)last_sent_cc_value) > 2) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
+                }
+            }
+        }
+        #endif
+
+        if (was_note_active) {
+            state->vibrato_value = 0;
+        }
     } else if (!note_is_active && was_note_active) {
-        // Note stopped sounding - reset this key's aftertouch
+        // Note stopped sounding - immediate zero (no smoothness or already at 0)
         if (active_settings.aftertouch_mode > 0 && state->last_aftertouch > 0) {
             state->last_aftertouch = 0;
             state->smoothed_aftertouch = 0;
+            state->slew_last_time = now;
 
             #ifdef MIDI_ENABLE
-            if (active_settings.aftertouch_cc != 255) {
-                // CC mode: recompute global max now that this key is at 0
-                uint8_t max_at = 0;
-                for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
-                    if (midi_key_states[i].is_midi_key && midi_key_states[i].last_aftertouch > max_at) {
-                        max_at = midi_key_states[i].last_aftertouch;
+            if (active_settings.aftertouch_cc == 255) {
+                // Poly AT: send per-note zero
+                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
+            } else {
+                // CC mode: this key released, average remaining active keys
+                uint16_t sum_at = 0;
+                uint8_t count_at = 0;
+                for (uint8_t i = 0; i < NUM_KEYS; i++) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                        sum_at += midi_key_states[i].last_aftertouch;
+                        count_at++;
                     }
                 }
-                if (max_at != last_sent_cc_value) {
-                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, max_at);
-                    last_sent_cc_value = max_at;
+                uint8_t avg_at = (count_at > 0) ? (uint8_t)(sum_at / count_at) : 0;
+                if (avg_at != last_sent_cc_value) {
+                    midi_send_cc(&midi_device, state->note_channel, active_settings.aftertouch_cc, avg_at);
+                    last_sent_cc_value = avg_at;
                 }
-            } else {
-                // Poly AT mode: send per-note reset
-                midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             }
             #endif
         } else {
             state->last_aftertouch = 0;
             state->smoothed_aftertouch = 0;
+            state->slew_last_time = now;
         }
         state->vibrato_value = 0;
     }
