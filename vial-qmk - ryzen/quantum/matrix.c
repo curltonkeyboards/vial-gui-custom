@@ -185,6 +185,7 @@ typedef struct {
     uint8_t last_aftertouch;
     uint8_t smoothed_aftertouch; // Slew-rate-limited aftertouch value for output
     uint16_t slew_last_time;     // Last time slew rate limiter was updated
+    uint16_t slew_accum;         // Sub-unit accumulator for fractional slew changes
     uint8_t note_channel;        // Channel this note was sent on (for poly aftertouch)
     uint8_t midi_note;           // Actual MIDI note number (for poly aftertouch)
 
@@ -1274,7 +1275,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // When aftertouch is active, the retrigger byte is repurposed as smoothness (0-100%).
     // Retrigger is disabled when any aftertouch mode is enabled.
     // Smoothness acts as a slew rate limiter:
-    //   0% = no limit (instant), 100% = full 0-127 range takes 4 seconds
+    //   0% = no limit (instant), 100% = full 0-127 range takes 10 seconds
     uint8_t aftertouch_smoothness = 0;
     if (active_settings.aftertouch_mode > 0) {
         aftertouch_smoothness = zone_retrigger_distance;  // 0-100%
@@ -1774,6 +1775,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // Initialize slew rate timer and optionally pre-load aftertouch from velocity
     if (note_is_active && !was_note_active) {
         state->slew_last_time = now;
+        state->slew_accum = 0;
 
         // Pre-load aftertouch from note-on velocity so it doesn't start from 0
         if (active_settings.velocity_as_at && active_settings.aftertouch_mode > 0) {
@@ -1882,7 +1884,9 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
 
         // Apply slew rate limiter: caps max change per millisecond
         // 0% = no limit (instant), 100% = full 0-127 range takes 10000ms
-        // At X%: max_change_per_ms = 127 / (X/100 * 10000) = 12700 / (X * 100)
+        // Uses fractional accumulator to avoid clamp-to-1 rounding at fast scan rates.
+        // Accumulator unit: 256 counts = 1 aftertouch step (8-bit fixed point).
+        // Rate: (127 * 256 * elapsed_ms) / (smoothness_pct * 100) accum-units per tick.
         if (send_aftertouch) {
             if (aftertouch_smoothness > 0) {
                 uint16_t elapsed = timer_elapsed(state->slew_last_time);
@@ -1892,30 +1896,43 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 int16_t diff = (int16_t)aftertouch_value - (int16_t)state->smoothed_aftertouch;
 
                 if (diff != 0) {
-                    // Max change allowed = (127 * elapsed) / (smoothness_pct * 100)
-                    // Use 32-bit to avoid overflow: 127 * elapsed can be up to 127*65535
-                    uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 100);
-                    if (max_change < 1) max_change = 1;  // Always allow at least 1 unit change
+                    // Accumulate fractional change: 127*256 = 32512 per full range
+                    // At 100%, divisor = 100*100 = 10000, so per ms: 32512/10000 ≈ 3.25 accum-units
+                    // Full range: 127 steps * 256 = 32512 accum-units, at 3.25/ms = ~10000ms
+                    uint32_t accum_add = ((uint32_t)127 * 256 * elapsed) / ((uint32_t)aftertouch_smoothness * 100);
+                    if (accum_add < 1) accum_add = 1;  // Always accumulate something
 
-                    if (diff > 0) {
-                        // Moving up
-                        if ((uint32_t)diff <= max_change) {
-                            state->smoothed_aftertouch = aftertouch_value;
+                    state->slew_accum += (uint16_t)accum_add;
+                    uint8_t max_change = state->slew_accum >> 8;  // Divide by 256 to get whole steps
+                    state->slew_accum &= 0xFF;                    // Keep fractional remainder
+
+                    if (max_change > 0) {
+                        if (diff > 0) {
+                            // Moving up
+                            if ((uint8_t)diff <= max_change) {
+                                state->smoothed_aftertouch = aftertouch_value;
+                                state->slew_accum = 0;  // Reset accumulator when target reached
+                            } else {
+                                state->smoothed_aftertouch += max_change;
+                            }
                         } else {
-                            state->smoothed_aftertouch += (uint8_t)max_change;
-                        }
-                    } else {
-                        // Moving down (diff is negative)
-                        uint16_t abs_diff = (uint16_t)(-diff);
-                        if ((uint32_t)abs_diff <= max_change) {
-                            state->smoothed_aftertouch = aftertouch_value;
-                        } else {
-                            state->smoothed_aftertouch -= (uint8_t)max_change;
+                            // Moving down (diff is negative)
+                            uint8_t abs_diff = (uint8_t)(-diff);
+                            if (abs_diff <= max_change) {
+                                state->smoothed_aftertouch = aftertouch_value;
+                                state->slew_accum = 0;
+                            } else {
+                                state->smoothed_aftertouch -= max_change;
+                            }
                         }
                     }
+                    // If max_change == 0, we just accumulated fractional - no step yet
+                } else {
+                    state->slew_accum = 0;  // At target, reset accumulator
                 }
             } else {
                 state->smoothed_aftertouch = aftertouch_value;
+                state->slew_accum = 0;
             }
 
             #ifdef MIDI_ENABLE
@@ -1948,17 +1965,24 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     } else if (!note_is_active && active_settings.aftertouch_mode > 0 &&
                aftertouch_smoothness > 0 && state->smoothed_aftertouch > 0) {
         // Note inactive but smoothed value still ramping down to 0
-        // Apply slew rate limiter toward target of 0
+        // Apply slew rate limiter toward target of 0 (with fractional accumulator)
         uint16_t elapsed = timer_elapsed(state->slew_last_time);
         state->slew_last_time = now;
 
-        uint32_t max_change = ((uint32_t)127 * elapsed) / ((uint32_t)aftertouch_smoothness * 100);
-        if (max_change < 1) max_change = 1;
+        uint32_t accum_add = ((uint32_t)127 * 256 * elapsed) / ((uint32_t)aftertouch_smoothness * 100);
+        if (accum_add < 1) accum_add = 1;
 
-        if (state->smoothed_aftertouch <= (uint8_t)max_change) {
-            state->smoothed_aftertouch = 0;
-        } else {
-            state->smoothed_aftertouch -= (uint8_t)max_change;
+        state->slew_accum += (uint16_t)accum_add;
+        uint8_t max_change = state->slew_accum >> 8;
+        state->slew_accum &= 0xFF;
+
+        if (max_change > 0) {
+            if (state->smoothed_aftertouch <= max_change) {
+                state->smoothed_aftertouch = 0;
+                state->slew_accum = 0;
+            } else {
+                state->smoothed_aftertouch -= max_change;
+            }
         }
 
         #ifdef MIDI_ENABLE
@@ -2015,6 +2039,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             state->last_aftertouch = 0;
             state->smoothed_aftertouch = 0;
             state->slew_last_time = now;
+            state->slew_accum = 0;
 
             #ifdef MIDI_ENABLE
             if (active_settings.aftertouch_cc == 255) {
@@ -2041,6 +2066,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             state->last_aftertouch = 0;
             state->smoothed_aftertouch = 0;
             state->slew_last_time = now;
+            state->slew_accum = 0;
         }
         state->vibrato_value = 0;
     }
