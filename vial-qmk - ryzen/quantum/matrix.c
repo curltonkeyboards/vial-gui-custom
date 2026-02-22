@@ -1772,10 +1772,23 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     bool was_note_active = state->note_active;
     state->note_active = note_is_active;
 
-    // Initialize slew rate timer and optionally pre-load aftertouch from velocity
+    // Initialize slew rate timer and aftertouch state on note-on
     if (note_is_active && !was_note_active) {
         state->slew_last_time = now;
         state->slew_accum = 0;
+
+        // Always initialize vibrato state to prevent initial travel-delta spike
+        // Without this, the first scan sees a huge travel_diff (from stale vibrato_last_travel
+        // to current travel), creating a spike that correlates with pressing force/velocity
+        state->vibrato_last_travel = travel;
+        state->vibrato_value = 0;
+        state->vibrato_decay_accum = 0;
+        state->vibrato_last_time = now;
+
+        // Reset aftertouch to clean state (prevents residual values from previous note
+        // carrying over when smoothness ramp-down hasn't completed yet)
+        state->smoothed_aftertouch = 0;
+        state->last_aftertouch = 0;
 
         // Pre-load aftertouch from note-on velocity so it doesn't start from 0
         if (active_settings.velocity_as_at && active_settings.aftertouch_mode > 0) {
