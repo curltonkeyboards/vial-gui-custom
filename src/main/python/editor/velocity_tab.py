@@ -791,9 +791,6 @@ class VelocityTab(BasicEditor):
                 controls['retrigger_checkbox'].setChecked(False)
                 controls['retrigger_widget'].setVisible(False)
             set_setting('aftertouch_mode', mode)
-            # Send to firmware in real-time (base zone only)
-            if zone_name == 'base' and self.keyboard:
-                self.keyboard.set_keyboard_param_single(PARAM_AFTERTOUCH_MODE, mode)
 
         controls['aftertouch_mode_combo'].currentIndexChanged.connect(on_aftertouch_mode_changed)
 
@@ -808,9 +805,6 @@ class VelocityTab(BasicEditor):
         def on_aftertouch_cc_changed(index):
             cc = controls['aftertouch_cc_combo'].currentData()
             set_setting('aftertouch_cc', cc)
-            # Send to firmware in real-time (base zone only)
-            if zone_name == 'base' and self.keyboard:
-                self.keyboard.set_keyboard_param_single(PARAM_AFTERTOUCH_CC, cc)
 
         controls['aftertouch_cc_combo'].currentIndexChanged.connect(on_aftertouch_cc_changed)
 
@@ -818,16 +812,10 @@ class VelocityTab(BasicEditor):
         def on_vibrato_sens_changed(value):
             controls['vibrato_sens_value'].setText(f"{value}%")
             set_setting('vibrato_sensitivity', value)
-            # Send to firmware in real-time (base zone only)
-            if zone_name == 'base' and self.keyboard:
-                self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_SENSITIVITY, value)
 
         def on_vibrato_decay_changed(value):
             controls['vibrato_decay_value'].setText(f"{value}ms")
             set_setting('vibrato_decay_time', value)
-            # Send to firmware in real-time (base zone only)
-            if zone_name == 'base' and self.keyboard:
-                self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_DECAY_TIME, value)
 
         controls['vibrato_sens_slider'].valueChanged.connect(on_vibrato_sens_changed)
         controls['vibrato_decay_slider'].valueChanged.connect(on_vibrato_decay_changed)
