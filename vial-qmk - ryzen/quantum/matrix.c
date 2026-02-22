@@ -1926,13 +1926,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->last_aftertouch = state->smoothed_aftertouch;
                 }
             } else {
-                // CC mode: always keep per-key value current, send average across all active keys
+                // CC mode: always keep per-key value current, send average across all note-on'd keys
                 state->last_aftertouch = state->smoothed_aftertouch;
 
                 uint16_t sum_at = 0;
                 uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].note_active) {
                         sum_at += midi_key_states[i].last_aftertouch;
                         count_at++;
                     }
@@ -1971,7 +1971,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 uint16_t sum_at = 0;
                 uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].note_active) {
                         sum_at += midi_key_states[i].last_aftertouch;
                         count_at++;
                     }
@@ -1992,7 +1992,7 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 uint16_t sum_at = 0;
                 uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].note_active) {
                         sum_at += midi_key_states[i].last_aftertouch;
                         count_at++;
                     }
@@ -2021,11 +2021,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 // Poly AT: send per-note zero
                 midi_send_aftertouch(&midi_device, state->note_channel, state->midi_note, 0);
             } else {
-                // CC mode: this key released, average remaining active keys
+                // CC mode: this key released, average remaining note-on'd keys
                 uint16_t sum_at = 0;
                 uint8_t count_at = 0;
                 for (uint8_t i = 0; i < NUM_KEYS; i++) {
-                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].last_aftertouch > 0) {
+                    if (key_type_cache[i] == KEY_TYPE_MIDI && midi_key_states[i].note_active) {
                         sum_at += midi_key_states[i].last_aftertouch;
                         count_at++;
                     }
