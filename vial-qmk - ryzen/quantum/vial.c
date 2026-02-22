@@ -1059,31 +1059,37 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 						break;
 					case 14:  // PARAM_AFTERTOUCH_MODE (0-6)
 						aftertouch_mode = value8;
+						keyboard_settings.aftertouch_mode = value8;
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 39:  // PARAM_AFTERTOUCH_CC (0-127, 255=off)
 						aftertouch_cc = value8;
+						keyboard_settings.aftertouch_cc = value8;
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 40:  // PARAM_VIBRATO_SENSITIVITY (50-200)
 						vibrato_sensitivity = value8;
+						keyboard_settings.vibrato_sensitivity = value8;
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 41:  // PARAM_VIBRATO_DECAY_TIME (0-2000ms, 16-bit)
 						vibrato_decay_time = value16;
+						keyboard_settings.vibrato_decay_time = value16;
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 42:  // PARAM_MIN_PRESS_TIME (50-500ms, 16-bit)
 						min_press_time = value16;
+						keyboard_settings.min_press_time = value16;
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
 					case 43:  // PARAM_MAX_PRESS_TIME (5-100ms, 16-bit)
 						max_press_time = value16;
+						keyboard_settings.max_press_time = value16;
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
