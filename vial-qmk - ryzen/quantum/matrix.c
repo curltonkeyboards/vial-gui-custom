@@ -949,18 +949,13 @@ static void update_calibration(uint32_t key_idx) {
             ? (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON)
             : (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON);
 
-        if (drifted_away_from_pressed) {
-            // ADC has moved further into "released" territory than current rest.
-            // Update immediately - rest should always reflect the true resting
-            // position. A higher reading at rest means the baseline has shifted.
-            key->adc_rest_value = key->adc_filtered;
-            calibration_dirty = true;
-            last_calibration_change = timer_read();
-        } else if (drifted_toward_pressed &&
-                   timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-            // ADC has moved toward pressed but key is stable for 5 seconds.
-            // A slow press would not stay perfectly stable for this long, so
-            // this is genuine temperature/magnetic drift. Safe to recalibrate.
+        if ((drifted_away_from_pressed || drifted_toward_pressed) &&
+            timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
+            // ADC has drifted in either direction but key is stable for 5 seconds.
+            // Both directions require the stability wait to prevent transient ADC
+            // spikes (20-30 units) from being instantly locked in as the new rest.
+            // Temperature/magnetic drift is slow enough that 5s of stability is
+            // easily achieved for genuine drift in either direction.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
@@ -1386,10 +1381,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = 0;
                     // Reset last_travel so speed timer restarts on next press
                     // (prevents drift from keeping last_travel > 0 between presses)
+                    // Skip the final last_travel = travel assignment this cycle
+                    // so the 0 isn't immediately overwritten by residual travel
                     state->last_travel = 0;
+                } else {
+                    state->last_travel = travel;
                 }
-
-                state->last_travel = travel;
             }
             break;
 
@@ -1480,10 +1477,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = 0;
                     // Reset last_travel so speed timer restarts on next press
                     // (prevents drift from keeping last_travel > 0 between presses)
+                    // Skip the final last_travel = travel assignment this cycle
+                    // so the 0 isn't immediately overwritten by residual travel
                     state->last_travel = 0;
+                } else {
+                    state->last_travel = travel;
                 }
 
-                state->last_travel = travel;
                 state->last_time = now;
             }
             break;
@@ -1615,10 +1615,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = 0;
                     // Reset last_travel so speed timer restarts on next press
                     // (prevents drift from keeping last_travel > 0 between presses)
+                    // Skip the final last_travel = travel assignment this cycle
+                    // so the 0 isn't immediately overwritten by residual travel
                     state->last_travel = 0;
+                } else {
+                    state->last_travel = travel;
                 }
-
-                state->last_travel = travel;
             }
             break;
     }
@@ -2196,6 +2198,11 @@ static void analog_matrix_task_internal(void) {
             key->distance = adc_to_distance(key->adc_filtered,
                                             key->adc_rest_value,
                                             key->adc_bottom_out_value);
+
+            // 3a. Rest dead zone: clamp tiny residuals to 0.
+            // Eliminates 1-2 ADC unit noise that produces distance 1-3
+            // (approximately 0.05mm — imperceptible but breaks travel == 0 gates)
+            if (key->distance <= 3) key->distance = 0;
 
             // 4. Process RT state machine
             process_rapid_trigger(key_idx, current_layer);
