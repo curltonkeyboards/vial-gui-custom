@@ -949,18 +949,13 @@ static void update_calibration(uint32_t key_idx) {
             ? (key->adc_filtered < key->adc_rest_value - CALIBRATION_EPSILON)
             : (key->adc_filtered > key->adc_rest_value + CALIBRATION_EPSILON);
 
-        if (drifted_away_from_pressed) {
-            // ADC has moved further into "released" territory than current rest.
-            // Update immediately - rest should always reflect the true resting
-            // position. A higher reading at rest means the baseline has shifted.
-            key->adc_rest_value = key->adc_filtered;
-            calibration_dirty = true;
-            last_calibration_change = timer_read();
-        } else if (drifted_toward_pressed &&
-                   timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
-            // ADC has moved toward pressed but key is stable for 5 seconds.
-            // A slow press would not stay perfectly stable for this long, so
-            // this is genuine temperature/magnetic drift. Safe to recalibrate.
+        if ((drifted_away_from_pressed || drifted_toward_pressed) &&
+            timer_elapsed32(key->stable_time) > AUTO_CALIB_VALID_RELEASE_TIME) {
+            // ADC has drifted in either direction but key is stable for 5 seconds.
+            // Both directions require the stability wait to prevent transient ADC
+            // spikes (20-30 units) from being instantly locked in as the new rest.
+            // Temperature/magnetic drift is slow enough that 5s of stability is
+            // easily achieved for genuine drift in either direction.
             key->adc_rest_value = key->adc_filtered;
             calibration_dirty = true;
             last_calibration_change = timer_read();
@@ -1240,6 +1235,21 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // Cache is refreshed on layer change before this function is called
     uint8_t per_key_actuation = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
 
+    // Deadzone-compensated velocity: the deadzone remapping (applied earlier) compresses
+    // the physical travel range [dz_bottom, 255-dz_top] → [0, 255]. This means the same
+    // physical finger speed covers the remapped actuation distance in less time, inflating
+    // velocity. We compute the effective range ratio to scale elapsed_ms back up, so
+    // velocity is consistent regardless of deadzone settings.
+    // Only computed once per velocity capture (negligible cost: 1 multiply + 1 divide).
+    uint16_t dz_effective_range = 255;  // Default: no deadzone
+    if (key_idx < 70) {
+        uint8_t dz_b = active_per_key_cache[key_idx].dz_bottom;
+        uint8_t dz_t = active_per_key_cache[key_idx].dz_top;
+        uint16_t range = 255 - dz_b - dz_t;
+        if (range < 20) range = 20;  // Clamp to avoid extreme scaling
+        dz_effective_range = range;
+    }
+
     // ========================================================================
     // ZONE-SPECIFIC ACTUATION OVERRIDE AND RETRIGGER
     // Check zone type and apply zone-specific settings if enabled
@@ -1371,10 +1381,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = 0;
                     // Reset last_travel so speed timer restarts on next press
                     // (prevents drift from keeping last_travel > 0 between presses)
+                    // Skip the final last_travel = travel assignment this cycle
+                    // so the 0 isn't immediately overwritten by residual travel
                     state->last_travel = 0;
+                } else {
+                    state->last_travel = travel;
                 }
-
-                state->last_travel = travel;
             }
             break;
 
@@ -1397,6 +1409,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
                     uint32_t elapsed_ms = elapsed_us / 1000;
+
+                    // Deadzone compensation: scale elapsed time up to account for the
+                    // shorter physical travel distance when deadzones are active.
+                    // Without this, a 50% deadzone halves the travel distance, halves the
+                    // time, and doubles the apparent velocity for the same finger speed.
+                    if (dz_effective_range < 255) {
+                        elapsed_ms = (elapsed_ms * 255) / dz_effective_range;
+                    }
 
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
@@ -1457,10 +1477,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = 0;
                     // Reset last_travel so speed timer restarts on next press
                     // (prevents drift from keeping last_travel > 0 between presses)
+                    // Skip the final last_travel = travel assignment this cycle
+                    // so the 0 isn't immediately overwritten by residual travel
                     state->last_travel = 0;
+                } else {
+                    state->last_travel = travel;
                 }
 
-                state->last_travel = travel;
                 state->last_time = now;
             }
             break;
@@ -1491,6 +1514,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
                     uint32_t elapsed_ms = elapsed_us / 1000;
+
+                    // Deadzone compensation (see mode 2 comment)
+                    if (dz_effective_range < 255) {
+                        elapsed_ms = (elapsed_ms * 255) / dz_effective_range;
+                    }
 
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
@@ -1534,6 +1562,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
                     uint32_t elapsed_ms = elapsed_us / 1000;
+
+                    // Deadzone compensation (see mode 2 comment)
+                    if (dz_effective_range < 255) {
+                        elapsed_ms = (elapsed_ms * 255) / dz_effective_range;
+                    }
 
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
@@ -1582,10 +1615,12 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     state->retrigger_move_start = 0;
                     // Reset last_travel so speed timer restarts on next press
                     // (prevents drift from keeping last_travel > 0 between presses)
+                    // Skip the final last_travel = travel assignment this cycle
+                    // so the 0 isn't immediately overwritten by residual travel
                     state->last_travel = 0;
+                } else {
+                    state->last_travel = travel;
                 }
-
-                state->last_travel = travel;
             }
             break;
     }
@@ -1858,6 +1893,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 int travel_diff = (int)travel - (int)state->vibrato_last_travel;
                 uint8_t raw_delta = (travel_diff > 0) ? (uint8_t)travel_diff : 0;
                 state->vibrato_last_travel = travel;
+
+                // Deadzone compensation: the remapping inflates deltas by 255/range.
+                // Scale back down so vibrato sensitivity is consistent regardless of deadzone.
+                if (dz_effective_range < 255 && raw_delta > 0) {
+                    raw_delta = (uint8_t)(((uint16_t)raw_delta * dz_effective_range) / 255);
+                    if (raw_delta == 0) raw_delta = 1;  // Preserve non-zero movement
+                }
 
                 // Noise floor: ignore small deltas (~20 ADC counts normalized)
                 if (raw_delta >= 5) {
@@ -2156,6 +2198,11 @@ static void analog_matrix_task_internal(void) {
             key->distance = adc_to_distance(key->adc_filtered,
                                             key->adc_rest_value,
                                             key->adc_bottom_out_value);
+
+            // 3a. Rest dead zone: clamp tiny residuals to 0.
+            // Eliminates 1-2 ADC unit noise that produces distance 1-3
+            // (approximately 0.05mm — imperceptible but breaks travel == 0 gates)
+            if (key->distance <= 3) key->distance = 0;
 
             // 4. Process RT state machine
             process_rapid_trigger(key_idx, current_layer);

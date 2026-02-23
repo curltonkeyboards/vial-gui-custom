@@ -1010,14 +1010,17 @@ class VelocityTab(BasicEditor):
         # =====================================================================
         preset_list_group = QGroupBox(tr("VelocityTab", "Presets"))
         preset_list_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        preset_list_group.setMaximumWidth(180)
+        preset_list_group.setMinimumWidth(200)
+        preset_list_group.setMaximumWidth(280)
+        preset_list_group.setMinimumHeight(400)
+        preset_list_group.setMaximumHeight(600)
         preset_list_layout = QVBoxLayout()
         preset_list_layout.setSpacing(5)
         preset_list_group.setLayout(preset_list_layout)
 
         # Scrollable preset list
         self.preset_list_widget = QListWidget()
-        self.preset_list_widget.setMinimumHeight(200)
+        self.preset_list_widget.setMinimumHeight(300)
 
         # Factory presets
         factory_curves = ["Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"]
@@ -1063,7 +1066,10 @@ class VelocityTab(BasicEditor):
         # =====================================================================
         preset_group = QGroupBox(tr("VelocityTab", "Preset Settings"))
         preset_group.setStyleSheet("QGroupBox { font-weight: bold; }")
-        preset_group.setMaximumWidth(800)  # Limit width of preset settings
+        preset_group.setMinimumWidth(500)
+        preset_group.setMaximumWidth(900)
+        preset_group.setMinimumHeight(400)
+        preset_group.setMaximumHeight(600)
         preset_main_layout = QVBoxLayout()
         preset_main_layout.setSpacing(10)
         preset_group.setLayout(preset_main_layout)
