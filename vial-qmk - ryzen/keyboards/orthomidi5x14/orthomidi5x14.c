@@ -2285,6 +2285,11 @@ void start_progression_from_keycode(uint16_t keycode) {
     // Start the progression with the right key offset
     start_chord_progression(progression_id, key_offset);
 }
+// Keymap change detection - set by via.c when keycodes are written,
+// checked by housekeeping_task_user() to trigger debounced MIDI/LED rescan.
+volatile bool keymap_needs_rescan = false;
+uint32_t keymap_last_changed_time = 0;
+
 // Discovery phase variables
 uint8_t discovered_layers_with_midi = 0;
 uint8_t discovered_max_notes_per_layer = 0;
@@ -16541,4 +16546,20 @@ void matrix_scan_user(void) {
 		action_exec(MAKE_KEYEVENT(5, 1, !encoder1_click_state));
 		encoder1_click_prev_state = encoder1_click_state;
 	}
+}
+
+// =============================================================================
+// AUTOMATIC KEYMAP RESCAN
+// =============================================================================
+// Called every main loop iteration by QMK. When the GUI writes keycodes via
+// VIA/Vial, via.c sets keymap_needs_rescan=true. After 500ms of no further
+// writes (debounce), we rebuild the MIDI LED position arrays and LED category
+// caches so they match the new keymap without requiring a keyboard restart.
+void housekeeping_task_user(void) {
+    if (keymap_needs_rescan &&
+        timer_elapsed32(keymap_last_changed_time) >= KEYMAP_RESCAN_DEBOUNCE_MS) {
+        keymap_needs_rescan = false;
+        scan_keycode_categories();
+        scan_current_layer_midi_leds();
+    }
 }
