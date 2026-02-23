@@ -28,7 +28,7 @@ from util import tr
 from vial_device import VialKeyboard
 from protocol.keyboard_comm import (
     PARAM_SPEED_PEAK_RATIO, PARAM_AFTERTOUCH_MODE, PARAM_AFTERTOUCH_CC,
-    PARAM_VIBRATO_SENSITIVITY, PARAM_VIBRATO_DECAY_TIME
+    PARAM_VIBRATO_SENSITIVITY, PARAM_VIBRATO_DECAY_TIME, PARAM_VELOCITY_AS_AT
 )
 
 
@@ -285,6 +285,7 @@ class VelocityTab(BasicEditor):
             'aftertouch_mode': 0,       # 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3=Reverse, 4=Reverse(NS), 5=Post-actuation, 6=Post-actuation(NS), 7=Vibrato, 8=Vibrato(NS)
             'aftertouch_smoothness': 0, # 0-100% EMA smoothing (shares retrigger byte when aftertouch active)
             'aftertouch_cc': 255,       # 0-127=CC number, 255=off (poly AT only)
+            'velocity_as_at': False,    # Pre-load aftertouch from velocity on note-on
             'vibrato_sensitivity': 50,  # 0-100 (percentage, 100% = 30% effective)
             'vibrato_decay_time': 10,   # 0-50 (ms per unit decay)
             'min_press_time': 200,      # 50-500ms (slow press threshold)
@@ -300,6 +301,7 @@ class VelocityTab(BasicEditor):
             'keysplit_zone': {
                 'velocity_min': 1, 'velocity_max': 127,
                 'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+                'velocity_as_at': False,
                 'vibrato_sensitivity': 50, 'vibrato_decay_time': 10,
                 'min_press_time': 200, 'max_press_time': 20,
                 'actuation_override': False, 'actuation_point': 20,
@@ -310,6 +312,7 @@ class VelocityTab(BasicEditor):
             'triplesplit_zone': {
                 'velocity_min': 1, 'velocity_max': 127,
                 'aftertouch_mode': 0, 'aftertouch_smoothness': 0, 'aftertouch_cc': 255,
+                'velocity_as_at': False,
                 'vibrato_sensitivity': 50, 'vibrato_decay_time': 10,
                 'min_press_time': 200, 'max_press_time': 20,
                 'actuation_override': False, 'actuation_point': 20,
@@ -490,35 +493,6 @@ class VelocityTab(BasicEditor):
         mode_layout.addWidget(controls['aftertouch_mode_combo'], 1)
         layout.addLayout(mode_layout)
 
-        # Aftertouch Smoothness slider (shares retrigger byte, visible when aftertouch is on)
-        controls['smoothness_widget'] = QWidget()
-        smooth_layout = QHBoxLayout()
-        smooth_layout.setContentsMargins(0, 0, 0, 0)
-        controls['smoothness_widget'].setLayout(smooth_layout)
-
-        smooth_layout.addWidget(self.create_help_label(
-            "EMA smoothing filter for aftertouch output.\n"
-            "0% = instant (no smoothing)\n"
-            "100% = very smooth (slow response)"))
-        smooth_label = QLabel(tr("VelocityTab", "Smoothness:"))
-        smooth_label.setMinimumWidth(85)
-        smooth_layout.addWidget(smooth_label)
-
-        controls['smoothness_slider'] = QSlider(Qt.Horizontal)
-        controls['smoothness_slider'].setMinimum(0)
-        controls['smoothness_slider'].setMaximum(100)
-        controls['smoothness_slider'].setValue(0)
-        controls['smoothness_slider'].setProperty('zone', zone_name)
-        smooth_layout.addWidget(controls['smoothness_slider'], 1)
-
-        controls['smoothness_value'] = QLabel("0%")
-        controls['smoothness_value'].setMinimumWidth(40)
-        controls['smoothness_value'].setStyleSheet("QLabel { font-weight: bold; }")
-        smooth_layout.addWidget(controls['smoothness_value'])
-
-        layout.addWidget(controls['smoothness_widget'])
-        controls['smoothness_widget'].setVisible(False)
-
         # Aftertouch CC (hidden when aftertouch is Off)
         controls['aftertouch_cc_widget'] = QWidget()
         cc_layout = QHBoxLayout()
@@ -547,16 +521,74 @@ class VelocityTab(BasicEditor):
         layout.addWidget(controls['aftertouch_cc_widget'])
         controls['aftertouch_cc_widget'].setVisible(False)  # Hidden when aftertouch is Off
 
-        # Vibrato Sensitivity (hidden by default)
+        # Velocity as Aftertouch checkbox (hidden when aftertouch is Off)
+        controls['velocity_as_at_widget'] = QWidget()
+        vat_layout = QHBoxLayout()
+        vat_layout.setContentsMargins(0, 0, 0, 0)
+        controls['velocity_as_at_widget'].setLayout(vat_layout)
+
+        vat_layout.addWidget(self.create_help_label(
+            "Pre-load aftertouch from note-on velocity.\n"
+            "Aftertouch starts at the velocity value\n"
+            "instead of 0 when a note triggers."))
+        controls['velocity_as_at_checkbox'] = QCheckBox(tr("VelocityTab", "Velocity as Aftertouch"))
+        controls['velocity_as_at_checkbox'].setProperty('zone', zone_name)
+        vat_layout.addWidget(controls['velocity_as_at_checkbox'])
+
+        layout.addWidget(controls['velocity_as_at_widget'])
+        controls['velocity_as_at_widget'].setVisible(False)  # Hidden when aftertouch is Off
+
+        # Aftertouch Smoothness slider (shares retrigger byte, visible when aftertouch is on)
+        controls['smoothness_widget'] = QWidget()
+        smooth_layout = QHBoxLayout()
+        smooth_layout.setContentsMargins(0, 0, 0, 0)
+        controls['smoothness_widget'].setLayout(smooth_layout)
+
+        smooth_layout.addWidget(self.create_help_label(
+            "Slew rate limiter for aftertouch output.\n"
+            "Fast = instant response\n"
+            "Slow = very smooth (10s full sweep)"))
+        smooth_label = QLabel(tr("VelocityTab", "Smoothness:"))
+        smooth_label.setMinimumWidth(85)
+        smooth_layout.addWidget(smooth_label)
+
+        fast_label = QLabel("Fast")
+        fast_label.setStyleSheet("QLabel { font-size: 10px; color: #888; }")
+        smooth_layout.addWidget(fast_label)
+
+        controls['smoothness_slider'] = QSlider(Qt.Horizontal)
+        controls['smoothness_slider'].setMinimum(0)
+        controls['smoothness_slider'].setMaximum(100)
+        controls['smoothness_slider'].setValue(0)
+        controls['smoothness_slider'].setProperty('zone', zone_name)
+        smooth_layout.addWidget(controls['smoothness_slider'], 1)
+
+        slow_label = QLabel("Slow")
+        slow_label.setStyleSheet("QLabel { font-size: 10px; color: #888; }")
+        smooth_layout.addWidget(slow_label)
+
+        # Hidden label to keep control reference (not displayed)
+        controls['smoothness_value'] = QLabel("")
+        controls['smoothness_value'].setVisible(False)
+        smooth_layout.addWidget(controls['smoothness_value'])
+
+        layout.addWidget(controls['smoothness_widget'])
+        controls['smoothness_widget'].setVisible(False)
+
+        # Vibrato Sensitivity (hidden by default) - reversed: left=sensitive, right=less sensitive
         controls['vibrato_sens_widget'] = QWidget()
         sens_layout = QHBoxLayout()
         sens_layout.setContentsMargins(0, 0, 0, 0)
         controls['vibrato_sens_widget'].setLayout(sens_layout)
 
-        sens_layout.addWidget(self.create_help_label("Wiggle sensitivity.\n0%=Off, 100%=Maximum"))
+        sens_layout.addWidget(self.create_help_label("Wiggle sensitivity.\nLeft=Most sensitive, Right=Least sensitive"))
         sens_label = QLabel(tr("VelocityTab", "Vib Sens:"))
         sens_label.setMinimumWidth(85)
         sens_layout.addWidget(sens_label)
+
+        sens_high_label = QLabel("Sensitive")
+        sens_high_label.setStyleSheet("QLabel { font-size: 10px; color: #888; }")
+        sens_layout.addWidget(sens_high_label)
 
         controls['vibrato_sens_slider'] = QSlider(Qt.Horizontal)
         controls['vibrato_sens_slider'].setMinimum(0)
@@ -565,35 +597,47 @@ class VelocityTab(BasicEditor):
         controls['vibrato_sens_slider'].setProperty('zone', zone_name)
         sens_layout.addWidget(controls['vibrato_sens_slider'], 1)
 
-        controls['vibrato_sens_value'] = QLabel("50%")
-        controls['vibrato_sens_value'].setMinimumWidth(45)
-        controls['vibrato_sens_value'].setStyleSheet("QLabel { font-weight: bold; }")
+        sens_low_label = QLabel("Less")
+        sens_low_label.setStyleSheet("QLabel { font-size: 10px; color: #888; }")
+        sens_layout.addWidget(sens_low_label)
+
+        # Hidden label to keep control reference
+        controls['vibrato_sens_value'] = QLabel("")
+        controls['vibrato_sens_value'].setVisible(False)
         sens_layout.addWidget(controls['vibrato_sens_value'])
 
         layout.addWidget(controls['vibrato_sens_widget'])
         controls['vibrato_sens_widget'].setVisible(False)
 
-        # Vibrato Decay (hidden by default)
+        # Vibrato Decay (hidden by default) - now percentage-based, synced with smoothness scale
         controls['vibrato_decay_widget'] = QWidget()
         decay_layout = QHBoxLayout()
         decay_layout.setContentsMargins(0, 0, 0, 0)
         controls['vibrato_decay_widget'].setLayout(decay_layout)
 
-        decay_layout.addWidget(self.create_help_label("Decay rate: ms per unit of aftertouch lost.\n0=Instant, higher=slower decay"))
+        decay_layout.addWidget(self.create_help_label("Vibrato decay rate.\nSynced with smoothness scale.\nFast=instant decay, Slow=gradual decay"))
         decay_label = QLabel(tr("VelocityTab", "Vib Decay:"))
         decay_label.setMinimumWidth(85)
         decay_layout.addWidget(decay_label)
 
+        decay_fast_label = QLabel("Fast")
+        decay_fast_label.setStyleSheet("QLabel { font-size: 10px; color: #888; }")
+        decay_layout.addWidget(decay_fast_label)
+
         controls['vibrato_decay_slider'] = QSlider(Qt.Horizontal)
         controls['vibrato_decay_slider'].setMinimum(0)
-        controls['vibrato_decay_slider'].setMaximum(50)
-        controls['vibrato_decay_slider'].setValue(10)
+        controls['vibrato_decay_slider'].setMaximum(100)
+        controls['vibrato_decay_slider'].setValue(0)
         controls['vibrato_decay_slider'].setProperty('zone', zone_name)
         decay_layout.addWidget(controls['vibrato_decay_slider'], 1)
 
-        controls['vibrato_decay_value'] = QLabel("10ms")
-        controls['vibrato_decay_value'].setMinimumWidth(50)
-        controls['vibrato_decay_value'].setStyleSheet("QLabel { font-weight: bold; }")
+        decay_slow_label = QLabel("Slow")
+        decay_slow_label.setStyleSheet("QLabel { font-size: 10px; color: #888; }")
+        decay_layout.addWidget(decay_slow_label)
+
+        # Hidden label to keep control reference
+        controls['vibrato_decay_value'] = QLabel("")
+        controls['vibrato_decay_value'].setVisible(False)
         decay_layout.addWidget(controls['vibrato_decay_value'])
 
         layout.addWidget(controls['vibrato_decay_widget'])
@@ -782,6 +826,7 @@ class VelocityTab(BasicEditor):
             controls['vibrato_sens_widget'].setVisible(is_vibrato)
             controls['vibrato_decay_widget'].setVisible(is_vibrato)
             controls['aftertouch_cc_widget'].setVisible(not is_off)
+            controls['velocity_as_at_widget'].setVisible(not is_off)
             # Smoothness replaces retrigger when aftertouch is active
             controls['smoothness_widget'].setVisible(not is_off)
             # Disable retrigger when aftertouch is enabled
@@ -794,13 +839,6 @@ class VelocityTab(BasicEditor):
 
         controls['aftertouch_mode_combo'].currentIndexChanged.connect(on_aftertouch_mode_changed)
 
-        # Aftertouch smoothness (0-100%, shares retrigger byte in protocol)
-        def on_smoothness_changed(value):
-            controls['smoothness_value'].setText(f"{value}%")
-            set_setting('aftertouch_smoothness', value)
-
-        controls['smoothness_slider'].valueChanged.connect(on_smoothness_changed)
-
         # Aftertouch CC
         def on_aftertouch_cc_changed(index):
             cc = controls['aftertouch_cc_combo'].currentData()
@@ -808,14 +846,36 @@ class VelocityTab(BasicEditor):
 
         controls['aftertouch_cc_combo'].currentIndexChanged.connect(on_aftertouch_cc_changed)
 
-        # Vibrato settings
-        def on_vibrato_sens_changed(value):
-            controls['vibrato_sens_value'].setText(f"{value}%")
-            set_setting('vibrato_sensitivity', value)
+        # Velocity as Aftertouch checkbox
+        def on_velocity_as_at_changed(state):
+            enabled = (state == Qt.Checked)
+            set_setting('velocity_as_at', enabled)
+            if self.keyboard:
+                self.keyboard.set_keyboard_param_single(PARAM_VELOCITY_AS_AT, 1 if enabled else 0)
 
+        controls['velocity_as_at_checkbox'].stateChanged.connect(on_velocity_as_at_changed)
+
+        # Aftertouch smoothness (0-100%, shares retrigger byte in protocol)
+        def on_smoothness_changed(value):
+            set_setting('aftertouch_smoothness', value)
+
+        controls['smoothness_slider'].valueChanged.connect(on_smoothness_changed)
+
+        # Vibrato sensitivity (slider is reversed: 0=most sensitive, 100=least sensitive)
+        # Firmware value = 100 - slider_value
+        def on_vibrato_sens_changed(value):
+            firmware_value = 100 - value
+            set_setting('vibrato_sensitivity', firmware_value)
+
+        # Vibrato decay (percentage-based, synced with smoothness scale)
+        # Convert percentage to ms-per-unit: decay_ms = (pct * 100) / 127
+        # At 100%: 10000ms / 127 = ~79ms per unit (same as smoothness full sweep)
         def on_vibrato_decay_changed(value):
-            controls['vibrato_decay_value'].setText(f"{value}ms")
-            set_setting('vibrato_decay_time', value)
+            if value > 0:
+                decay_ms = max(1, (value * 100) // 127)
+            else:
+                decay_ms = 0
+            set_setting('vibrato_decay_time', decay_ms)
 
         controls['vibrato_sens_slider'].valueChanged.connect(on_vibrato_sens_changed)
         controls['vibrato_decay_slider'].valueChanged.connect(on_vibrato_decay_changed)
@@ -1069,6 +1129,8 @@ class VelocityTab(BasicEditor):
         self.aftertouch_mode_combo = base_controls['aftertouch_mode_combo']
         self.aftertouch_cc_combo = base_controls['aftertouch_cc_combo']
         self.aftertouch_cc_widget = base_controls['aftertouch_cc_widget']
+        self.velocity_as_at_widget = base_controls['velocity_as_at_widget']
+        self.velocity_as_at_checkbox = base_controls['velocity_as_at_checkbox']
         self.vibrato_sens_widget = base_controls['vibrato_sens_widget']
         self.vibrato_sens_slider = base_controls['vibrato_sens_slider']
         self.vibrato_sens_value = base_controls['vibrato_sens_value']
@@ -1260,6 +1322,10 @@ class VelocityTab(BasicEditor):
 
                 # Update UI from settings
                 self.load_advanced_ui_from_settings()
+
+            # Push velocity_as_at to keyboard (no read-back available, so sync GUI→firmware)
+            velocity_as_at = self.global_midi_settings.get('velocity_as_at', False)
+            self.keyboard.set_keyboard_param_single(PARAM_VELOCITY_AS_AT, 1 if velocity_as_at else 0)
         except Exception as e:
             print(f"Error loading advanced settings: {e}")
 
@@ -1275,6 +1341,7 @@ class VelocityTab(BasicEditor):
         self.smoothness_slider.blockSignals(True)
         self.vibrato_sens_slider.blockSignals(True)
         self.vibrato_decay_slider.blockSignals(True)
+        self.velocity_as_at_checkbox.blockSignals(True)
 
         # Set velocity range
         vel_min = settings.get('velocity_min', 1)
@@ -1295,12 +1362,13 @@ class VelocityTab(BasicEditor):
                 self.aftertouch_mode_combo.setCurrentIndex(i)
                 break
 
-        # Show/hide vibrato controls, smoothness, and aftertouch CC
+        # Show/hide vibrato controls, smoothness, aftertouch CC, and velocity_as_at
         is_vibrato = (mode in (7, 8))
         is_off = (mode == 0)
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
         self.aftertouch_cc_widget.setVisible(not is_off)
+        self.velocity_as_at_widget.setVisible(not is_off)
         self.smoothness_widget.setVisible(not is_off)
 
         # Disable retrigger when aftertouch is enabled
@@ -1310,11 +1378,6 @@ class VelocityTab(BasicEditor):
             self.retrigger_checkbox.setChecked(False)
             self.retrigger_widget.setVisible(False)
 
-        # Set smoothness
-        smoothness = settings.get('aftertouch_smoothness', 0)
-        self.smoothness_slider.setValue(smoothness)
-        self.smoothness_value.setText(f"{smoothness}%")
-
         # Set aftertouch CC
         cc = settings.get('aftertouch_cc', 255)
         for i in range(self.aftertouch_cc_combo.count()):
@@ -1322,14 +1385,25 @@ class VelocityTab(BasicEditor):
                 self.aftertouch_cc_combo.setCurrentIndex(i)
                 break
 
-        # Set vibrato settings
-        sens = settings.get('vibrato_sensitivity', 50)
-        self.vibrato_sens_slider.setValue(sens)
-        self.vibrato_sens_value.setText(f"{sens}%")
+        # Set velocity as aftertouch checkbox
+        velocity_as_at = settings.get('velocity_as_at', False)
+        self.velocity_as_at_checkbox.setChecked(velocity_as_at)
 
-        decay = settings.get('vibrato_decay_time', 10)
-        self.vibrato_decay_slider.setValue(decay)
-        self.vibrato_decay_value.setText(f"{decay}ms")
+        # Set smoothness
+        smoothness = settings.get('aftertouch_smoothness', 0)
+        self.smoothness_slider.setValue(smoothness)
+
+        # Set vibrato settings (sensitivity is reversed in UI: slider 0=max sens, 100=min sens)
+        sens = settings.get('vibrato_sensitivity', 50)
+        self.vibrato_sens_slider.setValue(100 - sens)  # Reverse for display
+
+        # Convert decay ms back to percentage for slider
+        decay_ms = settings.get('vibrato_decay_time', 10)
+        if decay_ms > 0:
+            decay_pct = min(100, (decay_ms * 127) // 100)
+        else:
+            decay_pct = 0
+        self.vibrato_decay_slider.setValue(decay_pct)
 
         # Unblock signals
         self.velocity_range_slider.blockSignals(False)
@@ -1339,6 +1413,7 @@ class VelocityTab(BasicEditor):
         self.smoothness_slider.blockSignals(False)
         self.vibrato_sens_slider.blockSignals(False)
         self.vibrato_decay_slider.blockSignals(False)
+        self.velocity_as_at_checkbox.blockSignals(False)
 
     def on_aftertouch_mode_changed(self, index):
         """Handle aftertouch mode change - show/hide vibrato, smoothness, and CC controls"""
@@ -1348,6 +1423,7 @@ class VelocityTab(BasicEditor):
         self.vibrato_sens_widget.setVisible(is_vibrato)
         self.vibrato_decay_widget.setVisible(is_vibrato)
         self.aftertouch_cc_widget.setVisible(not is_off)
+        self.velocity_as_at_widget.setVisible(not is_off)
         # Smoothness replaces retrigger when aftertouch is active
         self.smoothness_widget.setVisible(not is_off)
         # Disable retrigger when aftertouch is enabled
@@ -1367,19 +1443,29 @@ class VelocityTab(BasicEditor):
         if self.keyboard:
             self.keyboard.set_keyboard_param_single(PARAM_AFTERTOUCH_CC, cc)
 
-    def on_vibrato_sensitivity_changed(self, value):
-        """Handle vibrato sensitivity slider change"""
-        self.vibrato_sens_value.setText(f"{value}%")
-        self.global_midi_settings['vibrato_sensitivity'] = value
+    def on_velocity_as_at_changed(self, state):
+        """Handle velocity as aftertouch checkbox change"""
+        enabled = (state == Qt.Checked)
+        self.global_midi_settings['velocity_as_at'] = enabled
         if self.keyboard:
-            self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_SENSITIVITY, value)
+            self.keyboard.set_keyboard_param_single(PARAM_VELOCITY_AS_AT, 1 if enabled else 0)
+
+    def on_vibrato_sensitivity_changed(self, value):
+        """Handle vibrato sensitivity slider change (reversed: 0=max sens, 100=min sens)"""
+        firmware_value = 100 - value
+        self.global_midi_settings['vibrato_sensitivity'] = firmware_value
+        if self.keyboard:
+            self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_SENSITIVITY, firmware_value)
 
     def on_vibrato_decay_changed(self, value):
-        """Handle vibrato decay slider change"""
-        self.vibrato_decay_value.setText(f"{value}ms")
-        self.global_midi_settings['vibrato_decay_time'] = value
+        """Handle vibrato decay slider change (percentage, synced with smoothness scale)"""
+        if value > 0:
+            decay_ms = max(1, (value * 100) // 127)
+        else:
+            decay_ms = 0
+        self.global_midi_settings['vibrato_decay_time'] = decay_ms
         if self.keyboard:
-            self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_DECAY_TIME, value)
+            self.keyboard.set_keyboard_param_single(PARAM_VIBRATO_DECAY_TIME, decay_ms)
 
     def on_actuation_override_changed(self, state):
         """Handle actuation override checkbox change"""
@@ -1499,6 +1585,7 @@ class VelocityTab(BasicEditor):
         controls['vibrato_sens_widget'].setVisible(is_vibrato)
         controls['vibrato_decay_widget'].setVisible(is_vibrato)
         controls['aftertouch_cc_widget'].setVisible(not is_off)
+        controls['velocity_as_at_widget'].setVisible(not is_off)
         controls['smoothness_widget'].setVisible(not is_off)
 
         # Disable retrigger when aftertouch is enabled
@@ -1508,11 +1595,6 @@ class VelocityTab(BasicEditor):
             controls['retrigger_checkbox'].setChecked(False)
             controls['retrigger_widget'].setVisible(False)
 
-        # Update smoothness
-        smoothness = zone_data.get('aftertouch_smoothness', 0)
-        controls['smoothness_slider'].setValue(smoothness)
-        controls['smoothness_value'].setText(f"{smoothness}%")
-
         # Update aftertouch CC
         at_cc = zone_data.get('aftertouch_cc', 255)
         for i in range(controls['aftertouch_cc_combo'].count()):
@@ -1520,13 +1602,25 @@ class VelocityTab(BasicEditor):
                 controls['aftertouch_cc_combo'].setCurrentIndex(i)
                 break
 
-        # Update vibrato settings
+        # Update velocity as aftertouch checkbox
+        velocity_as_at = zone_data.get('velocity_as_at', False)
+        controls['velocity_as_at_checkbox'].setChecked(velocity_as_at)
+
+        # Update smoothness
+        smoothness = zone_data.get('aftertouch_smoothness', 0)
+        controls['smoothness_slider'].setValue(smoothness)
+
+        # Update vibrato settings (sensitivity reversed in UI: slider 0=max, 100=min)
         vib_sens = zone_data.get('vibrato_sensitivity', 50)
-        vib_decay = zone_data.get('vibrato_decay', zone_data.get('vibrato_decay_time', 10))
-        controls['vibrato_sens_slider'].setValue(vib_sens)
-        controls['vibrato_sens_value'].setText(f"{vib_sens}%")
-        controls['vibrato_decay_slider'].setValue(vib_decay)
-        controls['vibrato_decay_value'].setText(f"{vib_decay}ms")
+        controls['vibrato_sens_slider'].setValue(100 - vib_sens)  # Reverse for display
+
+        # Convert decay ms back to percentage for slider
+        vib_decay_ms = zone_data.get('vibrato_decay', zone_data.get('vibrato_decay_time', 10))
+        if vib_decay_ms > 0:
+            vib_decay_pct = min(100, (vib_decay_ms * 127) // 100)
+        else:
+            vib_decay_pct = 0
+        controls['vibrato_decay_slider'].setValue(vib_decay_pct)
 
         # Update actuation override
         actuation_override = zone_data.get('actuation_override', False)

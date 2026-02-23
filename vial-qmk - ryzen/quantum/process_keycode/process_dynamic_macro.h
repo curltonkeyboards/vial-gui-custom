@@ -373,6 +373,7 @@ typedef struct {
     uint8_t base_smartchord_ignore;       // 0=Allow smartchord, 1=Ignore smartchord for base zone
     uint8_t keysplit_smartchord_ignore;    // 0=Allow smartchord, 1=Ignore smartchord for keysplit zone
     uint8_t triplesplit_smartchord_ignore; // 0=Allow smartchord, 1=Ignore smartchord for triplesplit zone
+    bool velocity_as_at;                  // Pre-load aftertouch from velocity on note-on
 } keyboard_settings_t;
 
 extern int velocity_sensitivity;
@@ -409,6 +410,7 @@ extern uint8_t aftertouch_mode;
 extern uint8_t aftertouch_cc;
 extern uint8_t vibrato_sensitivity;
 extern uint16_t vibrato_decay_time;
+extern bool velocity_as_at;
 extern uint16_t min_press_time;
 extern uint16_t max_press_time;
 extern uint8_t preset_speed_peak_ratio;

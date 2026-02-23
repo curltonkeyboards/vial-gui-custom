@@ -146,6 +146,7 @@ static bool macro_main_muted[MAX_MACROS] = {false, false, false, false};
 #define PARAM_BASE_SMARTCHORD_IGNORE         47
 #define PARAM_KEYSPLIT_SMARTCHORD_IGNORE      48
 #define PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE   49
+#define PARAM_VELOCITY_AS_AT                 50
 
 // HID packet structure (32 bytes max)
 #define HID_PACKET_SIZE        32
@@ -13327,6 +13328,10 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
             triplesplit_smartchord_ignore = *value_ptr;
             keyboard_settings.triplesplit_smartchord_ignore = triplesplit_smartchord_ignore;
             break;
+        case PARAM_VELOCITY_AS_AT:
+            velocity_as_at = *value_ptr ? true : false;
+            keyboard_settings.velocity_as_at = velocity_as_at;
+            break;
 
         default:
             dprintf("HID: Unknown param_id: %d\n", param_id);
@@ -13338,7 +13343,17 @@ static void handle_set_keyboard_param_single(const uint8_t* data) {
 
 
 static void handle_get_keyboard_config(void) {
+    // Preserve HID-set parameters before EEPROM reload.
+    // load_keyboard_settings() resets ALL globals from EEPROM, which destroys
+    // runtime values set via set_keyboard_param_single (e.g. velocity_as_at).
+    // EEPROM may contain garbage for newer fields not yet saved.
+    bool saved_velocity_as_at = velocity_as_at;
+
     load_keyboard_settings();
+
+    // Restore HID-set parameters (EEPROM may have stale/garbage values)
+    velocity_as_at = saved_velocity_as_at;
+    keyboard_settings.velocity_as_at = saved_velocity_as_at;
 
     // Packet 1: Basic settings (22 bytes)
     uint8_t config_packet1[22];

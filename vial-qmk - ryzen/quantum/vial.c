@@ -1087,6 +1087,12 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 						settings_changed = true;
 						msg[0] = 0x01;
 						break;
+					case 50:  // PARAM_VELOCITY_AS_AT (bool: pre-load aftertouch from velocity)
+						velocity_as_at = (value8 != 0);
+						keyboard_settings.velocity_as_at = velocity_as_at;
+						settings_changed = true;
+						msg[0] = 0x01;
+						break;
 					default:
 						msg[0] = 0x00;  // Unknown param_id
 						break;

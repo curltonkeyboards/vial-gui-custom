@@ -292,6 +292,7 @@ uint8_t aftertouch_mode = 0;         // 0=Off, 1=Bottom-out, 2=Bottom-out(NS), 3
 uint8_t aftertouch_cc = 255;         // 0-127=CC number, 255=off (poly AT only)
 uint8_t vibrato_sensitivity = 50;    // 0-100 (percentage, GUI 100% = 30% effective)
 uint16_t vibrato_decay_time = 10;    // 0-50 (ms per 1 unit decay)
+bool velocity_as_at = false;         // Pre-load aftertouch from velocity on note-on
 uint16_t min_press_time = 200;       // 50-500ms (slow press threshold)
 uint16_t max_press_time = 20;        // 5-100ms (fast press threshold)
 
@@ -2768,6 +2769,9 @@ void reset_keyboard_settings(void) {
     keyboard_settings.midi_in_mode = midi_in_mode;
     keyboard_settings.usb_midi_mode = usb_midi_mode;
     keyboard_settings.midi_clock_source = midi_clock_source;
+    // Velocity as Aftertouch
+    velocity_as_at = false;
+    keyboard_settings.velocity_as_at = false;
 }
 
 void save_keyboard_settings_to_slot(uint8_t slot) {
@@ -2841,6 +2845,7 @@ void load_keyboard_settings_from_slot(uint8_t slot) {
     base_smartchord_ignore = keyboard_settings.base_smartchord_ignore;
     keysplit_smartchord_ignore = keyboard_settings.keysplit_smartchord_ignore;
     triplesplit_smartchord_ignore = keyboard_settings.triplesplit_smartchord_ignore;
+    velocity_as_at = keyboard_settings.velocity_as_at;
 
     // NO struct assignments here - we just loaded FROM the struct TO the globals
 }
@@ -11339,6 +11344,7 @@ break;
 		keyboard_settings.colorblindmode = colorblindmode;
 	keyboard_settings.cclooprecording = cclooprecording;
 	keyboard_settings.truesustain = truesustain;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(0);
 		snprintf(name, sizeof(name), "Saved as default settings");
 
@@ -11372,6 +11378,7 @@ break;
 		keyboard_settings.colorblindmode = colorblindmode;
 	keyboard_settings.cclooprecording = cclooprecording;
 	keyboard_settings.truesustain = truesustain;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(1);
 		snprintf(name, sizeof(name), "Saved to Preset 1");
 
@@ -11405,6 +11412,7 @@ break;
 		keyboard_settings.colorblindmode = colorblindmode;
 	keyboard_settings.cclooprecording = cclooprecording;
 	keyboard_settings.truesustain = truesustain;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(2);
 		snprintf(name, sizeof(name), "Saved to Preset 2");
 
@@ -11435,6 +11443,7 @@ break;
     keyboard_settings.loop_messaging_channel = loop_messaging_channel;
     keyboard_settings.sync_midi_mode = sync_midi_mode;
     keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(3);
 		snprintf(name, sizeof(name), "Saved to Preset 3");
 
@@ -11465,6 +11474,7 @@ break;
     keyboard_settings.loop_messaging_channel = loop_messaging_channel;
     keyboard_settings.sync_midi_mode = sync_midi_mode;
     keyboard_settings.alternate_restart_mode = alternate_restart_mode;
+	keyboard_settings.velocity_as_at = velocity_as_at;
 		save_keyboard_settings_to_slot(4);
 		snprintf(name, sizeof(name), "Saved to Preset 4");
 
