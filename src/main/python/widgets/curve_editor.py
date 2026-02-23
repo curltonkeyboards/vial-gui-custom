@@ -10,7 +10,7 @@ Used for both gaming analog curves and per-key velocity curves.
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                              QComboBox, QDialog, QListWidget, QDialogButtonBox, QMessageBox)
 from PyQt5.QtCore import Qt, QPoint, QPointF, pyqtSignal
-from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QPainterPath, QPolygonF, QFont, QFontMetrics
+from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QPainterPath, QPolygonF
 
 from util import tr
 
@@ -255,18 +255,11 @@ class CurveCanvas(QWidget):
         super().__init__(parent)
         self.points = points
         self.canvas_size = size
-        self.margin_top = margin
-        self.margin_right = margin
-        self.margin_left = margin + 20   # Extra space for Y axis label
-        self.margin_bottom = margin + 18  # Extra space for X axis label
+        self.margin = margin
         self.grid_divisions = grid_divisions
         self.dragging_point = -1
 
-        # Draw area stays the same as original (size - 2*margin)
-        draw_area = size - 2 * margin
-        widget_w = self.margin_left + draw_area + self.margin_right
-        widget_h = self.margin_top + draw_area + self.margin_bottom
-        self.setFixedSize(widget_w, widget_h)
+        self.setFixedSize(size, size)
         self.setMouseTracking(True)
 
         # Visual settings
@@ -320,53 +313,30 @@ class CurveCanvas(QWidget):
         # Draw control points
         self.draw_control_points(painter)
 
-    def _draw_area(self):
-        """Return (draw_w, draw_h) of the plot area"""
-        w = self.width() - self.margin_left - self.margin_right
-        h = self.height() - self.margin_top - self.margin_bottom
-        return w, h
-
     def draw_grid(self, painter):
         """Draw grid background"""
         pen = QPen(QColor(50, 50, 50))
         painter.setPen(pen)
 
-        draw_w, draw_h = self._draw_area()
-        step_x = draw_w // self.grid_divisions
-        step_y = draw_h // self.grid_divisions
+        draw_area = self.canvas_size - 2 * self.margin
+        step = draw_area // self.grid_divisions
 
         # Vertical lines
         for i in range(self.grid_divisions + 1):
-            x = self.margin_left + i * step_x
-            painter.drawLine(x, self.margin_top, x, self.margin_top + draw_h)
+            x = self.margin + i * step
+            painter.drawLine(x, self.margin, x, self.canvas_size - self.margin)
 
         # Horizontal lines
         for i in range(self.grid_divisions + 1):
-            y = self.margin_top + i * step_y
-            painter.drawLine(self.margin_left, y, self.margin_left + draw_w, y)
+            y = self.margin + i * step
+            painter.drawLine(self.margin, y, self.canvas_size - self.margin, y)
 
-        # Axis labels
-        label_font = QFont()
-        label_font.setPixelSize(10)
-        painter.setFont(label_font)
-        painter.setPen(QPen(QColor(160, 160, 160)))
-
-        # X axis title: "Time to press (ms)" centered below the plot
-        x_label = "Time to press (ms)"
-        fm = QFontMetrics(label_font)
-        text_w = fm.horizontalAdvance(x_label)
-        x_center = self.margin_left + draw_w // 2 - text_w // 2
-        painter.drawText(x_center, self.margin_top + draw_h + self.margin_bottom - 2, x_label)
-
-        # Y axis title: "Velocity" rotated, centered along left edge
-        painter.save()
-        y_label = "Velocity"
-        text_w_y = fm.horizontalAdvance(y_label)
-        y_center = self.margin_top + draw_h // 2 + text_w_y // 2
-        painter.translate(12, y_center)
-        painter.rotate(-90)
-        painter.drawText(0, 0, y_label)
-        painter.restore()
+        # Draw axes labels
+        painter.setPen(QPen(QColor(150, 150, 150)))
+        painter.drawText(self.margin - 15, self.canvas_size - self.margin + 15, "0%")
+        painter.drawText(self.canvas_size - self.margin - 20, self.canvas_size - self.margin + 15, "100%")
+        painter.drawText(5, self.margin + 5, "100%")
+        painter.drawText(5, self.canvas_size - self.margin + 5, "0%")
 
     def draw_curve(self, painter):
         """Draw the curve as polyline through all 4 points"""
@@ -399,18 +369,18 @@ class CurveCanvas(QWidget):
 
     def value_to_canvas(self, point):
         """Convert value coordinates (0-255) to canvas coordinates"""
-        draw_w, draw_h = self._draw_area()
-        x = self.margin_left + (point[0] / 255.0) * draw_w
+        draw_area = self.canvas_size - 2 * self.margin
+        x = self.margin + (point[0] / 255.0) * draw_area
         # Invert Y axis (0 at bottom, 255 at top)
-        y = self.margin_top + draw_h - (point[1] / 255.0) * draw_h
+        y = self.canvas_size - self.margin - (point[1] / 255.0) * draw_area
         return QPointF(x, y)
 
     def canvas_to_value(self, pos):
         """Convert canvas coordinates to value coordinates (0-255)"""
-        draw_w, draw_h = self._draw_area()
-        x = ((pos.x() - self.margin_left) / draw_w) * 255.0
+        draw_area = self.canvas_size - 2 * self.margin
+        x = ((pos.x() - self.margin) / draw_area) * 255.0
         # Invert Y axis
-        y = ((self.margin_top + draw_h - pos.y()) / draw_h) * 255.0
+        y = ((self.canvas_size - self.margin - pos.y()) / draw_area) * 255.0
 
         # Clamp to 0-255
         x = max(0, min(255, x))
