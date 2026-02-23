@@ -1892,6 +1892,13 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                 uint8_t raw_delta = (travel_diff > 0) ? (uint8_t)travel_diff : 0;
                 state->vibrato_last_travel = travel;
 
+                // Deadzone compensation: the remapping inflates deltas by 255/range.
+                // Scale back down so vibrato sensitivity is consistent regardless of deadzone.
+                if (dz_effective_range < 255 && raw_delta > 0) {
+                    raw_delta = (uint8_t)(((uint16_t)raw_delta * dz_effective_range) / 255);
+                    if (raw_delta == 0) raw_delta = 1;  // Preserve non-zero movement
+                }
+
                 // Noise floor: ignore small deltas (~20 ADC counts normalized)
                 if (raw_delta >= 5) {
                     // Apply sensitivity scaling (0-100 from GUI, where 100% = 30% effective)
