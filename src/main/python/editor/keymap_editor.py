@@ -17,6 +17,7 @@ from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
 from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
 from editor.arpeggiator import DebugConsole
+from editor.keymap_presets import KEYMAP_PRESETS
 from protocol.keyboard_comm import (
     PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
     PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
@@ -2186,6 +2187,30 @@ class KeymapEditor(BasicEditor):
         layout_labels_container.addWidget(layer_label)
         layout_labels_container.addLayout(self.layout_layers)
         layout_labels_container.addStretch()
+
+        # Preset dropdown for applying tuning layouts
+        preset_label = QLabel(tr("KeymapEditor", "Preset:"))
+        preset_label.setStyleSheet("QLabel { font-weight: bold; }")
+        layout_labels_container.addWidget(preset_label)
+
+        self.preset_combo = ArrowComboBox()
+        self.preset_combo.setMinimumWidth(140)
+        self.preset_combo.setMaximumWidth(180)
+        for i, (name, description, _) in enumerate(KEYMAP_PRESETS):
+            self.preset_combo.addItem(name)
+            self.preset_combo.setItemData(i, description, Qt.ToolTipRole)
+        self.preset_combo.setCurrentIndex(0)
+        self.preset_combo.currentIndexChanged.connect(self.on_preset_selection_changed)
+        layout_labels_container.addWidget(self.preset_combo)
+
+        self.preset_apply_btn = QPushButton(tr("KeymapEditor", "Apply"))
+        self.preset_apply_btn.setMaximumHeight(24)
+        self.preset_apply_btn.setStyleSheet("padding: 2px 8px; font-size: 9pt; font-weight: bold;")
+        self.preset_apply_btn.setToolTip("Apply selected tuning preset to the current layer")
+        self.preset_apply_btn.clicked.connect(self.on_preset_apply)
+        layout_labels_container.addWidget(self.preset_apply_btn)
+
+        layout_labels_container.addSpacing(10)
         layout_labels_container.addLayout(self.layout_size)
 
         # Create quick actuation widget
@@ -2252,6 +2277,46 @@ class KeymapEditor(BasicEditor):
         self.matrix_test = matrix_test
         # Also set the reference in the quick_actuation widget
         self.quick_actuation.set_matrix_test_reference(matrix_test)
+
+    def on_preset_selection_changed(self, index):
+        """Update combo tooltip when preset selection changes."""
+        if 0 <= index < len(KEYMAP_PRESETS):
+            _, description, _ = KEYMAP_PRESETS[index]
+            self.preset_combo.setToolTip(description)
+
+    def on_preset_apply(self):
+        """Apply selected tuning preset to all 70 keys on the current layer."""
+        if self.keyboard is None:
+            return
+
+        index = self.preset_combo.currentIndex()
+        if index < 0 or index >= len(KEYMAP_PRESETS):
+            return
+
+        name, description, generator = KEYMAP_PRESETS[index]
+
+        ret = QMessageBox.question(
+            None,
+            tr("KeymapEditor", "Apply Preset"),
+            tr("KeymapEditor",
+               'Apply "{}" preset to Layer {}?\n\n'
+               '{}\n\n'
+               'This will overwrite all keys on the current layer.'.format(
+                   name, self.current_layer, description)),
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if ret != QMessageBox.Yes:
+            return
+
+        grid = generator()
+
+        layer = self.current_layer
+        for row in range(5):
+            for col in range(14):
+                keycode = grid[row][col]
+                self.keyboard.set_key(layer, row, col, keycode)
+
+        self.refresh_layer_display()
 
     def on_empty_space_clicked(self):
         self.container.deselect()
