@@ -1240,6 +1240,21 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
     // Cache is refreshed on layer change before this function is called
     uint8_t per_key_actuation = (key_idx < 70) ? active_per_key_cache[key_idx].actuation : DEFAULT_ACTUATION_VALUE;
 
+    // Deadzone-compensated velocity: the deadzone remapping (applied earlier) compresses
+    // the physical travel range [dz_bottom, 255-dz_top] → [0, 255]. This means the same
+    // physical finger speed covers the remapped actuation distance in less time, inflating
+    // velocity. We compute the effective range ratio to scale elapsed_ms back up, so
+    // velocity is consistent regardless of deadzone settings.
+    // Only computed once per velocity capture (negligible cost: 1 multiply + 1 divide).
+    uint16_t dz_effective_range = 255;  // Default: no deadzone
+    if (key_idx < 70) {
+        uint8_t dz_b = active_per_key_cache[key_idx].dz_bottom;
+        uint8_t dz_t = active_per_key_cache[key_idx].dz_top;
+        uint16_t range = 255 - dz_b - dz_t;
+        if (range < 20) range = 20;  // Clamp to avoid extreme scaling
+        dz_effective_range = range;
+    }
+
     // ========================================================================
     // ZONE-SPECIFIC ACTUATION OVERRIDE AND RETRIGGER
     // Check zone type and apply zone-specific settings if enabled
@@ -1398,6 +1413,14 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
                     uint32_t elapsed_ms = elapsed_us / 1000;
 
+                    // Deadzone compensation: scale elapsed time up to account for the
+                    // shorter physical travel distance when deadzones are active.
+                    // Without this, a 50% deadzone halves the travel distance, halves the
+                    // time, and doubles the apparent velocity for the same finger speed.
+                    if (dz_effective_range < 255) {
+                        elapsed_ms = (elapsed_ms * 255) / dz_effective_range;
+                    }
+
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
 
@@ -1492,6 +1515,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
                     uint32_t elapsed_ms = elapsed_us / 1000;
 
+                    // Deadzone compensation (see mode 2 comment)
+                    if (dz_effective_range < 255) {
+                        elapsed_ms = (elapsed_ms * 255) / dz_effective_range;
+                    }
+
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
 
@@ -1534,6 +1562,11 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
                     uint32_t elapsed_ticks = (uint32_t)chVTGetSystemTimeX() - state->move_start_time;
                     uint32_t elapsed_us = TIME_I2US(elapsed_ticks);
                     uint32_t elapsed_ms = elapsed_us / 1000;
+
+                    // Deadzone compensation (see mode 2 comment)
+                    if (dz_effective_range < 255) {
+                        elapsed_ms = (elapsed_ms * 255) / dz_effective_range;
+                    }
 
                     // Store travel time for GUI display
                     state->travel_time_ms = (elapsed_ms > 65535) ? 65535 : (uint16_t)elapsed_ms;
