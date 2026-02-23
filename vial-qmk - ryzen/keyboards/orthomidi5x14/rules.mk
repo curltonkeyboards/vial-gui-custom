@@ -49,5 +49,8 @@ SRC += arpeggiator.c
 SRC += arpeggiator_hid.c
 SRC += arp_factory_presets.c
 
+# Dedicated hardware timer for loop/BPM timing (TIM5)
+SRC += quantum/process_keycode/loop_timer.c
+
 # DKS (Dynamic Keystroke) system
 SRC += quantum/process_keycode/process_dks.c

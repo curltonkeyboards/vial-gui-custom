@@ -8,6 +8,7 @@
 #include <math.h>
 #include "keyboards/orthomidi5x14/orthomidi5x14.h"
 #include "process_dks.h"
+#include "loop_timer.h"
 
 // External functions to mark/unmark notes from macros
 extern void mark_note_from_macro(uint8_t channel, uint8_t note, uint8_t macro_id);
@@ -1172,7 +1173,7 @@ static bool add_command_to_batch(uint8_t command_type, uint8_t macro_id_target) 
     if (command_type == CMD_RECORD) {
         preroll_buffer_count = 0;
         preroll_buffer_index = 0;
-        preroll_start_time = timer_read32();
+        preroll_start_time = loop_timer_read_ms();
         collecting_preroll = true;
         dprintf("dynamic macro: started preroll collection for slave recording of macro %d\n", macro_id_target);
     }
@@ -1180,7 +1181,7 @@ static bool add_command_to_batch(uint8_t command_type, uint8_t macro_id_target) 
 		if (command_type == CMD_ADVANCED_OVERDUB_REC) {
 		preroll_buffer_count = 0;
 		preroll_buffer_index = 0;
-		preroll_start_time = timer_read32();
+		preroll_start_time = loop_timer_read_ms();
 		collecting_preroll = true;
 		dprintf("dynamic macro: started preroll collection for advanced overdub of macro %d\n", macro_id_target);
 	}
@@ -1190,7 +1191,7 @@ static bool add_command_to_batch(uint8_t command_type, uint8_t macro_id_target) 
         
         // Suspend recording immediately and store the time
         overdub_independent_suspended[target_idx] = true;
-        overdub_independent_suspension_time[target_idx] = timer_read32();
+        overdub_independent_suspension_time[target_idx] = loop_timer_read_ms();
         
         dprintf("dynamic macro: suspended independent overdub recording for macro %d at time %lu\n", 
                 macro_id_target, overdub_independent_suspension_time[target_idx]);
@@ -1454,7 +1455,7 @@ void dynamic_macro_record_start(midi_event_t **macro_pointer, midi_event_t *macr
         is_macro_empty = false;  // Set to false since we're recording dummy event NOW
         
         // Set the start time immediately
-        *start_time = timer_read32();
+        *start_time = loop_timer_read_ms();
         recording_start_time = *start_time;
         
         // Record dummy event immediately so loop isn't considered empty
@@ -1494,7 +1495,7 @@ void collect_preroll_event(uint8_t type, uint8_t channel, uint8_t note, uint8_t 
     preroll_buffer[preroll_buffer_index].raw_travel = raw_travel;
 
     // Calculate time relative to preroll start
-    uint32_t now = timer_read32();
+    uint32_t now = loop_timer_read_ms();
     preroll_buffer[preroll_buffer_index].timestamp = now - preroll_start_time;
 
     // Update buffer index and count
@@ -1696,7 +1697,7 @@ static bool merge_overdub_buffer(uint8_t macro_idx) {
     clear_temp_overdub_buffer(macro_num);
     
     if (overdub_still_active) {
-        uint32_t current_time = timer_read32();
+        uint32_t current_time = loop_timer_read_ms();
         if (overdub_advanced_mode) {
             // INDEPENDENT MODE: Reset independent timing for next segment
             overdub_independent_start_time[macro_idx] = current_time;
@@ -1730,7 +1731,7 @@ static void auto_segment_overdub_if_needed(uint8_t macro_idx) {
             
             overdub_merge_pending[macro_idx] = true;
             
-            uint32_t current_time = timer_read32();
+            uint32_t current_time = loop_timer_read_ms();
             loop_start_time = current_time;
             overdub_start_time = current_time;
             
@@ -1842,7 +1843,7 @@ static void start_overdub_recording_advanced(uint8_t macro_num) {
 	
 		// Handle preroll transfer if we were collecting
 	if (collecting_preroll && preroll_buffer_count > 0) {
-		uint32_t current_time = timer_read32();
+		uint32_t current_time = loop_timer_read_ms();
 		uint32_t cutoff_time = current_time - PREROLL_TIME_MS;
 		
 		// Transfer recent preroll events to temp overdub buffer
@@ -1902,7 +1903,7 @@ static void start_overdub_recording_advanced(uint8_t macro_num) {
         memset(early_overdub_buffer[macro_idx], 0, sizeof(early_overdub_buffer[macro_idx]));
     }
     
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     
     // ADVANCED MODE: Set up completely independent timing
     overdub_independent_timer[macro_idx] = current_time;
@@ -2004,7 +2005,7 @@ void start_overdub_recording(uint8_t macro_num) {
         memset(early_overdub_buffer[macro_idx], 0, sizeof(early_overdub_buffer[macro_idx]));
     }
     
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     
     // ORIGINAL MODE: Use parent macro timing
     macro_playback_state_t *state = &macro_playback[macro_num - 1];
@@ -2087,7 +2088,7 @@ void dynamic_macro_play_overdub(uint8_t macro_num) {
         
         if (overdub_advanced_mode) {
             // ADVANCED MODE: Use independent timer and loop length
-            overdub_independent_timer[macro_idx] = timer_read32();
+            overdub_independent_timer[macro_idx] = loop_timer_read_ms();
             overdub_state->timer = overdub_independent_timer[macro_idx];
             overdub_state->loop_length = overdub_independent_loop_length[macro_idx];
             overdub_state->loop_gap_time = overdub_independent_gap_time[macro_idx];
@@ -2096,7 +2097,7 @@ void dynamic_macro_play_overdub(uint8_t macro_num) {
                     macro_num, overdub_independent_loop_length[macro_idx]);
         } else {
             // ORIGINAL MODE: Sync with parent macro
-            overdub_state->timer = timer_read32();
+            overdub_state->timer = loop_timer_read_ms();
             // Keep existing loop_length and loop_gap_time from merge
             
             dprintf("dynamic macro: started SYNCED overdub playback for macro %d\n", macro_num);
@@ -2146,7 +2147,7 @@ void dynamic_macro_record_midi_event_overdub(uint8_t type, uint8_t channel, uint
                 overdub_target_macro);
         return;
     }
-    uint32_t now = timer_read32();
+    uint32_t now = loop_timer_read_ms();
     uint32_t record_timestamp;
     
     if (overdub_advanced_mode) {
@@ -2305,7 +2306,7 @@ static void end_overdub_recording_deferred_advanced(uint8_t macro_num) {
         return;
     }
     uint8_t macro_idx = macro_num - 1;
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     
     if (macro_in_overdub_mode[macro_idx] && overdub_target_macro == macro_num) {
         // Use suspension time if available (matching slave recording methodology)
@@ -2416,7 +2417,7 @@ void end_overdub_recording_deferred(uint8_t macro_num) {
     
     // ORIGINAL MODE: Continue with existing logic
     uint8_t macro_idx = macro_num - 1;
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     uint32_t current_position_in_loop = 0;
     
     // ORIGINAL MODE: Use parent macro timing for note-off placement
@@ -2521,7 +2522,7 @@ static void execute_command_batch(void) {
                         state->loop_length = max_timestamp + state->loop_gap_time;
                         
                         // Pre-initialize global loop timing variables
-                        uint32_t current_time = timer_read32();
+                        uint32_t current_time = loop_timer_read_ms();
                         
                         // If we immediately start playback, the position will be at the beginning
                         loop_start_time = current_time;
@@ -2625,7 +2626,7 @@ static void execute_command_batch(void) {
                 macro_id = target;
                 midi_event_t *macro_start = get_macro_buffer(macro_id);
                 macro_pointer = macro_start;
-                recording_start_time = timer_read32();
+                recording_start_time = loop_timer_read_ms();
                 first_note_recorded = true;
                 
                 // Use collected preroll events if we were collecting them
@@ -2671,7 +2672,7 @@ static void execute_command_batch(void) {
                     // If it was muted and still playing, reset position to 0
                     if (was_muted && macro_playback[target_idx].is_playing) {
                         macro_playback[target_idx].current = macro_playback[target_idx].buffer_start;
-                        macro_playback[target_idx].timer = timer_read32();
+                        macro_playback[target_idx].timer = loop_timer_read_ms();
                         macro_playback[target_idx].next_event_time = macro_playback[target_idx].timer + 
                                                                    macro_playback[target_idx].current->timestamp;
                         macro_playback[target_idx].waiting_for_loop_gap = false;
@@ -2709,7 +2710,7 @@ static void execute_command_batch(void) {
 					overdub_buffer_ends[macro_idx] != overdub_buffers[macro_idx]) {
 					
 					// Reset the independent timer for this macro's overdub
-					overdub_independent_timer[macro_idx] = timer_read32();
+					overdub_independent_timer[macro_idx] = loop_timer_read_ms();
 					
 					// If the overdub is currently playing, update its timer too
 					if (overdub_playback[macro_idx].is_playing) {
@@ -2805,7 +2806,7 @@ for (uint8_t i = 0; i < command_batch_count; i++) {
                 overdub_state->current = overdub_buffers[target_idx];
                 overdub_state->end = overdub_buffer_ends[target_idx];
                 overdub_state->direction = +1;
-                overdub_state->timer = timer_read32();
+                overdub_state->timer = loop_timer_read_ms();
                 overdub_state->buffer_start = overdub_buffers[target_idx];
                 overdub_state->is_playing = true;
                 overdub_state->waiting_for_loop_gap = false;
@@ -2825,7 +2826,7 @@ for (uint8_t i = 0; i < command_batch_count; i++) {
                 overdub_state->current = overdub_buffers[target_idx];
                 overdub_state->end = overdub_buffer_ends[target_idx];
                 overdub_state->direction = +1;
-                overdub_state->timer = timer_read32();
+                overdub_state->timer = loop_timer_read_ms();
                 overdub_state->buffer_start = overdub_buffers[target_idx];
                 overdub_state->is_playing = true;
                 overdub_state->waiting_for_loop_gap = false;
@@ -2930,7 +2931,7 @@ for (uint8_t i = 0; i < command_batch_count; i++) {
 
 
 static void check_loop_trigger(void) {
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     
     if (overdub_advanced_mode) {
         // ===================================================================
@@ -3002,7 +3003,7 @@ static void check_loop_trigger(void) {
         }
         
         // PHASE 2: EXECUTE RESTARTS SIMULTANEOUSLY
-        uint32_t restart_time = timer_read32();
+        uint32_t restart_time = loop_timer_read_ms();
         
         // Restart main macros
         for (uint8_t i = 0; i < MAX_MACROS; i++) {
@@ -3114,7 +3115,7 @@ static void check_loop_trigger(void) {
                     if (macro_in_overdub_mode[i] && overdub_target_macro == i + 1 && 
                         collecting_preroll && preroll_buffer_count > 0) {
                         // [preroll transfer logic - same as original]
-                        uint32_t current_time = timer_read32();
+                        uint32_t current_time = loop_timer_read_ms();
                         uint32_t cutoff_time = current_time - PREROLL_TIME_MS;
                         uint8_t oldest_idx = (preroll_buffer_index + PREROLL_BUFFER_SIZE - preroll_buffer_count) % PREROLL_BUFFER_SIZE;
                         
@@ -3137,7 +3138,7 @@ static void check_loop_trigger(void) {
                     
                     // Restart main macro
                     macro_playback[i].current = macro_playback[i].buffer_start;
-                    macro_playback[i].timer = timer_read32();
+                    macro_playback[i].timer = loop_timer_read_ms();
                     
                     if (speed_factor > 0.0f) {
                         uint32_t adjusted_timestamp = (uint32_t)(macro_playback[i].current->timestamp / speed_factor);
@@ -3209,7 +3210,7 @@ static void check_loop_trigger(void) {
                 
                 if (should_restart) {
                     overdub_playback[i].current = overdub_playback[i].buffer_start;
-                    overdub_playback[i].timer = timer_read32();
+                    overdub_playback[i].timer = loop_timer_read_ms();
                     
                     if (speed_factor > 0.0f) {
                         uint32_t adjusted_timestamp = (uint32_t)(overdub_playback[i].current->timestamp / speed_factor);
@@ -3427,7 +3428,7 @@ static void check_loop_trigger(void) {
                     overdub_state->waiting_for_loop_gap = false;
                     overdub_state->next_event_time = 0;
                     
-                    overdub_independent_timer[i] = timer_read32();
+                    overdub_independent_timer[i] = loop_timer_read_ms();
                     overdub_state->timer = overdub_independent_timer[i];
                     overdub_state->loop_length = overdub_independent_loop_length[i];
                     overdub_state->loop_gap_time = overdub_independent_gap_time[i];
@@ -3438,7 +3439,7 @@ static void check_loop_trigger(void) {
                     if (macro_playback[i].is_playing) {
                         // [Complex sync positioning logic - same as original]
                         macro_playback_state_t *main_state = &macro_playback[i];
-                        uint32_t current_time = timer_read32();
+                        uint32_t current_time = loop_timer_read_ms();
                         uint32_t elapsed = current_time - main_state->timer;
                         float speed_factor = macro_speed_factor[i];
                         uint32_t real_loop_duration = (speed_factor > 0.0f) ? 
@@ -3507,7 +3508,7 @@ static bool dynamic_macro_play_task_for_state(macro_playback_state_t *state) {
         return true; // Continue task but don't progress
     }
     
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     
     // Determine which macro this is and if it's an independent overdub
     uint8_t macro_num = 0;
@@ -3587,7 +3588,7 @@ if (is_independent_overdub && macro_num > 0) {
             
             // Restart from beginning with fresh independent timing
             state->current = state->buffer_start;
-            overdub_independent_timer[macro_idx] = timer_read32();
+            overdub_independent_timer[macro_idx] = loop_timer_read_ms();
             state->timer = overdub_independent_timer[macro_idx];
             
             // Apply speed to first event
@@ -3882,7 +3883,7 @@ if (is_independent_overdub && macro_num > 0) {
             
             // Restart from beginning
             state->current = state->buffer_start;
-            state->timer = timer_read32();
+            state->timer = loop_timer_read_ms();
             
 			if (sync_midi_mode && macro_num > 0) {
 				if (!is_overdub_state) {
@@ -3928,7 +3929,7 @@ if (is_independent_overdub && macro_num > 0) {
                 overdub_state->current = overdub_buffers[macro_idx];
                 overdub_state->end = overdub_buffer_ends[macro_idx];
                 overdub_state->direction = +1;
-                overdub_state->timer = timer_read32();
+                overdub_state->timer = loop_timer_read_ms();
                 overdub_state->buffer_start = overdub_buffers[macro_idx];
                 overdub_state->is_playing = true;
                 overdub_state->waiting_for_loop_gap = false;
@@ -5453,7 +5454,7 @@ static void process_pending_states_for_macro(uint8_t macro_idx) {
             overdub_state->current = overdub_buffers[macro_idx];
             overdub_state->end = overdub_buffer_ends[macro_idx];
             overdub_state->direction = +1;
-            overdub_state->timer = timer_read32();
+            overdub_state->timer = loop_timer_read_ms();
             overdub_state->buffer_start = overdub_buffers[macro_idx];
             overdub_state->is_playing = true;
             overdub_state->waiting_for_loop_gap = false;
@@ -5517,7 +5518,7 @@ void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int
     state->current = macro_buffer;
     state->end = macro_end;
     state->direction = direction;
-    state->timer = timer_read32();
+    state->timer = loop_timer_read_ms();
     state->buffer_start = macro_buffer;
     state->is_playing = true;
     state->waiting_for_loop_gap = false;
@@ -5564,7 +5565,7 @@ if (overdub_advanced_mode) {
 
 void dynamic_macro_actual_start(uint32_t *start_time) {
     // This is called when we receive the first MIDI note after priming
-    uint32_t original_start_time = timer_read32();
+    uint32_t original_start_time = loop_timer_read_ms();
     is_macro_primed = false;
     first_note_recorded = true;
     
@@ -5704,7 +5705,7 @@ void dynamic_macro_record_midi_event(midi_event_t *macro_buffer, midi_event_t **
         (*macro_pointer)->note = note;
         (*macro_pointer)->raw_travel = raw_travel;
 
-        uint32_t now = timer_read32();
+        uint32_t now = loop_timer_read_ms();
         (*macro_pointer)->timestamp = now - *start_time;
 
         dprintf("dynamic macro: recorded MIDI event type:%d ch:%d note/cc:%d raw:%d at time %lu ms\n",
@@ -5786,7 +5787,7 @@ void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_po
 	}
     
     // Calculate the gap time (time between last event and stopping recording)
-    uint32_t stop_time = timer_read32();
+    uint32_t stop_time = loop_timer_read_ms();
     uint32_t last_event_time = 0;
     
     // Find the latest timestamp (now all are positive)
@@ -6455,7 +6456,7 @@ static void navigate_all_macros_to_fraction(uint8_t numerator, uint8_t denominat
         }
     }
     
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     
     // Navigate main macros to the main target time (with wrapping)
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
@@ -7139,7 +7140,7 @@ case 0xcc56: // BPM doubler/halver - adjusts BPM display without changing speed
 					// ===================================================================
 					// PAUSE: Store current loop positions for all playing macros
 					// ===================================================================
-					uint32_t current_time = timer_read32();
+					uint32_t current_time = loop_timer_read_ms();
 					
 					for (uint8_t i = 0; i < MAX_MACROS; i++) {
 						// PAUSE MAIN MACROS
@@ -7194,7 +7195,7 @@ case 0xcc56: // BPM doubler/halver - adjusts BPM display without changing speed
 					// ===================================================================
 					// PLAY: Restore all macros from stored positions
 					// ===================================================================
-					uint32_t current_time = timer_read32();
+					uint32_t current_time = loop_timer_read_ms();
 					
 					for (uint8_t i = 0; i < MAX_MACROS; i++) {
 						// RESUME MAIN MACROS
@@ -7565,7 +7566,7 @@ static bool handle_overdub_advanced_mode(uint8_t macro_num, uint8_t macro_idx,
                 overdub_state->next_event_time = 0;
                 
                 // Use independent timer and loop length for advanced mode
-                overdub_independent_timer[macro_idx] = timer_read32();
+                overdub_independent_timer[macro_idx] = loop_timer_read_ms();
                 overdub_state->timer = overdub_independent_timer[macro_idx];
                 overdub_state->loop_length = overdub_independent_loop_length[macro_idx];
                 overdub_state->loop_gap_time = overdub_independent_gap_time[macro_idx];
@@ -7650,7 +7651,7 @@ static bool handle_overdub_advanced_mode(uint8_t macro_num, uint8_t macro_idx,
                     // Start new recording
                     macro_id = macro_num;
                     macro_pointer = macro_start;
-                    recording_start_time = timer_read32();
+                    recording_start_time = loop_timer_read_ms();
                     first_note_recorded = true;
 					send_loop_message(loop_start_recording_cc[macro_id - 1], 127);  // ADD THIS LINE
                     setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
@@ -8144,7 +8145,7 @@ static bool handle_macro_key_press(uint8_t macro_num, uint8_t macro_idx) {
             
             // Reset to position 0
             macro_playback[macro_idx].current = macro_playback[macro_idx].buffer_start;
-            macro_playback[macro_idx].timer = timer_read32();
+            macro_playback[macro_idx].timer = loop_timer_read_ms();
             macro_playback[macro_idx].next_event_time = macro_playback[macro_idx].timer + 
                                                        macro_playback[macro_idx].current->timestamp;
             macro_playback[macro_idx].waiting_for_loop_gap = false;
@@ -8467,7 +8468,7 @@ end_overdub_recording_mode_aware(macro_num, false, true);
                     overdub_state->current = overdub_buffers[macro_idx];
                     overdub_state->end = overdub_buffer_ends[macro_idx];
                     overdub_state->direction = +1;
-                    overdub_state->timer = timer_read32();
+                    overdub_state->timer = loop_timer_read_ms();
                     overdub_state->buffer_start = overdub_buffers[macro_idx];
                     overdub_state->is_playing = true;
                     overdub_state->waiting_for_loop_gap = false;
@@ -8552,7 +8553,7 @@ end_overdub_recording_mode_aware(macro_num, false, true);
 				// If it was muted and still playing, reset to position 0
 				if (was_muted && macro_playback[macro_idx].is_playing) {
 					macro_playback[macro_idx].current = macro_playback[macro_idx].buffer_start;
-					macro_playback[macro_idx].timer = timer_read32();
+					macro_playback[macro_idx].timer = loop_timer_read_ms();
 					macro_playback[macro_idx].next_event_time = macro_playback[macro_idx].timer + 
 															   macro_playback[macro_idx].current->timestamp;
 					macro_playback[macro_idx].waiting_for_loop_gap = false;
@@ -8605,7 +8606,7 @@ end_overdub_recording_mode_aware(macro_num, false, true);
 							
 							// Reset main macro to position 0
 							macro_playback[macro_idx].current = macro_playback[macro_idx].buffer_start;
-							macro_playback[macro_idx].timer = timer_read32();
+							macro_playback[macro_idx].timer = loop_timer_read_ms();
 							macro_playback[macro_idx].next_event_time = macro_playback[macro_idx].timer + 
 																	   macro_playback[macro_idx].current->timestamp;
 							macro_playback[macro_idx].waiting_for_loop_gap = false;
@@ -9056,7 +9057,7 @@ if (macro_in_overdub_mode[macro_idx] && macro_id == macro_num) {
         
         // Then restart the playback from position 0
         macro_playback[macro_idx].current = macro_playback[macro_idx].buffer_start;
-        macro_playback[macro_idx].timer = timer_read32();
+        macro_playback[macro_idx].timer = loop_timer_read_ms();
         macro_playback[macro_idx].next_event_time = macro_playback[macro_idx].timer + 
                                                    macro_playback[macro_idx].current->timestamp;
         macro_playback[macro_idx].waiting_for_loop_gap = false;
@@ -9327,7 +9328,7 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 // 3. Immediately start recording the new macro
                 macro_id = macro_num;
                 macro_pointer = macro_start;
-                recording_start_time = timer_read32();
+                recording_start_time = loop_timer_read_ms();
                 first_note_recorded = true;
 				send_loop_message(loop_start_recording_cc[macro_id - 1], 127);  // ADD THIS LINE
                 setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
@@ -10330,7 +10331,7 @@ void get_overdub_timer_string(uint8_t macro_idx, char* timer_str) {
         dprintf("dynamic macro: using stored overdub pause position %lu ms for timer calculation\n", overdub_position);
     } else {
         // Normal operation - calculate current position using independent timer
-        uint32_t current_time = timer_read32();
+        uint32_t current_time = loop_timer_read_ms();
         uint32_t elapsed = current_time - overdub_independent_timer[macro_idx];
         
         // Calculate speed-adjusted position in overdub loop timeline
@@ -10349,7 +10350,7 @@ void get_overdub_timer_string(uint8_t macro_idx, char* timer_str) {
         real_time_remaining = overdub_time_remaining; // Fallback for invalid speed
     }
     
-    // Convert to seconds (timer_read32 returns milliseconds)
+    // Convert to seconds (loop_timer_read_ms returns milliseconds)
     uint32_t seconds_remaining = real_time_remaining / 1000;
     uint32_t tenths_remaining = (real_time_remaining % 1000) / 100;
     
@@ -10374,7 +10375,7 @@ void get_overdub_timer_string(uint8_t macro_idx, char* timer_str) {
 // MODIFIED: render_interface function
 void render_interface(uint8_t x, uint8_t y) {
     // Update flash state for queued commands and octave doubler pending changes
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     if (current_time - last_flash_time > FLASH_INTERVAL_MS) {
         flash_state = !flash_state;
         last_flash_time = current_time;
@@ -10869,7 +10870,7 @@ void get_loop_timer_string(uint8_t macro_idx, char* timer_str) {
         dprintf("dynamic macro: using stored pause position %lu ms for timer calculation\n", loop_position);
     } else {
         // Normal operation - calculate current position
-        uint32_t current_time = timer_read32();
+        uint32_t current_time = loop_timer_read_ms();
         uint32_t elapsed = current_time - macro_playback[macro_idx].timer;
         
         // Calculate speed-adjusted position in loop timeline
@@ -10888,7 +10889,7 @@ void get_loop_timer_string(uint8_t macro_idx, char* timer_str) {
         real_time_remaining = loop_time_remaining; // Fallback for invalid speed
     }
     
-    // Convert to seconds (timer_read32 returns milliseconds)
+    // Convert to seconds (loop_timer_read_ms returns milliseconds)
     uint32_t seconds_remaining = real_time_remaining / 1000;
     uint32_t tenths_remaining = (real_time_remaining % 1000) / 100;
     
@@ -11103,7 +11104,7 @@ static void interpolate_colors(uint8_t r1, uint8_t g1, uint8_t b1,
 
 // OLED-Based LED Color System with Future State Logic (Fixed Priority Order)
 void get_macro_led_color(uint8_t macro_idx, uint8_t* r, uint8_t* g, uint8_t* b) {
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     uint8_t macro_num = macro_idx + 1;
     
     // Calculate brightness scaling factor
@@ -12915,7 +12916,7 @@ static void navigate_all_macros(int32_t time_offset_ms) {
         }
     }
     
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     
     // Navigate main macros
     for (uint8_t i = 0; i < MAX_MACROS; i++) {

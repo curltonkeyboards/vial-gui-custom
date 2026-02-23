@@ -5,6 +5,7 @@
 #include "orthomidi5x14.h"
 #include "process_midi.h"
 #include "timer.h"
+#include "loop_timer.h"
 #include "eeprom.h"
 #include <string.h>
 #include <stdlib.h>
@@ -278,7 +279,7 @@ void remove_arp_note(uint8_t channel, uint8_t note) {
 void process_arp_note_offs(void) {
     if (arp_note_count == 0) return;
 
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
 
     for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
         if (arp_notes[i].active && current_time >= arp_notes[i].note_off_time) {
@@ -634,7 +635,7 @@ void arp_start(uint8_t preset_id) {
         } else {
             // Unsynced: restart from beginning
             arp_state.current_position_16ths = 0;
-            arp_state.pattern_start_time = timer_read32();
+            arp_state.pattern_start_time = loop_timer_read_ms();
         }
     } else {
         // Lazy-load the preset into active slot
@@ -645,7 +646,7 @@ void arp_start(uint8_t preset_id) {
 
         // Starting fresh
         arp_state.current_position_16ths = 0;
-        arp_state.pattern_start_time = timer_read32();
+        arp_state.pattern_start_time = loop_timer_read_ms();
 
         // If sync mode, wait for next beat to start
         if (arp_state.sync_mode) {
@@ -665,7 +666,7 @@ void arp_start(uint8_t preset_id) {
     arp_state.active = true;
     arp_state.current_note_in_chord = 0;
     arp_state.notes_released = false;
-    arp_state.next_note_time = timer_read32();  // Start immediately
+    arp_state.next_note_time = loop_timer_read_ms();  // Start immediately
 
     // Reset chord unsynced per-note tracking on fresh start
     reset_unsynced_notes();
@@ -720,8 +721,8 @@ void arp_update(void) {
             arp_state.notes_released = false;
             arp_state.current_position_16ths = 0;
             arp_state.current_note_in_chord = 0;
-            arp_state.pattern_start_time = timer_read32();
-            arp_state.next_note_time = timer_read32();  // Play immediately
+            arp_state.pattern_start_time = loop_timer_read_ms();
+            arp_state.next_note_time = loop_timer_read_ms();  // Play immediately
             reset_unsynced_notes();  // Clear per-note states for chord unsynced
             dprintf("arp: pattern restart (new note after release)\n");
         }
@@ -735,7 +736,7 @@ void arp_update(void) {
     if (preset->preset_type == PRESET_TYPE_ARPEGGIATOR &&
         arp_state.mode == ARPMODE_CHORD_UNSYNCED) {
 
-        uint32_t current_time = timer_read32();
+        uint32_t current_time = loop_timer_read_ms();
 
         // Sync per-note tracking with current live_notes
         sync_unsynced_with_live_notes(current_time);
@@ -796,7 +797,7 @@ void arp_update(void) {
     // =========================================================================
 
     // Check if it's time to play next note
-    uint32_t current_time = timer_read32();
+    uint32_t current_time = loop_timer_read_ms();
     if (current_time < arp_state.next_note_time) {
         return;  // Not yet time
     }
@@ -1067,8 +1068,8 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].current_preset_id = preset_id;
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
-    seq_state[slot].pattern_start_time = timer_read32();
-    seq_state[slot].next_note_time = timer_read32();  // Start immediately
+    seq_state[slot].pattern_start_time = loop_timer_read_ms();
+    seq_state[slot].next_note_time = loop_timer_read_ms();  // Start immediately
 
     // Lock in global values when sequencer starts
     seq_state[slot].locked_channel = channel_number;
@@ -1110,7 +1111,7 @@ void seq_update(void) {
         seq_preset_t *preset = &seq_active_presets[slot];
 
         // Check if it's time to play next note
-        uint32_t current_time = timer_read32();
+        uint32_t current_time = loop_timer_read_ms();
         if (current_time < seq_state[slot].next_note_time) {
             continue;  // Not yet time
         }
@@ -1319,7 +1320,7 @@ void arp_prev_preset(void) {
 // Handle arp key press (momentary + double-tap latch)
 // Called for both ARP_PLAY and ARP_PRESET_BASE keycodes
 void arp_handle_key_press(uint8_t preset_id) {
-    uint32_t now = timer_read32();
+    uint32_t now = loop_timer_read_ms();
 
     // If currently latched with the same preset, unlatch and stop
     if (arp_state.active && arp_state.latch_mode && arp_state.current_preset_id == preset_id) {

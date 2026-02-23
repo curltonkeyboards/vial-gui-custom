@@ -11,6 +11,7 @@
 #include "vial.h"
 #include "dynamic_keymap.h"
 #include "process_dynamic_macro.h"
+#include "loop_timer.h"
 #include "matrix.h"
 #include <math.h>
 extern MidiDevice midi_device;
@@ -2178,8 +2179,8 @@ void play_chord(uint16_t chord_type, uint8_t note_offset, bool is_minor_progress
 // Call this from your matrix scan function to handle chord progression timing
 void update_chord_progression(void) {
     if (!progression_active || !progression_key_held) return;
-    
-    uint32_t current_time = timer_read32();
+
+    uint32_t current_time = loop_timer_read_ms();
     
     if (current_time >= next_chord_time) {
         bool was_last_chord = (current_chord_index == chord_progressions[current_progression].length - 1);
@@ -2268,7 +2269,7 @@ void start_chord_progression(uint8_t progression_id, uint8_t key_offset) {
 
 		uint32_t start_actual_bpm = current_bpm / 100000;
 		if (start_actual_bpm == 0) start_actual_bpm = 120;
-		next_chord_time = timer_read32() + 
+		next_chord_time = loop_timer_read_ms() +
 			(60000 / start_actual_bpm) * chord_progressions[current_progression].chord_durations[0];
     }
 }
@@ -5469,6 +5470,10 @@ void gaming_update_joystick(void) {
 // =============================================================================
 
 void keyboard_post_init_user(void) {
+	// Initialize dedicated hardware timer (TIM5) for loop/BPM timing.
+	// Must happen before dynamic_macro_init() or any code that reads loop_timer.
+	loop_timer_init();
+
 	// Enable analog (HE) velocity mode - this keyboard has analog hall-effect sensors
 	// Without this, process_midi.c bypasses get_he_velocity_from_position() entirely
 	// and always uses the fixed velocity_number slider value
@@ -6590,8 +6595,8 @@ void update_bpm_flash(void) {
         }
     }
         
-    uint32_t current_time = timer_read32();
-    
+    uint32_t current_time = loop_timer_read_ms();
+
     // High precision beat interval: (60,000 ms/minute * 100000) / (BPM * 100000) = 6000000000 / BPM
     uint32_t beat_interval = (6000000000ULL) / current_bpm;  // Time between beats in ms
     uint32_t flash_on_time = 100;    // Fixed 100ms flash duration
@@ -6612,7 +6617,7 @@ void update_bpm_flash(void) {
 void reset_bpm_timing_for_loop_start(void) {
     if (current_bpm != 0 && bpm_source_macro != 0) {
         // Reset to beat 1 and start timing from now
-        last_bpm_flash_time = timer_read32();
+        last_bpm_flash_time = loop_timer_read_ms();
         bpm_beat_count = 1;
         bpm_flash_state = true;  // Start with flash on for beat 1
         dprintf("bpm: reset timing for loop start (automatic BPM)\n");
@@ -6840,16 +6845,16 @@ void handle_external_clock_pulse(void) {
         
         // Beat occurred - trigger your beat logic
         bpm_flash_state = true;
-        last_bpm_flash_time = timer_read32();
-        
-    if ((unsynced_mode_active == 3) || 
+        last_bpm_flash_time = loop_timer_read_ms();
+
+    if ((unsynced_mode_active == 3) ||
 			(bpm_beat_count == 0 && (unsynced_mode_active == 1))){
         dynamic_macro_handle_loop_trigger();
     }
-        
+
         bpm_beat_count = (bpm_beat_count + 1) % 4;
     }
-    
+
     // RELAY THE CLOCK: Send it back out when receiving external clock
     midi_send_data(&midi_device, 1, MIDI_CLOCK, 0, 0);
 }
@@ -7020,7 +7025,7 @@ void internal_clock_tempo_changed(void) {
 
 void midi_clock_task(void) {
     uint32_t current_cycles = dwt_get_cycles();
-    uint32_t current_time = timer_read32();  // For flash timing
+    uint32_t current_time = loop_timer_read_ms();  // For flash timing
     
     // ====== HANDLE BPM FLASH TIMEOUT ======
     // Turn off flash after 100ms
@@ -11555,8 +11560,8 @@ break;
 		
 } else if (keycode == 0xC929) {// Tap tempo key
     if (record->event.pressed) {
-		
-        uint32_t current_time = timer_read32();
+
+        uint32_t current_time = loop_timer_read_ms();
         
         // If too much time has passed, start fresh
         if (current_time - last_tap_time > TAP_TIMEOUT_MS) {
@@ -14447,7 +14452,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == 0xC929) {
         if (record->event.pressed) {
             // Key pressed - start timer
-            tap_key_press_time = timer_read32();
+            tap_key_press_time = loop_timer_read_ms();
             tap_key_held = true;
         } else {
             // Key released - clear timer
@@ -16504,7 +16509,7 @@ void matrix_scan_user(void) {
 #endif
 
     // Check for tap tempo key hold (1.5 seconds = 1500ms)
-    if (tap_key_held && (timer_read32() - tap_key_press_time >= 1500)) {
+    if (tap_key_held && (loop_timer_read_ms() - tap_key_press_time >= 1500)) {
         current_bpm = 0;
         tap_key_held = false;  // Reset to prevent multiple triggers
 		internal_clock_stop();
