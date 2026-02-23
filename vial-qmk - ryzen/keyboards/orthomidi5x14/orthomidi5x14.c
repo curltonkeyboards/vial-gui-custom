@@ -16482,6 +16482,9 @@ return false;
 }
 
 void matrix_scan_user(void) {
+    // Sync loop timer time base (ISR uses this for precise event scheduling)
+    loop_timer_sync_time();
+
     // Update chord progression timing
     update_chord_progression();
     matrix_scan_user_macro();
