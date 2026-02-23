@@ -139,6 +139,7 @@ void loop_timer_lock_macro(uint8_t macro_idx);
 void loop_timer_unlock_macro(uint8_t macro_idx);
 void loop_timer_lock_overdub(uint8_t macro_idx);
 void loop_timer_unlock_overdub(uint8_t macro_idx);
+uint16_t loop_timer_get_overflow_count(void);
 
 void noteoffdisplayupdates(uint8_t note);
 void noteondisplayupdates(uint8_t note);

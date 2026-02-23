@@ -9,6 +9,7 @@
 #include "keyboards/orthomidi5x14/orthomidi5x14.h"
 #include "process_dks.h"
 #include "hal.h"
+#include <ch.h>
 
 // External functions to mark/unmark notes from macros
 extern void mark_note_from_macro(uint8_t channel, uint8_t note, uint8_t macro_id);
@@ -3526,7 +3527,9 @@ static void check_loop_trigger(void) {
 #endif
 
 // --- Ring buffer for ISR-to-main-loop MIDI event passing ---
-#define LT_EVENT_QUEUE_SIZE 128
+// 256 entries provides headroom for worst case: 4 macros * 2 states * 16 events = 128
+// per ISR tick. 256 * 6 bytes = 1536 bytes RAM.
+#define LT_EVENT_QUEUE_SIZE 256
 
 typedef struct {
     uint8_t type;        // MIDI_EVENT_NOTE_ON / NOTE_OFF / CC
@@ -3555,6 +3558,7 @@ static volatile bool lt_overdub_locked[MAX_MACROS];     // Same for overdub stat
 static volatile bool lt_restart_pending[MAX_MACROS];    // ISR detected main macro loop end
 static volatile bool lt_od_restart_pending[MAX_MACROS]; // ISR detected overdub loop end
 static volatile bool lt_enabled = false;                // Master ISR enable
+static volatile uint16_t lt_overflow_count = 0;         // Events dropped due to full queue
 
 // --- Ring buffer operations (single-producer single-consumer, lock-free) ---
 static inline bool lt_queue_full(void) {
@@ -3563,7 +3567,20 @@ static inline bool lt_queue_full(void) {
 
 static inline void lt_enqueue_event(uint8_t type, uint8_t ch, uint8_t note,
                                     uint8_t vel, uint8_t macro_num, uint8_t flags) {
-    if (lt_queue_full()) return;  // Drop event on overflow (shouldn't happen)
+    if (lt_queue_full()) {
+        if (type == MIDI_EVENT_NOTE_OFF) {
+            // Never drop note-off: discard oldest event to make room (prevents stuck notes).
+            // NOTE: This relaxes the SPSC contract (ISR writes lt_tail, normally consumer-only).
+            // Safe on single-core ARM Cortex-M4: ISR fully preempts main loop, so they never
+            // truly run concurrently. If main loop was mid-dequeue with a stale local copy of
+            // lt_tail, it will write the same or later value when it resumes.
+            __asm volatile("" ::: "memory");
+            lt_tail = (lt_tail + 1) % LT_EVENT_QUEUE_SIZE;
+        } else {
+            lt_overflow_count++;
+            return;
+        }
+    }
     uint8_t idx = lt_head;
     lt_queue[idx].type = type;
     lt_queue[idx].channel = ch;
@@ -3829,9 +3846,15 @@ void loop_timer_drain_queue(void) {
 }
 
 // --- Public: Sync ISR time base with timer_read32 (call from main loop each cycle) ---
+// Must write lt_sync_ms and lt_sync_dwt as an atomic pair. If the ISR fires
+// between the two writes, lt_now_ms() would compute from mismatched values,
+// causing up to ~20ms timing error. Disabling interrupts ensures consistency.
 void loop_timer_sync_time(void) {
-    lt_sync_dwt = DWT_CYCCNT;
-    lt_sync_ms = timer_read32();
+    uint32_t ms = timer_read32();  // Has its own internal chSysLock (can't nest)
+    chSysLock();
+    lt_sync_ms = ms;
+    lt_sync_dwt = DWT_CYCCNT;     // Snapshot DWT as close to ms read as possible
+    chSysUnlock();
 }
 
 // --- Public: Initialize the loop timer system ---
@@ -3844,9 +3867,14 @@ void loop_timer_init(void) {
     }
     lt_head = 0;
     lt_tail = 0;
-    lt_sync_dwt = DWT_CYCCNT;
-    lt_sync_ms = timer_read32();
     lt_enabled = false;
+
+    // Sync time pair atomically (ISR not running yet, but be consistent)
+    uint32_t ms = timer_read32();
+    chSysLock();
+    lt_sync_ms = ms;
+    lt_sync_dwt = DWT_CYCCNT;
+    chSysUnlock();
 
     gptStart(&GPTD5, &loop_gpt_config);
     gptStartContinuous(&GPTD5, 1000);  // 1000µs = 1ms period (1kHz ISR)
@@ -3881,6 +3909,13 @@ void loop_timer_unlock_overdub(uint8_t macro_idx) {
         __asm volatile("" ::: "memory");
         lt_overdub_locked[macro_idx] = false;
     }
+}
+
+// --- Public: Get and reset overflow count (for debug reporting) ---
+uint16_t loop_timer_get_overflow_count(void) {
+    uint16_t count = lt_overflow_count;
+    lt_overflow_count = 0;
+    return count;
 }
 
 // ============================================================================
@@ -10475,6 +10510,11 @@ if (macro_key_held[i] && !macro_deleted[i]) {
 			}
 		}
 	}
+
+    // --- LOOP TIMER: Final drain pass for events queued during restarts ---
+    if (lt_enabled) {
+        loop_timer_drain_queue();
+    }
 }
 
 // Returns true if any macro is currently playing
