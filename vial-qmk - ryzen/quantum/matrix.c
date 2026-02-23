@@ -2300,16 +2300,11 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Run analog matrix scan
     analog_matrix_task_internal();
 
-    // Chunked EEPROM loading: triggered on first keypress, loads ALL 12 layers
+    // Chunked EEPROM loading: starts automatically, loads ALL 12 layers
     // Reads 1 row (112 bytes) per scan cycle: 12 layers × 5 rows = 60 scan cycles total
+    // This restores per-key settings (actuation, deadzone, etc.) saved by the GUI.
     if (!per_key_eeprom_loaded && !chunked_load_active) {
-        // Check if any key is pressed to trigger loading all layers
-        for (uint32_t i = 0; i < NUM_KEYS; i++) {
-            if (key_matrix[i].distance > 20) {
-                start_chunked_eeprom_load_all();  // Load all 12 layers
-                break;
-            }
-        }
+        start_chunked_eeprom_load_all();  // Load all 12 layers
     }
 
     // Process one chunk per scan cycle (if any loading is active)
