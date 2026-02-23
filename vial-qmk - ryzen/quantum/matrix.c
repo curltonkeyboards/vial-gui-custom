@@ -434,6 +434,8 @@ void force_load_per_key_cache_at_init(uint8_t layer) {
         all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
         all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
         all_layer_per_key_cache[layer][i].flags = full->flags;
+        all_layer_per_key_cache[layer][i].dz_bottom = full->deadzone_bottom;
+        all_layer_per_key_cache[layer][i].dz_top = full->deadzone_top;
     }
     per_key_cache_loaded |= (1 << layer);
 
@@ -481,6 +483,8 @@ void process_chunked_eeprom_load(void) {
                     all_layer_per_key_cache[l][i].rt_down = 0;
                     all_layer_per_key_cache[l][i].rt_up = 0;
                     all_layer_per_key_cache[l][i].flags = 0;
+                    all_layer_per_key_cache[l][i].dz_bottom = DEFAULT_DEADZONE_BOTTOM;
+                    all_layer_per_key_cache[l][i].dz_top = DEFAULT_DEADZONE_TOP;
                 }
             }
             per_key_cache_loaded = 0x0FFF;  // All 12 layers
@@ -494,6 +498,8 @@ void process_chunked_eeprom_load(void) {
             all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
             all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
             all_layer_per_key_cache[layer][i].flags = full->flags;
+            all_layer_per_key_cache[layer][i].dz_bottom = full->deadzone_bottom;
+            all_layer_per_key_cache[layer][i].dz_top = full->deadzone_top;
         }
         per_key_cache_loaded |= (1 << layer);
 
@@ -530,6 +536,8 @@ void process_chunked_eeprom_load(void) {
             all_layer_per_key_cache[layer][key_idx].rt_down = full->rapidfire_press_sens;
             all_layer_per_key_cache[layer][key_idx].rt_up = full->rapidfire_release_sens;
             all_layer_per_key_cache[layer][key_idx].flags = full->flags;
+            all_layer_per_key_cache[layer][key_idx].dz_bottom = full->deadzone_bottom;
+            all_layer_per_key_cache[layer][key_idx].dz_top = full->deadzone_top;
         }
     }
 
