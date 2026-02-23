@@ -434,6 +434,8 @@ void force_load_per_key_cache_at_init(uint8_t layer) {
         all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
         all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
         all_layer_per_key_cache[layer][i].flags = full->flags;
+        all_layer_per_key_cache[layer][i].dz_bottom = full->deadzone_bottom;
+        all_layer_per_key_cache[layer][i].dz_top = full->deadzone_top;
     }
     per_key_cache_loaded |= (1 << layer);
 
@@ -481,6 +483,8 @@ void process_chunked_eeprom_load(void) {
                     all_layer_per_key_cache[l][i].rt_down = 0;
                     all_layer_per_key_cache[l][i].rt_up = 0;
                     all_layer_per_key_cache[l][i].flags = 0;
+                    all_layer_per_key_cache[l][i].dz_bottom = DEFAULT_DEADZONE_BOTTOM;
+                    all_layer_per_key_cache[l][i].dz_top = DEFAULT_DEADZONE_TOP;
                 }
             }
             per_key_cache_loaded = 0x0FFF;  // All 12 layers
@@ -494,6 +498,8 @@ void process_chunked_eeprom_load(void) {
             all_layer_per_key_cache[layer][i].rt_down = full->rapidfire_press_sens;
             all_layer_per_key_cache[layer][i].rt_up = full->rapidfire_release_sens;
             all_layer_per_key_cache[layer][i].flags = full->flags;
+            all_layer_per_key_cache[layer][i].dz_bottom = full->deadzone_bottom;
+            all_layer_per_key_cache[layer][i].dz_top = full->deadzone_top;
         }
         per_key_cache_loaded |= (1 << layer);
 
@@ -530,6 +536,8 @@ void process_chunked_eeprom_load(void) {
             all_layer_per_key_cache[layer][key_idx].rt_down = full->rapidfire_press_sens;
             all_layer_per_key_cache[layer][key_idx].rt_up = full->rapidfire_release_sens;
             all_layer_per_key_cache[layer][key_idx].flags = full->flags;
+            all_layer_per_key_cache[layer][key_idx].dz_bottom = full->deadzone_bottom;
+            all_layer_per_key_cache[layer][key_idx].dz_top = full->deadzone_top;
         }
     }
 
@@ -2292,16 +2300,11 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // Run analog matrix scan
     analog_matrix_task_internal();
 
-    // Chunked EEPROM loading: triggered on first keypress, loads ALL 12 layers
+    // Chunked EEPROM loading: starts automatically, loads ALL 12 layers
     // Reads 1 row (112 bytes) per scan cycle: 12 layers × 5 rows = 60 scan cycles total
+    // This restores per-key settings (actuation, deadzone, etc.) saved by the GUI.
     if (!per_key_eeprom_loaded && !chunked_load_active) {
-        // Check if any key is pressed to trigger loading all layers
-        for (uint32_t i = 0; i < NUM_KEYS; i++) {
-            if (key_matrix[i].distance > 20) {
-                start_chunked_eeprom_load_all();  // Load all 12 layers
-                break;
-            }
-        }
+        start_chunked_eeprom_load_all();  // Load all 12 layers
     }
 
     // Process one chunk per scan cycle (if any loading is active)
