@@ -2247,6 +2247,24 @@ class KeymapEditor(BasicEditor):
         self.device = None
         KeycodeDisplay.notify_keymap_override(self)
 
+        # Debounced MIDI/LED rescan timer - after keymap changes, waits for
+        # the user to stop editing before telling the firmware to rebuild its
+        # MIDI LED position arrays and LED category caches. This replaces the
+        # need to power-cycle or manually click "Rescan LED Positions".
+        self._rescan_timer = QTimer()
+        self._rescan_timer.setSingleShot(True)
+        self._rescan_timer.setInterval(1000)
+        self._rescan_timer.timeout.connect(self._do_rescan_led_positions)
+
+    def _do_rescan_led_positions(self):
+        """Send rescan command to firmware to rebuild MIDI/LED caches."""
+        if self.keyboard and hasattr(self.keyboard, 'rescan_led_positions'):
+            self.keyboard.rescan_led_positions()
+
+    def _schedule_rescan(self):
+        """Start or restart the debounced rescan timer."""
+        self._rescan_timer.start()
+
     def set_matrix_test_reference(self, matrix_test):
         """Set reference to MatrixTest widget for status value adjustments"""
         self.matrix_test = matrix_test
@@ -2340,6 +2358,8 @@ class KeymapEditor(BasicEditor):
                 return
         self.keyboard.restore_layout(data)
         self.refresh_layer_display()
+        # Rescan immediately after bulk import (all writes are already done)
+        self._do_rescan_led_positions()
 
     def on_any_keycode(self):
         if self.container.active_key is None:
@@ -2442,6 +2462,7 @@ class KeymapEditor(BasicEditor):
         # Update the button display
         self.encoder_assign.set_keycode(button_index, keycode)
         self.refresh_layer_display()
+        self._schedule_rescan()
 
     def set_key_encoder(self, keycode):
         l, i, d = self.current_layer, self.container.active_key.desc.encoder_idx,\
@@ -2458,6 +2479,7 @@ class KeymapEditor(BasicEditor):
 
         self.keyboard.set_encoder(l, i, d, keycode)
         self.refresh_layer_display()
+        self._schedule_rescan()
 
     def set_key_matrix(self, keycode):
         l, r, c = self.current_layer, self.container.active_key.desc.row, self.container.active_key.desc.col
@@ -2474,6 +2496,7 @@ class KeymapEditor(BasicEditor):
 
             self.keyboard.set_key(l, r, c, keycode)
             self.refresh_layer_display()
+            self._schedule_rescan()
 
     def on_key_clicked(self):
         """ Called when a key on the keyboard widget is clicked """

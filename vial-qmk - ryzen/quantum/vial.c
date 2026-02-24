@@ -341,10 +341,6 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             scan_keycode_categories();
             scan_current_layer_midi_leds();
 
-            // Clear the auto-rescan flag since we just rescanned manually
-            extern volatile bool keymap_needs_rescan;
-            keymap_needs_rescan = false;
-
             msg[0] = 0x01; // Success response
             break;
 			}

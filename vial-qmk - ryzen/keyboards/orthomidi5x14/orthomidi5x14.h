@@ -87,14 +87,6 @@ void preload_layer_rgb_cache(void);
 void update_layer_animations_setting_slot0_direct(bool new_value);
 extern bool truekey_effects_active;
 
-// Keymap change detection for automatic MIDI/LED rescan
-// When a keymap write occurs (via VIA/Vial), the dirty flag is set.
-// housekeeping_task_user() checks this flag and triggers a debounced rescan
-// so MIDI arrays and LED categories stay in sync without a restart.
-#define KEYMAP_RESCAN_DEBOUNCE_MS 500
-extern volatile bool keymap_needs_rescan;
-extern uint32_t keymap_last_changed_time;
-
 // MIDI Routing Mode Enums and Functions
 // Unified routing modes for both Hardware MIDI IN and USB MIDI IN
 typedef enum {

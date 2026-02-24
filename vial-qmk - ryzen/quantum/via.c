@@ -372,23 +372,10 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         }
         case id_dynamic_keymap_set_keycode: {
             dynamic_keymap_set_keycode(command_data[0], command_data[1], command_data[2], (command_data[3] << 8) | command_data[4]);
-#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
-            // Signal that MIDI/LED caches need rebuilding after debounce
-            extern volatile bool keymap_needs_rescan;
-            extern uint32_t keymap_last_changed_time;
-            keymap_needs_rescan = true;
-            keymap_last_changed_time = timer_read32();
-#endif
             break;
         }
         case id_dynamic_keymap_reset: {
             dynamic_keymap_reset();
-#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
-            extern volatile bool keymap_needs_rescan;
-            extern uint32_t keymap_last_changed_time;
-            keymap_needs_rescan = true;
-            keymap_last_changed_time = timer_read32();
-#endif
             break;
         }
         case id_lighting_set_value: {
@@ -512,16 +499,8 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         case id_dynamic_keymap_set_buffer: {
             uint16_t offset = (command_data[0] << 8) | command_data[1];
             uint16_t size   = command_data[2]; // size <= 28
-            if (size <= 28) {
+            if (size <= 28)
                 dynamic_keymap_set_buffer(offset, size, &command_data[3]);
-#ifdef ORTHOMIDI_CUSTOM_HID_ENABLE
-                // Bulk keymap write - signal rescan needed
-                extern volatile bool keymap_needs_rescan;
-                extern uint32_t keymap_last_changed_time;
-                keymap_needs_rescan = true;
-                keymap_last_changed_time = timer_read32();
-#endif
-            }
             break;
         }
 #if defined(VIAL_ENABLE) && !defined(VIAL_INSECURE)
