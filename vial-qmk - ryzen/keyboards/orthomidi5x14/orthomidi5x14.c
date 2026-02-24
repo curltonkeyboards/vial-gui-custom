@@ -138,6 +138,17 @@ uint8_t base_smartchord_ignore = 0;       // 0=Allow, 1=Ignore
 uint8_t keysplit_smartchord_ignore = 0;    // 0=Allow, 1=Ignore
 uint8_t triplesplit_smartchord_ignore = 0; // 0=Allow, 1=Ignore
 uint16_t toggled_smartchord_keycode = 0;  // Tracks which smartchord is currently toggled on
+uint8_t toggled_smartchord_led_index = 99;  // LED index of currently toggled smartchord button (99=none)
+
+// =============================================================================
+// TOGGLE LED CACHE - Maps LED indices to toggle slot numbers per layer
+// =============================================================================
+#define MAX_TOGGLE_LEDS 20
+typedef struct {
+    uint8_t led_index;
+    uint8_t slot_num;
+} toggle_led_entry_t;
+
 // Hall Effect Sensor Linearization LUT
 uint8_t lut_correction_strength = 0;  // 0=linear (no correction), 100=full logarithmic LUT
 
@@ -1346,6 +1357,8 @@ void stop_chord_progression(void) {
     
     // Reset all the variables
     smartchordstatus = 0;
+    toggled_smartchord_keycode = 0;
+    toggled_smartchord_led_index = 99;
     if (smartchordlight != 3) {smartchordlight = 0;}
 	if (smartchordstatus == 0) {
     chordkey2 = 0;
@@ -2874,10 +2887,19 @@ void update_layer_animations_setting_slot0_direct(bool new_value) {
 // In orthomidi5x14.c
 layer_categories_t led_categories[NUM_LAYERS] = {0};
 
+// Per-layer toggle LED cache
+typedef struct {
+    toggle_led_entry_t entries[MAX_TOGGLE_LEDS];
+    uint8_t count;
+} layer_toggle_cache_t;
+
+static layer_toggle_cache_t toggle_led_caches[NUM_LAYERS] = {0};
+
 void scan_keycode_categories(void) {
     // Reset all layers
     for (int layer = 0; layer < NUM_LAYERS; layer++) {
         led_categories[layer].count = 0;
+        toggle_led_caches[layer].count = 0;
     }
     
     // Scan through all layers
@@ -3019,6 +3041,16 @@ void scan_keycode_categories(void) {
                         led_categories[layer].leds[led_count].led_index = led_index;
                         led_categories[layer].leds[led_count].category = category;
                         led_count++;
+                    }
+
+                    // Build toggle LED cache (separate from categories)
+                    if (keycode >= TOGGLE_KEY_BASE && keycode <= TOGGLE_KEY_MAX) {
+                        uint8_t tgl_count = toggle_led_caches[layer].count;
+                        if (tgl_count < MAX_TOGGLE_LEDS) {
+                            toggle_led_caches[layer].entries[tgl_count].led_index = led_index;
+                            toggle_led_caches[layer].entries[tgl_count].slot_num = (uint8_t)(keycode - TOGGLE_KEY_BASE);
+                            toggle_led_caches[layer].count = tgl_count + 1;
+                        }
                     }
                 }
             }
@@ -7657,7 +7689,33 @@ bool rgb_matrix_indicators_kb(void) {
                                 (uint8_t)(b * brightness_factor));
         }
     }
-    
+
+    // SmartChord button LED (green when latched on)
+    if (toggled_smartchord_led_index != 99 && toggled_smartchord_led_index < RGB_MATRIX_LED_COUNT) {
+        rgb_matrix_set_color(toggled_smartchord_led_index,
+                            0,
+                            (uint8_t)(200 * brightness_factor),
+                            0);  // Green when smartchord is latched
+    }
+
+    // Toggle key LEDs (green when latched on)
+    {
+        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+        if (current_layer < NUM_LAYERS) {
+            layer_toggle_cache_t *tcache = &toggle_led_caches[current_layer];
+            for (uint8_t i = 0; i < tcache->count; i++) {
+                uint8_t led = tcache->entries[i].led_index;
+                uint8_t slot = tcache->entries[i].slot_num;
+                if (slot < TOGGLE_NUM_SLOTS && toggle_runtime[slot].is_held && led < RGB_MATRIX_LED_COUNT) {
+                    rgb_matrix_set_color(led,
+                                        0,
+                                        (uint8_t)(200 * brightness_factor),
+                                        0);  // Green when toggle is latched on
+                }
+            }
+        }
+    }
+
 	if (smartchordlight != 3) {
     // SmartChord lighting functionality
     // Define the color mappings for each chord key index
@@ -14618,6 +14676,7 @@ if (keycode >= 0xC92A && keycode <= 0xC93B) {
                 trueheldkey1 = 0; heldkey1 = 0;
                 trueheldkey2 = 0; heldkey2 = 0;
                 toggled_smartchord_keycode = 0;
+                toggled_smartchord_led_index = 99;
                 return false;
             }
             // Different chord: send note-offs for current, then fall through to set up new
@@ -14637,6 +14696,7 @@ if (keycode >= 0xC92A && keycode <= 0xC93B) {
             smartchordstatus += 1;
         }
         toggled_smartchord_keycode = keycode;
+        toggled_smartchord_led_index = g_led_config.matrix_co[record->event.key.row][record->event.key.col];
         // Cache the layer lookup once
         int8_t current_layer = get_highest_layer(layer_state | default_layer_state);
         uint8_t positions[6];  // Reusable array for positions
@@ -14896,6 +14956,7 @@ if (keycode >= 0xC93C && keycode <= 0xC94F) {
                 trueheldkey2 = 0; heldkey2 = 0; heldkey2difference = 0;
                 trueheldkey3 = 0; heldkey3 = 0; heldkey3difference = 0;
                 toggled_smartchord_keycode = 0;
+                toggled_smartchord_led_index = 99;
                 return false;
             }
             // Different chord: send note-offs for current, then fall through to set up new
@@ -14921,6 +14982,7 @@ if (keycode >= 0xC93C && keycode <= 0xC94F) {
             smartchordstatus += 1;
         }
         toggled_smartchord_keycode = keycode;
+        toggled_smartchord_led_index = g_led_config.matrix_co[record->event.key.row][record->event.key.col];
 
         // Cache the layer lookup once
         int8_t current_layer = get_highest_layer(layer_state | default_layer_state);
@@ -15242,6 +15304,7 @@ if (keycode >= 0xC38B && keycode <= 0xC416) {
                 trueheldkey7 = 0; heldkey7 = 0; heldkey7difference = 0;
                 rootnote = 13; bassnote = 13;
                 toggled_smartchord_keycode = 0;
+                toggled_smartchord_led_index = 99;
                 return false;
             }
             // Different chord: clear current state and fall through to set up new chord
@@ -15258,6 +15321,7 @@ if (keycode >= 0xC38B && keycode <= 0xC416) {
             smartchordstatus += 1;
         }
         toggled_smartchord_keycode = keycode;
+        toggled_smartchord_led_index = g_led_config.matrix_co[record->event.key.row][record->event.key.col];
 
 		 switch (keycode) {
 		case 0xC38B:
