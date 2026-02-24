@@ -501,7 +501,7 @@ void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
-    add_lighting_live_note(channel, note);
+    add_lighting_live_note(channel, note, final_velocity);
 
     // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
     // The playback velocity transform expects 0-255 raw_travel input
@@ -567,7 +567,7 @@ void midi_send_noteon_trainer(uint8_t channel, uint8_t note, uint8_t velocity) {
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
-    add_lighting_live_note(channel, note);
+    add_lighting_live_note(channel, note, final_velocity);
 
     // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
     uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
@@ -764,7 +764,7 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
     // Always update display and live note tracking (arp reads live_notes[])
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
-    add_lighting_live_note(channel, note);
+    add_lighting_live_note(channel, note, final_velocity);
 
     // Store final velocity scaled to 0-255 for loop recording
     // This allows loops to apply their own velocity curve on playback
@@ -923,7 +923,7 @@ void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8
     // This is handled by add_arp_note() in orthomidi5x14.c
 
     // Add LED lighting (existing code handles the rest)
-    add_lighting_live_note(channel, note);
+    add_lighting_live_note(channel, note, final_velocity);
 
     // Store final velocity scaled to 0-255 for loop recording
     // This allows loops to apply their own velocity curve on playback

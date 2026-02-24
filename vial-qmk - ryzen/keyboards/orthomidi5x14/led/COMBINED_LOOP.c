@@ -13,9 +13,9 @@
 #endif
 
 // Function declarations for external use
-void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id);
+void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id, uint8_t velocity);
 void remove_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id);
-void add_lighting_live_note(uint8_t channel, uint8_t note);
+void add_lighting_live_note(uint8_t channel, uint8_t note, uint8_t velocity);
 void remove_lighting_live_note(uint8_t channel, uint8_t note);
 
 // BPM system integration (only used by live system)
@@ -44,7 +44,7 @@ typedef struct {
 // =============================================================================
 
 #define MAX_UNIFIED_LIGHTING_NOTES 96
-static uint8_t unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES][5]; // Added 5th element for timestamp
+static uint8_t unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES][6]; // [channel, note, type, track_id, timestamp, velocity]
 static uint8_t unified_lighting_count = 0;
 // type: 0=live/sustained, 1=macro
 
@@ -60,6 +60,7 @@ typedef struct {
     uint8_t color_id;          // Color/channel
     uint8_t track_id;          // For macro notes
     uint8_t animation_type;    // Store the actual animation type
+    uint8_t velocity;          // MIDI velocity (1-127) for velocity-based brightness
     bool is_live;              // Live vs macro
     bool active;
 } active_note_t;
@@ -143,16 +144,17 @@ static uint8_t sqrt_fast_lookup(uint8_t val) {
 }
 
 // Modified add functions to include timestamp
-void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id) {
+void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id, uint8_t velocity) {
 	on_note_pressed();
     remove_lighting_macro_note(channel, note, track_id);
-    
+
     if (unified_lighting_count < MAX_UNIFIED_LIGHTING_NOTES) {
         unified_lighting_notes[unified_lighting_count][0] = channel;
         unified_lighting_notes[unified_lighting_count][1] = note;
         unified_lighting_notes[unified_lighting_count][2] = 1; // type: macro
         unified_lighting_notes[unified_lighting_count][3] = track_id;
         unified_lighting_notes[unified_lighting_count][4] = 0; // timestamp: 0 = needs processing
+        unified_lighting_notes[unified_lighting_count][5] = velocity;
         unified_lighting_count++;
     } else {
         // Circular buffer - remove oldest
@@ -162,25 +164,28 @@ void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id) {
             unified_lighting_notes[i][2] = unified_lighting_notes[i + 1][2];
             unified_lighting_notes[i][3] = unified_lighting_notes[i + 1][3];
             unified_lighting_notes[i][4] = unified_lighting_notes[i + 1][4];
+            unified_lighting_notes[i][5] = unified_lighting_notes[i + 1][5];
         }
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][0] = channel;
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][1] = note;
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][2] = 1; // type: macro
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][3] = track_id;
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][4] = 0; // timestamp: 0 = needs processing
+        unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][5] = velocity;
     }
 }
 
-void add_lighting_live_note(uint8_t channel, uint8_t note) {
+void add_lighting_live_note(uint8_t channel, uint8_t note, uint8_t velocity) {
 	on_note_pressed();
     remove_lighting_live_note(channel, note);
-    
+
     if (unified_lighting_count < MAX_UNIFIED_LIGHTING_NOTES) {
         unified_lighting_notes[unified_lighting_count][0] = channel;
         unified_lighting_notes[unified_lighting_count][1] = note;
         unified_lighting_notes[unified_lighting_count][2] = 0; // type: live
         unified_lighting_notes[unified_lighting_count][3] = 0; // no track_id
         unified_lighting_notes[unified_lighting_count][4] = 0; // timestamp: 0 = needs processing
+        unified_lighting_notes[unified_lighting_count][5] = velocity;
         unified_lighting_count++;
     } else {
         // Circular buffer - remove oldest
@@ -190,12 +195,14 @@ void add_lighting_live_note(uint8_t channel, uint8_t note) {
             unified_lighting_notes[i][2] = unified_lighting_notes[i + 1][2];
             unified_lighting_notes[i][3] = unified_lighting_notes[i + 1][3];
             unified_lighting_notes[i][4] = unified_lighting_notes[i + 1][4];
+            unified_lighting_notes[i][5] = unified_lighting_notes[i + 1][5];
         }
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][0] = channel;
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][1] = note;
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][2] = 0; // type: live
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][3] = 0; // no track_id
         unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][4] = 0; // timestamp: 0 = needs processing
+        unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES - 1][5] = velocity;
     }
 }
 
@@ -5257,7 +5264,7 @@ static uint8_t peak_volume_left_right_3_wide_solo_math(uint8_t note_row, uint8_t
 // ACTIVE NOTE MANAGEMENT
 // =============================================================================
 
-static void add_active_note(uint8_t row, uint8_t col, uint8_t color_id, uint8_t track_id, uint8_t animation_type, bool is_live) {
+static void add_active_note(uint8_t row, uint8_t col, uint8_t color_id, uint8_t track_id, uint8_t animation_type, bool is_live, uint8_t velocity) {
     // Find available slot
     for (uint8_t i = 0; i < MAX_ACTIVE_NOTES; i++) {
         if (!active_notes[i].active) {
@@ -5267,13 +5274,14 @@ static void add_active_note(uint8_t row, uint8_t col, uint8_t color_id, uint8_t 
             active_notes[i].color_id = color_id;
             active_notes[i].track_id = track_id;
             active_notes[i].animation_type = animation_type;
+            active_notes[i].velocity = velocity;
             active_notes[i].is_live = is_live;
             active_notes[i].active = true;
             active_note_count++;
             return;
         }
     }
-    
+
     // If no slot available, replace oldest
     uint8_t oldest = 0;
     uint16_t oldest_time = active_notes[0].start_time;
@@ -5290,6 +5298,7 @@ static void add_active_note(uint8_t row, uint8_t col, uint8_t color_id, uint8_t 
     active_notes[oldest].color_id = color_id;
     active_notes[oldest].track_id = track_id;
     active_notes[oldest].animation_type = animation_type;
+    active_notes[oldest].velocity = velocity;
     active_notes[oldest].is_live = is_live;
     active_notes[oldest].active = true;
 }
@@ -5583,14 +5592,14 @@ static void clear_active_notes_of_type(uint8_t animation_type, bool is_live, uin
 }
 
 // Modified add_active_note function to handle solo animations with track consideration
-static void add_active_note_with_solo_check(uint8_t row, uint8_t col, uint8_t color_id, uint8_t track_id, uint8_t animation_type, bool is_live) {
+static void add_active_note_with_solo_check(uint8_t row, uint8_t col, uint8_t color_id, uint8_t track_id, uint8_t animation_type, bool is_live, uint8_t velocity) {
     // If this is a solo animation, clear existing animations of the same type first
     if (is_solo_animation(animation_type)) {
         clear_active_notes_of_type(animation_type, is_live, track_id);
     }
-    
+
     // Now add the new active note
-    add_active_note(row, col, color_id, track_id, animation_type, is_live);
+    add_active_note(row, col, color_id, track_id, animation_type, is_live, velocity);
 }
 
 
@@ -5602,7 +5611,7 @@ static void add_active_note_with_solo_check(uint8_t row, uint8_t col, uint8_t co
 static void process_note(uint8_t channel, uint8_t note, uint8_t track_id, bool is_live,
                         live_note_positioning_t live_positioning, macro_note_positioning_t macro_positioning,
                         live_animation_t live_animation, macro_animation_t macro_animation,
-                        bool use_influence, uint8_t color_type) {
+                        bool use_influence, uint8_t color_type, uint8_t velocity) {
     
     position_data_t positions;
     
@@ -5650,7 +5659,7 @@ static void process_note(uint8_t channel, uint8_t note, uint8_t track_id, bool i
     
     // For other animations, add to active notes with solo check
     for (uint8_t pos = 0; pos < positions.count; pos++) {
-        add_active_note_with_solo_check(positions.points[pos].row, positions.points[pos].col, color_id, track_id, animation, is_live);
+        add_active_note_with_solo_check(positions.points[pos].row, positions.points[pos].col, color_id, track_id, animation, is_live, velocity);
     }
 }
 
@@ -5663,13 +5672,16 @@ static bool run_efficient_effect(effect_params_t* params,
                                 macro_note_positioning_t macro_positioning,
                                 live_animation_t live_animation,
                                 macro_animation_t macro_animation,
-                                bool use_influence,
+                                uint8_t flags,
                                 background_mode_t background_mode,
                                 uint8_t pulse_mode,
                                 uint8_t color_type,
                                 uint8_t background_brightness_pct,
                                 uint8_t live_speed,
                                 uint8_t macro_speed) {
+
+    bool use_influence = (flags & CUSTOM_ANIM_FLAG_INFLUENCE) != 0;
+    bool velocity_brightness_enabled = (flags & CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS) != 0;
 
     static uint16_t live_heat_timer = 0;
     static uint16_t macro_heat_timer = 0;
@@ -5797,10 +5809,11 @@ static bool run_efficient_effect(effect_params_t* params,
         uint8_t note = unified_lighting_notes[i][1];
         uint8_t type = unified_lighting_notes[i][2];
         uint8_t track_id = unified_lighting_notes[i][3];
+        uint8_t velocity = unified_lighting_notes[i][5];
         bool is_live = (type == 0);
-        
+
         process_note(channel, note, track_id, is_live, live_positioning, macro_positioning,
-                    live_animation, macro_animation, use_influence, color_type);
+                    live_animation, macro_animation, use_influence, color_type, velocity);
     }
     unified_lighting_count = 0;
     
@@ -6423,10 +6436,19 @@ switch (animation) {
                                 default:
                                     brightness = 0;
                                     break;
-}                            
+}
+                            // Scale brightness by MIDI velocity when velocity brightness is enabled
+                            // velocity 1 -> ~1% brightness, velocity 127 -> 100% brightness
+                            if (velocity_brightness_enabled && brightness > 0) {
+                                uint8_t vel = active_notes[note].velocity;
+                                if (vel < 1) vel = 1;
+                                brightness = (uint8_t)(((uint16_t)brightness * vel * 2) / 255);
+                                if (brightness < 1 && active_notes[note].velocity > 0) brightness = 1;
+                            }
+
                             if (brightness > final_brightness) {
                                 final_brightness = brightness;
-                                HSV effect_hsv = get_effect_color_hsv(base_hue, base_sat, base_val, color_type, 
+                                HSV effect_hsv = get_effect_color_hsv(base_hue, base_sat, base_val, color_type,
                                                                      active_notes[note].color_id,
                                                                      active_notes[note].row, active_notes[note].col,
                                                                      row, col, elapsed, active_notes[note].is_live);
@@ -6642,9 +6664,9 @@ void set_custom_slot_macro_animation(uint8_t slot, uint8_t value) {
     }
 }
 
-void set_custom_slot_use_influence(uint8_t slot, bool value) {
+void set_custom_slot_flags(uint8_t slot, uint8_t value) {
     if (slot < NUM_CUSTOM_SLOTS) {
-        custom_slots[slot].use_influence = value;
+        custom_slots[slot].flags = value;
     }
 }
 
@@ -6701,7 +6723,7 @@ static bool run_custom_animation(effect_params_t* params, uint8_t slot_number) {
                                config->macro_positioning,
                                config->live_animation,
                                config->macro_animation,
-                               config->use_influence,
+                               config->flags,
                                config->background_mode,
                                config->pulse_mode,
                                config->color_type,

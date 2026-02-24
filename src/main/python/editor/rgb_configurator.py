@@ -2462,6 +2462,17 @@ class CustomLightsHandler(BasicHandler):
         background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
         layout.addWidget(background_brightness, 10, 1, 1, 2)
 
+        # Velocity Brightness toggle
+        vel_bright_row = QHBoxLayout()
+        vel_bright_label = QLabel(tr("RGBConfigurator", "Velocity Brightness:"))
+        vel_bright_row.addWidget(self.create_help_label("When enabled, animation brightness is driven by\nkeypress velocity instead of a fixed value.\nSoft press = dim, hard press = bright."))
+        vel_bright_row.addWidget(vel_bright_label)
+        layout.addLayout(vel_bright_row, 11, 0)
+        velocity_brightness = QCheckBox(tr("RGBConfigurator", "Enable"))
+        velocity_brightness.setChecked(False)
+        velocity_brightness.stateChanged.connect(lambda state, s=slot: self.on_velocity_brightness_changed(s, state))
+        layout.addWidget(velocity_brightness, 11, 1, 1, 2)
+
         # Effect Colours section header
         colours_header = QHBoxLayout()
         colours_label = QLabel(tr("RGBConfigurator", "Effect Colours:"))
@@ -2469,33 +2480,33 @@ class CustomLightsHandler(BasicHandler):
         colours_header.addWidget(self.create_help_label("Color settings for animations.\nControls how colors are applied to effects."))
         colours_header.addWidget(colours_label)
         colours_header.addStretch()
-        layout.addLayout(colours_header, 11, 0, 1, 3)
+        layout.addLayout(colours_header, 12, 0, 1, 3)
 
-        # Colour Scheme - moved to row 12, with rounded edges
+        # Colour Scheme
         colour_row = QHBoxLayout()
         colour_scheme_label = QLabel(tr("RGBConfigurator", "Colour Scheme:"))
         colour_row.addWidget(self.create_help_label("How colors are chosen for the animation.\nFixed colors, random, or based on key velocity/position."))
         colour_row.addWidget(colour_scheme_label)
-        layout.addLayout(colour_row, 12, 0)
+        layout.addLayout(colour_row, 13, 0)
         color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
         color_type.setStyleSheet("QComboBox { border-radius: 5px; }")
         color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-        layout.addWidget(color_type, 12, 1, 1, 2)
+        layout.addWidget(color_type, 13, 1, 1, 2)
 
-        # Sustain Mode - moved to row 13, with rounded edges
+        # Sustain Mode
         sustain_row = QHBoxLayout()
         sustain_label = QLabel(tr("RGBConfigurator", "Sustain:"))
         sustain_row.addWidget(self.create_help_label("How long the animation lingers after key release.\nAffects fade-out behavior."))
         sustain_row.addWidget(sustain_label)
-        layout.addLayout(sustain_row, 13, 0)
+        layout.addLayout(sustain_row, 14, 0)
         sustain_mode = ArrowComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
         sustain_mode.setStyleSheet("QComboBox { border-radius: 5px; }")
         sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-        layout.addWidget(sustain_mode, 13, 1, 1, 2)
+        layout.addWidget(sustain_mode, 14, 1, 1, 2)
 
-        # Buttons - moved to row 14, same height as dropdown with rounded edges
+        # Buttons
         buttons_layout = QHBoxLayout()
 
         save_button = QPushButton(tr("RGBConfigurator", "Save"))
@@ -2524,7 +2535,7 @@ class CustomLightsHandler(BasicHandler):
         
         buttons_widget = QWidget()
         buttons_widget.setLayout(buttons_layout)
-        layout.addWidget(buttons_widget, 14, 0, 1, 3)
+        layout.addWidget(buttons_widget, 15, 0, 1, 3)
 
         # Store widgets for this slot
         self.slot_widgets[slot] = {
@@ -2536,6 +2547,7 @@ class CustomLightsHandler(BasicHandler):
             'macro_speed': macro_speed,
             'background': background,
             'background_brightness': background_brightness,
+            'velocity_brightness': velocity_brightness,
             'color_type': color_type,
             'sustain_mode': sustain_mode,
             'preset_combo': preset_combo
@@ -2700,6 +2712,8 @@ class CustomLightsHandler(BasicHandler):
         widgets['sustain_mode'].setCurrentIndex(min(config[6], len(CUSTOM_LIGHT_SUSTAIN_MODES) - 1))
         widgets['color_type'].setCurrentIndex(min(config[7], 84))
         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
+        flags = config[4] if len(config) > 4 else 0
+        widgets['velocity_brightness'].setChecked(bool(flags & 0x02))
         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
         widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
             
@@ -2751,6 +2765,7 @@ class CustomLightsHandler(BasicHandler):
         widgets['macro_speed'].setValue(128)              # Default macro speed
         widgets['background'].setCurrentIndex(0)          # None
         widgets['background_brightness'].setValue(30)     # 30% background brightness
+        widgets['velocity_brightness'].setChecked(False)  # Off by default
         widgets['color_type'].setCurrentIndex(1)          # Channel
         widgets['sustain_mode'].setCurrentIndex(3)        # All
 
@@ -2852,6 +2867,26 @@ class CustomLightsHandler(BasicHandler):
             self.device.keyboard.set_custom_slot_parameter(current_slot, 9, value)
         else:
             print(f"Background brightness changed: tab {slot} -> current slot {current_slot}, brightness {value}%")
+
+    def on_velocity_brightness_changed(self, slot, state):
+        """Handle velocity brightness toggle - send flags to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        enabled = state != 0
+
+        # Read current flags value, update bit 1
+        current_flags = 0
+        if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+            config = self.device.keyboard.get_custom_slot_config(current_slot, from_eeprom=False)
+            if config and len(config) > 4:
+                current_flags = config[4]
+
+        if enabled:
+            current_flags |= 0x02   # Set bit 1
+        else:
+            current_flags &= ~0x02  # Clear bit 1
+
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 4, current_flags)
 
     def on_sustain_mode_changed(self, slot, index):
         """Handle sustain mode change - send to CURRENT slot"""
