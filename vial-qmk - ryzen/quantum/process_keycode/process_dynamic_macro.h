@@ -131,6 +131,16 @@ bool dynamic_macro_has_activity(void);
 void force_clear_all_live_notes(void);
 void dynamic_macro_init(void);
 
+// Loop timer - hardware TIM5 ISR-driven playback (1kHz)
+void loop_timer_init(void);
+void loop_timer_sync_time(void);
+void loop_timer_drain_queue(void);
+void loop_timer_lock_macro(uint8_t macro_idx);
+void loop_timer_unlock_macro(uint8_t macro_idx);
+void loop_timer_lock_overdub(uint8_t macro_idx);
+void loop_timer_unlock_overdub(uint8_t macro_idx);
+uint16_t loop_timer_get_overflow_count(void);
+
 void noteoffdisplayupdates(uint8_t note);
 void noteondisplayupdates(uint8_t note);
 void smartchorddisplayupdates(uint8_t note);

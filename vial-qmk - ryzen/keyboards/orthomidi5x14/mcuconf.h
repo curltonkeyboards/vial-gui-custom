@@ -44,6 +44,12 @@
 #undef STM32_ADC_ADCPRE
 #define STM32_ADC_ADCPRE ADC_CCR_ADCPRE_DIV4
 
+// GPT (General Purpose Timer) Configuration - TIM5 for loop timer ISR
+// TIM5 is a 32-bit timer on APB1 (48MHz with prescaler), used to drive
+// macro/loop playback at 1kHz independent of the main scan loop.
+#undef STM32_GPT_USE_TIM5
+#define STM32_GPT_USE_TIM5 TRUE
+
 // USART Configuration for MIDI Serial
 // Using USART1 on PA15 (TX) and PB3 (RX) - these are JTAG pins remapped to USART1
 #undef STM32_SERIAL_USE_USART1

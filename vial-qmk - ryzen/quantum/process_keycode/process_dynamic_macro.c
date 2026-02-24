@@ -8,6 +8,8 @@
 #include <math.h>
 #include "keyboards/orthomidi5x14/orthomidi5x14.h"
 #include "process_dks.h"
+#include "hal.h"
+#include <ch.h>
 
 // External functions to mark/unmark notes from macros
 extern void mark_note_from_macro(uint8_t channel, uint8_t note, uint8_t macro_id);
@@ -1101,7 +1103,10 @@ void dynamic_macro_init(void) {
     
     // Initialize macros flag
     macros_initialized = true;
-    
+
+    // Initialize hardware loop timer (TIM5 GPT at 1kHz)
+    loop_timer_init();
+
     dprintf("dynamic macro: system initialized with complete fresh state\n");
 }
 
@@ -3497,6 +3502,426 @@ static void check_loop_trigger(void) {
     is_macro_primed = false;
 }
 
+// ============================================================================
+// LOOP TIMER - Hardware TIM5 ISR-driven playback for precise MIDI timing
+// ============================================================================
+//
+// Problem: macro/loop playback timing is driven by matrix_scan_user_macro()
+// which only runs once per scan cycle. Heavy operations (ADC scanning of 70
+// keys, OLED I2C, LED SPI/DMA, HID transfers, EEPROM writes) delay the scan
+// cycle from the typical ~1ms up to 5-20ms, causing audible timing jitter in
+// loop playback and BPM sync.
+//
+// Solution: Use TIM5 (32-bit hardware timer) via ChibiOS GPT driver to fire
+// an ISR at 1kHz (1ms). The ISR checks event timestamps and queues due events
+// into a lock-free SPSC ring buffer. The main loop drains the ring buffer and
+// sends MIDI (which requires thread context due to blocking USB chnWrite).
+//
+// This gives ±0.5ms timing precision regardless of scan loop jitter.
+// USB MIDI polling interval is 1ms anyway, so this is effectively optimal.
+// ============================================================================
+
+// DWT cycle counter register (ARM Cortex-M4) for ISR-safe microsecond timing
+#ifndef DWT_CYCCNT
+#define DWT_CYCCNT (*(volatile uint32_t*)0xE0001004)
+#endif
+
+// --- Ring buffer for ISR-to-main-loop MIDI event passing ---
+// 256 entries provides headroom for worst case: 4 macros * 2 states * 16 events = 128
+// per ISR tick. 256 * 6 bytes = 1536 bytes RAM.
+#define LT_EVENT_QUEUE_SIZE 256
+
+typedef struct {
+    uint8_t type;        // MIDI_EVENT_NOTE_ON / NOTE_OFF / CC
+    uint8_t channel;     // Original channel from macro buffer
+    uint8_t note;        // Original note from macro buffer
+    uint8_t velocity;    // raw_travel from macro buffer
+    uint8_t macro_num;   // 1-4 (which macro slot)
+    uint8_t flags;       // bit0: is_overdub, bit1: is_independent_overdub
+} lt_event_t;
+
+static volatile lt_event_t lt_queue[LT_EVENT_QUEUE_SIZE];
+static volatile uint8_t lt_head = 0;   // Written by ISR only
+static volatile uint8_t lt_tail = 0;   // Read by main loop only
+
+// --- DWT-based ISR-safe time synchronization ---
+// The ISR cannot call timer_read32() (uses chSysLock, not ISR-safe).
+// Instead, the main loop periodically syncs timer_read32() with the DWT
+// cycle counter. The ISR interpolates from the last sync point using DWT.
+static volatile uint32_t lt_sync_ms = 0;     // Last synced timer_read32() value
+static volatile uint32_t lt_sync_dwt = 0;    // DWT_CYCCNT at sync point
+#define LT_CYCLES_PER_MS 48000               // 48MHz CPU clock
+
+// --- Per-macro coordination flags ---
+static volatile bool lt_macro_locked[MAX_MACROS];       // Main loop locks during state changes
+static volatile bool lt_overdub_locked[MAX_MACROS];     // Same for overdub states
+static volatile bool lt_restart_pending[MAX_MACROS];    // ISR detected main macro loop end
+static volatile bool lt_od_restart_pending[MAX_MACROS]; // ISR detected overdub loop end
+static volatile bool lt_enabled = false;                // Master ISR enable
+static volatile uint16_t lt_overflow_count = 0;         // Events dropped due to full queue
+
+// --- Ring buffer operations (single-producer single-consumer, lock-free) ---
+static inline bool lt_queue_full(void) {
+    return ((lt_head + 1) % LT_EVENT_QUEUE_SIZE) == lt_tail;
+}
+
+static inline void lt_enqueue_event(uint8_t type, uint8_t ch, uint8_t note,
+                                    uint8_t vel, uint8_t macro_num, uint8_t flags) {
+    if (lt_queue_full()) {
+        if (type == MIDI_EVENT_NOTE_OFF) {
+            // Never drop note-off: discard oldest event to make room (prevents stuck notes).
+            // NOTE: This relaxes the SPSC contract (ISR writes lt_tail, normally consumer-only).
+            // Safe on single-core ARM Cortex-M4: ISR fully preempts main loop, so they never
+            // truly run concurrently. If main loop was mid-dequeue with a stale local copy of
+            // lt_tail, it will write the same or later value when it resumes.
+            __asm volatile("" ::: "memory");
+            lt_tail = (lt_tail + 1) % LT_EVENT_QUEUE_SIZE;
+        } else {
+            lt_overflow_count++;
+            return;
+        }
+    }
+    uint8_t idx = lt_head;
+    lt_queue[idx].type = type;
+    lt_queue[idx].channel = ch;
+    lt_queue[idx].note = note;
+    lt_queue[idx].velocity = vel;
+    lt_queue[idx].macro_num = macro_num;
+    lt_queue[idx].flags = flags;
+    __asm volatile("" ::: "memory");  // Compiler barrier: fields written before head advances
+    lt_head = (idx + 1) % LT_EVENT_QUEUE_SIZE;
+}
+
+static inline bool lt_dequeue_event(lt_event_t *out) {
+    if (lt_head == lt_tail) return false;
+    uint8_t idx = lt_tail;
+    out->type = lt_queue[idx].type;
+    out->channel = lt_queue[idx].channel;
+    out->note = lt_queue[idx].note;
+    out->velocity = lt_queue[idx].velocity;
+    out->macro_num = lt_queue[idx].macro_num;
+    out->flags = lt_queue[idx].flags;
+    __asm volatile("" ::: "memory");  // Compiler barrier: fields read before tail advances
+    lt_tail = (idx + 1) % LT_EVENT_QUEUE_SIZE;
+    return true;
+}
+
+// --- ISR-safe time reading (uses DWT cycle counter) ---
+static inline uint32_t lt_now_ms(void) {
+    uint32_t elapsed_cycles = DWT_CYCCNT - lt_sync_dwt;
+    return lt_sync_ms + (elapsed_cycles / LT_CYCLES_PER_MS);
+}
+
+// --- ISR: Process a single playback state, queue events that are due ---
+static void lt_isr_process_state(macro_playback_state_t *state, uint32_t now,
+                                 uint8_t macro_num, bool is_overdub,
+                                 bool is_independent) {
+    if (!state->is_playing || state->current == NULL) return;
+    if (global_playback_paused) return;
+
+    uint8_t macro_idx = macro_num - 1;
+    float speed = macro_speed_factor[macro_idx];
+    if (speed <= 0.0f) return;  // Paused via speed
+
+    uint8_t processed = 0;
+    const uint8_t MAX_EVENTS_PER_ISR_STATE = 16;
+
+    while (processed < MAX_EVENTS_PER_ISR_STATE) {
+        // Handle initial timing setup (next_event_time == 0 means first event)
+        if (state->next_event_time == 0) {
+            uint32_t base_delay = state->current->timestamp;
+            uint32_t adjusted = (uint32_t)(base_delay / speed);
+            uint32_t base_time = is_independent ?
+                overdub_independent_timer[macro_idx] : state->timer;
+            state->next_event_time = base_time + adjusted;
+        }
+
+        // If waiting for loop gap (end-of-loop pause before restart)
+        if (state->waiting_for_loop_gap) {
+            if (now >= state->next_event_time) {
+                // Gap ended - signal main loop for complex restart logic
+                if (is_overdub) {
+                    lt_od_restart_pending[macro_idx] = true;
+                } else {
+                    lt_restart_pending[macro_idx] = true;
+                }
+            }
+            return;  // ISR stops processing until main loop handles restart
+        }
+
+        // Check if event is due
+        if (now < state->next_event_time) return;  // Not yet
+
+        // Queue the event for main-loop dispatch (skip dummy events)
+        if (state->current->type != MIDI_EVENT_DUMMY) {
+            uint8_t flags = 0;
+            if (is_overdub) flags |= 0x01;
+            if (is_independent) flags |= 0x02;
+            lt_enqueue_event(state->current->type, state->current->channel,
+                             state->current->note, state->current->raw_travel,
+                             macro_num, flags);
+        }
+        processed++;
+
+        // Advance to next event
+        state->current++;
+
+        // Check if we reached end of buffer
+        if (state->current == state->end) {
+            state->waiting_for_loop_gap = true;
+            uint32_t gap = is_independent ?
+                overdub_independent_gap_time[macro_idx] : state->loop_gap_time;
+            state->next_event_time = now + (uint32_t)(gap / speed);
+
+            // For sample mode, signal restart immediately (main loop will stop it)
+            if (sample_mode_active) {
+                if (is_overdub) {
+                    lt_od_restart_pending[macro_idx] = true;
+                } else {
+                    lt_restart_pending[macro_idx] = true;
+                }
+            }
+            return;
+        }
+
+        // Calculate time for next event
+        uint32_t adjusted_ts = (uint32_t)(state->current->timestamp / speed);
+        uint32_t base_time = is_independent ?
+            overdub_independent_timer[macro_idx] : state->timer;
+        state->next_event_time = base_time + adjusted_ts;
+    }
+}
+
+// --- TIM5 GPT ISR callback (fires every 1ms) ---
+static void loop_timer_callback(GPTDriver *gptp) {
+    (void)gptp;
+    if (!lt_enabled) return;
+
+    uint32_t now = lt_now_ms();
+
+    for (uint8_t i = 0; i < MAX_MACROS; i++) {
+        // Process main macro playback
+        if (!lt_macro_locked[i] && !lt_restart_pending[i] &&
+            macro_playback[i].is_playing) {
+            lt_isr_process_state(&macro_playback[i], now, i + 1, false, false);
+        }
+
+        // Process overdub playback
+        if (!lt_overdub_locked[i] && !lt_od_restart_pending[i] &&
+            overdub_playback[i].is_playing) {
+            bool is_ind = overdub_advanced_mode &&
+                          overdub_playback[i].buffer_start == overdub_buffers[i];
+            lt_isr_process_state(&overdub_playback[i], now, i + 1, true, is_ind);
+        }
+    }
+}
+
+// --- GPT driver configuration ---
+static const GPTConfig loop_gpt_config = {
+    .frequency = 1000000,   // 1MHz timer clock (1µs resolution)
+    .callback  = loop_timer_callback,
+    .cr2       = 0,
+    .dier      = 0,
+};
+
+// --- Dispatch a single queued event with full MIDI transformations ---
+// Called from main loop (thread context) so midi_send is safe.
+static void lt_dispatch_event(const lt_event_t *evt) {
+    if (evt->macro_num == 0 || evt->macro_num > MAX_MACROS) return;
+
+    uint8_t macro_idx = evt->macro_num - 1;
+    bool is_overdub = (evt->flags & 0x01) != 0;
+
+    // Safety: if macro was stopped between ISR queueing and main-loop dispatch,
+    // skip note-on events to prevent stuck notes. Note-off and CC are still sent
+    // to ensure clean cleanup.
+    if (evt->type == MIDI_EVENT_NOTE_ON) {
+        if (is_overdub && !overdub_playback[macro_idx].is_playing) return;
+        if (!is_overdub && !macro_playback[macro_idx].is_playing) return;
+    }
+
+    uint8_t track_id = is_overdub ? (evt->macro_num + MAX_MACROS) : evt->macro_num;
+
+    switch (evt->type) {
+        case MIDI_EVENT_NOTE_ON: {
+            uint8_t note, channel, velocity;
+
+            if (is_overdub && overdub_advanced_mode) {
+                note = apply_transpose(evt->note, overdub_transpose[macro_idx]);
+                channel = apply_channel_transformations(evt->channel,
+                    overdub_channel_offset[macro_idx],
+                    overdub_channel_absolute[macro_idx]);
+                velocity = apply_overdub_velocity_transformations(evt->velocity,
+                    overdub_velocity_offset[macro_idx],
+                    overdub_velocity_absolute[macro_idx], evt->macro_num);
+            } else {
+                note = apply_transpose(evt->note, macro_transpose[macro_idx]);
+                channel = apply_channel_transformations(evt->channel,
+                    macro_channel_offset[macro_idx],
+                    macro_channel_absolute[macro_idx]);
+                velocity = apply_velocity_transformations(evt->velocity,
+                    macro_velocity_offset[macro_idx],
+                    macro_velocity_absolute[macro_idx], evt->macro_num);
+            }
+
+            if (macro_override_live_notes || !is_live_note_active(channel, note)) {
+                if (!macro_main_muted[macro_idx] || is_overdub) {
+                    midi_send_noteon(&midi_device, channel, note, velocity);
+                    add_lighting_macro_note(channel, note, track_id);
+                }
+            }
+            mark_note_from_macro(channel, note, track_id);
+
+            // Octave doubler
+            int8_t od_val = (is_overdub && overdub_advanced_mode) ?
+                overdub_octave_doubler[macro_idx] : macro_octave_doubler[macro_idx];
+            if (od_val != 0) {
+                uint8_t oct_note = apply_transpose(note, od_val);
+                if (macro_override_live_notes || !is_live_note_active(channel, oct_note)) {
+                    if (!macro_main_muted[macro_idx] || is_overdub) {
+                        midi_send_noteon(&midi_device, channel, oct_note, velocity);
+                        add_lighting_macro_note(channel, oct_note, track_id);
+                    }
+                }
+                mark_note_from_macro(channel, oct_note, track_id);
+            }
+            break;
+        }
+        case MIDI_EVENT_NOTE_OFF: {
+            uint8_t note, channel, velocity;
+
+            if (is_overdub && overdub_advanced_mode) {
+                note = apply_transpose(evt->note, overdub_transpose[macro_idx]);
+                channel = apply_channel_transformations(evt->channel,
+                    overdub_channel_offset[macro_idx],
+                    overdub_channel_absolute[macro_idx]);
+                velocity = apply_overdub_velocity_transformations(evt->velocity,
+                    overdub_velocity_offset[macro_idx],
+                    overdub_velocity_absolute[macro_idx], evt->macro_num);
+            } else {
+                note = apply_transpose(evt->note, macro_transpose[macro_idx]);
+                channel = apply_channel_transformations(evt->channel,
+                    macro_channel_offset[macro_idx],
+                    macro_channel_absolute[macro_idx]);
+                velocity = apply_velocity_transformations(evt->velocity,
+                    macro_velocity_offset[macro_idx],
+                    macro_velocity_absolute[macro_idx], evt->macro_num);
+            }
+
+            if (macro_override_live_notes || !is_live_note_active(channel, note)) {
+                if (!macro_main_muted[macro_idx] || is_overdub) {
+                    midi_send_noteoff(&midi_device, channel, note, velocity);
+                    remove_lighting_macro_note(channel, note, track_id);
+                }
+            }
+            unmark_note_from_macro(channel, note, track_id);
+
+            // Octave doubler
+            int8_t od_val = (is_overdub && overdub_advanced_mode) ?
+                overdub_octave_doubler[macro_idx] : macro_octave_doubler[macro_idx];
+            if (od_val != 0) {
+                uint8_t oct_note = apply_transpose(note, od_val);
+                if (macro_override_live_notes || !is_live_note_active(channel, oct_note)) {
+                    if (!macro_main_muted[macro_idx] || is_overdub) {
+                        midi_send_noteoff(&midi_device, channel, oct_note, velocity);
+                        remove_lighting_macro_note(channel, oct_note, track_id);
+                    }
+                }
+                unmark_note_from_macro(channel, oct_note, track_id);
+            }
+            break;
+        }
+        case MIDI_EVENT_CC:
+            midi_send_cc(&midi_device, evt->channel, evt->note, evt->velocity);
+            break;
+    }
+}
+
+// --- Public: Drain all queued events (call from main loop) ---
+void loop_timer_drain_queue(void) {
+    lt_event_t evt;
+    while (lt_dequeue_event(&evt)) {
+        lt_dispatch_event(&evt);
+    }
+}
+
+// --- Public: Sync ISR time base with timer_read32 (call from main loop each cycle) ---
+// Must write lt_sync_ms and lt_sync_dwt as an atomic pair. If the ISR fires
+// between the two writes, lt_now_ms() would compute from mismatched values,
+// causing up to ~20ms timing error. Disabling interrupts ensures consistency.
+void loop_timer_sync_time(void) {
+    uint32_t ms = timer_read32();  // Has its own internal chSysLock (can't nest)
+    chSysLock();
+    lt_sync_ms = ms;
+    lt_sync_dwt = DWT_CYCCNT;     // Snapshot DWT as close to ms read as possible
+    chSysUnlock();
+}
+
+// --- Public: Initialize the loop timer system ---
+void loop_timer_init(void) {
+    for (uint8_t i = 0; i < MAX_MACROS; i++) {
+        lt_macro_locked[i] = false;
+        lt_overdub_locked[i] = false;
+        lt_restart_pending[i] = false;
+        lt_od_restart_pending[i] = false;
+    }
+    lt_head = 0;
+    lt_tail = 0;
+    lt_enabled = false;
+
+    // Sync time pair atomically (ISR not running yet, but be consistent)
+    uint32_t ms = timer_read32();
+    chSysLock();
+    lt_sync_ms = ms;
+    lt_sync_dwt = DWT_CYCCNT;
+    chSysUnlock();
+
+    gptStart(&GPTD5, &loop_gpt_config);
+    gptStartContinuous(&GPTD5, 1000);  // 1000µs = 1ms period (1kHz ISR)
+
+    lt_enabled = true;
+}
+
+// --- Public: Lock/unlock macros for safe state modification from main loop ---
+void loop_timer_lock_macro(uint8_t macro_idx) {
+    if (macro_idx < MAX_MACROS) {
+        lt_macro_locked[macro_idx] = true;
+        __asm volatile("" ::: "memory");
+    }
+}
+
+void loop_timer_unlock_macro(uint8_t macro_idx) {
+    if (macro_idx < MAX_MACROS) {
+        __asm volatile("" ::: "memory");
+        lt_macro_locked[macro_idx] = false;
+    }
+}
+
+void loop_timer_lock_overdub(uint8_t macro_idx) {
+    if (macro_idx < MAX_MACROS) {
+        lt_overdub_locked[macro_idx] = true;
+        __asm volatile("" ::: "memory");
+    }
+}
+
+void loop_timer_unlock_overdub(uint8_t macro_idx) {
+    if (macro_idx < MAX_MACROS) {
+        __asm volatile("" ::: "memory");
+        lt_overdub_locked[macro_idx] = false;
+    }
+}
+
+// --- Public: Get and reset overflow count (for debug reporting) ---
+uint16_t loop_timer_get_overflow_count(void) {
+    uint16_t count = lt_overflow_count;
+    lt_overflow_count = 0;
+    return count;
+}
+
+// ============================================================================
+// END LOOP TIMER
+// ============================================================================
+
 static bool dynamic_macro_play_task_for_state(macro_playback_state_t *state) {
     if (!state->is_playing || state->current == NULL) {
         state->is_playing = false;
@@ -5477,24 +5902,28 @@ void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int
             break;
         }
     }
-    
+
     if (macro_num == 0) {
         dprintf("dynamic macro: error - invalid macro buffer\n");
         return;
     }
-    
+
     uint8_t macro_idx = macro_num - 1;
     dprintf("dynamic macro: slot %d playback\n", macro_num);
-    
+
+    // Lock ISR processing for this macro during state changes
+    loop_timer_lock_macro(macro_idx);
+    loop_timer_lock_overdub(macro_idx);
+
     // Get the appropriate playback state
     macro_playback_state_t *state = &macro_playback[macro_idx];
-    
+
     if (state->is_playing) {
         // If already playing, stop playback of both macro and overdub
         dynamic_macro_cleanup_notes_for_state(state);
         state->is_playing = false;
         state->current = NULL;
-        
+
         // LINKED PLAYBACK: Also stop overdub playback
         if (overdub_playback[macro_idx].is_playing && !overdub_advanced_mode) {
             dynamic_macro_cleanup_notes_for_state(&overdub_playback[macro_idx]);
@@ -5503,16 +5932,22 @@ void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int
 			send_loop_message(overdub_stop_playing_cc[macro_num - 1], 127);
             dprintf("dynamic macro: stopped overdub for macro %d (linked stop)\n", macro_num);
         }
-        
+
+        // Drain any ISR-queued events for this macro before unlocking
+        loop_timer_drain_queue();
+        loop_timer_unlock_overdub(macro_idx);
+        loop_timer_unlock_macro(macro_idx);
         return;
     }
-    
+
     // Check if macro is empty
     if (macro_buffer == macro_end) {
         dprintf("dynamic macro: empty, nothing to play\n");
+        loop_timer_unlock_overdub(macro_idx);
+        loop_timer_unlock_macro(macro_idx);
         return;
     }
-    
+
     // Start main macro playback
     state->current = macro_buffer;
     state->end = macro_end;
@@ -5524,17 +5959,17 @@ void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int
     state->next_event_time = 0;
 	reset_bpm_timing_for_loop_start();
 	process_pending_states_for_macro(macro_idx);
-    
+
 if (overdub_advanced_mode) {
         // ADVANCED MODE: Do NOT auto-start overdub when parent macro starts
         // Independent overdubs are controlled separately
         dprintf("dynamic macro: skipped auto-start of independent overdub for macro %d\n", macro_num);
     } else {
         // ORIGINAL MODE: LINKED PLAYBACK - start overdub with parent macro
-        if (overdub_buffers[macro_idx] != NULL && 
+        if (overdub_buffers[macro_idx] != NULL &&
             overdub_buffer_ends[macro_idx] != overdub_buffers[macro_idx] &&
             !overdub_muted[macro_idx]) {
-            
+
             // Start overdub playback synchronously with main macro
             macro_playback_state_t *overdub_state = &overdub_playback[macro_idx];
             overdub_state->current = overdub_buffers[macro_idx];
@@ -5558,6 +5993,10 @@ if (overdub_advanced_mode) {
         dprintf("dynamic macro: suppressed loop start playing message for macro %d (just finished recording)\n", macro_num);
     }
     
+    // Unlock ISR processing - playback state is now consistent
+    loop_timer_unlock_overdub(macro_idx);
+    loop_timer_unlock_macro(macro_idx);
+
     dynamic_macro_play_user(direction);
     randomize_order();
 }
@@ -9742,15 +10181,43 @@ void dynamic_macro_intercept_cc(uint8_t channel, uint8_t cc_number, uint8_t valu
 
 // Modified matrix_scan_user_macro to handle both main and overdub playback
 void matrix_scan_user_macro(void) {
+    // --- LOOP TIMER: Drain ISR event queue FIRST for lowest latency ---
+    if (lt_enabled) {
+        loop_timer_drain_queue();
+    }
+
     // Process all main macros
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
-        if (macro_playback[i].is_playing) {
+        // --- LOOP TIMER: Handle ISR-detected loop restarts ---
+        if (lt_enabled && lt_restart_pending[i] && macro_playback[i].is_playing) {
+            // Lock macro so ISR doesn't interfere during restart
+            lt_macro_locked[i] = true;
+            __asm volatile("" ::: "memory");
+            // The state is: waiting_for_loop_gap=true, gap time has elapsed.
+            // Call the existing function which handles all complex restart logic
+            // (overdub merge, preroll transfer, sync messaging, etc.)
             dynamic_macro_play_task_for_state(&macro_playback[i]);
+            lt_restart_pending[i] = false;
+            __asm volatile("" ::: "memory");
+            lt_macro_locked[i] = false;
         }
-        
-        // Process overdub playback
-        if (overdub_playback[i].is_playing) {
+        if (lt_enabled && lt_od_restart_pending[i] && overdub_playback[i].is_playing) {
+            lt_overdub_locked[i] = true;
+            __asm volatile("" ::: "memory");
             dynamic_macro_play_task_for_state(&overdub_playback[i]);
+            lt_od_restart_pending[i] = false;
+            __asm volatile("" ::: "memory");
+            lt_overdub_locked[i] = false;
+        }
+
+        // Normal event processing: only use old path if ISR is disabled
+        if (!lt_enabled) {
+            if (macro_playback[i].is_playing) {
+                dynamic_macro_play_task_for_state(&macro_playback[i]);
+            }
+            if (overdub_playback[i].is_playing) {
+                dynamic_macro_play_task_for_state(&overdub_playback[i]);
+            }
         }
         
         // Check for long press to delete a macro
@@ -10043,6 +10510,11 @@ if (macro_key_held[i] && !macro_deleted[i]) {
 			}
 		}
 	}
+
+    // --- LOOP TIMER: Final drain pass for events queued during restarts ---
+    if (lt_enabled) {
+        loop_timer_drain_queue();
+    }
 }
 
 // Returns true if any macro is currently playing
