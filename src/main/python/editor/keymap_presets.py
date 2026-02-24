@@ -15,6 +15,11 @@ Preset types:
   - TUNING: Multi-row note layouts that scale to selected rows
   - SINGLE_ROW: Function key rows (loop, arp, etc.) applied to one row
   - ENCODER: Encoder assignments (separate from the grid)
+
+Zone prefixes:
+  - Base zone:       MI_*        (e.g. MI_C_3)
+  - KeySplit zone:   MI_SPLIT_*  (e.g. MI_SPLIT_C_3)
+  - TripleSplit zone: MI_SPLIT2_* (e.g. MI_SPLIT2_C_3)
 """
 
 # Chromatic note names matching QMK MI_* keycode naming
@@ -28,10 +33,14 @@ PRESET_TYPE_TUNING = "tuning"
 PRESET_TYPE_SINGLE_ROW = "single_row"
 
 
-def note_to_keycode(note_index):
+# ── Helper Functions ──────────────────────────────────────────────────────────
+
+
+def note_to_keycode(note_index, zone="base"):
     """Convert 0-71 note index to MI_* keycode string.
 
     Note indices: 0=C0, 1=C#0, ..., 11=B0, 12=C1, ..., 71=B5.
+    zone: "base" for MI_*, "ks" for MI_SPLIT_*, "ts" for MI_SPLIT2_*
     Returns KC_NO if out of the valid 0-71 range.
     """
     if note_index < 0 or note_index > 71:
@@ -39,9 +48,29 @@ def note_to_keycode(note_index):
     octave = note_index // 12
     note = note_index % 12
     name = CHROMATIC_NAMES[note]
+    if zone == "ks":
+        prefix = "MI_SPLIT_"
+    elif zone == "ts":
+        prefix = "MI_SPLIT2_"
+    else:
+        prefix = "MI_"
     if octave == 0:
-        return "MI_{}".format(name)
-    return "MI_{}_{}".format(name, octave)
+        return "{}{}".format(prefix, name)
+    return "{}{}_{}".format(prefix, name, octave)
+
+
+def _remap_to_zone(keycode, zone):
+    """Remap a MI_* note keycode to keysplit or triplesplit zone."""
+    if keycode == "KC_NO" or zone == "base":
+        return keycode
+    if not keycode.startswith("MI_") or keycode.startswith("MI_SPLIT"):
+        return keycode
+    suffix = keycode[3:]  # strip "MI_"
+    if zone == "ks":
+        return "MI_SPLIT_" + suffix
+    elif zone == "ts":
+        return "MI_SPLIT2_" + suffix
+    return keycode
 
 
 def _make_grid(num_rows):
@@ -62,11 +91,7 @@ def _fill_grid_continuous(notes, num_rows):
 
 
 def _generate_scale_notes(root, intervals, start_octave=1, end_octave=5):
-    """Generate all note indices for a scale across an octave range.
-
-    root: root note offset (0=C, 1=C#, 2=D, etc.)
-    intervals: semitone offsets from root within one octave
-    """
+    """Generate all note indices for a scale across an octave range."""
     notes = []
     for octave in range(start_octave, end_octave + 1):
         for interval in intervals:
@@ -76,7 +101,90 @@ def _generate_scale_notes(root, intervals, start_octave=1, end_octave=5):
     return sorted(notes)
 
 
-# ── Tuning Preset Generators ──────────────────────────────────────────────────
+# ── Zone Mapping Helpers ──────────────────────────────────────────────────────
+
+
+def _apply_zone_lr(grid, split_col=7):
+    """Left/Right KeySplit: left cols = base, right cols = KS."""
+    for row in grid:
+        for col in range(split_col, len(row)):
+            row[col] = _remap_to_zone(row[col], "ks")
+    return grid
+
+
+def _apply_zone_tb(grid):
+    """Top/Bottom KeySplit: bottom rows = base, top rows = KS."""
+    split_row = len(grid) // 2
+    for r in range(0, split_row):
+        for col in range(len(grid[r])):
+            grid[r][col] = _remap_to_zone(grid[r][col], "ks")
+    return grid
+
+
+def _apply_zone_triple(grid, split_col=7):
+    """TripleSplit: top rows = base, bottom-left = KS, bottom-right = TS."""
+    split_row = len(grid) // 2
+    for r in range(split_row, len(grid)):
+        for col in range(len(grid[r])):
+            if col < split_col:
+                grid[r][col] = _remap_to_zone(grid[r][col], "ks")
+            else:
+                grid[r][col] = _remap_to_zone(grid[r][col], "ts")
+    return grid
+
+
+# ── Piano Helpers ─────────────────────────────────────────────────────────────
+
+
+def _piano_white_row(start_octave, zone="base"):
+    """Generate 14 white keys covering 2 octaves of naturals."""
+    major = [0, 2, 4, 5, 7, 9, 11]
+    row = []
+    for oct_offset in range(2):
+        octave = start_octave + oct_offset
+        for interval in major:
+            note = octave * 12 + interval
+            row.append(note_to_keycode(note, zone))
+    return row
+
+
+def _piano_black_row_left(start_octave, zone="base"):
+    """Black key row, left-aligned: C# above C column.
+
+    Pattern per octave (7 cols):
+      col 0=C#, 1=D#, 2=--, 3=F#, 4=G#, 5=A#, 6=--
+    """
+    row = ["KC_NO"] * 14
+    sharps_at_col = [0, 1, 3, 4, 5]
+    sharp_semitones = [1, 3, 6, 8, 10]
+    for oct_offset in range(2):
+        octave = start_octave + oct_offset
+        base_col = oct_offset * 7
+        for i, col_off in enumerate(sharps_at_col):
+            note = octave * 12 + sharp_semitones[i]
+            row[base_col + col_off] = note_to_keycode(note, zone)
+    return row
+
+
+def _piano_black_row_right(start_octave, zone="base"):
+    """Black key row, right-aligned: C# above D column.
+
+    Pattern per octave (7 cols):
+      col 0=--, 1=C#, 2=D#, 3=--, 4=F#, 5=G#, 6=A#
+    """
+    row = ["KC_NO"] * 14
+    sharps_at_col = [1, 2, 4, 5, 6]
+    sharp_semitones = [1, 3, 6, 8, 10]
+    for oct_offset in range(2):
+        octave = start_octave + oct_offset
+        base_col = oct_offset * 7
+        for i, col_off in enumerate(sharps_at_col):
+            note = octave * 12 + sharp_semitones[i]
+            row[base_col + col_off] = note_to_keycode(note, zone)
+    return row
+
+
+# ── Tuning Preset Generators ─────────────────────────────────────────────────
 # All tuning generators accept num_rows (1-5) and scale accordingly.
 
 
@@ -90,8 +198,8 @@ def preset_octave_rows(num_rows=5):
     """Each row is one complete chromatic octave starting on C."""
     grid = _make_grid(num_rows)
     for i in range(num_rows):
-        row = num_rows - 1 - i  # bottom to top
-        octave = i + 1  # octaves 1 through num_rows
+        row = num_rows - 1 - i
+        octave = i + 1
         base = octave * 12
         for col in range(12):
             note = base + col
@@ -102,7 +210,6 @@ def preset_octave_rows(num_rows=5):
 
 def preset_guitar_standard(num_rows=5):
     """Standard guitar tuning: EADGB strings from bottom to top."""
-    # Full 5-string bases: E1, A1, D2, G2, B2
     all_bases = [16, 21, 26, 31, 35]
     bases = all_bases[:num_rows]
     grid = _make_grid(num_rows)
@@ -118,7 +225,7 @@ def preset_guitar_fourths(num_rows=5):
     grid = _make_grid(num_rows)
     for i in range(num_rows):
         row = num_rows - 1 - i
-        base = 16 + i * 5  # E1=16, then +5 per string
+        base = 16 + i * 5
         for col in range(COLS):
             grid[row][col] = note_to_keycode(base + col)
     return grid
@@ -126,15 +233,14 @@ def preset_guitar_fourths(num_rows=5):
 
 def preset_wicki_hayden(num_rows=5):
     """Wicki-Hayden isomorphic layout.
-    Columns: +2 semitones (whole tone). Rows up: +5 (perfect fourth)."""
+    Columns: +2 (whole tone). Rows up: +5 (perfect fourth)."""
     grid = _make_grid(num_rows)
     base = 24  # C2
     for i in range(num_rows):
         row = num_rows - 1 - i
         row_base = base + i * 5
         for col in range(COLS):
-            note = row_base + col * 2
-            grid[row][col] = note_to_keycode(note)
+            grid[row][col] = note_to_keycode(row_base + col * 2)
     return grid
 
 
@@ -148,8 +254,7 @@ def preset_janko(num_rows=5):
         offset = i % 2
         base = 24 + pair * 12 + offset
         for col in range(COLS):
-            note = base + col * 2
-            grid[row][col] = note_to_keycode(note)
+            grid[row][col] = note_to_keycode(base + col * 2)
     return grid
 
 
@@ -188,6 +293,129 @@ def preset_major_thirds(num_rows=5):
         for col in range(COLS):
             grid[row][col] = note_to_keycode(row_base + col)
     return grid
+
+
+# ── Piano Presets ─────────────────────────────────────────────────────────────
+# Row 0,2 = black keys (sharps), Row 1,3 = white keys (naturals), Row 4 = extra
+
+
+def _build_piano(black_row_fn, num_rows=5):
+    """Build piano layout with the given black key row function.
+
+    Layout (5 rows):
+      Row 0 (black): sharps for octaves 3-4
+      Row 1 (white): naturals for octaves 3-4
+      Row 2 (black): sharps for octaves 1-2
+      Row 3 (white): naturals for octaves 1-2
+      Row 4 (white): naturals for octave 5
+    """
+    grid = _make_grid(num_rows)
+
+    if num_rows >= 4:
+        # Lower pair (rows 2-3): octaves 1-2
+        grid[3] = _piano_white_row(1)
+        grid[2] = black_row_fn(1)
+        # Upper pair (rows 0-1): octaves 3-4
+        grid[1] = _piano_white_row(3)
+        grid[0] = black_row_fn(3)
+        if num_rows == 5:
+            # Extra white row at bottom: octave 5
+            major = [0, 2, 4, 5, 7, 9, 11]
+            for idx, interval in enumerate(major):
+                note = 5 * 12 + interval
+                if note <= 71:
+                    grid[4][idx] = note_to_keycode(note)
+    elif num_rows == 3:
+        grid[2] = _piano_white_row(1)
+        grid[1] = black_row_fn(1)
+        grid[0] = _piano_white_row(3)
+    elif num_rows == 2:
+        grid[1] = _piano_white_row(2)
+        grid[0] = black_row_fn(2)
+    elif num_rows == 1:
+        grid[0] = _piano_white_row(2)
+    return grid
+
+
+def preset_piano_left(num_rows=5):
+    """Piano (left-aligned): C# sits above C column."""
+    return _build_piano(_piano_black_row_left, num_rows)
+
+
+def preset_piano_right(num_rows=5):
+    """Piano (right-aligned): C# sits above D column."""
+    return _build_piano(_piano_black_row_right, num_rows)
+
+
+# ── KeySplit (KS) Presets ─────────────────────────────────────────────────────
+
+
+def preset_chromatic_ks(num_rows=5):
+    """Chromatic with left/right KeySplit."""
+    return _apply_zone_lr(preset_chromatic(num_rows))
+
+
+def preset_octave_rows_ks(num_rows=5):
+    """Octave Rows with left/right KeySplit."""
+    return _apply_zone_lr(preset_octave_rows(num_rows))
+
+
+def preset_guitar_standard_ks(num_rows=5):
+    """Guitar Standard with left/right KeySplit."""
+    return _apply_zone_lr(preset_guitar_standard(num_rows))
+
+
+def preset_c_major_ks_lr(num_rows=5):
+    """C Major with left/right KeySplit."""
+    return _apply_zone_lr(preset_c_major(num_rows))
+
+
+def preset_c_major_ks_tb(num_rows=5):
+    """C Major with top/bottom KeySplit. Bottom = base, top = KS."""
+    return _apply_zone_tb(preset_c_major(num_rows))
+
+
+def preset_fifths_ks(num_rows=5):
+    """Fifths with left/right KeySplit."""
+    return _apply_zone_lr(preset_fifths(num_rows))
+
+
+def preset_piano_left_ks(num_rows=5):
+    """Piano Left-aligned with left/right KeySplit."""
+    return _apply_zone_lr(preset_piano_left(num_rows))
+
+
+def preset_piano_right_ks(num_rows=5):
+    """Piano Right-aligned with left/right KeySplit."""
+    return _apply_zone_lr(preset_piano_right(num_rows))
+
+
+# ── TripleSplit (TS) Presets ──────────────────────────────────────────────────
+
+
+def preset_chromatic_ts(num_rows=5):
+    """Chromatic with TripleSplit: top=base, bottom-left=KS, bottom-right=TS."""
+    return _apply_zone_triple(preset_chromatic(num_rows))
+
+
+def preset_octave_rows_ts(num_rows=5):
+    """Octave Rows with TripleSplit."""
+    return _apply_zone_triple(preset_octave_rows(num_rows))
+
+
+def preset_guitar_standard_ts(num_rows=5):
+    """Guitar Standard with TripleSplit."""
+    return _apply_zone_triple(preset_guitar_standard(num_rows))
+
+
+def preset_c_major_ts(num_rows=5):
+    """C Major with TripleSplit: top=base, bottom-left=KS, bottom-right=TS."""
+    return _apply_zone_triple(preset_c_major(num_rows))
+
+
+def preset_fifths_ts(num_rows=5):
+    """Fifths with TripleSplit."""
+    return _apply_zone_triple(preset_fifths(num_rows))
 
 
 # ── Single-Row Function Presets ───────────────────────────────────────────────
@@ -238,13 +466,9 @@ def preset_row_step_sequencer():
 def preset_row_ear_training():
     """Ear training row - grouped by type, levels 1-3."""
     return [
-        # Basic intervals L1-L3
         "MI_ET_1", "MI_ET_2", "MI_ET_13",
-        # Octave intervals L1-L3
         "MI_ET_4", "MI_ET_5", "MI_ET_14",
-        # Extended intervals L1-L3
         "MI_ET_7", "MI_ET_8", "MI_ET_15",
-        # All intervals L1-L3
         "MI_ET_10", "MI_ET_11", "MI_ET_16",
         "KC_NO", "KC_NO",
     ]
@@ -253,13 +477,9 @@ def preset_row_ear_training():
 def preset_row_chord_training():
     """Chord training row - grouped by type, levels 1-4."""
     return [
-        # Triads L1-L4
         "MI_CET_1", "MI_CET_6", "MI_CET_11", "MI_CET_16",
-        # Basic 7ths L1-L4
         "MI_CET_2", "MI_CET_7", "MI_CET_12", "MI_CET_17",
-        # All 7ths L1-L4
         "MI_CET_3", "MI_CET_8", "MI_CET_13", "MI_CET_18",
-        # Triads & Basic 7ths L1-L2
         "MI_CET_4", "MI_CET_9",
     ]
 
@@ -319,96 +539,110 @@ ENCODER_PRESETS = [
 
 
 # ── Preset Registries ─────────────────────────────────────────────────────────
-# Tuning presets: (name, description, generator_func)
-# generator_func(num_rows) -> list of lists of keycodes
 
 TUNING_PRESETS = [
-    (
-        "Chromatic",
-        "Linear chromatic from C1. Every semitone in order, bottom-to-top.",
-        preset_chromatic,
-    ),
-    (
-        "Octave Rows",
-        "Each row is one chromatic octave (C to B). C1 through B5.",
-        preset_octave_rows,
-    ),
-    (
-        "Guitar Standard",
-        "Guitar fretboard: EADGB tuning. 14 frets per string.",
-        preset_guitar_standard,
-    ),
-    (
-        "Guitar All Fourths",
-        "All-fourths tuning (EADGC). Consistent intervals between strings.",
-        preset_guitar_fourths,
-    ),
-    (
-        "Wicki-Hayden",
-        "Isomorphic: whole tones horizontal, fourths vertical. Same shapes in all keys.",
-        preset_wicki_hayden,
-    ),
-    (
-        "Janko",
-        "Janko keyboard: whole tones per row, offset by semitone. Uniform fingering.",
-        preset_janko,
-    ),
-    (
-        "C Major Scale",
-        "Diatonic C major (white notes). Overlapping 2-octave rows. No wrong notes.",
-        preset_c_major,
-    ),
-    (
-        "Fifths",
-        "Chromatic rows separated by perfect fifths. Circle of fifths = vertical line.",
-        preset_fifths,
-    ),
-    (
-        "Major Thirds",
-        "Chromatic rows separated by major thirds. 3 rows up = 1 octave.",
-        preset_major_thirds,
-    ),
+    ("Chromatic",
+     "Linear chromatic from C1. Every semitone in order, bottom-to-top.",
+     preset_chromatic),
+    ("Octave Rows",
+     "Each row is one chromatic octave (C to B). C1 through B5.",
+     preset_octave_rows),
+    ("Piano (Left-aligned)",
+     "Piano layout: C# above C. Rows 1,3=black, Rows 2,4=white, Row 5=extra.",
+     preset_piano_left),
+    ("Piano (Right-aligned)",
+     "Piano layout: C# above D. Rows 1,3=black, Rows 2,4=white, Row 5=extra.",
+     preset_piano_right),
+    ("Guitar Standard",
+     "Guitar fretboard: EADGB tuning. 14 frets per string.",
+     preset_guitar_standard),
+    ("Guitar All Fourths",
+     "All-fourths tuning (EADGC). Consistent intervals between strings.",
+     preset_guitar_fourths),
+    ("Wicki-Hayden",
+     "Isomorphic: whole tones horizontal, fourths vertical. Same shapes in all keys.",
+     preset_wicki_hayden),
+    ("Janko",
+     "Janko keyboard: whole tones per row, offset by semitone. Uniform fingering.",
+     preset_janko),
+    ("C Major Scale",
+     "Diatonic C major (white notes). Overlapping 2-octave rows. No wrong notes.",
+     preset_c_major),
+    ("Fifths",
+     "Chromatic rows separated by perfect fifths. Circle of fifths = vertical line.",
+     preset_fifths),
+    ("Major Thirds",
+     "Chromatic rows separated by major thirds. 3 rows up = 1 octave.",
+     preset_major_thirds),
 ]
 
-# Single-row presets: (name, description, generator_func)
-# generator_func() -> list of 14 keycodes
+KS_PRESETS = [
+    ("Chromatic (KS)",
+     "Chromatic with KeySplit: left 7 cols = base, right 7 cols = KS zone.",
+     preset_chromatic_ks),
+    ("Octave Rows (KS)",
+     "Octave Rows with KeySplit: left = base, right = KS zone.",
+     preset_octave_rows_ks),
+    ("Guitar Standard (KS)",
+     "Guitar Standard with KeySplit: left = base, right = KS zone.",
+     preset_guitar_standard_ks),
+    ("C Major L/R (KS)",
+     "C Major with left/right KeySplit: left octave = base, right octave = KS.",
+     preset_c_major_ks_lr),
+    ("C Major T/B (KS)",
+     "C Major with top/bottom KeySplit: bottom rows = base, top rows = KS.",
+     preset_c_major_ks_tb),
+    ("Fifths (KS)",
+     "Fifths with KeySplit: left = base, right = KS zone.",
+     preset_fifths_ks),
+    ("Piano Left (KS)",
+     "Piano Left-aligned with KeySplit: left octave = base, right octave = KS.",
+     preset_piano_left_ks),
+    ("Piano Right (KS)",
+     "Piano Right-aligned with KeySplit: left octave = base, right octave = KS.",
+     preset_piano_right_ks),
+]
+
+TS_PRESETS = [
+    ("Chromatic (TS)",
+     "Chromatic with TripleSplit: top = base, bottom-left = KS, bottom-right = TS.",
+     preset_chromatic_ts),
+    ("Octave Rows (TS)",
+     "Octave Rows with TripleSplit: top = base, bottom-left = KS, bottom-right = TS.",
+     preset_octave_rows_ts),
+    ("Guitar Standard (TS)",
+     "Guitar Standard with TripleSplit: top = base, bottom-left = KS, bottom-right = TS.",
+     preset_guitar_standard_ts),
+    ("C Major (TS)",
+     "C Major with TripleSplit: top = base, bottom-left = KS, bottom-right = TS.",
+     preset_c_major_ts),
+    ("Fifths (TS)",
+     "Fifths with TripleSplit: top = base, bottom-left = KS, bottom-right = TS.",
+     preset_fifths_ts),
+]
 
 SINGLE_ROW_PRESETS = [
-    (
-        "Loop Control",
-        "Loop macros 1-4, mute, overdub, play/pause, sync, speed, save.",
-        preset_row_loop_control,
-    ),
-    (
-        "Smart Chord",
-        "13 smart chord presets (one per root note) + cycle chord type.",
-        preset_row_smart_chord,
-    ),
-    (
-        "Arpeggiator",
-        "Arp play, preset nav, rate/gate controls, modes, sync.",
-        preset_row_arpeggiator,
-    ),
-    (
-        "Step Sequencer",
-        "Seq play/stop, preset nav, rate/gate controls, sync, mod.",
-        preset_row_step_sequencer,
-    ),
-    (
-        "Ear Training",
-        "12 ear training modes: Basic/Octave/Extended/All intervals, levels 1-3.",
-        preset_row_ear_training,
-    ),
-    (
-        "Chord Training",
-        "14 chord training modes: Triads/7ths/All 7ths/Combined, levels 1-4.",
-        preset_row_chord_training,
-    ),
-    (
-        "Transport / Utility",
-        "All notes off, sustain, soft, sostenuto, octave, transpose, channel, bend.",
-        preset_row_transport,
-    ),
+    ("Loop Control",
+     "Loop macros 1-4, mute, overdub, play/pause, sync, speed, save.",
+     preset_row_loop_control),
+    ("Smart Chord",
+     "13 smart chord presets (one per root note) + cycle chord type.",
+     preset_row_smart_chord),
+    ("Arpeggiator",
+     "Arp play, preset nav, rate/gate controls, modes, sync.",
+     preset_row_arpeggiator),
+    ("Step Sequencer",
+     "Seq play/stop, preset nav, rate/gate controls, sync, mod.",
+     preset_row_step_sequencer),
+    ("Ear Training",
+     "12 ear training modes: Basic/Octave/Extended/All intervals, levels 1-3.",
+     preset_row_ear_training),
+    ("Chord Training",
+     "14 chord training modes: Triads/7ths/All 7ths/Combined, levels 1-4.",
+     preset_row_chord_training),
+    ("Transport / Utility",
+     "All notes off, sustain, soft, sostenuto, octave, transpose, channel, bend.",
+     preset_row_transport),
 ]
 
 # Combined list for the dropdown (with category markers)
@@ -416,6 +650,12 @@ SINGLE_ROW_PRESETS = [
 KEYMAP_PRESETS = []
 KEYMAP_PRESETS.append(("--- Tuning (Multi-Row) ---", "", None, PRESET_TYPE_TUNING))
 for name, desc, gen in TUNING_PRESETS:
+    KEYMAP_PRESETS.append((name, desc, gen, PRESET_TYPE_TUNING))
+KEYMAP_PRESETS.append(("--- Tuning with KeySplit (KS) ---", "", None, PRESET_TYPE_TUNING))
+for name, desc, gen in KS_PRESETS:
+    KEYMAP_PRESETS.append((name, desc, gen, PRESET_TYPE_TUNING))
+KEYMAP_PRESETS.append(("--- Tuning with TripleSplit (TS) ---", "", None, PRESET_TYPE_TUNING))
+for name, desc, gen in TS_PRESETS:
     KEYMAP_PRESETS.append((name, desc, gen, PRESET_TYPE_TUNING))
 KEYMAP_PRESETS.append(("--- Single Row ---", "", None, PRESET_TYPE_SINGLE_ROW))
 for name, desc, gen in SINGLE_ROW_PRESETS:
