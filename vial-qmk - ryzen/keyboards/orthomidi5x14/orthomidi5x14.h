@@ -449,7 +449,7 @@ typedef struct {
 #define EEPROM_DIAG_ADDR_2 2000
 #define EEPROM_DIAG_ADDR_3 10000
 #define EEPROM_DIAG_ADDR_4 30000
-#define EEPROM_DIAG_ADDR_5 22000  // Same as toggle addr
+#define EEPROM_DIAG_ADDR_5 52000  // Safe unused region (was 22000 which overlapped toggle!)
 
 // Test values to write
 #define EEPROM_DIAG_VAL_1 0xAA
@@ -546,9 +546,10 @@ typedef velocity_presets_t user_curves_t;
 #define VELOCITY_PRESETS_MAGIC USER_CURVES_MAGIC
 #define USER_CURVES_MAGIC_V4 0xCF04  // Previous version for migration
 
-// EEPROM address for EQ sensitivity curve settings (26 bytes)
-// Layout: [magic(2), range_low(2), range_high(2), bands[15], scale[3], reserved(2)]
-#define EQ_CURVE_EEPROM_ADDR 42000  // Moved to accommodate larger preset storage (was 41400)
+// EEPROM address for EQ sensitivity curve settings (24 bytes)
+// Layout: [magic(2), range_low(2), range_high(2), bands[15], scale[3)]
+// Placed after gaming settings (42000-42091)
+#define EQ_CURVE_EEPROM_ADDR 42100
 #define EQ_CURVE_MAGIC 0xEA01
 
 extern velocity_presets_t user_curves;  // Keep old name for backward compat

@@ -3188,22 +3188,47 @@ void set_and_save_custom_slot_use_influence(uint8_t slot, bool value) {
 }
 
 // =============================================================================
+// EEPROM LAYOUT COMPILE-TIME SAFETY CHECKS
+// =============================================================================
+// Ensure EEPROM regions don't overlap due to struct growth.
+// If any of these fail, the struct has grown and EEPROM addresses need updating.
+
+// Custom Animations (36000) must not overflow into Loop Settings (37000)
+_Static_assert(36000 + sizeof(custom_animation_config_t) * NUM_CUSTOM_SLOTS <= 37000,
+    "Custom Animations EEPROM overflows into Loop Settings! Reduce slots or move Loop Settings.");
+
+// Loop Settings (37000) must not overflow into Keyboard Settings (38000)
+_Static_assert(37000 + sizeof(loop_settings_t) <= 38000,
+    "Loop Settings EEPROM overflows into Keyboard Settings! Move SETTINGS_BASE_ADDR.");
+
+// Keyboard Settings (38000, 5 slots) must not overflow into RGB Magic (38500)
+_Static_assert(38000 + sizeof(keyboard_settings_t) * 5 <= 38500,
+    "Keyboard Settings EEPROM overflows into RGB Magic! keyboard_settings_t has grown too large.");
+
+// Layer Actuation (40000) must not overflow into User Curves (41000)
+_Static_assert(40000 + sizeof(layer_actuation_t) * 12 <= 41000,
+    "Layer Actuation EEPROM overflows into User Curves!");
+
+// Per-Key Actuation (45000) must not overflow past 64KB EEPROM
+_Static_assert(45000 + sizeof(per_key_actuation_t) * 70 * 12 + 2 <= 65536,
+    "Per-Key Actuation EEPROM exceeds 64KB EEPROM limit!");
+
+// =============================================================================
 // LAYER ACTUATION EEPROM FUNCTIONS
 // =============================================================================
 
-// Define EEPROM address for layer actuations (place after custom animations)
-#ifndef EECONFIG_LAYER_ACTUATIONS
-#define EECONFIG_LAYER_ACTUATIONS (EECONFIG_CUSTOM_ANIMATIONS + EECONFIG_CUSTOM_ANIMATIONS_SIZE)
-#endif
+// Use LAYER_ACTUATION_EEPROM_ADDR (40000) defined in process_dynamic_macro.h
+// Previously used a fragile computed address (EECONFIG_CUSTOM_ANIMATIONS + size)
+// which placed data at ~36700 instead of the documented 40000.
 
 // Save all layer actuations to EEPROM
 void save_layer_actuations(void) {
-    eeprom_update_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+    eeprom_update_block(layer_actuations, (uint8_t*)LAYER_ACTUATION_EEPROM_ADDR, sizeof(layer_actuations));
 }
 
 // Load all layer actuations from EEPROM
 void load_layer_actuations(void) {
-    eeprom_read_block(layer_actuations, (uint8_t*)EECONFIG_LAYER_ACTUATIONS, sizeof(layer_actuations));
+    eeprom_read_block(layer_actuations, (uint8_t*)LAYER_ACTUATION_EEPROM_ADDR, sizeof(layer_actuations));
 
     // Validate loaded data - if EEPROM is erased (0xFF) or corrupt, use defaults
     // Check first layer as canary: velocity_mode must be 0-3, velocity_speed_scale 1-20

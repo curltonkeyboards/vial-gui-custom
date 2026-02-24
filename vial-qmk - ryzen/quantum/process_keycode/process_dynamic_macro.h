@@ -203,23 +203,25 @@ void set_custom_animations_eeprom_initialized(void);
 // Layout for 64KB EEPROM (CAT24C512WI-GT3)
 // All addresses verified to fit within 65535 bytes with spacing between features
 //
-// Memory Map (reorganized 2026-01-21):
+// Memory Map (updated 2026-02-24):
 //   0-4,508:       QMK/VIA base (keymaps, encoders, tap dance, combos, key overrides)
 //   4,509-20,000:  VIA Text Macros (~15KB)
-//   21,000-21,359: Null Bind (SOCD) Settings (see orthomidi5x14.h)
-//   22,000-22,399: Toggle Keys (see orthomidi5x14.h)
-//   23,000-26,999: Arp User Presets (see orthomidi5x14.h)
-//   27,500-35,339: Seq User Presets (see orthomidi5x14.h)
-//   36,000-36,699: Custom Animations (700 bytes)
-//   37,000-37,199: Loop Settings (200 bytes)
-//   38,000-38,249: Keyboard Settings (250 bytes, 5 slots)
-//   38,500:        RGB Defaults Magic
-//   39,000-39,107: Layer RGB Settings (108 bytes)
-//   40,000-40,059: Layer Actuation Settings (60 bytes)
-//   41,000-41,241: User Curves (see orthomidi5x14.h)
-//   42,000-42,099: Gaming Settings (see orthomidi5x14.h)
-//   43,000-43,889: Per-Key RGB (890 bytes)
-//   45,000-51,719: Per-Key Actuation (6720 bytes)
+//   21,000-21,361: Null Bind (SOCD) Settings (362 bytes: 20×18 + 2 magic)
+//   22,000-22,401: Toggle Keys (402 bytes: 2 magic + 100×4)
+//   23,000-26,999: Arp User Presets (4000 bytes: 20×200)
+//   27,500-35,339: Seq User Presets (7840 bytes: 20×392)
+//   36,000-36,xxx: Custom Animations (sizeof(custom_animation_config_t) * 50)
+//   37,000-37,xxx: Loop Settings (sizeof(loop_settings_t))
+//   38,000-38,xxx: Keyboard Settings (sizeof(keyboard_settings_t) * 5)
+//   38,500:        RGB Defaults Magic (2 bytes)
+//   39,000-39,107: Layer RGB Settings (108 bytes: 12×9)
+//   40,000-40,119: Layer Actuation Settings (120 bytes: 12×10)
+//   41,000-41,901: User Curves (902 bytes: 10×90 + 2 magic)
+//   42,000-42,091: Gaming Settings (~92 bytes)
+//   42,100-42,123: EQ Curve Settings (24 bytes)
+//   43,000-43,889: Per-Key RGB (890 bytes: 48+840+2 magic)
+//   45,000-51,719: Per-Key Actuation (6720 bytes: 70×8×12)
+//   51,720-51,721: Per-Key Mode Flags (2 bytes, deprecated)
 //   52,000-65,535: Available for future use (~13KB)
 // =============================================================================
 
@@ -236,7 +238,7 @@ void set_custom_animations_eeprom_initialized(void);
 
 // Settings storage definitions
 #define SETTINGS_SIZE sizeof(keyboard_settings_t)
-#define SETTINGS_BASE_ADDR 38000  // Keyboard settings (250 bytes for 5 slots)
+#define SETTINGS_BASE_ADDR 38000  // Keyboard settings (sizeof(keyboard_settings_t) * 5 slots)
 #define SETTINGS_EEPROM_ADDR(slot) (SETTINGS_BASE_ADDR + ((slot) * SETTINGS_SIZE))
 #define SETTINGS_EEPROM_ADDR_DEFAULT SETTINGS_EEPROM_ADDR(0)
 
@@ -248,8 +250,8 @@ void set_custom_animations_eeprom_initialized(void);
 // Firmware now ALWAYS uses per-key per-layer settings. The flags EEPROM area is now unused.
 
 // Layer Actuation EEPROM addresses
-#define LAYER_ACTUATION_EEPROM_ADDR 40000  // Layer actuation (60 bytes)
-#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 60 bytes for 12 layers (5 bytes per layer)
+#define LAYER_ACTUATION_EEPROM_ADDR 40000  // Layer actuation (120 bytes: 10 bytes × 12 layers)
+#define LAYER_ACTUATION_SIZE (sizeof(layer_actuation_t) * 12)  // 120 bytes for 12 layers (10 bytes per layer)
 
 // Function declarations (updated signatures - removed rapidfire params)
 void save_layer_actuations(void);
@@ -280,7 +282,7 @@ bool layer_use_fixed_velocity(uint8_t layer);
 #define HID_CMD_GAMING_RESET 0xD2              // Reset gaming settings to defaults
 
 // =============================================================================
-// EEPROM ADDRESSES SUMMARY (REORGANIZED 2026-01-21 - ALL WITHIN 64KB):
+// EEPROM ADDRESSES SUMMARY (UPDATED 2026-02-24 - ALL WITHIN 64KB):
 // VIA Text Macros:     4509-20000                    (DYNAMIC_KEYMAP_EEPROM_MAX_ADDR)
 // Null Bind:           NULLBIND_EEPROM_ADDR          = 21000 (orthomidi5x14.h)
 // Toggle Keys:         TOGGLE_EEPROM_ADDR            = 22000 (orthomidi5x14.h)
@@ -291,11 +293,13 @@ bool layer_use_fixed_velocity(uint8_t layer);
 // Keyboard Settings:   SETTINGS_BASE_ADDR            = 38000
 // RGB Magic:           RGB_DEFAULTS_MAGIC_ADDR       = 38500
 // Layer RGB:           LAYER_SETTINGS_EEPROM_ADDR    = 39000
-// Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 40000
+// Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 40000 (120 bytes)
 // User Curves:         USER_CURVES_EEPROM_ADDR       = 41000 (orthomidi5x14.h)
 // Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 42000 (orthomidi5x14.h)
+// EQ Curve:            EQ_CURVE_EEPROM_ADDR          = 42100 (orthomidi5x14.h)
 // Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 43000 (per_key_rgb.h)
 // Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 45000
+// Per-Key Flags:       PER_KEY_ACTUATION_FLAGS_ADDR  = 51720 (deprecated)
 // Available:           52000-65535                   (~13KB for future use)
 // =============================================================================
 

@@ -257,9 +257,10 @@ uint8_t eq_range_scale[3] = {55, 50, 53};
 // EQ CURVE EEPROM PERSISTENCE
 // ============================================================================
 
-// EEPROM address for EQ curve settings (must match keyboard header)
+// EEPROM address for EQ curve settings (defined in orthomidi5x14.h as 42100)
+// This fallback only applies if the keyboard header doesn't define it
 #ifndef EQ_CURVE_EEPROM_ADDR
-#define EQ_CURVE_EEPROM_ADDR 41300
+#define EQ_CURVE_EEPROM_ADDR 42100
 #endif
 #ifndef EQ_CURVE_MAGIC
 #define EQ_CURVE_MAGIC 0xEA01

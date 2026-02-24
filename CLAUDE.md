@@ -316,10 +316,25 @@ Two side-by-side boxes:
 
 | Address | Size | Content |
 |---------|------|---------|
-| 38000-39249 | 5 x 250 bytes | Keyboard settings (5 slots) |
-| 40000 | 5 x ~10 bytes | Layer actuation settings (deprecated) |
-| 41300 | 24 bytes | EQ curve config (magic 0xEA01) |
-| Per-key actuations | 70 x 8 x 12 layers | 6,720 bytes total |
+| 0-4508 | ~4.5KB | QMK/VIA base (keymaps, encoders, tap dance, combos) |
+| 4509-20000 | ~15KB | VIA Text Macros (`DYNAMIC_KEYMAP_EEPROM_MAX_ADDR`) |
+| 21000-21361 | 362 bytes | Null Bind/SOCD (20 groups × 18 + 2 magic) |
+| 22000-22401 | 402 bytes | Toggle Keys (2 magic + 100 × 4) |
+| 23000-26999 | 4000 bytes | Arp User Presets (20 × 200) |
+| 27500-35339 | 7840 bytes | Seq User Presets (20 × 392) |
+| 36000-36xxx | ~700 bytes | Custom Animations (50 slots, sizeof computed) |
+| 37000-37xxx | ~100 bytes | Loop Settings (`sizeof(loop_settings_t)`) |
+| 38000-38xxx | ~420 bytes | Keyboard Settings (5 × `sizeof(keyboard_settings_t)`) |
+| 38500 | 2 bytes | RGB Defaults Magic (0xC0DE) |
+| 39000-39107 | 108 bytes | Layer RGB Settings (12 × 9) |
+| 40000-40119 | 120 bytes | Layer Actuation Settings (12 × 10, deprecated) |
+| 41000-41901 | 902 bytes | User Curves (10 × 90 + 2 magic) |
+| 42000-42091 | ~92 bytes | Gaming Settings |
+| 42100-42123 | 24 bytes | EQ Curve config (magic 0xEA01) |
+| 43000-43889 | 890 bytes | Per-Key RGB (48 palette + 840 presets + 2 magic) |
+| 45000-51719 | 6720 bytes | Per-Key Actuation (70 × 8 × 12 layers) |
+| 51720-51721 | 2 bytes | Per-Key Mode Flags (deprecated) |
+| 52000-65535 | ~13.5KB | Available for future use |
 
 ## EMA Filter Status
 
