@@ -31,10 +31,11 @@ const led_point_t k_rgb_matrix_center = RGB_MATRIX_CENTER;
 #endif
 
 // Helper function to apply brightness scaling to limit power draw to ~800mA
-// Based on measured current draw:
-//   1 channel at 255: 877mA -> need 91% scale (233/256) for 800mA
-//   2 channels at 255: 1127mA -> need 71% scale (182/256) for 800mA
-//   3 channels at 255: 1120mA -> need 71% scale (182/256) for 800mA
+// Measured unscaled current draw at full brightness:
+//   1 channel at 255:   ~1.1A  -> need 66% scale (169/256) for 800mA
+//   2-3 channels at 255: ~1.5A -> need 52% scale (132/256) for 800mA
+//
+// Perceived brightness impact: only ~13% dimmer (gamma 2.2 non-linearity).
 //
 // Uses smooth interpolation based on secondary channel contribution to avoid
 // abrupt brightness jumps when channels cross a threshold during rainbow effects.
@@ -51,18 +52,18 @@ static void apply_brightness_scaling_to_rgb(uint8_t *red, uint8_t *green, uint8_
     // Sum of secondary (non-dominant) channels: 0 = pure primary, up to 510
     uint16_t secondary = (uint16_t)r + g + b - max_ch;
 
-    // Smoothly interpolate scale factor between single-channel (233) and
-    // multi-channel (182) based on secondary channel contribution.
-    // secondary=0   -> scale=233 (91%, single channel power draw)
-    // secondary>=255 -> scale=182 (71%, multi-channel power draw plateau)
+    // Smoothly interpolate scale factor between single-channel (169) and
+    // multi-channel (132) based on secondary channel contribution.
+    // secondary=0   -> scale=169 (66%, single channel power draw)
+    // secondary>=255 -> scale=132 (52%, multi-channel power draw plateau)
     uint8_t scale;
     if (secondary == 0) {
-        scale = 233;
+        scale = 169;
     } else if (secondary >= 255) {
-        scale = 182;
+        scale = 132;
     } else {
-        // Linear interpolation: 233 - (233-182) * secondary / 255
-        scale = 233 - (uint8_t)(((uint16_t)51 * secondary) / 255);
+        // Linear interpolation: 169 - (169-132) * secondary / 255
+        scale = 169 - (uint8_t)(((uint16_t)37 * secondary) / 255);
     }
 
     // Apply scaling using fast multiply and shift
