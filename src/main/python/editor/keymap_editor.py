@@ -4,7 +4,8 @@ import struct
 
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QVBoxLayout, QMessageBox, QWidget,
                               QGroupBox, QSlider, QCheckBox, QPushButton, QComboBox, QFrame,
-                              QSizePolicy, QScrollArea, QTabWidget)
+                              QSizePolicy, QScrollArea, QTabWidget, QDialog, QDialogButtonBox,
+                              QSpinBox, QGridLayout)
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 
 from widgets.combo_box import ArrowComboBox
@@ -17,7 +18,8 @@ from tabbed_keycodes import TabbedKeycodes, keycode_filter_masked
 from util import tr, KeycodeDisplay
 from vial_device import VialKeyboard
 from editor.arpeggiator import DebugConsole
-from editor.keymap_presets import KEYMAP_PRESETS
+from editor.keymap_presets import (KEYMAP_PRESETS, ENCODER_PRESETS,
+                                   PRESET_TYPE_TUNING, PRESET_TYPE_SINGLE_ROW)
 from protocol.keyboard_comm import (
     PARAM_CHANNEL_NUMBER, PARAM_TRANSPOSE_NUMBER, PARAM_TRANSPOSE_NUMBER2, PARAM_TRANSPOSE_NUMBER3,
     PARAM_HE_VELOCITY_CURVE, PARAM_HE_VELOCITY_MIN, PARAM_HE_VELOCITY_MAX,
@@ -2194,12 +2196,9 @@ class KeymapEditor(BasicEditor):
         layout_labels_container.addWidget(preset_label)
 
         self.preset_combo = ArrowComboBox()
-        self.preset_combo.setMinimumWidth(140)
-        self.preset_combo.setMaximumWidth(180)
-        for i, (name, description, _) in enumerate(KEYMAP_PRESETS):
-            self.preset_combo.addItem(name)
-            self.preset_combo.setItemData(i, description, Qt.ToolTipRole)
-        self.preset_combo.setCurrentIndex(0)
+        self.preset_combo.setMinimumWidth(160)
+        self.preset_combo.setMaximumWidth(200)
+        self._populate_preset_combo()
         self.preset_combo.currentIndexChanged.connect(self.on_preset_selection_changed)
         layout_labels_container.addWidget(self.preset_combo)
 
@@ -2209,6 +2208,29 @@ class KeymapEditor(BasicEditor):
         self.preset_apply_btn.setToolTip("Apply selected tuning preset to the current layer")
         self.preset_apply_btn.clicked.connect(self.on_preset_apply)
         layout_labels_container.addWidget(self.preset_apply_btn)
+
+        layout_labels_container.addSpacing(10)
+
+        # Encoder preset dropdown
+        enc_label = QLabel(tr("KeymapEditor", "Encoder:"))
+        enc_label.setStyleSheet("QLabel { font-weight: bold; }")
+        layout_labels_container.addWidget(enc_label)
+
+        self.encoder_preset_combo = ArrowComboBox()
+        self.encoder_preset_combo.setMinimumWidth(140)
+        self.encoder_preset_combo.setMaximumWidth(180)
+        for i, (name, description, *_) in enumerate(ENCODER_PRESETS):
+            self.encoder_preset_combo.addItem(name)
+            self.encoder_preset_combo.setItemData(i, description, Qt.ToolTipRole)
+        self.encoder_preset_combo.setCurrentIndex(0)
+        layout_labels_container.addWidget(self.encoder_preset_combo)
+
+        self.encoder_apply_btn = QPushButton(tr("KeymapEditor", "Apply"))
+        self.encoder_apply_btn.setMaximumHeight(24)
+        self.encoder_apply_btn.setStyleSheet("padding: 2px 8px; font-size: 9pt; font-weight: bold;")
+        self.encoder_apply_btn.setToolTip("Apply selected encoder preset to the current layer")
+        self.encoder_apply_btn.clicked.connect(self.on_encoder_preset_apply)
+        layout_labels_container.addWidget(self.encoder_apply_btn)
 
         layout_labels_container.addSpacing(10)
         layout_labels_container.addLayout(self.layout_size)
@@ -2278,44 +2300,226 @@ class KeymapEditor(BasicEditor):
         # Also set the reference in the quick_actuation widget
         self.quick_actuation.set_matrix_test_reference(matrix_test)
 
+    def _populate_preset_combo(self):
+        """Populate the preset dropdown with category separators."""
+        self.preset_combo.clear()
+        for i, (name, description, generator, preset_type) in enumerate(KEYMAP_PRESETS):
+            if generator is None:
+                # Category separator - add as disabled item
+                self.preset_combo.addItem(name)
+                idx = self.preset_combo.count() - 1
+                self.preset_combo.model().item(idx).setEnabled(False)
+            else:
+                self.preset_combo.addItem(name)
+                idx = self.preset_combo.count() - 1
+                self.preset_combo.setItemData(idx, description, Qt.ToolTipRole)
+        # Select first actual preset (skip the first separator)
+        if len(KEYMAP_PRESETS) > 1:
+            self.preset_combo.setCurrentIndex(1)
+
+    def _get_selected_preset(self):
+        """Get the selected preset entry, or None if separator selected."""
+        index = self.preset_combo.currentIndex()
+        if index < 0 or index >= len(KEYMAP_PRESETS):
+            return None
+        entry = KEYMAP_PRESETS[index]
+        if entry[2] is None:  # separator
+            return None
+        return entry
+
     def on_preset_selection_changed(self, index):
         """Update combo tooltip when preset selection changes."""
         if 0 <= index < len(KEYMAP_PRESETS):
-            _, description, _ = KEYMAP_PRESETS[index]
+            _, description, _, _ = KEYMAP_PRESETS[index]
             self.preset_combo.setToolTip(description)
 
     def on_preset_apply(self):
-        """Apply selected tuning preset to all 70 keys on the current layer."""
+        """Show the row selection dialog and apply the selected preset."""
         if self.keyboard is None:
             return
 
-        index = self.preset_combo.currentIndex()
-        if index < 0 or index >= len(KEYMAP_PRESETS):
+        entry = self._get_selected_preset()
+        if entry is None:
             return
 
-        name, description, generator = KEYMAP_PRESETS[index]
+        name, description, generator, preset_type = entry
+
+        if preset_type == PRESET_TYPE_TUNING:
+            self._apply_tuning_preset(name, description, generator)
+        elif preset_type == PRESET_TYPE_SINGLE_ROW:
+            self._apply_single_row_preset(name, description, generator)
+
+    def _apply_tuning_preset(self, name, description, generator):
+        """Show dialog for tuning preset with row selection checkboxes."""
+        dlg = QDialog(None)
+        dlg.setWindowTitle(tr("KeymapEditor", "Apply Tuning Preset"))
+        dlg.setMinimumWidth(320)
+        layout = QVBoxLayout()
+        dlg.setLayout(layout)
+
+        # Preset info
+        info = QLabel(tr("KeymapEditor",
+                         '<b>{}</b><br><i>{}</i>'.format(name, description)))
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        layout.addSpacing(8)
+
+        # Row selection
+        row_label = QLabel(tr("KeymapEditor", "Select rows to overwrite:"))
+        row_label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(row_label)
+
+        row_checks = []
+        row_grid = QGridLayout()
+        row_grid.setSpacing(4)
+        for i in range(5):
+            # User-facing: Row 1 (top) to Row 5 (bottom) = matrix rows 0-4
+            cb = QCheckBox(tr("KeymapEditor", "Row {} {}".format(
+                i + 1, "(top)" if i == 0 else "(bottom)" if i == 4 else "")))
+            cb.setChecked(True)
+            row_checks.append(cb)
+            row_grid.addWidget(cb, i // 3, i % 3)
+        layout.addLayout(row_grid)
+
+        # Select all / none buttons
+        sel_layout = QHBoxLayout()
+        sel_all = QPushButton(tr("KeymapEditor", "Select All"))
+        sel_all.clicked.connect(lambda: [cb.setChecked(True) for cb in row_checks])
+        sel_none = QPushButton(tr("KeymapEditor", "Select None"))
+        sel_none.clicked.connect(lambda: [cb.setChecked(False) for cb in row_checks])
+        sel_layout.addWidget(sel_all)
+        sel_layout.addWidget(sel_none)
+        sel_layout.addStretch()
+        layout.addLayout(sel_layout)
+
+        layout.addSpacing(8)
+
+        warn = QLabel(tr("KeymapEditor",
+                         "This will overwrite the selected rows on Layer {}.".format(
+                             self.current_layer)))
+        warn.setStyleSheet("color: #c00; font-size: 9pt;")
+        layout.addWidget(warn)
+
+        # Dialog buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addWidget(buttons)
+
+        if dlg.exec_() != QDialog.Accepted:
+            return
+
+        # Determine which matrix rows are selected (user row 1-5 = matrix row 0-4)
+        selected_rows = [i for i, cb in enumerate(row_checks) if cb.isChecked()]
+        if not selected_rows:
+            return
+
+        # Generate preset grid scaled to the number of selected rows
+        num_rows = len(selected_rows)
+        grid = generator(num_rows)
+
+        # Map generated grid rows to selected matrix rows
+        # Grid row 0 = topmost selected row, grid row -1 = bottommost selected row
+        layer = self.current_layer
+        for grid_idx, matrix_row in enumerate(selected_rows):
+            for col in range(14):
+                keycode = grid[grid_idx][col]
+                self.keyboard.set_key(layer, matrix_row, col, keycode)
+
+        self.refresh_layer_display()
+
+    def _apply_single_row_preset(self, name, description, generator):
+        """Show dialog for single-row preset with row picker."""
+        dlg = QDialog(None)
+        dlg.setWindowTitle(tr("KeymapEditor", "Apply Single-Row Preset"))
+        dlg.setMinimumWidth(300)
+        layout = QVBoxLayout()
+        dlg.setLayout(layout)
+
+        # Preset info
+        info = QLabel(tr("KeymapEditor",
+                         '<b>{}</b><br><i>{}</i>'.format(name, description)))
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        layout.addSpacing(8)
+
+        # Row picker
+        row_layout = QHBoxLayout()
+        row_layout.addWidget(QLabel(tr("KeymapEditor", "Apply to row:")))
+        row_spin = QSpinBox()
+        row_spin.setMinimum(1)
+        row_spin.setMaximum(5)
+        row_spin.setValue(1)  # Default to Row 1 (top)
+        row_spin.setToolTip("Row 1 = top, Row 5 = bottom")
+        row_layout.addWidget(row_spin)
+        row_layout.addStretch()
+        layout.addLayout(row_layout)
+
+        layout.addSpacing(8)
+
+        warn = QLabel(tr("KeymapEditor",
+                         "This will overwrite the selected row on Layer {}.".format(
+                             self.current_layer)))
+        warn.setStyleSheet("color: #c00; font-size: 9pt;")
+        layout.addWidget(warn)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addWidget(buttons)
+
+        if dlg.exec_() != QDialog.Accepted:
+            return
+
+        # User row 1-5 -> matrix row 0-4
+        matrix_row = row_spin.value() - 1
+        row_keycodes = generator()
+
+        layer = self.current_layer
+        for col in range(min(14, len(row_keycodes))):
+            self.keyboard.set_key(layer, matrix_row, col, row_keycodes[col])
+
+        self.refresh_layer_display()
+
+    def on_encoder_preset_apply(self):
+        """Apply selected encoder preset to the current layer."""
+        if self.keyboard is None:
+            return
+
+        index = self.encoder_preset_combo.currentIndex()
+        if index < 0 or index >= len(ENCODER_PRESETS):
+            return
+
+        name, description, enc1_cw, enc1_ccw, enc1_press, enc2_cw, enc2_ccw, enc2_press = \
+            ENCODER_PRESETS[index]
 
         ret = QMessageBox.question(
             None,
-            tr("KeymapEditor", "Apply Preset"),
+            tr("KeymapEditor", "Apply Encoder Preset"),
             tr("KeymapEditor",
-               'Apply "{}" preset to Layer {}?\n\n'
+               'Apply "{}" encoder preset to Layer {}?\n\n'
                '{}\n\n'
-               'This will overwrite all keys on the current layer.'.format(
+               'This will overwrite both encoder assignments.'.format(
                    name, self.current_layer, description)),
             QMessageBox.Yes | QMessageBox.No
         )
         if ret != QMessageBox.Yes:
             return
 
-        grid = generator()
-
         layer = self.current_layer
-        for row in range(5):
-            for col in range(14):
-                keycode = grid[row][col]
-                self.keyboard.set_key(layer, row, col, keycode)
 
+        # Encoder 1: CW (idx=0, dir=1), CCW (idx=0, dir=0), Press (row=5, col=1)
+        self.keyboard.set_encoder(layer, 0, 1, enc1_cw)
+        self.keyboard.set_encoder(layer, 0, 0, enc1_ccw)
+        self.keyboard.set_key(layer, 5, 1, enc1_press)
+
+        # Encoder 2: CW (idx=1, dir=1), CCW (idx=1, dir=0), Press (row=5, col=0)
+        self.keyboard.set_encoder(layer, 1, 1, enc2_cw)
+        self.keyboard.set_encoder(layer, 1, 0, enc2_ccw)
+        self.keyboard.set_key(layer, 5, 0, enc2_press)
+
+        # Refresh encoder display
+        self.encoder_assign.set_layer(self.current_layer, self.keyboard)
         self.refresh_layer_display()
 
     def on_empty_space_clicked(self):
