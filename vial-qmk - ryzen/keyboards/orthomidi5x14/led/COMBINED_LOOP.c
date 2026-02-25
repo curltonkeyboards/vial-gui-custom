@@ -7228,17 +7228,65 @@ static const uint8_t* get_allowed_effects_for_position(uint8_t position, uint8_t
 // RANDOMIZATION FUNCTIONS FOR EACH MODE
 // =============================================================================
 
+// Helper: compute randomize background brightness as percentage of RGB brightness, capped at 60%
+static uint8_t get_randomize_bg_brightness(void) {
+    uint8_t rgb_val = rgb_matrix_get_val();
+    // Convert RGB brightness (0-255) to percentage (0-100)
+    uint8_t rgb_pct = (rgb_val * 100) / 255;
+    // Random base percentage 15-60
+    uint8_t base_pct = 15 + (rand() % 46);
+    // Scale by RGB brightness percentage
+    uint8_t bg_brightness = (base_pct * rgb_pct) / 100;
+    // Cap at 60%
+    if (bg_brightness > 60) bg_brightness = 60;
+    return bg_brightness;
+}
+
+// Helper: apply common randomize brightness settings to a slot
+static void apply_randomize_brightness_settings(uint8_t slot) {
+    // Live and macro brightness always max
+    set_custom_slot_live_brightness(slot, 255);
+    set_custom_slot_macro_brightness(slot, 255);
+
+    // Background brightness as percentage of RGB brightness, capped at 60%
+    uint8_t bg_brightness = get_randomize_bg_brightness();
+    set_custom_slot_background_brightness(slot, bg_brightness);
+
+    // 30% chance of dynamic brightness being enabled
+    uint8_t flags = custom_slots[slot].flags & ~(CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_LIVE | CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_MACRO);
+    if ((rand() % 100) < 30) {
+        flags |= CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_LIVE | CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_MACRO;
+    }
+    set_custom_slot_flags(slot, flags);
+}
+
+// Helper: generate a random speed >= 128 (50%+), with 70% chance of max (255)
+static uint8_t get_randomize_speed(void) {
+    if ((rand() % 100) < 70) {
+        return 255;  // 70% chance: max speed
+    }
+    // 30% chance: random speed between 128 and 255 (50%-100%)
+    return 128 + (rand() % 128);
+}
+
 // Random pattern selection for Note 1 (randomly picks from slots 1-50 and randomizes color)
 static void randomize_pattern_with_color(uint8_t current_slot) {
     // Randomly pick from slots 1-50 (0-indexed: slots 0-49)
     uint8_t random_pattern_slot = rand() % 49;  // 0-49
-    
+
     // Copy configuration from the random pattern slot to current slot
     custom_slots[current_slot] = custom_slots[random_pattern_slot];
-    
+
     // Randomize RGB color (hue)
     uint8_t new_hue = rand() & 0xFF;
     rgb_matrix_sethsv_noeeprom(new_hue, rgb_matrix_get_sat(), rgb_matrix_get_val());
+
+    // Apply randomize brightness rules
+    apply_randomize_brightness_settings(current_slot);
+
+    // Override speeds
+    set_custom_slot_live_speed_temp(current_slot, get_randomize_speed());
+    set_custom_slot_macro_speed_temp(current_slot, get_randomize_speed());
 }
 
 // Inclusion criteria system for Loop 2 - NOW WITH WEIGHTED POSITIONING
@@ -7246,76 +7294,68 @@ static void randomize_with_criteria(uint8_t slot) {
     // Use weighted position selection instead of uniform random
     uint8_t live_pos = get_weighted_live_position();
     uint8_t macro_pos = get_weighted_macro_position();
-    
+
     // Get allowed effects for selected positions
     uint8_t live_effects_count;
     const uint8_t* live_effects = get_allowed_effects_for_position(live_pos, &live_effects_count, true);
-    
+
     uint8_t macro_effects_count;
     const uint8_t* macro_effects = get_allowed_effects_for_position(macro_pos, &macro_effects_count, false);
-    
+
     // Select random effects from allowed arrays
     uint8_t live_anim = (live_effects_count > 0) ? get_random_from_array(live_effects, live_effects_count) : 0;
     uint8_t macro_anim = (macro_effects_count > 0) ? get_random_from_array(macro_effects, macro_effects_count) : 0;
-    
+
     // Apply randomization
     set_custom_slot_live_positioning(slot, live_pos);
     set_custom_slot_macro_positioning(slot, macro_pos);
     set_custom_slot_live_animation(slot, live_anim);
     set_custom_slot_macro_animation(slot, macro_anim);
-    
+
     // Randomize other parameters
     uint8_t color_type = get_random_value(84);
     set_custom_slot_color_type(slot, color_type);
-    
+
     uint8_t new_hue = rand() & 0xFF;
     rgb_matrix_sethsv_noeeprom(new_hue, rgb_matrix_get_sat(), rgb_matrix_get_val());
-    
+
     uint8_t background = get_random_value_with_exclusions(121, excluded_bpm_backgrounds, excluded_bpm_backgrounds_count);
     set_custom_slot_background_mode(slot, background);
-    
-    uint8_t live_speed = rand() & 0xFF;
-    set_custom_slot_live_speed_temp(slot, live_speed);
-    
-    uint8_t macro_speed = rand() & 0xFF;
-    set_custom_slot_macro_speed_temp(slot, macro_speed);
+
+    // Apply randomize brightness and speed rules
+    apply_randomize_brightness_settings(slot);
+    set_custom_slot_live_speed_temp(slot, get_randomize_speed());
+    set_custom_slot_macro_speed_temp(slot, get_randomize_speed());
 }
 
 // No restrictions for Loop 3
 static void randomize_no_restrictions(uint8_t slot) {
     // Randomize everything without restrictions (except exclude HEAT/SUSTAIN)
-    uint8_t live_anim;
-        live_anim = get_random_value(170);
+    uint8_t live_anim = get_random_value(170);
+    uint8_t macro_anim = get_random_value(170);
 
-    
-    uint8_t macro_anim;
-
-        macro_anim = get_random_value(170);
-
-    
     set_custom_slot_live_animation(slot, live_anim);
     set_custom_slot_macro_animation(slot, macro_anim);
-    
+
     uint8_t live_pos = get_random_value(33);
     set_custom_slot_live_positioning(slot, live_pos);
-    
+
     uint8_t macro_pos = get_random_value(46);
     set_custom_slot_macro_positioning(slot, macro_pos);
-    
+
     uint8_t color_type = get_random_value(84);
     set_custom_slot_color_type(slot, color_type);
-    
+
     uint8_t new_hue = rand() & 0xFF;
     rgb_matrix_sethsv_noeeprom(new_hue, rgb_matrix_get_sat(), rgb_matrix_get_val());
-    
+
     uint8_t background = get_random_value(121);
     set_custom_slot_background_mode(slot, background);
-    
-    uint8_t live_speed = rand() & 0xFF;
-    set_custom_slot_live_speed_temp(slot, live_speed);
-    
-    uint8_t macro_speed = rand() & 0xFF;
-    set_custom_slot_macro_speed_temp(slot, macro_speed);
+
+    // Apply randomize brightness and speed rules
+    apply_randomize_brightness_settings(slot);
+    set_custom_slot_live_speed_temp(slot, get_randomize_speed());
+    set_custom_slot_macro_speed_temp(slot, get_randomize_speed());
 }
 
 // =============================================================================
