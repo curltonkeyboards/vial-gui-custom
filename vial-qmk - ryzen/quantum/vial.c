@@ -369,14 +369,17 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				case 7: set_and_save_custom_slot_color_type(slot, value); break;
 				case 8: set_and_save_custom_slot_enabled(slot, value != 0); break;
 				case 9: set_and_save_custom_slot_background_brightness(slot, value); break;
-				case 10: set_and_save_custom_slot_live_speed(slot, value); break;          // NEW
-				case 11: set_and_save_custom_slot_macro_speed(slot, value); break;        // NEW
+				case 10: set_and_save_custom_slot_live_speed(slot, value); break;
+				case 11: set_and_save_custom_slot_macro_speed(slot, value); break;
+				case 12: set_and_save_custom_slot_live_brightness(slot, value); break;
+				case 13: set_and_save_custom_slot_macro_brightness(slot, value); break;
+				case 14: set_and_save_custom_slot_background_speed(slot, value); break;
 				default:
 					msg[0] = 0x00; // Error - invalid parameter
 					break;
 			}
-			
-			if (param <= 11) {  // Updated from 9 to 11
+
+			if (param <= 14) {
 				msg[0] = 0x01; // Success
 			}
 			break;
@@ -385,16 +388,16 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		case vial_custom_anim_get_param: {  // 0xC1
 			uint8_t slot = msg[2];
 			uint8_t param = msg[3];
-			
+
 			if (slot >= NUM_CUSTOM_SLOTS) {
 				msg[0] = 0x00; // Error - invalid slot
 				break;
 			}
-			
-			uint8_t data[12];  // Updated from 10 to 12 parameters
+
+			uint8_t data[15];
 			get_custom_slot_parameters_as_bytes(slot, data);
-			
-			if (param <= 11) {  // Updated from 9 to 11
+
+			if (param <= 14) {
 				msg[0] = 0x01; // Success
 				msg[4] = data[param]; // Return parameter value
 			} else {
@@ -405,15 +408,14 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 		case vial_custom_anim_set_all: {  // 0xC2
 			uint8_t slot = msg[2];
-			
+
 			if (slot >= NUM_CUSTOM_SLOTS) {
 				msg[0] = 0x00; // Error - invalid slot
 				break;
 			}
-			
-			// Parameters are in msg[3] through msg[14] (12 bytes total - updated from 10)
-			uint8_t data[12];  // Updated from 10 to 12
-			for (int i = 0; i < 12; i++) {  // Updated from 10 to 12
+
+			uint8_t data[15];
+			for (int i = 0; i < 15; i++) {
 				data[i] = msg[3 + i];
 			}
 			
@@ -424,25 +426,25 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 
 		case vial_custom_anim_get_all: {  // 0xC3
 			uint8_t slot = msg[2];
-			uint8_t source = msg[3];  // NEW: 0 = RAM, 1 = EEPROM
-			
+			uint8_t source = msg[3];  // 0 = RAM, 1 = EEPROM
+
 			if (slot >= NUM_CUSTOM_SLOTS) {
 				msg[0] = 0x00; // Error - invalid slot
 				break;
 			}
-			
-			uint8_t data[12];
-			
+
+			uint8_t data[15];
+
 			if (source == 1) {
 				// Read from EEPROM
-				get_custom_slot_parameters_from_eeprom(slot, data);  // NEW function needed
+				get_custom_slot_parameters_from_eeprom(slot, data);
 			} else {
 				// Read from RAM (existing behavior)
 				get_custom_slot_parameters_as_bytes(slot, data);
 			}
-			
+
 			msg[0] = 0x01; // Success
-			for (int i = 0; i < 12; i++) {
+			for (int i = 0; i < 15; i++) {
 				msg[3 + i] = data[i];
 			}
 			break;
@@ -478,8 +480,11 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             set_custom_slot_pulse_mode(slot, 3);
             set_custom_slot_color_type(slot, 1);
             set_custom_slot_enabled(slot, true);
-            set_custom_slot_background_brightness(slot, 30);  // NEW: Set default background brightness
-            
+            set_custom_slot_background_brightness(slot, 30);
+            set_custom_slot_live_brightness(slot, 255);
+            set_custom_slot_macro_brightness(slot, 255);
+            set_custom_slot_background_speed(slot, 128);
+
             save_custom_slot_to_eeprom(slot);
             msg[0] = 0x01; // Success
             break;
@@ -487,19 +492,17 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 		
 		case vial_custom_anim_get_ram_state: {  // 0xC9 - Get current RAM state
 			uint8_t slot = msg[2];
-			
+
 			if (slot >= NUM_CUSTOM_SLOTS) {
 				msg[0] = 0x00; // Error - invalid slot
 				break;
 			}
-			
-			// Get current RAM parameters (not EEPROM)
-			uint8_t data[12];
-			get_custom_slot_ram_stuff(slot, data);  // New function needed
-			
+
+			uint8_t data[15];
+			get_custom_slot_ram_stuff(slot, data);
+
 			msg[0] = 0x01; // Success
-			// Copy all parameters to response
-			for (int i = 0; i < 12; i++) {
+			for (int i = 0; i < 15; i++) {
 				msg[3 + i] = data[i];
 			}
 			break;

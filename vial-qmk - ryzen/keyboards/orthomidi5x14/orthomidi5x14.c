@@ -4563,6 +4563,18 @@ void set_and_save_custom_slot_macro_speed(uint8_t slot, uint8_t value) {
     set_custom_slot_macro_speed(slot, value);
 }
 
+void set_and_save_custom_slot_live_brightness(uint8_t slot, uint8_t value) {
+    set_custom_slot_live_brightness(slot, value);
+}
+
+void set_and_save_custom_slot_macro_brightness(uint8_t slot, uint8_t value) {
+    set_custom_slot_macro_brightness(slot, value);
+}
+
+void set_and_save_custom_slot_background_speed(uint8_t slot, uint8_t value) {
+    set_custom_slot_background_speed(slot, value);
+}
+
 // =============================================================================
 // BATCH PARAMETER SETTING (for HID interface)
 // =============================================================================
@@ -4570,7 +4582,7 @@ void set_and_save_custom_slot_macro_speed(uint8_t slot, uint8_t value) {
 void set_custom_slot_parameters_from_bytes(uint8_t slot, uint8_t* data) {
     if (slot >= NUM_CUSTOM_SLOTS) return;
     
-    // Byte layout: [live_pos, macro_pos, live_anim, macro_anim, influence, bg_mode, pulse_mode, color_type, enabled, background_brightness, live_speed, macro_speed]
+    // Byte layout: [live_pos, macro_pos, live_anim, macro_anim, flags, bg_mode, pulse_mode, color_type, enabled, bg_brightness, live_speed, macro_speed, live_brightness, macro_brightness, background_speed]
     set_custom_slot_live_positioning(slot, data[0]);
     set_custom_slot_macro_positioning(slot, data[1]);
     set_custom_slot_live_animation(slot, data[2]);
@@ -4581,18 +4593,21 @@ void set_custom_slot_parameters_from_bytes(uint8_t slot, uint8_t* data) {
     set_custom_slot_color_type(slot, data[7]);
     set_custom_slot_enabled(slot, data[8] != 0);
     set_custom_slot_background_brightness(slot, data[9]);
-    set_custom_slot_live_speed(slot, data[10]);      // NEW parameter
-    set_custom_slot_macro_speed(slot, data[11]);     // NEW parameter
-    
+    set_custom_slot_live_speed(slot, data[10]);
+    set_custom_slot_macro_speed(slot, data[11]);
+    set_custom_slot_live_brightness(slot, data[12]);
+    set_custom_slot_macro_brightness(slot, data[13]);
+    set_custom_slot_background_speed(slot, data[14]);
+
     save_custom_slot_to_eeprom(slot);
 }
 
 
 void get_custom_slot_parameters_as_bytes(uint8_t slot, uint8_t* data) {
     if (slot >= NUM_CUSTOM_SLOTS) return;
-    
+
     custom_animation_config_t* config = &custom_slots[slot];
-    
+
     data[0] = (uint8_t)config->live_positioning;
     data[1] = (uint8_t)config->macro_positioning;
     data[2] = (uint8_t)config->live_animation;
@@ -4603,14 +4618,17 @@ void get_custom_slot_parameters_as_bytes(uint8_t slot, uint8_t* data) {
     data[7] = config->color_type;
     data[8] = config->enabled ? 1 : 0;
     data[9] = config->background_brightness;
-    data[10] = config->live_speed;      // NEW parameter
-    data[11] = config->macro_speed;     // NEW parameter
+    data[10] = config->live_speed;
+    data[11] = config->macro_speed;
+    data[12] = config->live_brightness;
+    data[13] = config->macro_brightness;
+    data[14] = config->background_speed;
 }
 
 // New function to get current RAM state (not EEPROM)
 void get_custom_slot_ram_stuff(uint8_t slot, uint8_t* data) {
     data[0] = custom_slots[slot].live_positioning;
-    data[1] = custom_slots[slot].macro_positioning; 
+    data[1] = custom_slots[slot].macro_positioning;
     data[2] = custom_slots[slot].live_animation;
     data[3] = custom_slots[slot].macro_animation;
     data[4] = custom_slots[slot].flags;
@@ -4621,19 +4639,25 @@ void get_custom_slot_ram_stuff(uint8_t slot, uint8_t* data) {
     data[9] = custom_slots[slot].background_brightness;
     data[10] = custom_slots[slot].live_speed;
     data[11] = custom_slots[slot].macro_speed;
+    data[12] = custom_slots[slot].live_brightness;
+    data[13] = custom_slots[slot].macro_brightness;
+    data[14] = custom_slots[slot].background_speed;
 }
 
-// NEW function to read parameters from EEPROM using existing infrastructure
+// Read parameters from EEPROM
 void get_custom_slot_parameters_from_eeprom(uint8_t slot, uint8_t* data) {
     if (slot >= NUM_CUSTOM_SLOTS) {
         // Set safe defaults if invalid slot
-        memset(data, 0, 12);
+        memset(data, 0, 15);
         data[1] = MACRO_POS_ZONE;  // Safe default
         data[7] = 1;               // Safe color type
         data[8] = 1;               // Enabled
         data[9] = 30;              // 30% background brightness
         data[10] = 128;            // Default live speed
         data[11] = 128;            // Default macro speed
+        data[12] = 255;            // Default live brightness (full)
+        data[13] = 255;            // Default macro brightness (full)
+        data[14] = 128;            // Default background speed
         return;
     }
     
@@ -4656,6 +4680,9 @@ void get_custom_slot_parameters_from_eeprom(uint8_t slot, uint8_t* data) {
     data[9] = temp_slot.background_brightness;
     data[10] = temp_slot.live_speed;
     data[11] = temp_slot.macro_speed;
+    data[12] = temp_slot.live_brightness;
+    data[13] = temp_slot.macro_brightness;
+    data[14] = temp_slot.background_speed;
 }
 
 // =============================================================================
