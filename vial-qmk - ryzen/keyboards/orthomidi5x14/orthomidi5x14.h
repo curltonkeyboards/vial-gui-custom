@@ -89,6 +89,9 @@ void preload_layer_rgb_cache(void);
 void update_layer_animations_setting_slot0_direct(bool new_value);
 extern bool truekey_effects_active;
 
+// SmartChord button LED tracking
+extern uint8_t toggled_smartchord_led_index;
+
 // MIDI Routing Mode Enums and Functions
 // Unified routing modes for both Hardware MIDI IN and USB MIDI IN
 typedef enum {
