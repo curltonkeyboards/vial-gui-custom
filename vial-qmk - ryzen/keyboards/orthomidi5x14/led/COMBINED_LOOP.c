@@ -5336,19 +5336,27 @@ static void cleanup_active_notes(uint8_t live_speed, uint8_t macro_speed) {
 // HEAT SYSTEM FUNCTIONS
 // =============================================================================
 
-static void apply_heat_effect(position_data_t* positions, uint8_t color_id, bool is_live) {
+static void apply_heat_effect(position_data_t* positions, uint8_t color_id, bool is_live, uint8_t velocity, bool velocity_brightness_enabled) {
+    // Scale heatmap increase by velocity when enabled
+    // velocity 1 -> minimal heat, velocity 127 -> full TRUEKEY_HEATMAP_INCREASE_STEP
+    uint8_t heat_step = TRUEKEY_HEATMAP_INCREASE_STEP;
+    if (velocity_brightness_enabled) {
+        heat_step = (uint8_t)(((uint16_t)TRUEKEY_HEATMAP_INCREASE_STEP * velocity * 2) / 255);
+        if (heat_step < 1 && velocity > 0) heat_step = 1;
+    }
+
     for (uint8_t pos = 0; pos < positions->count; pos++) {
         uint8_t row = positions->points[pos].row;
         uint8_t col = positions->points[pos].col;
-        
+
         uint8_t led[LED_HITS_TO_REMEMBER];
         uint8_t led_count = rgb_matrix_map_row_column_to_led(row, col, led);
         if (led_count > 0) {
             if (is_live) {
-                live_led_heatmap[led[0]] = qadd8(live_led_heatmap[led[0]], TRUEKEY_HEATMAP_INCREASE_STEP);
+                live_led_heatmap[led[0]] = qadd8(live_led_heatmap[led[0]], heat_step);
                 live_led_color_id[led[0]] = color_id % 16;
             } else {
-                macro_led_heatmap[led[0]] = qadd8(macro_led_heatmap[led[0]], TRUEKEY_HEATMAP_INCREASE_STEP);
+                macro_led_heatmap[led[0]] = qadd8(macro_led_heatmap[led[0]], heat_step);
                 macro_led_color_id[led[0]] = color_id % 16;
             }
         }
@@ -5611,34 +5619,35 @@ static void add_active_note_with_solo_check(uint8_t row, uint8_t col, uint8_t co
 static void process_note(uint8_t channel, uint8_t note, uint8_t track_id, bool is_live,
                         live_note_positioning_t live_positioning, macro_note_positioning_t macro_positioning,
                         live_animation_t live_animation, macro_animation_t macro_animation,
-                        bool use_influence, uint8_t color_type, uint8_t velocity) {
-    
+                        bool use_influence, uint8_t color_type, uint8_t velocity,
+                        bool velocity_brightness_enabled) {
+
     position_data_t positions;
-    
+
     // Get positions based on live or macro
     if (is_live) {
         get_live_positions(channel, note, live_positioning, &positions);
     } else {
         get_macro_positions(channel, note, track_id, macro_positioning, &positions);
     }
-    
+
     if (positions.count == 0) return;
-    
+
     // Get animation type
     uint8_t animation = is_live ? live_animation : macro_animation;
-    
+
     // Handle heat and sustain effects
     if (animation == LIVE_ANIM_HEAT || animation == MACRO_ANIM_HEAT) {
-        apply_heat_effect(&positions, channel, is_live);
+        apply_heat_effect(&positions, channel, is_live, velocity, velocity_brightness_enabled);
         return;
     }
-    
+
     if (animation == LIVE_ANIM_SUSTAIN || animation == MACRO_ANIM_SUSTAIN) {
         uint8_t positioning = is_live ? live_positioning : macro_positioning;
         if (find_sustained_key(channel, note, track_id, is_live) == -1) {
             add_sustained_key(channel, note, track_id, channel, positioning, is_live);
         }
-        apply_heat_effect(&positions, channel, is_live);
+        apply_heat_effect(&positions, channel, is_live, velocity, velocity_brightness_enabled);
         return;
     }
     
@@ -5813,7 +5822,8 @@ static bool run_efficient_effect(effect_params_t* params,
         bool is_live = (type == 0);
 
         process_note(channel, note, track_id, is_live, live_positioning, macro_positioning,
-                    live_animation, macro_animation, use_influence, color_type, velocity);
+                    live_animation, macro_animation, use_influence, color_type, velocity,
+                    velocity_brightness_enabled);
     }
     unified_lighting_count = 0;
     
