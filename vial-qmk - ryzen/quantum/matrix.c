@@ -210,6 +210,12 @@ static midi_key_state_t midi_key_states[NUM_KEYS];
 static bool analog_initialized = false;
 static bool midi_states_initialized = false;
 
+// Startup grace period: suppress key state changes for the first N scan cycles
+// to allow Hall effect sensor ADC readings to stabilize after power-on.
+// Without this, sensor warm-up drift can cause false key presses.
+#define STARTUP_GRACE_SCANS 50  // ~50ms at 1kHz scan rate
+static uint16_t startup_scan_count = 0;
+
 // Calibration auto-save tracking
 static uint32_t last_calibration_change = 0;
 static bool calibration_dirty = false;
@@ -547,6 +553,15 @@ void process_chunked_eeprom_load(void) {
 // Check if EEPROM has been loaded (for external use)
 bool is_per_key_eeprom_loaded(void) {
     return per_key_eeprom_loaded;
+}
+
+// Stop chunked EEPROM loading and mark as complete.
+// Call this after initialize_per_key_actuations() to prevent the chunked
+// loader from overwriting defaults with stale EEPROM data.
+void skip_per_key_eeprom_load(void) {
+    per_key_eeprom_loaded = true;
+    chunked_load_active = false;
+    layers_eeprom_loaded = 0x0FFF;  // Mark all 12 layers as "loaded"
 }
 
 // DISABLED: This function causes USB disconnect even at 1 key per scan.
@@ -2163,6 +2178,15 @@ static void initialize_midi_states(void) {
 static void analog_matrix_task_internal(void) {
     if (!analog_initialized) return;
 
+    // Startup grace period: track scan cycles since init.
+    // During grace period, we read ADC and update calibration (so sensors
+    // stabilize), but force all keys unpressed to prevent false key events
+    // caused by Hall effect sensor warm-up drift.
+    bool in_grace_period = (startup_scan_count < STARTUP_GRACE_SCANS);
+    if (in_grace_period) {
+        startup_scan_count++;
+    }
+
     // Get current layer ONCE per scan
     uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
 
@@ -2204,11 +2228,38 @@ static void analog_matrix_task_internal(void) {
             // (approximately 0.05mm — imperceptible but breaks travel == 0 gates)
             if (key->distance <= 3) key->distance = 0;
 
+            // 3b. During startup grace period, force distance to 0 and
+            // keep keys unpressed. This prevents false triggers from
+            // sensor warm-up drift while still allowing calibration to
+            // accumulate better ADC readings.
+            if (in_grace_period) {
+                key->distance = 0;
+                key->is_pressed = false;
+                key->key_dir = KEY_DIR_INACTIVE;
+                continue;  // Skip RT processing during grace period
+            }
+
             // 4. Process RT state machine
             process_rapid_trigger(key_idx, current_layer);
         }
 
         unselect_column();
+    }
+
+    // At the end of grace period, re-snapshot rest values from the now-stable ADC
+    if (startup_scan_count == STARTUP_GRACE_SCANS) {
+        for (uint32_t i = 0; i < NUM_KEYS; i++) {
+            key_state_t *key = &key_matrix[i];
+            // Only update if the key has a valid ADC reading
+            if (key->adc_filtered >= 1000 && key->adc_filtered <= 2500) {
+                key->adc_rest_value = key->adc_filtered;
+                uint16_t estimated_bottom = ((uint32_t)key->adc_filtered * WARM_UP_BOTTOM_SLOPE / 1000) + WARM_UP_BOTTOM_OFFSET;
+                // Only update bottom estimate if key hasn't been calibrated by actual press
+                if (!key->calibrated) {
+                    key->adc_bottom_out_value = estimated_bottom;
+                }
+            }
+        }
     }
 
     // Auto-save calibration after inactivity
@@ -2318,6 +2369,7 @@ void matrix_init_custom(void) {
 
                 key_matrix[key_idx].adc_filtered = rest_value;
                 key_matrix[key_idx].adc_rest_value = rest_value;
+                key_matrix[key_idx].last_adc_value = rest_value;  // Sync so first calibration cycle doesn't see a huge jump
 
                 // Smart estimation of bottom-out value using linear formula
                 // bottom = rest * 0.52 + 200 (best fit for measured Hall sensors)

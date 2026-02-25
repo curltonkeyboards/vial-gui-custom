@@ -15,6 +15,7 @@
 #include <math.h>
 extern MidiDevice midi_device;
 extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
+extern void skip_per_key_eeprom_load(void);  // matrix.c - prevent chunked EEPROM load
 
 #define BANK_SEL_MSB_CC 0
 #define BANK_SEL_LSB_CC 32
@@ -5576,6 +5577,12 @@ void keyboard_post_init_user(void) {
 	// (OLED gibberish, slow RGB, no keystrokes)
 	// Instead: initialize to defaults, granular saves still work for persistence
 	initialize_per_key_actuations();
+
+	// Stop the chunked EEPROM loader that was started during bootmagic_lite().
+	// Without this, the chunked loader continues running in the main loop and
+	// overwrites these defaults with stale EEPROM data, which can cause false
+	// key presses at startup (e.g. row 3 col 6 typing "b").
+	skip_per_key_eeprom_load();
 
 	// Load per-key cache for layer 0 from defaults
 	// This populates the multi-layer cache slot for layer 0
