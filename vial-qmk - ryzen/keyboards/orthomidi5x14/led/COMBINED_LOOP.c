@@ -2191,7 +2191,7 @@ static void render_autolight_background(background_mode_t background_mode, uint8
     }
     
     // Calculate time-based effects
-    uint16_t time = scale16by8(g_rgb_timer, rgb_matrix_config.speed / 4);
+    uint16_t time = scale16by8(g_rgb_timer, qadd8(current_background_speed / 4, 1));
     uint8_t time_hue_offset = 0;
     uint8_t breathing_brightness_factor = 255;
     

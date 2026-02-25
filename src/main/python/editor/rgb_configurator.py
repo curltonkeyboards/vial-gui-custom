@@ -2350,19 +2350,22 @@ class CustomLightsHandler(BasicHandler):
         layout.addLayout(live_header, row, 0, 1, 4)
         row += 1
 
-        # Live Effect + Position on same row
+        # Live Effect
         live_effect_label = QLabel(tr("RGBConfigurator", "Effect:"))
         layout.addWidget(live_effect_label, row, 0)
         live_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
         live_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         live_effect.valueChanged.connect(lambda idx, s=slot: self.on_live_effect_changed(s, idx))
-        layout.addWidget(live_effect, row, 1)
+        layout.addWidget(live_effect, row, 1, 1, 3)
+        row += 1
+
+        # Live Position (below Effect)
         live_position_label = QLabel(tr("RGBConfigurator", "Position:"))
-        layout.addWidget(live_position_label, row, 2)
+        layout.addWidget(live_position_label, row, 0)
         live_style = HierarchicalDropdown(LIVE_STYLES_HIERARCHY)
         live_style.setStyleSheet("QComboBox { border-radius: 5px; }")
         live_style.valueChanged.connect(lambda idx, s=slot: self.on_live_style_changed(s, idx))
-        layout.addWidget(live_style, row, 3)
+        layout.addWidget(live_style, row, 1, 1, 3)
         row += 1
 
         # Live Brightness + Speed on same row
@@ -2402,19 +2405,22 @@ class CustomLightsHandler(BasicHandler):
         layout.addLayout(macro_header, row, 0, 1, 4)
         row += 1
 
-        # Macro Effect + Position on same row
+        # Macro Effect
         macro_effect_label = QLabel(tr("RGBConfigurator", "Effect:"))
         layout.addWidget(macro_effect_label, row, 0)
         macro_effect = HierarchicalDropdown(LIVE_EFFECTS_HIERARCHY)
         macro_effect.setStyleSheet("QComboBox { border-radius: 5px; }")
         macro_effect.valueChanged.connect(lambda idx, s=slot: self.on_macro_effect_changed(s, idx))
-        layout.addWidget(macro_effect, row, 1)
+        layout.addWidget(macro_effect, row, 1, 1, 3)
+        row += 1
+
+        # Macro Position (below Effect)
         macro_position_label = QLabel(tr("RGBConfigurator", "Position:"))
-        layout.addWidget(macro_position_label, row, 2)
+        layout.addWidget(macro_position_label, row, 0)
         macro_style = HierarchicalDropdown(MACRO_STYLES_HIERARCHY)
         macro_style.setStyleSheet("QComboBox { border-radius: 5px; }")
         macro_style.valueChanged.connect(lambda idx, s=slot: self.on_macro_style_changed(s, idx))
-        layout.addWidget(macro_style, row, 3)
+        layout.addWidget(macro_style, row, 1, 1, 3)
         row += 1
 
         # Macro Brightness + Speed on same row
