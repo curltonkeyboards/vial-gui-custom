@@ -1929,13 +1929,14 @@ static void render_autolight_with_params(uint8_t brightness_pct, int16_t hue_shi
     
     uint8_t user_hue = rgb_matrix_get_hue();
     uint8_t user_sat = rgb_matrix_get_sat();
-    
+
+    // Hoist uniform HSV-to-RGB conversion out of loop (all 70 LEDs get same base color)
+    HSV base_hsv = {(user_hue + hue_shift) % 256, (user_sat * sat_factor) / 255, autolight_brightness};
+    RGB base_rgb = hsv_to_rgb(base_hsv);
     for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
-        HSV hsv = {(user_hue + hue_shift) % 256, (user_sat * sat_factor) / 255, autolight_brightness};
-        RGB rgb = hsv_to_rgb(hsv);
-        rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
+        rgb_matrix_set_color(i, base_rgb.r, base_rgb.g, base_rgb.b);
     }
-    
+
     for (uint8_t i = 0; i < led_categories[current_layer].count; i++) {
         uint8_t led_index = led_categories[current_layer].leds[i].led_index;
         uint8_t category = led_categories[current_layer].leds[i].category;
@@ -2002,15 +2003,16 @@ static void render_bpm_background(background_mode_t background_mode, uint8_t bac
             }
             
             uint8_t static_brightness = (255 * background_brightness_pct) / 200;
-            
+
+            // Hoist uniform HSV-to-RGB out of loop (same color for all LEDs)
+            HSV static_hsv = {static_hue, base_sat, static_brightness};
+            RGB static_rgb = hsv_to_rgb(static_hsv);
             for (uint8_t row = 0; row < 5; row++) {
                 for (uint8_t col = 0; col < 14; col++) {
                     uint8_t led[LED_HITS_TO_REMEMBER];
                     uint8_t led_count = rgb_matrix_map_row_column_to_led(row, col, led);
                     if (led_count > 0) {
-                        HSV hsv = {static_hue, base_sat, static_brightness};
-                        RGB rgb = hsv_to_rgb(hsv);
-                        rgb_matrix_set_color(led[0], rgb.r, rgb.g, rgb.b);
+                        rgb_matrix_set_color(led[0], static_rgb.r, static_rgb.g, static_rgb.b);
                     }
                 }
             }
@@ -2045,25 +2047,32 @@ static void render_bpm_background(background_mode_t background_mode, uint8_t bac
         if (bpm_pulse_intensity > 0) {
             uint8_t max_pulse_brightness = (255 * background_brightness_pct) / 100;
             uint8_t min_pulse_brightness = max_pulse_brightness / 2;
-            
+
             uint8_t brightness_factor;
             if (variant >= 4) {
                 brightness_factor = min_pulse_brightness + ((max_pulse_brightness - min_pulse_brightness) * bpm_pulse_intensity) / 255;
             } else {
                 brightness_factor = (max_pulse_brightness * bpm_pulse_intensity) / 255;
             }
-            
+
+            // Pre-compute non-disco pulse color once (uniform for all LEDs)
+            RGB pulse_rgb;
+            if (!is_disco) {
+                HSV pulse_hsv = {pulse_hue, pulse_sat, brightness_factor};
+                pulse_rgb = hsv_to_rgb(pulse_hsv);
+            }
+
             for (uint8_t row = 0; row < 5; row++) {
                 for (uint8_t col = 0; col < 14; col++) {
                     uint8_t led[LED_HITS_TO_REMEMBER];
                     uint8_t led_count = rgb_matrix_map_row_column_to_led(row, col, led);
                     if (led_count > 0) {
                         bool in_active_area = true;
-                        
+
                         if (active_area_func != NULL) {
                             in_active_area = active_area_func(row, col);
                         }
-                        
+
                         if (in_active_area && bpm_pulse_intensity > 0) {
                             if (is_disco) {
                                 uint8_t disco_hue = bpm_random_colors[row][col][0];
@@ -2072,9 +2081,7 @@ static void render_bpm_background(background_mode_t background_mode, uint8_t bac
                                 RGB rgb = hsv_to_rgb(hsv);
                                 rgb_matrix_set_color(led[0], rgb.r, rgb.g, rgb.b);
                             } else {
-                                HSV hsv = {pulse_hue, pulse_sat, brightness_factor};
-                                RGB rgb = hsv_to_rgb(hsv);
-                                rgb_matrix_set_color(led[0], rgb.r, rgb.g, rgb.b);
+                                rgb_matrix_set_color(led[0], pulse_rgb.r, pulse_rgb.g, pulse_rgb.b);
                             }
                         } else if (variant < 4) {
                             rgb_matrix_set_color(led[0], 0, 0, 0);
@@ -2531,9 +2538,10 @@ static HSV diagonal_wave_hue_cycle_math_impl(HSV hsv, uint8_t i, uint8_t time) {
 
 static HSV diagonal_wave_dual_color_math_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + g_led_config.point[i].y;
-    hsv.v = scale8(abs8(sin8(pos + time) - 128) * 2, hsv.v);
+    uint8_t wave = sin8(pos + time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
     // Use dual colors - original hue or +64 shift based on wave position
-    if (sin8(pos + time) > 128) {
+    if (wave > 128) {
         hsv.h = hsv.h + 64;  // +64 hue shift for second color
     }
     return hsv;
@@ -2541,10 +2549,11 @@ static HSV diagonal_wave_dual_color_math_impl(HSV hsv, uint8_t i, uint8_t time) 
 
 static HSV diagonal_wave_dual_color_hue_cycle_math_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + g_led_config.point[i].y;
-    hsv.v = scale8(abs8(sin8(pos + time) - 128) * 2, hsv.v);
+    uint8_t wave = sin8(pos + time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
     // FIXED: Smooth base hue cycling with dual color offset
     uint8_t base_hue = pos + time;  // Smooth base cycling
-    if (sin8(pos + time) > 128) {
+    if (wave > 128) {
         hsv.h = base_hue + 64;  // +64 hue shift for second color
     } else {
         hsv.h = base_hue;
@@ -2569,9 +2578,10 @@ static HSV diagonal_wave_reverse_hue_cycle_math_impl(HSV hsv, uint8_t i, uint8_t
 
 static HSV diagonal_wave_reverse_dual_color_math_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + (255 - g_led_config.point[i].y);
-    hsv.v = scale8(abs8(sin8(pos - time) - 128) * 2, hsv.v);
+    uint8_t wave = sin8(pos - time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
     // Use dual colors - original hue or +64 shift based on wave position (reverse)
-    if (sin8(pos - time) > 128) {
+    if (wave > 128) {
         hsv.h = hsv.h + 64;  // +64 hue shift for second color
     }
     return hsv;
@@ -2579,10 +2589,11 @@ static HSV diagonal_wave_reverse_dual_color_math_impl(HSV hsv, uint8_t i, uint8_
 
 static HSV diagonal_wave_reverse_dual_color_hue_cycle_math_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + (255 - g_led_config.point[i].y);
-    hsv.v = scale8(abs8(sin8(pos - time) - 128) * 2, hsv.v);
+    uint8_t wave = sin8(pos - time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
     // FIXED: Smooth reverse base hue cycling with dual colors
     uint8_t base_hue = pos - time;  // Smooth reverse cycling
-    if (sin8(pos - time) > 128) {
+    if (wave > 128) {
         hsv.h = base_hue + 64;  // +64 hue shift for second color
     } else {
         hsv.h = base_hue;
@@ -2601,8 +2612,9 @@ static HSV diagonal_wave_hue_cycle_math_desat_impl(HSV hsv, uint8_t i, uint8_t t
 
 static HSV diagonal_wave_dual_color_math_desat_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + g_led_config.point[i].y;
-    hsv.v = scale8(abs8(sin8(pos + time) - 128) * 2, hsv.v);
-    if (sin8(pos + time) > 128) {
+    uint8_t wave = sin8(pos + time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
+    if (wave > 128) {
         hsv.h = hsv.h + 64;
     }
     hsv.s = hsv.s > 80 ? hsv.s - 80 : 0;
@@ -2611,9 +2623,10 @@ static HSV diagonal_wave_dual_color_math_desat_impl(HSV hsv, uint8_t i, uint8_t 
 
 static HSV diagonal_wave_dual_color_hue_cycle_math_desat_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + g_led_config.point[i].y;
-    hsv.v = scale8(abs8(sin8(pos + time) - 128) * 2, hsv.v);
+    uint8_t wave = sin8(pos + time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
     uint8_t base_hue = pos + time;  // FIXED: Smooth base cycling
-    if (sin8(pos + time) > 128) {
+    if (wave > 128) {
         hsv.h = base_hue + 64;
     } else {
         hsv.h = base_hue;
@@ -2639,8 +2652,9 @@ static HSV diagonal_wave_reverse_hue_cycle_math_desat_impl(HSV hsv, uint8_t i, u
 
 static HSV diagonal_wave_reverse_dual_color_math_desat_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + (255 - g_led_config.point[i].y);
-    hsv.v = scale8(abs8(sin8(pos - time) - 128) * 2, hsv.v);
-    if (sin8(pos - time) > 128) {
+    uint8_t wave = sin8(pos - time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
+    if (wave > 128) {
         hsv.h = hsv.h + 64;
     }
     hsv.s = hsv.s > 80 ? hsv.s - 80 : 0;
@@ -2649,9 +2663,10 @@ static HSV diagonal_wave_reverse_dual_color_math_desat_impl(HSV hsv, uint8_t i, 
 
 static HSV diagonal_wave_reverse_dual_color_hue_cycle_math_desat_impl(HSV hsv, uint8_t i, uint8_t time) {
     uint8_t pos = g_led_config.point[i].x + (255 - g_led_config.point[i].y);
-    hsv.v = scale8(abs8(sin8(pos - time) - 128) * 2, hsv.v);
+    uint8_t wave = sin8(pos - time);
+    hsv.v = scale8(abs8(wave - 128) * 2, hsv.v);
     uint8_t base_hue = pos - time;  // FIXED: Smooth reverse cycling
-    if (sin8(pos - time) > 128) {
+    if (wave > 128) {
         hsv.h = base_hue + 64;
     } else {
         hsv.h = base_hue;
@@ -2807,6 +2822,7 @@ static void render_math_background_desaturated(background_mode_t background_mode
             break;
         case BACKGROUND_CYCLE_OUT_IN_DESAT:
 			run_background_math_dx_dy(cycle_out_in_math_desat_impl, effective_time, background_brightness_pct);
+            break;
         case BACKGROUND_CYCLE_OUT_IN_DUAL_DESAT:
             run_background_math_dx_dy(cycle_out_in_dual_math_desat_impl, effective_time, background_brightness_pct);
             break;
@@ -3068,19 +3084,18 @@ static uint8_t cross_2_solo_math(uint8_t note_row, uint8_t note_col, uint8_t led
 static uint8_t moving_dots_row_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
     // Horizontal line expanding left and right like ripple
     if (led_row != note_row) return 0;
-    
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 7.0f) return 0;
-    
-    float horizontal_distance = fabs((float)(led_col - note_col));
-    float line_thickness = 0.8f;
-    
-    if (horizontal_distance >= radius - line_thickness && horizontal_distance <= radius + line_thickness) {
-        float brightness_factor = 1.0f - (radius / 7.0f);
-        return (uint8_t)(255 * brightness_factor);
+
+    // DOT STANDARD: fixed-point 8.8 (values * 256)
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 7 * 256) return 0;
+
+    uint16_t dist_fp = (uint16_t)abs(led_col - note_col) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
+    if (abs_diff <= 205) {  // 0.8 * 256 = 205 (line_thickness)
+        return 255 - (uint8_t)((uint32_t)radius_fp * 255 / (7 * 256));
     }
-    
+
     return 0;
 }
 
@@ -3091,19 +3106,18 @@ static uint8_t moving_dots_row_solo_math(uint8_t note_row, uint8_t note_col, uin
 static uint8_t moving_dots_col_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
     // Vertical line expanding up and down like ripple
     if (led_col != note_col) return 0;
-    
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 3.0f) return 0;
-    
-    float vertical_distance = fabs((float)(led_row - note_row));
-    float line_thickness = 0.8f;
-    
-    if (vertical_distance >= radius - line_thickness && vertical_distance <= radius + line_thickness) {
-        float brightness_factor = 1.0f - (radius / 3.0f);
-        return (uint8_t)(255 * brightness_factor);
+
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 3 * 256) return 0;
+
+    uint16_t dist_fp = (uint16_t)abs(led_row - note_row) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
+    if (abs_diff <= 205) {
+        return 255 - (uint8_t)((uint32_t)radius_fp * 255 / (3 * 256));
     }
-    
+
     return 0;
 }
 
@@ -3113,18 +3127,18 @@ static uint8_t moving_dots_col_solo_math(uint8_t note_row, uint8_t note_col, uin
 
 static uint8_t moving_dots_row_no_fade_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
     if (led_row != note_row) return 0;
-    
-    // DOT STANDARD: /80.0f base timing (this was the reference speed)
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 15.0f) return 0;
-    
-    float horizontal_distance = fabs((float)(led_col - note_col));
-    float line_thickness = 0.8f;
-    
-    if (horizontal_distance >= radius - line_thickness && horizontal_distance <= radius + line_thickness) {
-        return 255; // No brightness fadeout - always full brightness
+
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 15 * 256) return 0;
+
+    uint16_t dist_fp = (uint16_t)abs(led_col - note_col) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
+    if (abs_diff <= 205) {
+        return 255;
     }
-    
+
     return 0;
 }
 
@@ -3134,18 +3148,18 @@ static uint8_t moving_dots_row_no_fade_solo_math(uint8_t note_row, uint8_t note_
 
 static uint8_t moving_dots_col_no_fade_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
     if (led_col != note_col) return 0;
-    
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 5.0f) return 0;
-    
-    float vertical_distance = fabs((float)(led_row - note_row));
-    float line_thickness = 0.8f;
-    
-    if (vertical_distance >= radius - line_thickness && vertical_distance <= radius + line_thickness) {
-        return 255; // No brightness fadeout - always full brightness
+
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 5 * 256) return 0;
+
+    uint16_t dist_fp = (uint16_t)abs(led_row - note_row) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
+    if (abs_diff <= 205) {
+        return 255;
     }
-    
+
     return 0;
 }
 
@@ -3155,20 +3169,19 @@ static uint8_t moving_dots_col_no_fade_solo_math(uint8_t note_row, uint8_t note_
 
 // DIAGONAL DOTS
 static uint8_t moving_dots_diag_tl_br_no_fade_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 6.0f) return 0;
-    
     int8_t row_diff = led_row - note_row;
     int8_t col_diff = led_col - note_col;
-    
     if (row_diff != col_diff) return 0;
-    
-    float diagonal_distance = fabs((float)row_diff);
-    float line_thickness = 0.8f;
-    
-    if (diagonal_distance >= radius - line_thickness && diagonal_distance <= radius + line_thickness) {
-        return 255; // No fade
+
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 6 * 256) return 0;
+
+    uint16_t dist_fp = (uint16_t)abs(row_diff) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
+    if (abs_diff <= 205) {
+        return 255;
     }
     return 0;
 }
@@ -3178,20 +3191,19 @@ static uint8_t moving_dots_diag_tl_br_no_fade_solo_math(uint8_t note_row, uint8_
 }
 
 static uint8_t moving_dots_diag_tr_bl_no_fade_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 6.0f) return 0;
-    
     int8_t row_diff = led_row - note_row;
     int8_t col_diff = led_col - note_col;
-    
     if (row_diff != -col_diff) return 0;
-    
-    float diagonal_distance = fabs((float)row_diff);
-    float line_thickness = 0.8f;
-    
-    if (diagonal_distance >= radius - line_thickness && diagonal_distance <= radius + line_thickness) {
-        return 255; // No fade
+
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 6 * 256) return 0;
+
+    uint16_t dist_fp = (uint16_t)abs(row_diff) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
+    if (abs_diff <= 205) {
+        return 255;
     }
     return 0;
 }
@@ -3202,29 +3214,26 @@ static uint8_t moving_dots_diag_tr_bl_no_fade_solo_math(uint8_t note_row, uint8_
 
 // ALL ORTHOGONAL (combines horizontal and vertical)
 static uint8_t moving_dots_all_orthogonal_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 7.0f) return 0;
-    
-    float line_thickness = 0.8f;
-    float brightness_factor = 1.0f - (radius / 7.0f);
-    
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 7 * 256) return 0;
+
+    uint8_t brightness = 255 - (uint8_t)((uint32_t)radius_fp * 255 / (7 * 256));
+
     // Check horizontal line (left/right)
     if (led_row == note_row) {
-        float horizontal_distance = fabs((float)(led_col - note_col));
-        if (horizontal_distance >= radius - line_thickness && horizontal_distance <= radius + line_thickness) {
-            return (uint8_t)(255 * brightness_factor);
-        }
+        uint16_t dist_fp = (uint16_t)abs(led_col - note_col) << 8;
+        uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+        if (abs_diff <= 205) return brightness;
     }
-    
+
     // Check vertical line (up/down)
     if (led_col == note_col) {
-        float vertical_distance = fabs((float)(led_row - note_row));
-        if (vertical_distance >= radius - line_thickness && vertical_distance <= radius + line_thickness) {
-            return (uint8_t)(255 * brightness_factor);
-        }
+        uint16_t dist_fp = (uint16_t)abs(led_row - note_row) << 8;
+        uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+        if (abs_diff <= 205) return brightness;
     }
-    
+
     return 0;
 }
 
@@ -3233,28 +3242,24 @@ static uint8_t moving_dots_all_orthogonal_solo_math(uint8_t note_row, uint8_t no
 }
 
 static uint8_t moving_dots_all_orthogonal_no_fade_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 15.0f) return 0;
-    
-    float line_thickness = 0.8f;
-    
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 15 * 256) return 0;
+
     // Check horizontal line (left/right)
     if (led_row == note_row) {
-        float horizontal_distance = fabs((float)(led_col - note_col));
-        if (horizontal_distance >= radius - line_thickness && horizontal_distance <= radius + line_thickness) {
-            return 255; // No fade
-        }
+        uint16_t dist_fp = (uint16_t)abs(led_col - note_col) << 8;
+        uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+        if (abs_diff <= 205) return 255;
     }
-    
+
     // Check vertical line (up/down)
     if (led_col == note_col) {
-        float vertical_distance = fabs((float)(led_row - note_row));
-        if (vertical_distance >= radius - line_thickness && vertical_distance <= radius + line_thickness) {
-            return 255; // No fade
-        }
+        uint16_t dist_fp = (uint16_t)abs(led_row - note_row) << 8;
+        uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+        if (abs_diff <= 205) return 255;
     }
-    
+
     return 0;
 }
 
@@ -3264,31 +3269,27 @@ static uint8_t moving_dots_all_orthogonal_no_fade_solo_math(uint8_t note_row, ui
 
 // ALL DIAGONAL
 static uint8_t moving_dots_all_diagonal_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 6.0f) return 0;
-    
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 6 * 256) return 0;
+
     int8_t row_diff = led_row - note_row;
     int8_t col_diff = led_col - note_col;
-    float line_thickness = 0.8f;
-    float brightness_factor = 1.0f - (radius / 6.0f);
-    
+    uint8_t brightness = 255 - (uint8_t)((uint32_t)radius_fp * 255 / (6 * 256));
+
+    uint16_t dist_fp = (uint16_t)abs(row_diff) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
     // Check TL-BR diagonal (row_diff == col_diff)
     if (abs(row_diff - col_diff) <= 1) {
-        float diagonal_distance = fabs((float)row_diff);
-        if (diagonal_distance >= radius - line_thickness && diagonal_distance <= radius + line_thickness) {
-            return (uint8_t)(255 * brightness_factor);
-        }
+        if (abs_diff <= 205) return brightness;
     }
-    
+
     // Check TR-BL diagonal (row_diff == -col_diff)
     if (abs(row_diff + col_diff) <= 1) {
-        float diagonal_distance = fabs((float)row_diff);
-        if (diagonal_distance >= radius - line_thickness && diagonal_distance <= radius + line_thickness) {
-            return (uint8_t)(255 * brightness_factor);
-        }
+        if (abs_diff <= 205) return brightness;
     }
-    
+
     return 0;
 }
 
@@ -3297,30 +3298,26 @@ static uint8_t moving_dots_all_diagonal_solo_math(uint8_t note_row, uint8_t note
 }
 
 static uint8_t moving_dots_all_diagonal_no_fade_math(uint8_t note_row, uint8_t note_col, uint8_t led_row, uint8_t led_col, uint16_t elapsed_time, uint8_t speed) {
-    // DOT STANDARD: /80.0f base timing
-    float radius = (elapsed_time / 80.0f) * (0.25f + (speed / 255.0f) * 1.75f);
-    if (radius > 6.0f) return 0;
-    
+    // DOT STANDARD: fixed-point 8.8
+    uint16_t radius_fp = ((uint32_t)elapsed_time * (64 + ((uint16_t)speed * 448) / 255)) / 80;
+    if (radius_fp > 6 * 256) return 0;
+
     int8_t row_diff = led_row - note_row;
     int8_t col_diff = led_col - note_col;
-    float line_thickness = 0.8f;
-    
+
+    uint16_t dist_fp = (uint16_t)abs(row_diff) << 8;
+    uint16_t abs_diff = (dist_fp > radius_fp) ? (dist_fp - radius_fp) : (radius_fp - dist_fp);
+
     // Check TL-BR diagonal (row_diff == col_diff)
-    if (row_diff == col_diff) {
-        float diagonal_distance = fabs((float)row_diff);
-        if (diagonal_distance >= radius - line_thickness && diagonal_distance <= radius + line_thickness) {
-            return 255; // No fade
-        }
+    if (row_diff == col_diff && abs_diff <= 205) {
+        return 255;
     }
-    
+
     // Check TR-BL diagonal (row_diff == -col_diff)
-    if (row_diff == -col_diff) {
-        float diagonal_distance = fabs((float)row_diff);
-        if (diagonal_distance >= radius - line_thickness && diagonal_distance <= radius + line_thickness) {
-            return 255; // No fade
-        }
+    if (row_diff == -col_diff && abs_diff <= 205) {
+        return 255;
     }
-    
+
     return 0;
 }
 
@@ -5750,64 +5747,67 @@ static bool run_efficient_effect(effect_params_t* params,
     if (live_heat_mode && timer_elapsed(live_heat_timer) >= 10) {
         bool sustain_mode = (live_animation == LIVE_ANIM_SUSTAIN);
         uint8_t decay_amount = sustain_mode ? 13 : (1 + (live_speed / 64));
-        
-        for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
-            if (sustain_mode) {
-                // Check if LED has active sustained key
-                bool has_active_key = false;
-                for (uint8_t h = 0; h < MAX_HELD_KEYS; h++) {
-                    if (sustained_keys[h].active && !sustained_keys[h].is_macro) {
-                        position_data_t positions;
-                        get_live_positions(sustained_keys[h].channel, sustained_keys[h].note, 
-                                         (live_note_positioning_t)sustained_keys[h].positioning_type, &positions);
-                        for (uint8_t p = 0; p < positions.count; p++) {
-                            uint8_t led[LED_HITS_TO_REMEMBER];
-                            uint8_t led_count = rgb_matrix_map_row_column_to_led(positions.points[p].row, positions.points[p].col, led);
-                            if (led_count > 0 && led[0] == i) {
-                                has_active_key = true;
-                                break;
-                            }
+
+        if (sustain_mode) {
+            // Build sustained LED set ONCE, then do simple O(70) decay
+            bool sustained_leds[RGB_MATRIX_LED_COUNT];
+            for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) sustained_leds[i] = false;
+            for (uint8_t h = 0; h < MAX_HELD_KEYS; h++) {
+                if (sustained_keys[h].active && !sustained_keys[h].is_macro) {
+                    position_data_t positions;
+                    get_live_positions(sustained_keys[h].channel, sustained_keys[h].note,
+                                     (live_note_positioning_t)sustained_keys[h].positioning_type, &positions);
+                    for (uint8_t p = 0; p < positions.count; p++) {
+                        uint8_t led[LED_HITS_TO_REMEMBER];
+                        uint8_t led_count = rgb_matrix_map_row_column_to_led(positions.points[p].row, positions.points[p].col, led);
+                        if (led_count > 0) {
+                            sustained_leds[led[0]] = true;
                         }
-                        if (has_active_key) break;
                     }
                 }
-                if (!has_active_key) {
+            }
+            for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
+                if (!sustained_leds[i]) {
                     live_led_heatmap[i] = qsub8(live_led_heatmap[i], decay_amount);
                 }
-            } else {
+            }
+        } else {
+            for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
                 live_led_heatmap[i] = qsub8(live_led_heatmap[i], decay_amount);
             }
         }
         live_heat_timer = cached_current_time;
     }
-    
+
     if (macro_heat_mode && timer_elapsed(macro_heat_timer) >= 10) {
         bool sustain_mode = (macro_animation == MACRO_ANIM_SUSTAIN);
         uint8_t decay_amount = sustain_mode ? 13 : (1 + (macro_speed / 64));
-        
-        for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
-            if (sustain_mode) {
-                bool has_active_key = false;
-                for (uint8_t h = 0; h < MAX_HELD_KEYS; h++) {
-                    if (sustained_keys[h].active && sustained_keys[h].is_macro) {
-                        position_data_t positions;
-                        get_macro_positions(sustained_keys[h].channel, sustained_keys[h].note, sustained_keys[h].track_id,
-                                          (macro_note_positioning_t)sustained_keys[h].positioning_type, &positions);
-                        for (uint8_t p = 0; p < positions.count; p++) {
-                            uint8_t led[LED_HITS_TO_REMEMBER];
-                            uint8_t led_count = rgb_matrix_map_row_column_to_led(positions.points[p].row, positions.points[p].col, led);
-                            if (led_count > 0 && led[0] == i) {
-                                has_active_key = true;
-                                break;
-                            }
+
+        if (sustain_mode) {
+            // Build sustained LED set ONCE, then do simple O(70) decay
+            bool sustained_leds[RGB_MATRIX_LED_COUNT];
+            for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) sustained_leds[i] = false;
+            for (uint8_t h = 0; h < MAX_HELD_KEYS; h++) {
+                if (sustained_keys[h].active && sustained_keys[h].is_macro) {
+                    position_data_t positions;
+                    get_macro_positions(sustained_keys[h].channel, sustained_keys[h].note, sustained_keys[h].track_id,
+                                      (macro_note_positioning_t)sustained_keys[h].positioning_type, &positions);
+                    for (uint8_t p = 0; p < positions.count; p++) {
+                        uint8_t led[LED_HITS_TO_REMEMBER];
+                        uint8_t led_count = rgb_matrix_map_row_column_to_led(positions.points[p].row, positions.points[p].col, led);
+                        if (led_count > 0) {
+                            sustained_leds[led[0]] = true;
                         }
-                        if (has_active_key) break;
                     }
                 }
-                if (!has_active_key) {
+            }
+            for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
+                if (!sustained_leds[i]) {
                     macro_led_heatmap[i] = qsub8(macro_led_heatmap[i], decay_amount);
                 }
-            } else {
+            }
+        } else {
+            for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
                 macro_led_heatmap[i] = qsub8(macro_led_heatmap[i], decay_amount);
             }
         }
@@ -5911,8 +5911,8 @@ static bool run_efficient_effect(effect_params_t* params,
                     final_is_live = false;
                 } else {
                     // Check active notes for other animations
-                    for (uint8_t note = 0; note < MAX_ACTIVE_NOTES; note++) {
-                        if (active_notes[note].active) {
+                    // After cleanup_active_notes(), entries 0..active_note_count-1 are compacted
+                    for (uint8_t note = 0; note < active_note_count; note++) {
                             uint16_t elapsed = cached_current_time - active_notes[note].start_time;
                             uint8_t speed = active_notes[note].is_live ? live_speed : macro_speed;
                             uint8_t animation = active_notes[note].animation_type;
@@ -6475,7 +6475,6 @@ switch (animation) {
                                 final_hue = effect_hsv.h;
                                 final_sat = effect_hsv.s;
                             }
-                        }
                     }
                 }
                 
