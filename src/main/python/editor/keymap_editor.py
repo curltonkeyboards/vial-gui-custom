@@ -2358,8 +2358,11 @@ class KeymapEditor(BasicEditor):
                 return
         self.keyboard.restore_layout(data)
         self.refresh_layer_display()
-        # Rescan immediately after bulk import (all writes are already done)
-        self._do_rescan_led_positions()
+        # Schedule rescan via debounce timer rather than calling it directly,
+        # because main_window.on_layout_load() calls rebuild() immediately
+        # after this returns, and a synchronous rescan would leave stale HID
+        # responses in the USB buffer that corrupt the subsequent reload.
+        self._schedule_rescan()
 
     def on_any_keycode(self):
         if self.container.active_key is None:
