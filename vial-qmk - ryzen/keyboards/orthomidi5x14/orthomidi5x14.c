@@ -8008,715 +8008,281 @@ static const char PROGMEM Keyboardbottom[128] = {
 
     /* animation */
 void animate_luna(void) {
-    static uint8_t yield_counter = 0;
-    
+    uint8_t row_buf[128];
+
+    // Top border
     oled_set_cursor(0, 8);
     oled_write_raw_P(Keyboardtop, 128);
-    
-    // ROW 1
+
+    // === ROW 1 (y=9) - Top of black keys ===
+    memset(row_buf, 0, 128);
+    memcpy_P(row_buf + 0,   C1_active ? transition_1 : basic_empty_7, ANIM_SIZE);
+    if (C1_active && !C1s_active)       memcpy_P(row_buf + 6,  fill_pattern_1, ANIM_SIZE);
+    else if (!C1_active && C1s_active)  memcpy_P(row_buf + 6,  fill_pattern_3, ANIM_SIZE);
+    else if (C1_active && C1s_active)   memcpy_P(row_buf + 6,  combined_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 6,  basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 12,  D1_active ? combined_4 : basic_empty_3, ANIM_SIZE);
+    if (D1s_active && !E1_active)       memcpy_P(row_buf + 18, fill_pattern_2, ANIM_SIZE);
+    else if (!D1s_active && E1_active)  memcpy_P(row_buf + 18, combined_3, ANIM_SIZE);
+    else if (D1s_active && E1_active)   memcpy_P(row_buf + 18, combined_2, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 18, basic_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 24,  E1_active ? special_fill_9 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 30,  F1_active ? special_fill_10 : basic_empty_5, ANIM_SIZE);
+    if (F1s_active && !G1_active)       memcpy_P(row_buf + 36, fill_pattern_2, ANIM_SIZE);
+    else if (!F1s_active && G1_active)  memcpy_P(row_buf + 36, combined_3, ANIM_SIZE);
+    else if (F1s_active && G1_active)   memcpy_P(row_buf + 36, combined_2, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 36, basic_empty_2, ANIM_SIZE);
+    if (G1_active && !G1s_active)       memcpy_P(row_buf + 42, fill_pattern_1, ANIM_SIZE);
+    else if (!G1_active && G1s_active)  memcpy_P(row_buf + 42, fill_pattern_3, ANIM_SIZE);
+    else if (G1_active && G1s_active)   memcpy_P(row_buf + 42, combined_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 42, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 48,  A1_active ? combined_4 : basic_empty_3, ANIM_SIZE);
+    if (A1s_active && !B1_active)       memcpy_P(row_buf + 54, fill_pattern_2, ANIM_SIZE);
+    else if (!A1s_active && B1_active)  memcpy_P(row_buf + 54, combined_3, ANIM_SIZE);
+    else if (A1s_active && B1_active)   memcpy_P(row_buf + 54, combined_2, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 54, basic_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 60,  B1_active ? special_fill_9 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 66,  C2_active ? special_fill_10 : basic_empty_5, ANIM_SIZE);
+    if (C2s_active && !D2_active)       memcpy_P(row_buf + 72, fill_pattern_2, ANIM_SIZE);
+    else if (!C2s_active && D2_active)  memcpy_P(row_buf + 72, combined_3, ANIM_SIZE);
+    else if (C2s_active && D2_active)   memcpy_P(row_buf + 72, combined_2, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 72, basic_empty_2, ANIM_SIZE);
+    if (D2_active && !D2s_active)       memcpy_P(row_buf + 78, fill_pattern_1, ANIM_SIZE);
+    else if (!D2_active && D2s_active)  memcpy_P(row_buf + 78, fill_pattern_3, ANIM_SIZE);
+    else if (D2_active && D2s_active)   memcpy_P(row_buf + 78, combined_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 78, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 84,  E2_active ? transition_3 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 90,  F2_active ? transition_1 : basic_empty_7, ANIM_SIZE);
+    if (F2_active && !F2s_active)       memcpy_P(row_buf + 96, fill_pattern_1, ANIM_SIZE);
+    else if (!F2_active && F2s_active)  memcpy_P(row_buf + 96, fill_pattern_3, ANIM_SIZE);
+    else if (F2_active && F2s_active)   memcpy_P(row_buf + 96, combined_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 96, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 102, G2_active ? combined_4 : basic_empty_3, ANIM_SIZE);
+    if (G2s_active && !A2_active)       memcpy_P(row_buf + 108, fill_pattern_2, ANIM_SIZE);
+    else if (!G2s_active && A2_active)  memcpy_P(row_buf + 108, combined_3, ANIM_SIZE);
+    else if (G2s_active && A2_active)   memcpy_P(row_buf + 108, combined_2, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 108, basic_empty_2, ANIM_SIZE);
+    if (A2_active && !A2s_active)       memcpy_P(row_buf + 114, fill_pattern_1, ANIM_SIZE);
+    else if (!A2_active && A2s_active)  memcpy_P(row_buf + 114, fill_pattern_3, ANIM_SIZE);
+    else if (A2_active && A2s_active)   memcpy_P(row_buf + 114, combined_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 114, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 120, B2_active ? transition_2 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 126, endbar, 2);
     oled_set_cursor(0, 9);
-    oled_write_raw_P(C1_active ? transition_1 : basic_empty_7, ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
+    oled_write_raw(row_buf, 128);
 
-    oled_set_cursor(1, 9);
-    if (C1_active && !C1s_active) {
-        oled_write_raw_P(fill_pattern_1, ANIM_SIZE);
-    } else if (!C1_active && C1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (C1_active && C1s_active) {
-        oled_write_raw_P(combined_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(2, 9);
-    oled_write_raw_P(D1_active ? combined_4 : basic_empty_3, ANIM_SIZE);
-    
-    oled_set_cursor(3, 9);
-    if (D1s_active && !E1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!D1s_active && E1_active) {
-        oled_write_raw_P(combined_3, ANIM_SIZE);
-    } else if (D1s_active && E1_active) {
-        oled_write_raw_P(combined_2, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(4, 9);
-    oled_write_raw_P(E1_active ? special_fill_9 : basic_empty_4, ANIM_SIZE);
-    
-    oled_set_cursor(5, 9);
-    oled_write_raw_P(F1_active ? special_fill_10 : basic_empty_5, ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-    
-    oled_set_cursor(6, 9);
-    if (F1s_active && !G1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!F1s_active && G1_active) {
-        oled_write_raw_P(combined_3, ANIM_SIZE);
-    } else if (F1s_active && G1_active) {
-        oled_write_raw_P(combined_2, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(7, 9);
-    if (G1_active && !G1s_active) {
-        oled_write_raw_P(fill_pattern_1, ANIM_SIZE);
-    } else if (!G1_active && G1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (G1_active && G1s_active) {
-        oled_write_raw_P(combined_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(8, 9);
-    oled_write_raw_P(A1_active ? combined_4 : basic_empty_3, ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(9, 9);
-    if (A1s_active && !B1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!A1s_active && B1_active) {
-        oled_write_raw_P(combined_3, ANIM_SIZE);
-    } else if (A1s_active && B1_active) {
-        oled_write_raw_P(combined_2, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(10, 9);
-    oled_write_raw_P(B1_active ? special_fill_9 : basic_empty_4, ANIM_SIZE);
-    
-    oled_set_cursor(11, 9);
-    oled_write_raw_P(C2_active ? special_fill_10 : basic_empty_5, ANIM_SIZE);
-
-    oled_set_cursor(12, 9);
-    if (C2s_active && !D2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!C2s_active && D2_active) {
-        oled_write_raw_P(combined_3, ANIM_SIZE);
-    } else if (C2s_active && D2_active) {
-        oled_write_raw_P(combined_2, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-    
-    oled_set_cursor(13, 9);
-    if (D2_active && !D2s_active) {
-        oled_write_raw_P(fill_pattern_1, ANIM_SIZE);
-    } else if (!D2_active && D2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (D2_active && D2s_active) {
-        oled_write_raw_P(combined_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(14, 9);
-    oled_write_raw_P(E2_active ? transition_3 : basic_empty_6, ANIM_SIZE);
-    
-    oled_set_cursor(15, 9);
-    oled_write_raw_P(F2_active ? transition_1 : basic_empty_7, ANIM_SIZE);
-
-    oled_set_cursor(16, 9);
-    if (F2_active && !F2s_active) {
-        oled_write_raw_P(fill_pattern_1, ANIM_SIZE);
-    } else if (!F2_active && F2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (F2_active && F2s_active) {
-        oled_write_raw_P(combined_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(17, 9);
-    oled_write_raw_P(G2_active ? combined_4 : basic_empty_3, ANIM_SIZE);
-
-    oled_set_cursor(18, 9);
-    if (G2s_active && !A2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!G2s_active && A2_active) {
-        oled_write_raw_P(combined_3, ANIM_SIZE);
-    } else if (G2s_active && A2_active) {
-        oled_write_raw_P(combined_2, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(19, 9);
-    if (A2_active && !A2s_active) {
-        oled_write_raw_P(fill_pattern_1, ANIM_SIZE);
-    } else if (!A2_active && A2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (A2_active && A2s_active) {
-        oled_write_raw_P(combined_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(20, 9);
-    oled_write_raw_P(B2_active ? transition_2 : basic_empty_6, ANIM_SIZE);
-
-    oled_set_cursor(21, 9);
-    oled_write_raw_P(endbar, 2);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    // ROW 2
+    // === ROW 2 (y=10) - Middle of black keys ===
+    memset(row_buf, 0, 128);
+    memcpy_P(row_buf + 0,   C1_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    if (C1_active && !C1s_active)       memcpy_P(row_buf + 6,  special_fill_7, ANIM_SIZE);
+    else if (!C1_active && C1s_active)  memcpy_P(row_buf + 6,  fill_pattern_3, ANIM_SIZE);
+    else if (C1_active && C1s_active)   memcpy_P(row_buf + 6,  special_fill_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 6,  basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 12,  D1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (D1s_active && !E1_active)       memcpy_P(row_buf + 18, fill_pattern_2, ANIM_SIZE);
+    else if (!D1s_active && E1_active)  memcpy_P(row_buf + 18, combined_6, ANIM_SIZE);
+    else if (D1s_active && E1_active)   memcpy_P(row_buf + 18, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 18, basic_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 24,  E1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 30,  F1_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
+    if (F1s_active && !G1_active)       memcpy_P(row_buf + 36, fill_pattern_2, ANIM_SIZE);
+    else if (!F1s_active && G1_active)  memcpy_P(row_buf + 36, combined_6, ANIM_SIZE);
+    else if (F1s_active && G1_active)   memcpy_P(row_buf + 36, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 36, basic_empty_2, ANIM_SIZE);
+    if (G1_active && !G1s_active)       memcpy_P(row_buf + 42, special_fill_7, ANIM_SIZE);
+    else if (!G1_active && G1s_active)  memcpy_P(row_buf + 42, fill_pattern_3, ANIM_SIZE);
+    else if (G1_active && G1s_active)   memcpy_P(row_buf + 42, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 42, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 48,  A1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (A1s_active && !B1_active)       memcpy_P(row_buf + 54, fill_pattern_2, ANIM_SIZE);
+    else if (!A1s_active && B1_active)  memcpy_P(row_buf + 54, combined_6, ANIM_SIZE);
+    else if (A1s_active && B1_active)   memcpy_P(row_buf + 54, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 54, basic_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 60,  B1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 66,  C2_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
+    if (C2s_active && !D2_active)       memcpy_P(row_buf + 72, fill_pattern_2, ANIM_SIZE);
+    else if (!C2s_active && D2_active)  memcpy_P(row_buf + 72, combined_6, ANIM_SIZE);
+    else if (C2s_active && D2_active)   memcpy_P(row_buf + 72, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 72, basic_empty_2, ANIM_SIZE);
+    if (D2_active && !D2s_active)       memcpy_P(row_buf + 78, special_fill_7, ANIM_SIZE);
+    else if (!D2_active && D2s_active)  memcpy_P(row_buf + 78, fill_pattern_3, ANIM_SIZE);
+    else if (D2_active && D2s_active)   memcpy_P(row_buf + 78, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 78, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 84,  E2_active ? fill_pattern_4 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 90,  F2_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    if (F2_active && !F2s_active)       memcpy_P(row_buf + 96, special_fill_7, ANIM_SIZE);
+    else if (!F2_active && F2s_active)  memcpy_P(row_buf + 96, fill_pattern_3, ANIM_SIZE);
+    else if (F2_active && F2s_active)   memcpy_P(row_buf + 96, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 96, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 102, G2_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (G2s_active && !A2_active)       memcpy_P(row_buf + 108, fill_pattern_2, ANIM_SIZE);
+    else if (!G2s_active && A2_active)  memcpy_P(row_buf + 108, combined_6, ANIM_SIZE);
+    else if (G2s_active && A2_active)   memcpy_P(row_buf + 108, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 108, basic_empty_2, ANIM_SIZE);
+    if (A2_active && !A2s_active)       memcpy_P(row_buf + 114, special_fill_7, ANIM_SIZE);
+    else if (!A2_active && A2s_active)  memcpy_P(row_buf + 114, fill_pattern_3, ANIM_SIZE);
+    else if (A2_active && A2s_active)   memcpy_P(row_buf + 114, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 114, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 120, B2_active ? special_fill_5 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 126, endbar, 2);
     oled_set_cursor(0, 10);
-    oled_write_raw_P(C1_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    oled_write_raw(row_buf, 128);
 
-    oled_set_cursor(1, 10);
-    if (C1_active && !C1s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!C1_active && C1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (C1_active && C1s_active) {
-        oled_write_raw_P(special_fill_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(2, 10);
-    oled_write_raw_P(D1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-
-    oled_set_cursor(3, 10);
-    if (D1s_active && !E1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!D1s_active && E1_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (D1s_active && E1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(4, 10);
-    oled_write_raw_P(E1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
-
-    oled_set_cursor(5, 10);
-    oled_write_raw_P(F1_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
-
-    oled_set_cursor(6, 10);
-    if (F1s_active && !G1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!F1s_active && G1_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (F1s_active && G1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(7, 10);
-    if (G1_active && !G1s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!G1_active && G1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (G1_active && G1s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(8, 10);
-    oled_write_raw_P(A1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-
-    oled_set_cursor(9, 10);
-    if (A1s_active && !B1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!A1s_active && B1_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (A1s_active && B1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(10, 10);
-    oled_write_raw_P(B1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
-
-    oled_set_cursor(11, 10);
-    oled_write_raw_P(C2_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
-
-    oled_set_cursor(12, 10);
-    if (C2s_active && !D2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!C2s_active && D2_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (C2s_active && D2_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(13, 10);
-    if (D2_active && !D2s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!D2_active && D2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (D2_active && D2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(14, 10);
-    oled_write_raw_P(E2_active ? fill_pattern_4 : basic_empty_6, ANIM_SIZE);
-
-    oled_set_cursor(15, 10);
-    oled_write_raw_P(F2_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
-
-    oled_set_cursor(16, 10);
-    if (F2_active && !F2s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!F2_active && F2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (F2_active && F2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(17, 10);
-    oled_write_raw_P(G2_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(18, 10);
-    if (G2s_active && !A2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!G2s_active && A2_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (G2s_active && A2_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(19, 10);
-    if (A2_active && !A2s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!A2_active && A2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (A2_active && A2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(20, 10);
-    oled_write_raw_P(B2_active ? special_fill_5 : basic_empty_6, ANIM_SIZE);
-
-    oled_set_cursor(21, 10);
-    oled_write_raw_P(endbar, 2);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    // ROW 3 (continues with same pattern optimization...)
+    // === ROW 3 (y=11) - Lower middle of black keys ===
+    memset(row_buf, 0, 128);
+    memcpy_P(row_buf + 0,   C1_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    if (C1_active && !C1s_active)       memcpy_P(row_buf + 6,  special_fill_7, ANIM_SIZE);
+    else if (!C1_active && C1s_active)  memcpy_P(row_buf + 6,  fill_pattern_3, ANIM_SIZE);
+    else if (C1_active && C1s_active)   memcpy_P(row_buf + 6,  fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 6,  basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 12,  D1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (D1s_active && !E1_active)       memcpy_P(row_buf + 18, fill_pattern_2, ANIM_SIZE);
+    else if (!D1s_active && E1_active)  memcpy_P(row_buf + 18, combined_6, ANIM_SIZE);
+    else if (D1s_active && E1_active)   memcpy_P(row_buf + 18, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 18, basic_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 24,  E1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 30,  F1_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
+    if (F1s_active && !G1_active)       memcpy_P(row_buf + 36, fill_pattern_2, ANIM_SIZE);
+    else if (!F1s_active && G1_active)  memcpy_P(row_buf + 36, combined_6, ANIM_SIZE);
+    else if (F1s_active && G1_active)   memcpy_P(row_buf + 36, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 36, basic_empty_2, ANIM_SIZE);
+    if (G1_active && !G1s_active)       memcpy_P(row_buf + 42, special_fill_7, ANIM_SIZE);
+    else if (!G1_active && G1s_active)  memcpy_P(row_buf + 42, fill_pattern_3, ANIM_SIZE);
+    else if (G1_active && G1s_active)   memcpy_P(row_buf + 42, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 42, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 48,  A1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (A1s_active && !B1_active)       memcpy_P(row_buf + 54, fill_pattern_2, ANIM_SIZE);
+    else if (!A1s_active && B1_active)  memcpy_P(row_buf + 54, combined_6, ANIM_SIZE);
+    else if (A1s_active && B1_active)   memcpy_P(row_buf + 54, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 54, basic_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 60,  B1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 66,  C2_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
+    if (C2s_active && !D2_active)       memcpy_P(row_buf + 72, fill_pattern_2, ANIM_SIZE);
+    else if (!C2s_active && D2_active)  memcpy_P(row_buf + 72, combined_6, ANIM_SIZE);
+    else if (C2s_active && D2_active)   memcpy_P(row_buf + 72, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 72, basic_empty_2, ANIM_SIZE);
+    if (D2_active && !D2s_active)       memcpy_P(row_buf + 78, special_fill_7, ANIM_SIZE);
+    else if (!D2_active && D2s_active)  memcpy_P(row_buf + 78, fill_pattern_3, ANIM_SIZE);
+    else if (D2_active && D2s_active)   memcpy_P(row_buf + 78, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 78, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 84,  E2_active ? fill_pattern_4 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 90,  F2_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    if (F2_active && !F2s_active)       memcpy_P(row_buf + 96, special_fill_7, ANIM_SIZE);
+    else if (!F2_active && F2s_active)  memcpy_P(row_buf + 96, fill_pattern_3, ANIM_SIZE);
+    else if (F2_active && F2s_active)   memcpy_P(row_buf + 96, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 96, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 102, G2_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (G2s_active && !A2_active)       memcpy_P(row_buf + 108, fill_pattern_2, ANIM_SIZE);
+    else if (!G2s_active && A2_active)  memcpy_P(row_buf + 108, combined_6, ANIM_SIZE);
+    else if (G2s_active && A2_active)   memcpy_P(row_buf + 108, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 108, basic_empty_2, ANIM_SIZE);
+    if (A2_active && !A2s_active)       memcpy_P(row_buf + 114, special_fill_7, ANIM_SIZE);
+    else if (!A2_active && A2s_active)  memcpy_P(row_buf + 114, fill_pattern_3, ANIM_SIZE);
+    else if (A2_active && A2s_active)   memcpy_P(row_buf + 114, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 114, basic_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 120, B2_active ? special_fill_5 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 126, endbar, 2);
     oled_set_cursor(0, 11);
-    oled_write_raw_P(C1_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    oled_write_raw(row_buf, 128);
 
-    oled_set_cursor(1, 11);
-    if (C1_active && !C1s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!C1_active && C1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (C1_active && C1s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(2, 11);
-    oled_write_raw_P(D1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-
-    oled_set_cursor(3, 11);
-    if (D1s_active && !E1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!D1s_active && E1_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (D1s_active && E1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(4, 11);
-    oled_write_raw_P(E1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
-
-    oled_set_cursor(5, 11);
-    oled_write_raw_P(F1_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
-
-    oled_set_cursor(6, 11);
-    if (F1s_active && !G1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!F1s_active && G1_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (F1s_active && G1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(7, 11);
-    if (G1_active && !G1s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!G1_active && G1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (G1_active && G1s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(8, 11);
-    oled_write_raw_P(A1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(9, 11);
-    if (A1s_active && !B1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!A1s_active && B1_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (A1s_active && B1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(10, 11);
-    oled_write_raw_P(B1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
-
-    oled_set_cursor(11, 11);
-    oled_write_raw_P(C2_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
-
-    oled_set_cursor(12, 11);
-    if (C2s_active && !D2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!C2s_active && D2_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (C2s_active && D2_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(13, 11);
-    if (D2_active && !D2s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!D2_active && D2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (D2_active && D2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(14, 11);
-    oled_write_raw_P(E2_active ? fill_pattern_4 : basic_empty_6, ANIM_SIZE);
-
-    oled_set_cursor(15, 11);
-    oled_write_raw_P(F2_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
-
-    oled_set_cursor(16, 11);
-    if (F2_active && !F2s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!F2_active && F2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (F2_active && F2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(17, 11);
-    oled_write_raw_P(G2_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-
-    oled_set_cursor(18, 11);
-    if (G2s_active && !A2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!G2s_active && A2_active) {
-        oled_write_raw_P(combined_6, ANIM_SIZE);
-    } else if (G2s_active && A2_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(19, 11);
-    if (A2_active && !A2s_active) {
-        oled_write_raw_P(special_fill_7, ANIM_SIZE);
-    } else if (!A2_active && A2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (A2_active && A2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(basic_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(20, 11);
-    oled_write_raw_P(B2_active ? special_fill_5 : basic_empty_6, ANIM_SIZE);
-
-    oled_set_cursor(21, 11);
-    oled_write_raw_P(endbar, 2);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    // ROW 4
+    // === ROW 4 (y=12) - Bottom of black keys (row4_ patterns) ===
+    memset(row_buf, 0, 128);
+    memcpy_P(row_buf + 0,   C1_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    if (C1_active && !C1s_active)       memcpy_P(row_buf + 6,  row4_full_1, ANIM_SIZE);
+    else if (!C1_active && C1s_active)  memcpy_P(row_buf + 6,  fill_pattern_3, ANIM_SIZE);
+    else if (C1_active && C1s_active)   memcpy_P(row_buf + 6,  fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 6,  row4_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 12,  D1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (D1s_active && !E1_active)       memcpy_P(row_buf + 18, fill_pattern_2, ANIM_SIZE);
+    else if (!D1s_active && E1_active)  memcpy_P(row_buf + 18, combined_7, ANIM_SIZE);
+    else if (D1s_active && E1_active)   memcpy_P(row_buf + 18, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 18, row4_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 24,  E1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 30,  F1_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
+    if (F1s_active && !G1_active)       memcpy_P(row_buf + 36, fill_pattern_2, ANIM_SIZE);
+    else if (!F1s_active && G1_active)  memcpy_P(row_buf + 36, combined_7, ANIM_SIZE);
+    else if (F1s_active && G1_active)   memcpy_P(row_buf + 36, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 36, row4_empty_1, ANIM_SIZE);
+    if (G1_active && !G1s_active)       memcpy_P(row_buf + 42, row4_full_1, ANIM_SIZE);
+    else if (!G1_active && G1s_active)  memcpy_P(row_buf + 42, fill_pattern_3, ANIM_SIZE);
+    else if (G1_active && G1s_active)   memcpy_P(row_buf + 42, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 42, row4_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 48,  A1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (A1s_active && !B1_active)       memcpy_P(row_buf + 54, fill_pattern_2, ANIM_SIZE);
+    else if (!A1s_active && B1_active)  memcpy_P(row_buf + 54, combined_7, ANIM_SIZE);
+    else if (A1s_active && B1_active)   memcpy_P(row_buf + 54, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 54, row4_empty_1, ANIM_SIZE);
+    memcpy_P(row_buf + 60,  B1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
+    memcpy_P(row_buf + 66,  C2_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
+    if (C2s_active && !D2_active)       memcpy_P(row_buf + 72, fill_pattern_2, ANIM_SIZE);
+    else if (!C2s_active && D2_active)  memcpy_P(row_buf + 72, combined_7, ANIM_SIZE);
+    else if (C2s_active && D2_active)   memcpy_P(row_buf + 72, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 72, row4_empty_1, ANIM_SIZE);
+    if (D2_active && !D2s_active)       memcpy_P(row_buf + 78, row4_full_1, ANIM_SIZE);
+    else if (!D2_active && D2s_active)  memcpy_P(row_buf + 78, fill_pattern_3, ANIM_SIZE);
+    else if (D2_active && D2s_active)   memcpy_P(row_buf + 78, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 78, row4_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 84,  E2_active ? fill_pattern_4 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 90,  F2_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    if (F2_active && !F2s_active)       memcpy_P(row_buf + 96, row4_full_1, ANIM_SIZE);
+    else if (!F2_active && F2s_active)  memcpy_P(row_buf + 96, fill_pattern_3, ANIM_SIZE);
+    else if (F2_active && F2s_active)   memcpy_P(row_buf + 96, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 96, row4_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 102, G2_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
+    if (G2s_active && !A2_active)       memcpy_P(row_buf + 108, fill_pattern_2, ANIM_SIZE);
+    else if (!G2s_active && A2_active)  memcpy_P(row_buf + 108, combined_7, ANIM_SIZE);
+    else if (G2s_active && A2_active)   memcpy_P(row_buf + 108, special_fill_1, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 108, row4_empty_1, ANIM_SIZE);
+    if (A2_active && !A2s_active)       memcpy_P(row_buf + 114, row4_full_1, ANIM_SIZE);
+    else if (!A2_active && A2s_active)  memcpy_P(row_buf + 114, fill_pattern_3, ANIM_SIZE);
+    else if (A2_active && A2s_active)   memcpy_P(row_buf + 114, fill_pattern_4, ANIM_SIZE);
+    else                                memcpy_P(row_buf + 114, row4_empty_2, ANIM_SIZE);
+    memcpy_P(row_buf + 120, B2_active ? special_fill_5 : basic_empty_6, ANIM_SIZE);
+    memcpy_P(row_buf + 126, endbar, 2);
     oled_set_cursor(0, 12);
-    oled_write_raw_P(C1_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
+    oled_write_raw(row_buf, 128);
 
-    oled_set_cursor(1, 12);
-    if (C1_active && !C1s_active) {
-        oled_write_raw_P(row4_full_1, ANIM_SIZE);
-    } else if (!C1_active && C1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (C1_active && C1s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(2, 12);
-    oled_write_raw_P(D1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-
-    oled_set_cursor(3, 12);
-    if (D1s_active && !E1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!D1s_active && E1_active) {
-        oled_write_raw_P(combined_7, ANIM_SIZE);
-    } else if (D1s_active && E1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_1, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(4, 12);
-    oled_write_raw_P(E1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
-
-    oled_set_cursor(5, 12);
-    oled_write_raw_P(F1_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
-
-    oled_set_cursor(6, 12);
-    if (F1s_active && !G1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!F1s_active && G1_active) {
-        oled_write_raw_P(combined_7, ANIM_SIZE);
-    } else if (F1s_active && G1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(7, 12);
-    if (G1_active && !G1s_active) {
-        oled_write_raw_P(row4_full_1, ANIM_SIZE);
-    } else if (!G1_active && G1s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (G1_active && G1s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(8, 12);
-    oled_write_raw_P(A1_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(9, 12);
-    if (A1s_active && !B1_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!A1s_active && B1_active) {
-        oled_write_raw_P(combined_7, ANIM_SIZE);
-    } else if (A1s_active && B1_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(10, 12);
-    oled_write_raw_P(B1_active ? combined_5 : basic_empty_4, ANIM_SIZE);
-
-    oled_set_cursor(11, 12);
-    oled_write_raw_P(C2_active ? special_fill_1 : basic_empty_5, ANIM_SIZE);
-
-    oled_set_cursor(12, 12);
-    if (C2s_active && !D2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!C2s_active && D2_active) {
-        oled_write_raw_P(combined_7, ANIM_SIZE);
-    } else if (C2s_active && D2_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(13, 12);
-    if (D2_active && !D2s_active) {
-        oled_write_raw_P(row4_full_1, ANIM_SIZE);
-    } else if (!D2_active && D2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (D2_active && D2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_2, ANIM_SIZE);
-    }
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(14, 12);
-    oled_write_raw_P(E2_active ? fill_pattern_4 : basic_empty_6, ANIM_SIZE);
-
-    oled_set_cursor(15, 12);
-    oled_write_raw_P(F2_active ? special_fill_8 : basic_empty_7, ANIM_SIZE);
-
-    oled_set_cursor(16, 12);
-    if (F2_active && !F2s_active) {
-        oled_write_raw_P(row4_full_1, ANIM_SIZE);
-    } else if (!F2_active && F2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (F2_active && F2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(17, 12);
-    oled_write_raw_P(G2_active ? special_fill_4 : basic_empty_3, ANIM_SIZE);
-
-    oled_set_cursor(18, 12);
-    if (G2s_active && !A2_active) {
-        oled_write_raw_P(fill_pattern_2, ANIM_SIZE);
-    } else if (!G2s_active && A2_active) {
-        oled_write_raw_P(combined_7, ANIM_SIZE);
-    } else if (G2s_active && A2_active) {
-        oled_write_raw_P(special_fill_1, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_1, ANIM_SIZE);
-    }
-
-    oled_set_cursor(19, 12);
-    if (A2_active && !A2s_active) {
-        oled_write_raw_P(row4_full_1, ANIM_SIZE);
-    } else if (!A2_active && A2s_active) {
-        oled_write_raw_P(fill_pattern_3, ANIM_SIZE);
-    } else if (A2_active && A2s_active) {
-        oled_write_raw_P(fill_pattern_4, ANIM_SIZE);
-    } else {
-        oled_write_raw_P(row4_empty_2, ANIM_SIZE);
-    }
-
-    oled_set_cursor(20, 12);
-    oled_write_raw_P(B2_active ? special_fill_5 : basic_empty_6, ANIM_SIZE);
-
-    oled_set_cursor(21, 12);
-    oled_write_raw_P(endbar, 2);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    // ROW 5
+    // === ROW 5 (y=13) - White key bodies (wide patterns) ===
+    memset(row_buf, 0, 128);
+    memcpy_P(row_buf + 0,   C1_active ? wide_full_1 : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 12,  D1_active ? special_fill_2 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 18,  E1_active ? wide_full_2 : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 30,  F1_active ? wide_full_3 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 36,  G1_active ? wide_pattern_transition_2 : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 48,  A1_active ? special_fill_2 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 54,  B1_active ? wide_full_2 : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 66,  C2_active ? wide_full_3 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 72,  D2_active ? wide_pattern_transition_2 : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 84,  E2_active ? special_fill_6 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 90,  F2_active ? wide_full_1 : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 102, G2_active ? special_fill_2 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 108, A2_active ? wide_pattern_transition_2 : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 120, B2_active ? r5c14[1] : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 126, endbar, 2);
     oled_set_cursor(0, 13);
-    oled_write_raw_P(C1_active ? wide_full_1 : wide_empty, WIDE_ANIM_SIZE);
+    oled_write_raw(row_buf, 128);
 
-    oled_set_cursor(2, 13);
-    oled_write_raw_P(D1_active ? special_fill_2 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(3, 13);
-    oled_write_raw_P(E1_active ? wide_full_2 : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(5, 13);
-    oled_write_raw_P(F1_active ? wide_full_3 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(6, 13);
-    oled_write_raw_P(G1_active ? wide_pattern_transition_2 : wide_empty, WIDE_ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(8, 13);
-    oled_write_raw_P(A1_active ? special_fill_2 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(9, 13);
-    oled_write_raw_P(B1_active ? wide_full_2 : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(11, 13);
-    oled_write_raw_P(C2_active ? wide_full_3 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(12, 13);
-    oled_write_raw_P(D2_active ? wide_pattern_transition_2 : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(14, 13);
-    oled_write_raw_P(E2_active ? special_fill_6 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(15, 13);
-    oled_write_raw_P(F2_active ? wide_full_1 : wide_empty, WIDE_ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(17, 13);
-    oled_write_raw_P(G2_active ? special_fill_2 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(18, 13);
-    oled_write_raw_P(A2_active ? wide_pattern_transition_2 : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(20, 13);
-    oled_write_raw_P(B2_active ? r5c14[1] : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(21, 13);
-    oled_write_raw_P(endbar, 2);
-
-    // ROW 6
+    // === ROW 6 (y=14) - White key bottoms ===
+    memset(row_buf, 0, 128);
+    memcpy_P(row_buf + 0,   C1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 12,  D1_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 18,  E1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 30,  F1_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 36,  G1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 48,  A1_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 54,  B1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 66,  C2_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 72,  D2_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 84,  E2_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 90,  F2_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 102, G2_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 108, A2_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    memcpy_P(row_buf + 120, B2_active ? r5c14[1] : pattern_empty_special_1, ANIM_SIZE);
+    memcpy_P(row_buf + 126, endbar, 2);
     oled_set_cursor(0, 14);
-    oled_write_raw_P(C1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
+    oled_write_raw(row_buf, 128);
 
-    oled_set_cursor(2, 14);
-    oled_write_raw_P(D1_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(3, 14);
-    oled_write_raw_P(E1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(5, 14);
-    oled_write_raw_P(F1_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(6, 14);
-    oled_write_raw_P(G1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(8, 14);
-    oled_write_raw_P(A1_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(9, 14);
-    oled_write_raw_P(B1_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(11, 14);
-    oled_write_raw_P(C2_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(12, 14);
-    oled_write_raw_P(D2_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
-    if (++yield_counter >= 8) { yield_counter = 0; __asm__ __volatile__ ("nop"); }
-
-    oled_set_cursor(14, 14);
-    oled_write_raw_P(E2_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(15, 14);
-    oled_write_raw_P(F2_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(17, 14);
-    oled_write_raw_P(G2_active ? fill_pattern_5 : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(18, 14);
-    oled_write_raw_P(A2_active ? r6c1[1] : wide_empty, WIDE_ANIM_SIZE);
-
-    oled_set_cursor(20, 14);
-    oled_write_raw_P(B2_active ? r5c14[1] : pattern_empty_special_1, ANIM_SIZE);
-
-    oled_set_cursor(21, 14);
-    oled_write_raw_P(endbar, 2);
-
+    // Bottom border
     oled_set_cursor(0, 15);
     oled_write_raw_P(Keyboardbottom, 128);
 }
@@ -8732,9 +8298,13 @@ void animate_luna(void) {
 #endif
 
     /* animation timer */
+    static uint32_t prev_rendered_notes = 0xFFFFFFFF;
     if (timer_elapsed32(anim_timer) > ANIM_FRAME_DURATION) {
         anim_timer = timer_read32();
-        animate_luna();
+        if (active_notes != prev_rendered_notes) {
+            prev_rendered_notes = active_notes;
+            animate_luna();
+        }
     }
 }
 
