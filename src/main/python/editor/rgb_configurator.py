@@ -875,9 +875,6 @@ CUSTOM_LIGHT_COLOR_TYPES = [
     "Spectrum Cycle"     # 16
 ]
 
-CUSTOM_LIGHT_SUSTAIN_MODES = [
-    "None", "Live Only", "Macro Only", "All"
-]
 
 CUSTOM_LIGHT_PRESETS = [
     "Classic TrueKey", "Heat Effects", "Moving Dots", "BPM Disco",
@@ -2368,7 +2365,7 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(live_style, row, 3)
         row += 1
 
-        # Live Brightness slider
+        # Live Brightness + Speed on same row
         live_bright_label = QLabel(tr("RGBConfigurator", "Brightness:"))
         layout.addWidget(live_bright_label, row, 0)
         live_brightness = QSlider(QtCore.Qt.Horizontal)
@@ -2376,18 +2373,15 @@ class CustomLightsHandler(BasicHandler):
         live_brightness.setMaximum(255)
         live_brightness.setValue(255)
         live_brightness.valueChanged.connect(lambda value, s=slot: self.on_live_brightness_changed(s, value))
-        layout.addWidget(live_brightness, row, 1, 1, 3)
-        row += 1
-
-        # Live Speed slider
+        layout.addWidget(live_brightness, row, 1)
         live_speed_label = QLabel(tr("RGBConfigurator", "Speed:"))
-        layout.addWidget(live_speed_label, row, 0)
+        layout.addWidget(live_speed_label, row, 2)
         live_speed = QSlider(QtCore.Qt.Horizontal)
         live_speed.setMinimum(0)
         live_speed.setMaximum(255)
         live_speed.setValue(128)
         live_speed.valueChanged.connect(lambda value, s=slot: self.on_live_speed_changed(s, value))
-        layout.addWidget(live_speed, row, 1, 1, 3)
+        layout.addWidget(live_speed, row, 3)
         row += 1
 
         # Enable Live Dynamic Brightness checkbox
@@ -2423,7 +2417,7 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(macro_style, row, 3)
         row += 1
 
-        # Macro Brightness slider
+        # Macro Brightness + Speed on same row
         macro_bright_label = QLabel(tr("RGBConfigurator", "Brightness:"))
         layout.addWidget(macro_bright_label, row, 0)
         macro_brightness = QSlider(QtCore.Qt.Horizontal)
@@ -2431,18 +2425,15 @@ class CustomLightsHandler(BasicHandler):
         macro_brightness.setMaximum(255)
         macro_brightness.setValue(255)
         macro_brightness.valueChanged.connect(lambda value, s=slot: self.on_macro_brightness_changed(s, value))
-        layout.addWidget(macro_brightness, row, 1, 1, 3)
-        row += 1
-
-        # Macro Speed slider
+        layout.addWidget(macro_brightness, row, 1)
         macro_speed_label = QLabel(tr("RGBConfigurator", "Speed:"))
-        layout.addWidget(macro_speed_label, row, 0)
+        layout.addWidget(macro_speed_label, row, 2)
         macro_speed = QSlider(QtCore.Qt.Horizontal)
         macro_speed.setMinimum(0)
         macro_speed.setMaximum(255)
         macro_speed.setValue(128)
         macro_speed.valueChanged.connect(lambda value, s=slot: self.on_macro_speed_changed(s, value))
-        layout.addWidget(macro_speed, row, 1, 1, 3)
+        layout.addWidget(macro_speed, row, 3)
         row += 1
 
         # Enable Macro Dynamic Brightness checkbox
@@ -2472,27 +2463,24 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(background, row, 1, 1, 3)
         row += 1
 
-        # Background Brightness slider
-        bg_brightness_label = QLabel(tr("RGBConfigurator", "Bg Brightness:"))
+        # Background Brightness + Speed on same row
+        bg_brightness_label = QLabel(tr("RGBConfigurator", "Brightness:"))
         layout.addWidget(bg_brightness_label, row, 0)
         background_brightness = QSlider(QtCore.Qt.Horizontal)
         background_brightness.setMinimum(0)
         background_brightness.setMaximum(100)
         background_brightness.setValue(30)
         background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
-        layout.addWidget(background_brightness, row, 1, 1, 3)
-        row += 1
-
-        # Background Speed slider (was Sustain / pulse_mode)
-        bg_speed_label = QLabel(tr("RGBConfigurator", "Bg Speed:"))
-        layout.addWidget(bg_speed_label, row, 0)
+        layout.addWidget(background_brightness, row, 1)
+        bg_speed_label = QLabel(tr("RGBConfigurator", "Speed:"))
+        layout.addWidget(bg_speed_label, row, 2)
         bg_speed = QSlider(QtCore.Qt.Horizontal)
         bg_speed.setMinimum(0)
-        bg_speed.setMaximum(3)
-        bg_speed.setValue(3)
-        bg_speed.setToolTip("Background animation speed.\n0 = Off, 1 = Slow, 2 = Medium, 3 = Fast")
+        bg_speed.setMaximum(255)
+        bg_speed.setValue(128)
+        bg_speed.setToolTip("Background animation speed.\n0 = Slowest, 128 = Normal, 255 = Fastest")
         bg_speed.valueChanged.connect(lambda value, s=slot: self.on_bg_speed_changed(s, value))
-        layout.addWidget(bg_speed, row, 1, 1, 3)
+        layout.addWidget(bg_speed, row, 3)
         row += 1
 
         # Effect Colours section header
@@ -2720,7 +2708,7 @@ class CustomLightsHandler(BasicHandler):
         widgets['macro_effect'].setCurrentIndex(min(config[3], 171))
         widgets['macro_style'].setCurrentIndex(min(config[1], 46))
         widgets['background'].setCurrentIndex(min(config[5], 121))
-        widgets['bg_speed'].setValue(min(config[6], 3) if len(config) > 6 else 3)
+        widgets['bg_speed'].setValue(config[14] if len(config) > 14 else 128)
         widgets['color_type'].setCurrentIndex(min(config[7], 84))
         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
         flags = config[4] if len(config) > 4 else 0
@@ -2784,7 +2772,7 @@ class CustomLightsHandler(BasicHandler):
         widgets['vel_brightness_live'].setChecked(False)  # Off by default
         widgets['vel_brightness_macro'].setChecked(False) # Off by default
         widgets['color_type'].setCurrentIndex(1)          # Channel
-        widgets['bg_speed'].setValue(3)                   # Fast (was Sustain: All)
+        widgets['bg_speed'].setValue(128)                  # Default background speed
 
     def valid(self):
         """Always return True - always show custom lights section"""
@@ -2936,10 +2924,10 @@ class CustomLightsHandler(BasicHandler):
             self.device.keyboard.set_custom_slot_parameter(current_slot, 13, value)
 
     def on_bg_speed_changed(self, slot, value):
-        """Handle background speed change - send to CURRENT slot (param 6 / pulse_mode)"""
+        """Handle background speed change - send to CURRENT slot (param 14 / background_speed)"""
         current_slot = self.get_currently_active_slot()
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(current_slot, 6, value)
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 14, value)
 
     def on_color_type_changed(self, slot, index):
         """Handle color type change - send to CURRENT slot"""
@@ -2981,8 +2969,8 @@ class CustomLightsHandler(BasicHandler):
             if hasattr(self.device.keyboard, 'set_custom_slot_all_parameters'):
                 success = self.device.keyboard.set_custom_slot_all_parameters(
                     slot, live_pos, macro_pos, live_anim, macro_anim, flags,
-                    background, bg_speed, color_type, enabled, bg_brightness,
-                    live_speed, macro_speed, live_bright, macro_bright
+                    background, 3, color_type, enabled, bg_brightness,
+                    live_speed, macro_speed, live_bright, macro_bright, bg_speed
                 )
                 if success:
                     print(f"Saved GUI state to tab slot {slot + 1} EEPROM")
@@ -3030,9 +3018,10 @@ class CustomLightsHandler(BasicHandler):
                 success = self.device.keyboard.set_custom_slot_all_parameters(
                     slot,
                     preset['live_pos'], preset['macro_pos'], preset['live_anim'], preset['macro_anim'],
-                    0, preset['background'], preset.get('bg_speed', preset.get('sustain', 3)),
+                    0, preset['background'], 3,
                     preset['color'], 1, preset['bg_brightness'], preset['live_speed'], preset['macro_speed'],
-                    preset.get('live_brightness', 255), preset.get('macro_brightness', 255)
+                    preset.get('live_brightness', 255), preset.get('macro_brightness', 255),
+                    preset.get('background_speed', 128)
                 )
                 if success:
                     # Update GUI to reflect the loaded preset
@@ -3042,7 +3031,7 @@ class CustomLightsHandler(BasicHandler):
                     widgets['macro_effect'].setCurrentIndex(preset['macro_anim'])
                     widgets['macro_style'].setCurrentIndex(preset['macro_pos'])
                     widgets['background'].setCurrentIndex(preset['background'])
-                    widgets['bg_speed'].setValue(preset.get('bg_speed', preset.get('sustain', 3)))
+                    widgets['bg_speed'].setValue(preset.get('background_speed', 128))
                     widgets['color_type'].setCurrentIndex(preset['color'])
                     widgets['background_brightness'].setValue(preset['bg_brightness'])
                     widgets['live_speed'].setValue(preset['live_speed'])

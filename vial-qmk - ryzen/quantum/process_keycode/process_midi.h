@@ -198,7 +198,7 @@ extern uint8_t sustain_notes[MAX_SUSTAIN_NOTES][3]; // [channel, note, velocity]
 extern uint8_t sustain_note_count;
 
 #define NUM_CUSTOM_SLOTS 50
-#define NUM_CUSTOM_PARAMETERS 14
+#define NUM_CUSTOM_PARAMETERS 15
 // =============================================================================
 // NEW MODULAR SYSTEM ENUMS
 // =============================================================================
@@ -850,6 +850,7 @@ typedef struct {
     uint8_t macro_speed;           // 0-255 macro animation speed
     uint8_t live_brightness;       // 0-255 independent live animation brightness ceiling
     uint8_t macro_brightness;      // 0-255 independent macro animation brightness ceiling
+    uint8_t background_speed;      // 0-255 background animation speed
 } custom_animation_config_t;
 
 // =============================================================================
@@ -876,6 +877,7 @@ void set_custom_slot_color_type(uint8_t slot, uint8_t value);
 void set_custom_slot_enabled(uint8_t slot, bool value);
 void set_custom_slot_live_brightness(uint8_t slot, uint8_t value);
 void set_custom_slot_macro_brightness(uint8_t slot, uint8_t value);
+void set_custom_slot_background_speed(uint8_t slot, uint8_t value);
 
 // EEPROM functions
 void save_custom_animations_to_eeprom(void);
@@ -899,6 +901,7 @@ void set_and_save_custom_slot_live_speed(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_macro_speed(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_live_brightness(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_macro_brightness(uint8_t slot, uint8_t value);
+void set_and_save_custom_slot_background_speed(uint8_t slot, uint8_t value);
 
 // Batch parameter functions
 void set_custom_slot_parameters_from_bytes(uint8_t slot, uint8_t* data);

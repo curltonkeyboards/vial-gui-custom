@@ -372,12 +372,13 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				case 11: set_and_save_custom_slot_macro_speed(slot, value); break;
 				case 12: set_and_save_custom_slot_live_brightness(slot, value); break;
 				case 13: set_and_save_custom_slot_macro_brightness(slot, value); break;
+				case 14: set_and_save_custom_slot_background_speed(slot, value); break;
 				default:
 					msg[0] = 0x00; // Error - invalid parameter
 					break;
 			}
-			
-			if (param <= 13) {
+
+			if (param <= 14) {
 				msg[0] = 0x01; // Success
 			}
 			break;
@@ -392,10 +393,10 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				break;
 			}
 
-			uint8_t data[14];
+			uint8_t data[15];
 			get_custom_slot_parameters_as_bytes(slot, data);
 
-			if (param <= 13) {
+			if (param <= 14) {
 				msg[0] = 0x01; // Success
 				msg[4] = data[param]; // Return parameter value
 			} else {
@@ -412,8 +413,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				break;
 			}
 
-			uint8_t data[14];
-			for (int i = 0; i < 14; i++) {
+			uint8_t data[15];
+			for (int i = 0; i < 15; i++) {
 				data[i] = msg[3 + i];
 			}
 			
@@ -431,18 +432,18 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				break;
 			}
 
-			uint8_t data[14];
-			
+			uint8_t data[15];
+
 			if (source == 1) {
 				// Read from EEPROM
-				get_custom_slot_parameters_from_eeprom(slot, data);  // NEW function needed
+				get_custom_slot_parameters_from_eeprom(slot, data);
 			} else {
 				// Read from RAM (existing behavior)
 				get_custom_slot_parameters_as_bytes(slot, data);
 			}
-			
+
 			msg[0] = 0x01; // Success
-			for (int i = 0; i < 14; i++) {
+			for (int i = 0; i < 15; i++) {
 				msg[3 + i] = data[i];
 			}
 			break;
@@ -481,6 +482,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             set_custom_slot_background_brightness(slot, 30);
             set_custom_slot_live_brightness(slot, 255);
             set_custom_slot_macro_brightness(slot, 255);
+            set_custom_slot_background_speed(slot, 128);
 
             save_custom_slot_to_eeprom(slot);
             msg[0] = 0x01; // Success
@@ -495,11 +497,11 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				break;
 			}
 
-			uint8_t data[14];
+			uint8_t data[15];
 			get_custom_slot_ram_stuff(slot, data);
 
 			msg[0] = 0x01; // Success
-			for (int i = 0; i < 14; i++) {
+			for (int i = 0; i < 15; i++) {
 				msg[3 + i] = data[i];
 			}
 			break;

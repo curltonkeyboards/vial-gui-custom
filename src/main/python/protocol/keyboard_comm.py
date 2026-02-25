@@ -1289,7 +1289,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             source = 1 if from_eeprom else 0
             data = self.usb_send(self.dev, struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_GET_ALL, slot, source), retries=20)
             if data and len(data) > 2 and data[0] == 0x01:
-                return data[3:17]
+                return data[3:18]
             return None
         except Exception as e:
             return None
@@ -1301,7 +1301,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
     def set_custom_slot_parameter(self, slot, param_index, value):
         """Set a single parameter for a custom animation slot"""
         try:
-            if slot >= 50 or param_index >= 14:
+            if slot >= 50 or param_index >= 15:
                 return False
                 
             data = self.usb_send(self.dev, struct.pack("BBBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_PARAM, slot, param_index, value), retries=20)
@@ -1310,16 +1310,16 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
 
     def set_custom_slot_all_parameters(self, slot, live_pos, macro_pos, live_anim, macro_anim, flags,
-                                     background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed,
-                                     live_brightness=255, macro_brightness=255):
+                                     background, pulse_mode, color_type, enabled, bg_brightness, live_speed, macro_speed,
+                                     live_brightness=255, macro_brightness=255, background_speed=128):
         """Set all parameters for a custom animation slot"""
         try:
             if slot >= 50:
                 return False
 
             params = [slot, live_pos, macro_pos, live_anim, macro_anim, flags,
-                     background, sustain, color_type, enabled, bg_brightness, live_speed, macro_speed,
-                     live_brightness, macro_brightness]
+                     background, pulse_mode, color_type, enabled, bg_brightness, live_speed, macro_speed,
+                     live_brightness, macro_brightness, background_speed]
             data = self.usb_send(self.dev, struct.pack("BB" + "B" * len(params), CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_SET_ALL, *params), retries=20)
             return data and len(data) > 0 and data[0] == 0x01
             
