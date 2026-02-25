@@ -2462,16 +2462,50 @@ class CustomLightsHandler(BasicHandler):
         background_brightness.valueChanged.connect(lambda value, s=slot: self.on_background_brightness_changed(s, value))
         layout.addWidget(background_brightness, 10, 1, 1, 2)
 
-        # Velocity Brightness toggle
+        # Live Brightness slider
+        live_bright_row = QHBoxLayout()
+        live_bright_label = QLabel(tr("RGBConfigurator", "Live Brightness:"))
+        live_bright_row.addWidget(self.create_help_label("Maximum brightness for live animations (0-255).\nIndependent of RGB brightness knob."))
+        live_bright_row.addWidget(live_bright_label)
+        layout.addLayout(live_bright_row, 11, 0)
+        live_brightness = QSlider(QtCore.Qt.Horizontal)
+        live_brightness.setMinimum(0)
+        live_brightness.setMaximum(255)
+        live_brightness.setValue(255)
+        live_brightness.valueChanged.connect(lambda value, s=slot: self.on_live_brightness_changed(s, value))
+        layout.addWidget(live_brightness, 11, 1, 1, 2)
+
+        # Macro Brightness slider
+        macro_bright_row = QHBoxLayout()
+        macro_bright_label = QLabel(tr("RGBConfigurator", "Macro Brightness:"))
+        macro_bright_row.addWidget(self.create_help_label("Maximum brightness for macro animations (0-255).\nIndependent of RGB brightness knob."))
+        macro_bright_row.addWidget(macro_bright_label)
+        layout.addLayout(macro_bright_row, 12, 0)
+        macro_brightness = QSlider(QtCore.Qt.Horizontal)
+        macro_brightness.setMinimum(0)
+        macro_brightness.setMaximum(255)
+        macro_brightness.setValue(255)
+        macro_brightness.valueChanged.connect(lambda value, s=slot: self.on_macro_brightness_changed(s, value))
+        layout.addWidget(macro_brightness, 12, 1, 1, 2)
+
+        # Velocity Brightness toggles (separate for live and macro)
         vel_bright_row = QHBoxLayout()
-        vel_bright_label = QLabel(tr("RGBConfigurator", "Velocity Brightness:"))
-        vel_bright_row.addWidget(self.create_help_label("When enabled, animation brightness is driven by\nkeypress velocity instead of a fixed value.\nSoft press = dim, hard press = bright."))
+        vel_bright_label = QLabel(tr("RGBConfigurator", "Vel Brightness:"))
+        vel_bright_row.addWidget(self.create_help_label("When enabled, animation brightness is driven by\nkeypress velocity instead of a fixed value.\nSoft press = dim, hard press = bright.\nCan be enabled separately for live and macro."))
         vel_bright_row.addWidget(vel_bright_label)
-        layout.addLayout(vel_bright_row, 11, 0)
-        velocity_brightness = QCheckBox(tr("RGBConfigurator", "Enable"))
-        velocity_brightness.setChecked(False)
-        velocity_brightness.stateChanged.connect(lambda state, s=slot: self.on_velocity_brightness_changed(s, state))
-        layout.addWidget(velocity_brightness, 11, 1, 1, 2)
+        layout.addLayout(vel_bright_row, 13, 0)
+        vel_bright_container = QHBoxLayout()
+        vel_brightness_live = QCheckBox(tr("RGBConfigurator", "Live"))
+        vel_brightness_live.setChecked(False)
+        vel_brightness_live.stateChanged.connect(lambda state, s=slot: self.on_vel_brightness_live_changed(s, state))
+        vel_bright_container.addWidget(vel_brightness_live)
+        vel_brightness_macro = QCheckBox(tr("RGBConfigurator", "Macro"))
+        vel_brightness_macro.setChecked(False)
+        vel_brightness_macro.stateChanged.connect(lambda state, s=slot: self.on_vel_brightness_macro_changed(s, state))
+        vel_bright_container.addWidget(vel_brightness_macro)
+        vel_bright_widget = QWidget()
+        vel_bright_widget.setLayout(vel_bright_container)
+        layout.addWidget(vel_bright_widget, 13, 1, 1, 2)
 
         # Effect Colours section header
         colours_header = QHBoxLayout()
@@ -2480,31 +2514,31 @@ class CustomLightsHandler(BasicHandler):
         colours_header.addWidget(self.create_help_label("Color settings for animations.\nControls how colors are applied to effects."))
         colours_header.addWidget(colours_label)
         colours_header.addStretch()
-        layout.addLayout(colours_header, 12, 0, 1, 3)
+        layout.addLayout(colours_header, 14, 0, 1, 3)
 
         # Colour Scheme
         colour_row = QHBoxLayout()
         colour_scheme_label = QLabel(tr("RGBConfigurator", "Colour Scheme:"))
         colour_row.addWidget(self.create_help_label("How colors are chosen for the animation.\nFixed colors, random, or based on key velocity/position."))
         colour_row.addWidget(colour_scheme_label)
-        layout.addLayout(colour_row, 13, 0)
+        layout.addLayout(colour_row, 15, 0)
         color_type = HierarchicalDropdown(CUSTOM_LIGHT_COLOR_TYPES_HIERARCHY)
         color_type.setStyleSheet("QComboBox { border-radius: 5px; }")
         color_type.valueChanged.connect(lambda idx, s=slot: self.on_color_type_changed(s, idx))
-        layout.addWidget(color_type, 13, 1, 1, 2)
+        layout.addWidget(color_type, 15, 1, 1, 2)
 
         # Sustain Mode
         sustain_row = QHBoxLayout()
         sustain_label = QLabel(tr("RGBConfigurator", "Sustain:"))
         sustain_row.addWidget(self.create_help_label("How long the animation lingers after key release.\nAffects fade-out behavior."))
         sustain_row.addWidget(sustain_label)
-        layout.addLayout(sustain_row, 14, 0)
+        layout.addLayout(sustain_row, 16, 0)
         sustain_mode = ArrowComboBox()
         for sustain in CUSTOM_LIGHT_SUSTAIN_MODES:
             sustain_mode.addItem(sustain)
         sustain_mode.setStyleSheet("QComboBox { border-radius: 5px; }")
         sustain_mode.currentIndexChanged.connect(lambda idx, s=slot: self.on_sustain_mode_changed(s, idx))
-        layout.addWidget(sustain_mode, 14, 1, 1, 2)
+        layout.addWidget(sustain_mode, 16, 1, 1, 2)
 
         # Buttons
         buttons_layout = QHBoxLayout()
@@ -2535,7 +2569,7 @@ class CustomLightsHandler(BasicHandler):
         
         buttons_widget = QWidget()
         buttons_widget.setLayout(buttons_layout)
-        layout.addWidget(buttons_widget, 15, 0, 1, 3)
+        layout.addWidget(buttons_widget, 17, 0, 1, 3)
 
         # Store widgets for this slot
         self.slot_widgets[slot] = {
@@ -2547,7 +2581,10 @@ class CustomLightsHandler(BasicHandler):
             'macro_speed': macro_speed,
             'background': background,
             'background_brightness': background_brightness,
-            'velocity_brightness': velocity_brightness,
+            'live_brightness': live_brightness,
+            'macro_brightness': macro_brightness,
+            'vel_brightness_live': vel_brightness_live,
+            'vel_brightness_macro': vel_brightness_macro,
             'color_type': color_type,
             'sustain_mode': sustain_mode,
             'preset_combo': preset_combo
@@ -2713,9 +2750,12 @@ class CustomLightsHandler(BasicHandler):
         widgets['color_type'].setCurrentIndex(min(config[7], 84))
         widgets['background_brightness'].setValue(config[9] if len(config) > 9 else 30)
         flags = config[4] if len(config) > 4 else 0
-        widgets['velocity_brightness'].setChecked(bool(flags & 0x02))
+        widgets['vel_brightness_live'].setChecked(bool(flags & 0x02))
+        widgets['vel_brightness_macro'].setChecked(bool(flags & 0x04))
         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
         widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
+        widgets['live_brightness'].setValue(config[12] if len(config) > 12 else 255)
+        widgets['macro_brightness'].setValue(config[13] if len(config) > 13 else 255)
             
     def update_from_keyboard(self):
         """Load current state and track active slot"""
@@ -2765,7 +2805,10 @@ class CustomLightsHandler(BasicHandler):
         widgets['macro_speed'].setValue(128)              # Default macro speed
         widgets['background'].setCurrentIndex(0)          # None
         widgets['background_brightness'].setValue(30)     # 30% background brightness
-        widgets['velocity_brightness'].setChecked(False)  # Off by default
+        widgets['live_brightness'].setValue(255)          # Full live brightness
+        widgets['macro_brightness'].setValue(255)         # Full macro brightness
+        widgets['vel_brightness_live'].setChecked(False)  # Off by default
+        widgets['vel_brightness_macro'].setChecked(False) # Off by default
         widgets['color_type'].setCurrentIndex(1)          # Channel
         widgets['sustain_mode'].setCurrentIndex(3)        # All
 
@@ -2868,12 +2911,11 @@ class CustomLightsHandler(BasicHandler):
         else:
             print(f"Background brightness changed: tab {slot} -> current slot {current_slot}, brightness {value}%")
 
-    def on_velocity_brightness_changed(self, slot, state):
-        """Handle velocity brightness toggle - send flags to CURRENT slot"""
+    def on_vel_brightness_live_changed(self, slot, state):
+        """Handle live velocity brightness toggle - send flags to CURRENT slot"""
         current_slot = self.get_currently_active_slot()
         enabled = state != 0
 
-        # Read current flags value, update bit 1
         current_flags = 0
         if hasattr(self.device.keyboard, 'get_custom_slot_config'):
             config = self.device.keyboard.get_custom_slot_config(current_slot, from_eeprom=False)
@@ -2881,12 +2923,43 @@ class CustomLightsHandler(BasicHandler):
                 current_flags = config[4]
 
         if enabled:
-            current_flags |= 0x02   # Set bit 1
+            current_flags |= 0x02   # Set bit 1 (live vel brightness)
         else:
             current_flags &= ~0x02  # Clear bit 1
 
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(current_slot, 4, current_flags)
+
+    def on_vel_brightness_macro_changed(self, slot, state):
+        """Handle macro velocity brightness toggle - send flags to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        enabled = state != 0
+
+        current_flags = 0
+        if hasattr(self.device.keyboard, 'get_custom_slot_config'):
+            config = self.device.keyboard.get_custom_slot_config(current_slot, from_eeprom=False)
+            if config and len(config) > 4:
+                current_flags = config[4]
+
+        if enabled:
+            current_flags |= 0x04   # Set bit 2 (macro vel brightness)
+        else:
+            current_flags &= ~0x04  # Clear bit 2
+
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 4, current_flags)
+
+    def on_live_brightness_changed(self, slot, value):
+        """Handle live brightness slider change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 12, value)
+
+    def on_macro_brightness_changed(self, slot, value):
+        """Handle macro brightness slider change - send to CURRENT slot"""
+        current_slot = self.get_currently_active_slot()
+        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
+            self.device.keyboard.set_custom_slot_parameter(current_slot, 13, value)
 
     def on_sustain_mode_changed(self, slot, index):
         """Handle sustain mode change - send to CURRENT slot"""
