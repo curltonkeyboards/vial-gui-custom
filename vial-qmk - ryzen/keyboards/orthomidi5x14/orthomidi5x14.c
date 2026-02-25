@@ -2285,6 +2285,38 @@ void start_progression_from_keycode(uint16_t keycode) {
     // Start the progression with the right key offset
     start_chord_progression(progression_id, key_offset);
 }
+// RAM keymap cache for fast rescan (avoids slow I2C EEPROM reads)
+// GUI sends keymap data here via HID, then triggers rescan from RAM
+static uint16_t keymap_ram_cache[12][MATRIX_ROWS][MATRIX_COLS];
+static bool keymap_ram_valid = false;
+
+// Helper: get keycode from RAM cache or EEPROM depending on mode
+static inline uint16_t get_keycode_for_scan(uint8_t layer, uint8_t row, uint8_t col) {
+    if (keymap_ram_valid) {
+        return keymap_ram_cache[layer][row][col];
+    }
+    return dynamic_keymap_get_keycode(layer, row, col);
+}
+
+// Receive one row of keymap data from GUI into RAM cache
+void receive_keymap_chunk(uint8_t chunk_index, const uint8_t *data) {
+    uint8_t layer = chunk_index / MATRIX_ROWS;
+    uint8_t row = chunk_index % MATRIX_ROWS;
+    if (layer >= 12 || row >= MATRIX_ROWS) return;
+
+    for (int col = 0; col < MATRIX_COLS; col++) {
+        keymap_ram_cache[layer][row][col] = (data[col * 2] << 8) | data[col * 2 + 1];
+    }
+}
+
+// Execute rescan using RAM-cached keymap data (no I2C EEPROM reads)
+void rescan_from_ram(void) {
+    keymap_ram_valid = true;
+    scan_keycode_categories();
+    scan_current_layer_midi_leds();
+    keymap_ram_valid = false;
+}
+
 // Discovery phase variables
 uint8_t discovered_layers_with_midi = 0;
 uint8_t discovered_max_notes_per_layer = 0;
@@ -2376,9 +2408,9 @@ void discover_midi_usage(void) {
         
         for (int row = 0; row < MATRIX_ROWS; row++) {
             for (int col = 0; col < MATRIX_COLS; col++) {
-                uint16_t keycode = dynamic_keymap_get_keycode(layer, row, col);
+                uint16_t keycode = get_keycode_for_scan(layer, row, col);
                 uint8_t note_index = 255;
-                
+
                 if (keycode >= 28931 && keycode <= 29002) {
                     note_index = keycode - 28931;
                 } else if (keycode >= 50688 && keycode <= 50759) {
@@ -2386,7 +2418,7 @@ void discover_midi_usage(void) {
                 } else if (keycode >= 50800 && keycode <= 50871) {
                     note_index = keycode - 50800;
                 }
-                
+
                 if (note_index != 255 && !note_found[note_index]) {
                     note_found[note_index] = true;
                     notes_in_this_layer++;
@@ -2477,10 +2509,10 @@ void populate_midi_data(void) {
             
             for (int row = 0; row < MATRIX_ROWS; row++) {
                 for (int col = 0; col < MATRIX_COLS; col++) {
-                    uint16_t keycode = dynamic_keymap_get_keycode(layer, row, col);
+                    uint16_t keycode = get_keycode_for_scan(layer, row, col);
                     uint8_t led_index = g_led_config.matrix_co[row][col];
                     uint8_t note_index = 255;
-                    
+
                     if (keycode >= 28931 && keycode <= 29002) {
                         note_index = keycode - 28931;
                     } else if (keycode >= 50688 && keycode <= 50759) {
@@ -2488,7 +2520,7 @@ void populate_midi_data(void) {
                     } else if (keycode >= 50800 && keycode <= 50871) {
                         note_index = keycode - 50800;
                     }
-                    
+
                     if (note_index != 255 && note_count[note_index] < 6) {
                         optimized_midi_positions[current_layer][note_index][note_count[note_index]] = led_index;
                         note_count[note_index]++;
@@ -2887,7 +2919,7 @@ void scan_keycode_categories(void) {
         // Scan through the matrix for each layer
         for (int row = 0; row < MATRIX_ROWS; row++) {
             for (int col = 0; col < MATRIX_COLS; col++) {
-                uint16_t keycode = dynamic_keymap_get_keycode(layer, row, col);
+                uint16_t keycode = get_keycode_for_scan(layer, row, col);
                 uint8_t led_index = g_led_config.matrix_co[row][col];
                 
                 // Only process valid LED indices
