@@ -834,8 +834,6 @@ typedef struct {
 #define CUSTOM_ANIM_FLAG_INFLUENCE            (1 << 0)  // bit 0: use influence (legacy)
 #define CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_LIVE  (1 << 1)  // bit 1: velocity brightness for live animations
 #define CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_MACRO (1 << 2)  // bit 2: velocity brightness for macro animations
-#define CUSTOM_ANIM_FLAG_SUSTAIN_LIVE         (1 << 3)  // bit 3: sustain mode for live animations
-#define CUSTOM_ANIM_FLAG_SUSTAIN_MACRO        (1 << 4)  // bit 4: sustain mode for macro animations
 
 typedef struct {
     live_note_positioning_t live_positioning;

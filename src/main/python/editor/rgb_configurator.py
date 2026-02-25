@@ -2387,17 +2387,12 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(live_speed, row, 3)
         row += 1
 
-        # Enable Live Dynamic Brightness + Live Sustain checkboxes on same row
+        # Enable Live Dynamic Brightness checkbox
         vel_brightness_live = QCheckBox(tr("RGBConfigurator", "Enable Live Dynamic Brightness"))
         vel_brightness_live.setToolTip("When enabled, live animation brightness scales with\nkeypress velocity. Soft press = dim, hard press = bright.")
         vel_brightness_live.setChecked(False)
         vel_brightness_live.stateChanged.connect(lambda state, s=slot: self.on_vel_brightness_live_changed(s, state))
-        layout.addWidget(vel_brightness_live, row, 0, 1, 2)
-        sustain_live = QCheckBox(tr("RGBConfigurator", "Enable Live Sustain"))
-        sustain_live.setToolTip("When enabled, held keys stay lit until released.\nWorks with any live animation effect.")
-        sustain_live.setChecked(False)
-        sustain_live.stateChanged.connect(lambda state, s=slot: self.on_sustain_live_changed(s, state))
-        layout.addWidget(sustain_live, row, 2, 1, 2)
+        layout.addWidget(vel_brightness_live, row, 0, 1, 4)
         row += 1
 
         # Macro Animation section header
@@ -2447,17 +2442,12 @@ class CustomLightsHandler(BasicHandler):
         layout.addWidget(macro_speed, row, 3)
         row += 1
 
-        # Enable Macro Dynamic Brightness + Macro Sustain checkboxes on same row
+        # Enable Macro Dynamic Brightness checkbox
         vel_brightness_macro = QCheckBox(tr("RGBConfigurator", "Enable Macro Dynamic Brightness"))
         vel_brightness_macro.setToolTip("When enabled, macro animation brightness scales with\nkeypress velocity. Soft press = dim, hard press = bright.")
         vel_brightness_macro.setChecked(False)
         vel_brightness_macro.stateChanged.connect(lambda state, s=slot: self.on_vel_brightness_macro_changed(s, state))
-        layout.addWidget(vel_brightness_macro, row, 0, 1, 2)
-        sustain_macro = QCheckBox(tr("RGBConfigurator", "Enable Macro Sustain"))
-        sustain_macro.setToolTip("When enabled, held keys stay lit until released.\nWorks with any macro animation effect.")
-        sustain_macro.setChecked(False)
-        sustain_macro.stateChanged.connect(lambda state, s=slot: self.on_sustain_macro_changed(s, state))
-        layout.addWidget(sustain_macro, row, 2, 1, 2)
+        layout.addWidget(vel_brightness_macro, row, 0, 1, 4)
         row += 1
 
         # Background section header
@@ -2556,13 +2546,11 @@ class CustomLightsHandler(BasicHandler):
             'live_speed': live_speed,
             'live_brightness': live_brightness,
             'vel_brightness_live': vel_brightness_live,
-            'sustain_live': sustain_live,
             'macro_effect': macro_effect,
             'macro_style': macro_style,
             'macro_speed': macro_speed,
             'macro_brightness': macro_brightness,
             'vel_brightness_macro': vel_brightness_macro,
-            'sustain_macro': sustain_macro,
             'background': background,
             'background_brightness': background_brightness,
             'bg_speed': bg_speed,
@@ -2732,8 +2720,6 @@ class CustomLightsHandler(BasicHandler):
         flags = config[4] if len(config) > 4 else 0
         widgets['vel_brightness_live'].setChecked(bool(flags & 0x02))
         widgets['vel_brightness_macro'].setChecked(bool(flags & 0x04))
-        widgets['sustain_live'].setChecked(bool(flags & 0x08))
-        widgets['sustain_macro'].setChecked(bool(flags & 0x10))
         widgets['live_speed'].setValue(config[10] if len(config) > 10 else 128)
         widgets['macro_speed'].setValue(config[11] if len(config) > 11 else 128)
         widgets['live_brightness'].setValue(config[12] if len(config) > 12 else 255)
@@ -2791,8 +2777,6 @@ class CustomLightsHandler(BasicHandler):
         widgets['macro_brightness'].setValue(255)         # Full macro brightness
         widgets['vel_brightness_live'].setChecked(False)  # Off by default
         widgets['vel_brightness_macro'].setChecked(False) # Off by default
-        widgets['sustain_live'].setChecked(False)         # Off by default
-        widgets['sustain_macro'].setChecked(False)        # Off by default
         widgets['color_type'].setCurrentIndex(1)          # Channel
         widgets['bg_speed'].setValue(128)                  # Default background speed
 
@@ -2933,44 +2917,6 @@ class CustomLightsHandler(BasicHandler):
         if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
             self.device.keyboard.set_custom_slot_parameter(current_slot, 4, current_flags)
 
-    def on_sustain_live_changed(self, slot, state):
-        """Handle live sustain toggle - send flags to CURRENT slot"""
-        current_slot = self.get_currently_active_slot()
-        enabled = state != 0
-
-        current_flags = 0
-        if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-            config = self.device.keyboard.get_custom_slot_config(current_slot, from_eeprom=False)
-            if config and len(config) > 4:
-                current_flags = config[4]
-
-        if enabled:
-            current_flags |= 0x08   # Set bit 3 (live sustain)
-        else:
-            current_flags &= ~0x08  # Clear bit 3
-
-        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(current_slot, 4, current_flags)
-
-    def on_sustain_macro_changed(self, slot, state):
-        """Handle macro sustain toggle - send flags to CURRENT slot"""
-        current_slot = self.get_currently_active_slot()
-        enabled = state != 0
-
-        current_flags = 0
-        if hasattr(self.device.keyboard, 'get_custom_slot_config'):
-            config = self.device.keyboard.get_custom_slot_config(current_slot, from_eeprom=False)
-            if config and len(config) > 4:
-                current_flags = config[4]
-
-        if enabled:
-            current_flags |= 0x10   # Set bit 4 (macro sustain)
-        else:
-            current_flags &= ~0x10  # Clear bit 4
-
-        if hasattr(self.device.keyboard, 'set_custom_slot_parameter'):
-            self.device.keyboard.set_custom_slot_parameter(current_slot, 4, current_flags)
-
     def on_live_brightness_changed(self, slot, value):
         """Handle live brightness slider change - send to CURRENT slot"""
         current_slot = self.get_currently_active_slot()
@@ -3015,10 +2961,6 @@ class CustomLightsHandler(BasicHandler):
                 flags |= 0x02
             if widgets['vel_brightness_macro'].isChecked():
                 flags |= 0x04
-            if widgets['sustain_live'].isChecked():
-                flags |= 0x08
-            if widgets['sustain_macro'].isChecked():
-                flags |= 0x10
             background = widgets['background'].currentIndex()
             bg_speed = widgets['bg_speed'].value()
             color_type = widgets['color_type'].currentIndex()
