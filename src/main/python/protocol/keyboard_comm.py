@@ -28,7 +28,8 @@ from protocol.constants import CMD_VIA_GET_PROTOCOL_VERSION, CMD_VIA_GET_KEYBOAR
     CMD_VIAL_LAYER_RGB_SAVE, CMD_VIAL_LAYER_RGB_LOAD, CMD_VIAL_LAYER_RGB_ENABLE, CMD_VIAL_LAYER_RGB_GET_STATUS, \
     CMD_VIAL_CUSTOM_ANIM_SET_PARAM, CMD_VIAL_CUSTOM_ANIM_GET_PARAM, CMD_VIAL_CUSTOM_ANIM_SET_ALL, \
     CMD_VIAL_CUSTOM_ANIM_GET_ALL, CMD_VIAL_CUSTOM_ANIM_SAVE, CMD_VIAL_CUSTOM_ANIM_LOAD, \
-    CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS
+    CMD_VIAL_CUSTOM_ANIM_RESET_SLOT, CMD_VIAL_CUSTOM_ANIM_GET_STATUS, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS, \
+    CMD_VIAL_KEYMAP_RAM_RESCAN
 from protocol.dynamic import ProtocolDynamic
 from protocol.key_override import ProtocolKeyOverride
 from protocol.macro import ProtocolMacro
@@ -1355,9 +1356,51 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return False
             
     def rescan_led_positions(self):
-        """Rescan LED positions on the keyboard"""
+        """Rescan LED positions on the keyboard (reads from EEPROM - slow)"""
         try:
             data = self.usb_send(self.dev, struct.pack("BB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_CUSTOM_ANIM_RESCAN_LEDS), retries=20)
+            return data and len(data) > 0 and data[0] == 0x01
+        except Exception as e:
+            return False
+
+    def send_keymap_for_ram_rescan(self):
+        """Send current keymap from GUI RAM to firmware and trigger rescan.
+
+        Instead of the firmware reading keycodes from slow I2C EEPROM,
+        we send the keymap data the GUI already has in self.layout directly
+        to the firmware's RAM cache, then trigger a rescan from that cache.
+        This avoids ~5,040 I2C byte reads that would block the main loop.
+        """
+        try:
+            firmware_rows = getattr(self, 'firmware_rows', self.rows)
+            firmware_cols = getattr(self, 'firmware_cols', self.cols)
+
+            # Send keymap in chunks: 1 chunk = 1 row of 1 layer (14 keycodes × 2 bytes = 28 bytes)
+            # chunk_index = layer * firmware_rows + row
+            for layer in range(self.layers):
+                for row in range(firmware_rows):
+                    chunk_index = layer * firmware_rows + row
+                    # Build 28 bytes of keycode data for this row
+                    keycode_data = bytearray()
+                    for col in range(firmware_cols):
+                        key = (layer, row, col)
+                        code_str = self.layout.get(key, "KC_NO")
+                        code_int = Keycode.deserialize(code_str)
+                        keycode_data += struct.pack(">H", code_int)
+
+                    # Pad if fewer than 14 cols (shouldn't happen for 5×14, but be safe)
+                    while len(keycode_data) < 28:
+                        keycode_data += b'\x00\x00'
+
+                    # Send chunk: [0xFE, 0xE9, 0x00 (sub_cmd), chunk_index, data[28]]
+                    msg = struct.pack("BBBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_KEYMAP_RAM_RESCAN, 0x00, chunk_index)
+                    msg += bytes(keycode_data[:28])
+                    data = self.usb_send(self.dev, msg, retries=5)
+                    if not data or data[0] != 0x01:
+                        return False
+
+            # All chunks sent - trigger RAM-based rescan
+            data = self.usb_send(self.dev, struct.pack("BBB", CMD_VIA_VIAL_PREFIX, CMD_VIAL_KEYMAP_RAM_RESCAN, 0x01), retries=5)
             return data and len(data) > 0 and data[0] == 0x01
         except Exception as e:
             return False

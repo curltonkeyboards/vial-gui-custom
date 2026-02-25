@@ -87,6 +87,7 @@
 #define HID_CMD_LOAD_KEYBOARD_SLOT 0xBA
 #define HID_CMD_SET_KEYBOARD_CONFIG_ADVANCED 0xBB
 #define HID_CMD_SET_KEYBOARD_PARAM_SINGLE 0xE8  // Changed from 0xBD (collision with vial_layer_rgb_load)
+#define HID_CMD_KEYMAP_RAM_RESCAN        0xE9  // Receive keymap from GUI RAM and rescan (no EEPROM reads)
 
 // Per-Key Actuation Commands (0xE0-0xE6)
 #define HID_CMD_SET_PER_KEY_ACTUATION       0xE0
@@ -1108,6 +1109,30 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				msg[2] = value8;
 			} else {
 				msg[0] = 0x00; // Error - invalid length
+			}
+			break;
+		}
+
+		case HID_CMD_KEYMAP_RAM_RESCAN: {  // 0xE9 - Receive keymap data and rescan from RAM
+			uint8_t sub_cmd = msg[2];
+			if (sub_cmd == 0x00) {
+				// Sub-command 0x00: Receive keymap chunk
+				// Format: [0xFE, 0xE9, 0x00, chunk_index, keycode_data[28]]
+				// Each chunk = 1 row (14 keycodes × 2 bytes = 28 bytes)
+				// chunk_index: 0 to (12 * MATRIX_ROWS - 1), i.e. layer * MATRIX_ROWS + row
+				uint8_t chunk_index = msg[3];
+				if (chunk_index < 12 * MATRIX_ROWS) {
+					receive_keymap_chunk(chunk_index, &msg[4]);
+					msg[0] = 0x01;  // Success
+				} else {
+					msg[0] = 0x00;  // Error: invalid chunk index
+				}
+			} else if (sub_cmd == 0x01) {
+				// Sub-command 0x01: Trigger rescan from RAM cache
+				rescan_from_ram();
+				msg[0] = 0x01;  // Success
+			} else {
+				msg[0] = 0x00;  // Unknown sub-command
 			}
 			break;
 		}

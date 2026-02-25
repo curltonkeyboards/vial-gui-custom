@@ -2248,18 +2248,17 @@ class KeymapEditor(BasicEditor):
         KeycodeDisplay.notify_keymap_override(self)
 
         # Debounced MIDI/LED rescan timer - after keymap changes, waits for
-        # the user to stop editing before telling the firmware to rebuild its
-        # MIDI LED position arrays and LED category caches. This replaces the
-        # need to power-cycle or manually click "Rescan LED Positions".
+        # the user to stop editing before sending the keymap from GUI RAM to
+        # the firmware for a fast rescan (avoids slow I2C EEPROM reads).
         self._rescan_timer = QTimer()
         self._rescan_timer.setSingleShot(True)
         self._rescan_timer.setInterval(1000)
-        self._rescan_timer.timeout.connect(self._do_rescan_led_positions)
+        self._rescan_timer.timeout.connect(self._do_ram_rescan)
 
-    def _do_rescan_led_positions(self):
-        """Send rescan command to firmware to rebuild MIDI/LED caches."""
-        if self.keyboard and hasattr(self.keyboard, 'rescan_led_positions'):
-            self.keyboard.rescan_led_positions()
+    def _do_ram_rescan(self):
+        """Send keymap from GUI RAM to firmware and trigger fast rescan."""
+        if self.keyboard and hasattr(self.keyboard, 'send_keymap_for_ram_rescan'):
+            self.keyboard.send_keymap_for_ram_rescan()
 
     def _schedule_rescan(self):
         """Start or restart the debounced rescan timer."""
