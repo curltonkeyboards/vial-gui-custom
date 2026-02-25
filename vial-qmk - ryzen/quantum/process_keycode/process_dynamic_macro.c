@@ -4079,7 +4079,7 @@ if (is_independent_overdub && macro_num > 0) {
                 
                 if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
-                    add_lighting_macro_note(override_channel, transposed_note, track_id);
+                    add_lighting_macro_note(override_channel, transposed_note, track_id, offset_velocity);
 
                     dprintf("independent overdub: played note ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
                             state->current->channel, override_channel, state->current->note, transposed_note,
@@ -4100,7 +4100,7 @@ if (is_independent_overdub && macro_num > 0) {
                     uint8_t octave_note = apply_transpose(transposed_note, octave_doubler_value);
                     if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                         midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
-                        add_lighting_macro_note(override_channel, octave_note, track_id);
+                        add_lighting_macro_note(override_channel, octave_note, track_id, offset_velocity);
                     }
                     mark_note_from_macro(override_channel, octave_note, track_id);
                 }
@@ -4425,7 +4425,7 @@ if (is_independent_overdub && macro_num > 0) {
                 if (macro_override_live_notes || !is_live_note_active(override_channel, transposed_note)) {
                     if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                         midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
-                        add_lighting_macro_note(override_channel, transposed_note, track_id);
+                        add_lighting_macro_note(override_channel, transposed_note, track_id, offset_velocity);
                     }
                     if (macro_num > 0) {
                         mark_note_from_macro(override_channel, transposed_note, track_id);
@@ -4498,7 +4498,7 @@ if (is_independent_overdub && macro_num > 0) {
                         if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                             if (macro_num > 0 && (!macro_main_muted[macro_num - 1] || is_overdub_state)) {
                                 midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
-                                add_lighting_macro_note(override_channel, octave_note, track_id);
+                                add_lighting_macro_note(override_channel, octave_note, track_id, offset_velocity);
                             }
                             if (is_overdub_state) {
                                 dprintf("midi macro: played overdub octave note ch:%d->%d note:%d->%d raw:%d->vel:%d for macro %d\n",
@@ -7065,7 +7065,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                             // Only send if not muted and not a live note
                             if (!macro_main_muted[macro_idx] || is_overdub) {
                                 midi_send_noteon(&midi_device, override_channel, transposed_note, offset_velocity);
-                                add_lighting_macro_note(override_channel, transposed_note, track_id);
+                                add_lighting_macro_note(override_channel, transposed_note, track_id, offset_velocity);
                             }
                             
                             mark_note_from_macro(override_channel, transposed_note, track_id);
@@ -7080,7 +7080,7 @@ static void navigate_macro_to_absolute_time(macro_playback_state_t *state, uint3
                                 if (macro_override_live_notes || !is_live_note_active(override_channel, octave_note)) {
                                     if (!macro_main_muted[macro_idx] || is_overdub) {
                                         midi_send_noteon(&midi_device, override_channel, octave_note, offset_velocity);
-                                        add_lighting_macro_note(override_channel, octave_note, track_id);
+                                        add_lighting_macro_note(override_channel, octave_note, track_id, offset_velocity);
                                     }
                                 }
                                 mark_note_from_macro(override_channel, octave_note, track_id);

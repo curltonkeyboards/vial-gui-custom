@@ -7,9 +7,9 @@
 #endif
 
 // Function declarations for external use
-void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id);
+void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id, uint8_t velocity);
 void remove_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id);
-void add_lighting_live_note(uint8_t channel, uint8_t note);
+void add_lighting_live_note(uint8_t channel, uint8_t note, uint8_t velocity);
 void remove_lighting_live_note(uint8_t channel, uint8_t note);
 
 // BPM system integration (only used by live system)
@@ -125,7 +125,8 @@ bool truekey_effects_active = false;
 // UNIFIED NOTE MANAGEMENT FUNCTIONS
 // =============================================================================
 
-void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id) {
+void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id, uint8_t velocity) {
+    (void)velocity; // Not used in split master version
     remove_lighting_macro_note(channel, note, track_id);
     
     if (unified_lighting_count < MAX_UNIFIED_LIGHTING_NOTES) {
@@ -167,7 +168,8 @@ void remove_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id)
     }
 }
 
-void add_lighting_live_note(uint8_t channel, uint8_t note) {
+void add_lighting_live_note(uint8_t channel, uint8_t note, uint8_t velocity) {
+    (void)velocity; // Not used in split master version
     remove_lighting_live_note(channel, note);
     
     if (unified_lighting_count < MAX_UNIFIED_LIGHTING_NOTES) {
@@ -2166,9 +2168,9 @@ void set_custom_slot_macro_animation(uint8_t slot, uint8_t value) {
     }
 }
 
-void set_custom_slot_use_influence(uint8_t slot, bool value) {
+void set_custom_slot_flags(uint8_t slot, uint8_t value) {
     if (slot < NUM_CUSTOM_SLOTS) {
-        custom_slots[slot].use_influence = value;
+        custom_slots[slot].flags = value;
     }
 }
 
@@ -2228,7 +2230,7 @@ static bool run_custom_animation(effect_params_t* params, uint8_t slot_number) {
                                config->macro_positioning,
                                config->live_animation,
                                config->macro_animation,
-                               config->use_influence,
+                               config->flags,
                                config->background_mode,
                                config->pulse_mode,
                                config->color_type,

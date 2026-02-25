@@ -183,9 +183,9 @@ extern uint32_t current_bpm;
 #define MAX_LIVE_NOTES 32
 
 // Add these lines
-void add_lighting_live_note(uint8_t channel, uint8_t note);
+void add_lighting_live_note(uint8_t channel, uint8_t note, uint8_t velocity);
 void remove_lighting_live_note(uint8_t channel, uint8_t note);
-void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id);
+void add_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id, uint8_t velocity);
 void remove_lighting_macro_note(uint8_t channel, uint8_t note, uint8_t track_id);
 
 extern uint8_t live_notes[MAX_LIVE_NOTES][3];   // [channel, note, velocity]
@@ -830,19 +830,23 @@ typedef struct {
     bool enabled;
 } math_background_t;
 
+// Flags for custom_animation_config_t.flags field (param index 4)
+#define CUSTOM_ANIM_FLAG_INFLUENCE       (1 << 0)  // bit 0: use influence (legacy)
+#define CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS  (1 << 1)  // bit 1: velocity-based animation brightness
+
 typedef struct {
     live_note_positioning_t live_positioning;
     macro_note_positioning_t macro_positioning;
     live_animation_t live_animation;
     macro_animation_t macro_animation;
-    bool use_influence;
+    uint8_t flags;                 // bit 0: use_influence, bit 1: velocity brightness
     background_mode_t background_mode;
     uint8_t pulse_mode;
     uint8_t color_type;
     bool enabled;
     uint8_t background_brightness;  // 0-100 percentage relative to user brightness
-    uint8_t live_speed;            // NEW: 0-255 live animation speed
-    uint8_t macro_speed;           // NEW: 0-255 macro animation speed
+    uint8_t live_speed;            // 0-255 live animation speed
+    uint8_t macro_speed;           // 0-255 macro animation speed
 } custom_animation_config_t;
 
 // =============================================================================
@@ -862,7 +866,7 @@ void set_custom_slot_macro_positioning(uint8_t slot, uint8_t value);
 void set_custom_slot_background_brightness(uint8_t slot, uint8_t value);
 void set_custom_slot_live_animation(uint8_t slot, uint8_t value);
 void set_custom_slot_macro_animation(uint8_t slot, uint8_t value);
-void set_custom_slot_use_influence(uint8_t slot, bool value);
+void set_custom_slot_flags(uint8_t slot, uint8_t value);
 void set_custom_slot_background_mode(uint8_t slot, uint8_t value);
 void set_custom_slot_pulse_mode(uint8_t slot, uint8_t value);
 void set_custom_slot_color_type(uint8_t slot, uint8_t value);
@@ -880,7 +884,7 @@ void set_and_save_custom_slot_live_positioning(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_macro_positioning(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_live_animation(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_macro_animation(uint8_t slot, uint8_t value);
-void set_and_save_custom_slot_use_influence(uint8_t slot, bool value);
+void set_and_save_custom_slot_flags(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_background_mode(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_pulse_mode(uint8_t slot, uint8_t value);
 void set_and_save_custom_slot_color_type(uint8_t slot, uint8_t value);

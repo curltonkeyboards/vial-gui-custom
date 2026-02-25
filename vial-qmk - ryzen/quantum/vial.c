@@ -363,7 +363,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 				case 1: set_and_save_custom_slot_macro_positioning(slot, value); break;
 				case 2: set_and_save_custom_slot_live_animation(slot, value); break;
 				case 3: set_and_save_custom_slot_macro_animation(slot, value); break;
-				case 4: set_and_save_custom_slot_use_influence(slot, value != 0); break;
+				case 4: set_and_save_custom_slot_flags(slot, value); break;
 				case 5: set_and_save_custom_slot_background_mode(slot, value); break;
 				case 6: set_and_save_custom_slot_pulse_mode(slot, value); break;
 				case 7: set_and_save_custom_slot_color_type(slot, value); break;
@@ -473,7 +473,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             set_custom_slot_macro_positioning(slot, MACRO_POS_ZONE);
             set_custom_slot_live_animation(slot, LIVE_ANIM_NONE);
             set_custom_slot_macro_animation(slot, MACRO_ANIM_NONE);
-            set_custom_slot_use_influence(slot, false);
+            set_custom_slot_flags(slot, 0);
             set_custom_slot_background_mode(slot, BACKGROUND_NONE);
             set_custom_slot_pulse_mode(slot, 3);
             set_custom_slot_color_type(slot, 1);

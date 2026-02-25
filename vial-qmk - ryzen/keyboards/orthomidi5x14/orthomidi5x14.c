@@ -3247,8 +3247,8 @@ void set_and_save_custom_slot_macro_animation(uint8_t slot, uint8_t value) {
     set_custom_slot_macro_animation(slot, value);   
 }
 
-void set_and_save_custom_slot_use_influence(uint8_t slot, bool value) {
-    set_custom_slot_use_influence(slot, value);
+void set_and_save_custom_slot_flags(uint8_t slot, uint8_t value) {
+    set_custom_slot_flags(slot, value);
 }
 
 // =============================================================================
@@ -4575,7 +4575,7 @@ void set_custom_slot_parameters_from_bytes(uint8_t slot, uint8_t* data) {
     set_custom_slot_macro_positioning(slot, data[1]);
     set_custom_slot_live_animation(slot, data[2]);
     set_custom_slot_macro_animation(slot, data[3]);
-    set_custom_slot_use_influence(slot, data[4] != 0);
+    set_custom_slot_flags(slot, data[4]);
     set_custom_slot_background_mode(slot, data[5]);
     set_custom_slot_pulse_mode(slot, data[6]);
     set_custom_slot_color_type(slot, data[7]);
@@ -4597,7 +4597,7 @@ void get_custom_slot_parameters_as_bytes(uint8_t slot, uint8_t* data) {
     data[1] = (uint8_t)config->macro_positioning;
     data[2] = (uint8_t)config->live_animation;
     data[3] = (uint8_t)config->macro_animation;
-    data[4] = config->use_influence ? 1 : 0;
+    data[4] = config->flags;
     data[5] = (uint8_t)config->background_mode;
     data[6] = config->pulse_mode;
     data[7] = config->color_type;
@@ -4613,7 +4613,7 @@ void get_custom_slot_ram_stuff(uint8_t slot, uint8_t* data) {
     data[1] = custom_slots[slot].macro_positioning; 
     data[2] = custom_slots[slot].live_animation;
     data[3] = custom_slots[slot].macro_animation;
-    data[4] = custom_slots[slot].use_influence ? 1 : 0;
+    data[4] = custom_slots[slot].flags;
     data[5] = custom_slots[slot].background_mode;
     data[6] = custom_slots[slot].pulse_mode;
     data[7] = custom_slots[slot].color_type;
@@ -4648,7 +4648,7 @@ void get_custom_slot_parameters_from_eeprom(uint8_t slot, uint8_t* data) {
     data[1] = temp_slot.macro_positioning;
     data[2] = temp_slot.live_animation;
     data[3] = temp_slot.macro_animation;
-    data[4] = temp_slot.use_influence ? 1 : 0;
+    data[4] = temp_slot.flags;
     data[5] = temp_slot.background_mode;
     data[6] = temp_slot.pulse_mode;
     data[7] = temp_slot.color_type;
