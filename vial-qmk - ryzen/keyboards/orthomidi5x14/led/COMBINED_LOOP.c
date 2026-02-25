@@ -5614,7 +5614,7 @@ static void process_note(uint8_t channel, uint8_t note, uint8_t track_id, bool i
                         live_note_positioning_t live_positioning, macro_note_positioning_t macro_positioning,
                         live_animation_t live_animation, macro_animation_t macro_animation,
                         bool use_influence, uint8_t color_type, uint8_t velocity,
-                        bool velocity_brightness_enabled) {
+                        bool velocity_brightness_enabled, bool sustain_flag) {
 
     position_data_t positions;
 
@@ -5632,11 +5632,18 @@ static void process_note(uint8_t channel, uint8_t note, uint8_t track_id, bool i
 
     // Handle heat and sustain effects
     if (animation == LIVE_ANIM_HEAT || animation == MACRO_ANIM_HEAT) {
+        // If sustain flag is set, also register as sustained key
+        if (sustain_flag) {
+            uint8_t positioning = is_live ? live_positioning : macro_positioning;
+            if (find_sustained_key(channel, note, track_id, is_live) == -1) {
+                add_sustained_key(channel, note, track_id, channel, positioning, is_live);
+            }
+        }
         apply_heat_effect(&positions, channel, is_live, velocity, velocity_brightness_enabled);
         return;
     }
 
-    if (animation == LIVE_ANIM_SUSTAIN || animation == MACRO_ANIM_SUSTAIN) {
+    if (animation == LIVE_ANIM_SUSTAIN || animation == MACRO_ANIM_SUSTAIN || sustain_flag) {
         uint8_t positioning = is_live ? live_positioning : macro_positioning;
         if (find_sustained_key(channel, note, track_id, is_live) == -1) {
             add_sustained_key(channel, note, track_id, channel, positioning, is_live);
@@ -5690,6 +5697,8 @@ static bool run_efficient_effect(effect_params_t* params,
     bool use_influence = (flags & CUSTOM_ANIM_FLAG_INFLUENCE) != 0;
     bool vel_brightness_live = (flags & CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_LIVE) != 0;
     bool vel_brightness_macro = (flags & CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_MACRO) != 0;
+    bool sustain_live_flag = (flags & CUSTOM_ANIM_FLAG_SUSTAIN_LIVE) != 0;
+    bool sustain_macro_flag = (flags & CUSTOM_ANIM_FLAG_SUSTAIN_MACRO) != 0;
 
     static uint16_t live_heat_timer = 0;
     static uint16_t macro_heat_timer = 0;
@@ -5706,8 +5715,8 @@ static bool run_efficient_effect(effect_params_t* params,
     truekey_effects_active = (live_positioning == LIVE_POS_TRUEKEY) || 
                             (macro_positioning == MACRO_POS_TRUEKEY);
     
-    bool live_heat_mode = (live_animation == LIVE_ANIM_HEAT) || (live_animation == LIVE_ANIM_SUSTAIN);
-    bool macro_heat_mode = (macro_animation == MACRO_ANIM_HEAT) || (macro_animation == MACRO_ANIM_SUSTAIN);
+    bool live_heat_mode = (live_animation == LIVE_ANIM_HEAT) || (live_animation == LIVE_ANIM_SUSTAIN) || sustain_live_flag;
+    bool macro_heat_mode = (macro_animation == MACRO_ANIM_HEAT) || (macro_animation == MACRO_ANIM_SUSTAIN) || sustain_macro_flag;
     
     if (params->init) {
         // Initialize arrays
@@ -5745,7 +5754,7 @@ static bool run_efficient_effect(effect_params_t* params,
     
     // Handle heat decay using cached timer
     if (live_heat_mode && timer_elapsed(live_heat_timer) >= 10) {
-        bool sustain_mode = (live_animation == LIVE_ANIM_SUSTAIN);
+        bool sustain_mode = (live_animation == LIVE_ANIM_SUSTAIN) || sustain_live_flag;
         uint8_t decay_amount = sustain_mode ? 13 : (1 + (live_speed / 64));
 
         if (sustain_mode) {
@@ -5780,7 +5789,7 @@ static bool run_efficient_effect(effect_params_t* params,
     }
 
     if (macro_heat_mode && timer_elapsed(macro_heat_timer) >= 10) {
-        bool sustain_mode = (macro_animation == MACRO_ANIM_SUSTAIN);
+        bool sustain_mode = (macro_animation == MACRO_ANIM_SUSTAIN) || sustain_macro_flag;
         uint8_t decay_amount = sustain_mode ? 13 : (1 + (macro_speed / 64));
 
         if (sustain_mode) {
@@ -5824,9 +5833,10 @@ static bool run_efficient_effect(effect_params_t* params,
         bool is_live = (type == 0);
 
         bool vel_bright_for_note = is_live ? vel_brightness_live : vel_brightness_macro;
+        bool sustain_for_note = is_live ? sustain_live_flag : sustain_macro_flag;
         process_note(channel, note, track_id, is_live, live_positioning, macro_positioning,
                     live_animation, macro_animation, use_influence, color_type, velocity,
-                    vel_bright_for_note);
+                    vel_bright_for_note, sustain_for_note);
     }
     unified_lighting_count = 0;
     
@@ -6496,159 +6506,180 @@ switch (animation) {
 // =============================================================================
 
 custom_animation_config_t custom_slots[NUM_CUSTOM_SLOTS] = {
-    
-    // NEW: Heat effects with TRUEKEY
-    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_HEAT, LIVE_ANIM_SUSTAIN, false, BACKGROUND_AUTOLIGHT, 3, 68, true, 40, 255, 255, 255, 255, 128},
-    
-    // NEW: Wide + simple with TRUEKEY (max speed)
-    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_WIDE1, LIVE_ANIM_NONE, false, BACKGROUND_BPM_ALL_2, 3, 72, true, 75, 255, 255, 255, 255, 128},
-    // Keep 1: Full coverage with moving dots
-    {LIVE_POS_ZONE, MACRO_POS_ZONE, LIVE_ANIM_MOVING_DOTS2_ROW, LIVE_ANIM_MOVING_DOTS2_COL, false, BACKGROUND_HUE_PENDULUM, 3, 28, true, 35, 255, 255, 255, 255, 128},
-    
-    // Keep 3: Full + horizontal macro
-    {LIVE_POS_TRUEKEY, MACRO_POS_NOTE_ROW_COL0, LIVE_ANIM_OUTWARD_BURST_1, LIVE_ANIM_VOLUME_LEFT_RIGHT_2, false, BACKGROUND_DIAGONAL_WAVE, 3, 42, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 9: Dot positions with moving effects
-    {LIVE_POS_NOTE_CORNER_DOTS, MACRO_POS_LOOP_EDGE_DOTS, LIVE_ANIM_MOVING_COLUMNS_3_2, LIVE_ANIM_MOVING_ROWS_3_2, false, BACKGROUND_CYCLE_ALL, 3, 48, true, 20, 180, 180, 255, 255, 128},
-    
-    // Keep 10: Modified - macro effect to volume row medium and note row left
-    {LIVE_POS_NOTE_ROW_COL13, MACRO_POS_NOTE_ROW_COL0, LIVE_ANIM_VOLUME_LEFT_RIGHT_3, LIVE_ANIM_VOLUME_LEFT_RIGHT_2, false, BACKGROUND_DIAGONAL_WAVE_DUAL_COLOR_DESAT, 3, 36, true, 50, 180, 190, 255, 255, 128},
-    
-    // Keep 11: Changed background to autolight
-    {LIVE_POS_ZONE, MACRO_POS_LOOP_BLOCK_3X3, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL, LIVE_ANIM_MOVING_DOTS1_ROW_SOLO, false, BACKGROUND_AUTOLIGHT, 3, 2, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 12: Changed live to solo version, macro to horizontal dots long
-    {LIVE_POS_NOTE_ALL_DOTS, MACRO_POS_NOTE_CORNER_DOTS, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_8_2_SOLO, LIVE_ANIM_MOVING_DOTS2_ROW, false, BACKGROUND_WAVE_LEFT_RIGHT, 3, 29, true, 15, 180, 180, 255, 255, 128},
-    
-    // Keep 14: Vertical live, horizontal macro
-    {LIVE_POS_NOTE_COL_ROW0, MACRO_POS_NOTE_ROW_MIXED, LIVE_ANIM_VOLUME_UP_DOWN_1_WIDE, LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE, false, BACKGROUND_BAND_SPIRAL_VAL_DESAT, 3, 52, true, 35, 255, 255, 255, 255, 128},
-    
-    // Keep 15: Full coverage with diagonal effects
-    {LIVE_POS_ZONE, MACRO_POS_ZONE, LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE, LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE, false, BACKGROUND_BAND_PINWHEEL_VAL, 3, 41, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 17: Dot + block
-    {LIVE_POS_CENTER_DOT, MACRO_POS_LOOP_BLOCK_CENTER, LIVE_ANIM_RIPPLE_MED_1_SOLO, LIVE_ANIM_CROSS, false, BACKGROUND_RAINBOW_PINWHEEL_DESAT, 3, 38, true, 25, 255, 255, 255, 255, 128},
-    
-    // Keep 19: Changed live effect to ripple massive 1
-    {LIVE_POS_NOTE_EDGE_DOTS, MACRO_POS_LOOP_CORNER_DOTS, LIVE_ANIM_RIPPLE_MASSIVE_1, LIVE_ANIM_RIPPLE_LARGE_1_SOLO, false, BACKGROUND_DIAGONAL_WAVE_DUAL_COLOR, 3, 25, true, 30, 255, 255, 255, 255, 128},
-    
-    // Keep 20: Changed macro to 3 pixel rows and loop col bottom
-    {LIVE_POS_NOTE_COL_MIXED, MACRO_POS_LOOP_COL_ROW4, LIVE_ANIM_MOVING_COLUMNS_3_1, LIVE_ANIM_MOVING_ROWS_3_1, false, BACKGROUND_HUE_BREATHING, 3, 59, true, 40, 255, 255, 255, 255, 128},
-    
-    // Keep 21: Ripple + collapsing burst
-    {LIVE_POS_ZONE, MACRO_POS_TRUEKEY, LIVE_ANIM_RIPPLE_LARGE_2_SOLO, LIVE_COLLAPSING_BURST_LARGE_SOLO, false, BACKGROUND_STATIC_HUE2_DESAT, 3, 31, true, 50, 180, 200, 255, 255, 128},
-    
-    // Keep 22: Horizontal live, vertical macro
-    {LIVE_POS_NOTE_ROW_COL6, MACRO_POS_LOOP_COL_ROW4, LIVE_ANIM_MOVING_ROWS_8_2, LIVE_ANIM_VOLUME_UP_DOWN_2, false, BACKGROUND_BAND_SPIRAL_SAT_DESAT, 3, 17, true, 45, 180, 180, 255, 255, 128},
-    
-    // Keep 24: Changed macro pos to loop row center
-    {LIVE_POS_NOTE_COL_ROW4, MACRO_POS_LOOP_ROW_COL6, LIVE_ANIM_MOVING_ROWS_3_2, LIVE_ANIM_MOVING_ROWS_3_1_REVERSE, false, BACKGROUND_BAND_PINWHEEL_SAT, 3, 9, true, 50, 180, 180, 255, 255, 128},
-    
-    // Keep 25: Dot pair
-    {LIVE_POS_CENTER_DOT, MACRO_POS_NOTE_ALL_DOTS, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_SOLO, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE, false, BACKGROUND_HUE_PENDULUM_DESAT, 3, 53, true, 20, 255, 255, 255, 255, 128},
-    
-    // Keep 26: Full + horizontal macro
-    {LIVE_POS_ZONE, MACRO_POS_LOOP_ROW_COL6, LIVE_ANIM_MOVING_DOTS_ROW_2_REVERSE, LIVE_ANIM_VOLUME_LEFT_RIGHT_2_SOLO, false, BACKGROUND_CYCLE_ALL_DESAT, 3, 22, true, 50, 200, 190, 255, 255, 128},
-    
-    // Keep 27: Horizontal live, vertical macro
-    {LIVE_POS_NOTE_ROW_COL0, MACRO_POS_LOOP_COL_ROW0, LIVE_ANIM_VOLUME_LEFT_RIGHT_3_SOLO, LIVE_ANIM_MOVING_COLUMNS_8_1_REVERSE_SOLO, false, BACKGROUND_DIAGONAL_WAVE_REVERSE, 3, 46, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 28: Dot effects
-    {LIVE_POS_NOTE_CORNER_DOTS, MACRO_POS_CENTER_DOT, LIVE_ANIM_MOVING_ROWS_8_1_REVERSE, LIVE_ANIM_RIPPLE_MED_1_SOLO, false, BACKGROUND_BAND_SPIRAL_VAL, 3, 35, true, 25, 190, 180, 255, 255, 128},
-    
-    // Keep 29: Changed macro to collapsing column large and note col bottom
-    {LIVE_POS_TRUEKEY, MACRO_POS_NOTE_COL_ROW4, LIVE_ANIM_WIDE1, LIVE_COLLAPSING_BURST_LARGE, false, BACKGROUND_BREATHING_DESAT, 3, 58, true, 40, 255, 255, 255, 255, 128},
-    
-    // Keep 30: Changed to vertical dots long
-    {LIVE_POS_NOTE_COL_ROW2, MACRO_POS_LOOP_ROW_ALT, LIVE_ANIM_MOVING_DOTS2_COL, LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE_SOLO, false, BACKGROUND_GRADIENT_UP_DOWN, 3, 11, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 31: Full + block
-    {LIVE_POS_ZONE, MACRO_POS_LOOP_BLOCK_3X3, LIVE_ANIM_MOVING_DOTS1_COL, LIVE_ANIM_CROSS_2, false, BACKGROUND_HUE_WAVE_DESAT, 3, 40, true, 45, 210, 190, 255, 255, 128},
-    
-    // Keep 32: Changed live anim to horizontal dots no fade
-    {LIVE_POS_NOTE_ALL_DOTS, MACRO_POS_LOOP_EDGE_DOTS, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE, LIVE_ANIM_MOVING_COLUMNS_3_1_REVERSE, false, BACKGROUND_AUTOLIGHT_HUE1_DESAT, 3, 27, true, 15, 255, 255, 255, 255, 128},
-    
-    // Keep 34: Full coverage with orthogonal effects
-    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_8_2, LIVE_ANIM_MOVING_ROWS_8_2, false, BACKGROUND_BAND_SPIRAL_SAT, 3, 4, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 35: Dot + horizontal macro
-    {LIVE_POS_CENTER_DOT, MACRO_POS_LOOP_ROW_COL0, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE_SOLO, LIVE_ANIM_MOVING_ROWS_8_1, false, BACKGROUND_BAND_SPIRAL_VAL_DESAT, 3, 37, true, 30, 255, 255, 255, 255, 128},
-    
-    // Keep 36: Vertical live, horizontal macro
-    {LIVE_POS_NOTE_COL_ROW0, MACRO_POS_NOTE_ROW_MIXED, LIVE_ANIM_VOLUME_UP_DOWN_2_SOLO, LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE_SOLO, false, BACKGROUND_HUE_WAVE, 3, 20, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 38: Dot pair
-    {LIVE_POS_NOTE_EDGE_DOTS, MACRO_POS_NOTE_CORNER_DOTS, LIVE_ANIM_RIPPLE_MASSIVE_1_SOLO, LIVE_ANIM_RIPPLE_MED_2_SOLO, false, BACKGROUND_BAND_SPIRAL_SAT_DESAT, 3, 13, true, 25, 180, 180, 255, 255, 128},
-    
-    // Keep 40: Full + block
-    {LIVE_POS_TRUEKEY, MACRO_POS_LOOP_BLOCK_CENTER, LIVE_ANIM_MOVING_DOTS1_ROW, LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE, false, BACKGROUND_GRADIENT_DIAGONAL_DESAT, 3, 32, true, 45, 255, 255, 255, 255, 128},
-    
-    // Keep 43: Horizontal live, vertical macro
-    {LIVE_POS_NOTE_ROW_COL6, MACRO_POS_NOTE_COL_ROW2, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_8_1, LIVE_ANIM_MOVING_COLUMNS_8_1_REVERSE, false, BACKGROUND_AUTOLIGHT_HUE2_DESAT, 3, 42, true, 40, 255, 255, 255, 255, 128},
-    
-    // Keep 46: Vertical live, horizontal macro
-    {LIVE_POS_NOTE_COL_ROW4, MACRO_POS_LOOP_ROW_COL6, LIVE_ANIM_MOVING_COLUMNS_8_1_REVERSE_SOLO, LIVE_ANIM_MOVING_ROWS_3_2_REVERSE, false, BACKGROUND_RAINBOW_MOVING_CHEVRON_DESAT, 3, 16, true, 50, 255, 255, 255, 255, 128},
-    
-    // Keep 47: Dot + full
-    {LIVE_POS_CENTER_DOT, MACRO_POS_ZONE, LIVE_ANIM_OUTWARD_BURST_1, LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE_SOLO, false, BACKGROUND_GRADIENT_LEFT_RIGHT_DESAT, 3, 39, true, 30, 255, 255, 255, 255, 128},
+    // ==========================================================================
+    // FACTORY CUSTOM SLOTS (50 slots)
+    // Struct: {live_pos, macro_pos, live_anim, macro_anim, flags, bg, pulse, color, enabled, bg_bright, live_speed, macro_speed, live_bright, macro_bright, bg_speed}
+    //
+    // Rules applied:
+    //   - TRUEKEY/ZONE positions weighted higher (~30% of slots)
+    //   - Edge column positions (COL0, COL13) only paired with horizontal/omni effects
+    //   - Edge row positions (ROW0, ROW4) only paired with vertical/omni effects
+    //   - Every major effect family appears at least once
+    //   - Good variety of backgrounds, colors, speeds
+    // ==========================================================================
 
-    // NEW ENTRIES (with new positioning and updated color styles)
-    
-    // NEW: Collapsing burst effects with ZONE
-    {LIVE_POS_ZONE, MACRO_POS_ZONE, LIVE_COLLAPSING_BURST_LARGE, LIVE_COLLAPSING_BURST_SMALL_SOLO, false, BACKGROUND_AUTOLIGHT_HUE1, 3, 76, true, 30, 180, 180, 255, 255, 128},
-    
-    // NEW: Horizontal dots short + long with center dot and loop row alt
-    {LIVE_POS_CENTER_DOT, MACRO_POS_LOOP_ROW_ALT, LIVE_ANIM_MOVING_DOTS1_ROW, LIVE_ANIM_MOVING_DOTS2_ROW, false, BACKGROUND_BPM_ROW_2, 3, 80, true, 65, 255, 255, 255, 255, 128},
-    
-    // NEW: Vertical dots long + short with column positions
-    {LIVE_POS_NOTE_COL_ROW4, MACRO_POS_NOTE_COL_ROW0, LIVE_ANIM_MOVING_DOTS2_COL, LIVE_ANIM_MOVING_DOTS1_COL, false, BACKGROUND_AUTOLIGHT_HUE2, 3, 84, true, 50, 180, 180, 255, 255, 128},
-    
-    // NEW: Horizontal dots from left to right
-    {LIVE_POS_NOTE_ROW_COL0, MACRO_POS_NOTE_ROW_COL13, LIVE_ANIM_MOVING_DOTS1_ROW, LIVE_ANIM_MOVING_DOTS1_ROW, false, BACKGROUND_BPM_COLUMN_2, 3, 67, true, 60, 255, 255, 255, 255, 128},
-    
-    // NEW: Vertical dots from bottom to top
-    {LIVE_POS_NOTE_COL_ROW4, MACRO_POS_NOTE_COL_ROW0, LIVE_ANIM_MOVING_DOTS1_COL, LIVE_ANIM_MOVING_DOTS1_COL, false, BACKGROUND_AUTOLIGHT_HUE3, 3, 71, true, 40, 255, 255, 255, 255, 128},
-    
-    // NEW: Mixed autolight BPM effects
-    {LIVE_POS_ZONE, MACRO_POS_QUADRANT, LIVE_ANIM_RIPPLE_LARGE_1, LIVE_ANIM_VOLUME_LEFT_RIGHT_1, false, BACKGROUND_BPM_QUADRANTS_2, 3, 75, true, 80, 255, 255, 255, 255, 128},
-    
-    // NEW: More autolight variations
-    {LIVE_POS_TRUEKEY, MACRO_POS_CENTER_DOT, LIVE_ANIM_CROSS_2, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL, false, BACKGROUND_AUTOLIGHT, 3, 79, true, 25, 255, 255, 255, 255, 128},
-    
-    // NEW: BPM pulse fade variations
-    {LIVE_POS_NOTE_ROW_COL6, MACRO_POS_LOOP_COL_ROW2, LIVE_ANIM_MOVING_ROWS_3_1, LIVE_ANIM_MOVING_COLUMNS_3_2, false, BACKGROUND_BPM_PULSE_FADE_2, 3, 83, true, 70, 180, 180, 255, 255, 128},
-    
-    // NEW: More mixed positioning with autolight
-    {LIVE_POS_NOTE_EDGE_DOTS, MACRO_POS_LOOP_BLOCK_3X3, LIVE_ANIM_OUTWARD_BURST_2, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE_SOLO, false, BACKGROUND_AUTOLIGHT_HUE1, 3, 66, true, 35, 180, 180, 255, 255, 128},
-    
-    // NEW: Column/row mixed with BMP
-    {LIVE_POS_NOTE_COL_MIXED, MACRO_POS_LOOP_ROW_COL0, LIVE_ANIM_MOVING_COLUMNS_8_2, LIVE_ANIM_MOVING_ROWS_8_1, false, BACKGROUND_BPM_ALL_2, 3, 70, true, 85, 255, 255, 255, 255, 128},
-    
-    // NEW: Final autolight entry
-    {LIVE_POS_CENTER_DOT, MACRO_POS_TRUEKEY, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_2_REVERSE, LIVE_ANIM_RIPPLE_MED_1, false, BACKGROUND_AUTOLIGHT_HUE2, 3, 74, true, 30, 255, 255, 255, 255, 128},
+    // --- TRUEKEY / ZONE FULL COVERAGE (slots 0-14) ---
 
-    // NEW ENTRIES WITH NEW POSITIONING OPTIONS
-    
-    // NEW: Zone2 with Snake positioning
-    {LIVE_POS_ZONE2, MACRO_POS_SNAKE, LIVE_ANIM_RIPPLE_LARGE_1_SOLO, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_SOLO, false, BACKGROUND_AUTOLIGHT, 3, 78, true, 45, 255, 255, 255, 255, 128},
-    
-    // NEW: Zone3 with Center Block
-    {LIVE_POS_ZONE3, MACRO_POS_CENTER_BLOCK, LIVE_ANIM_MOVING_DOTS2_ROW_SOLO, LIVE_ANIM_CROSS_2_SOLO, false, BACKGROUND_BPM_QUADRANTS_2, 3, 82, true, 75, 255, 255, 255, 255, 128},
-    
-    // NEW: Count to 8 positioning
-    {LIVE_POS_COUNT_TO_8, MACRO_POS_COUNT_TO_8, LIVE_ANIM_NONE_SOLO, LIVE_ANIM_NONE_SOLO, false, BACKGROUND_AUTOLIGHT_HUE3, 3, 65, true, 50, 255, 255, 255, 255, 128},
-    
-    // NEW: Close dots positioning
-    {LIVE_POS_NOTE_CLOSE_DOTS_1, MACRO_POS_NOTE_CLOSE_DOTS_2, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL, LIVE_ANIM_OUTWARD_BURST_1, false, BACKGROUND_BPM_PULSE_FADE_2, 3, 69, true, 60, 255, 255, 255, 255, 128},
-    
-    // NEW: Pitch mapping with Quadrant Dots
-    {LIVE_POS_PITCH_MAPPING_1, MACRO_POS_QUADRANT_DOTS, LIVE_ANIM_OUTWARD_BURST_LARGE_2, LIVE_ANIM_RIPPLE_MED_2, false, BACKGROUND_AUTOLIGHT_HUE1, 3, 73, true, 40, 190, 180, 255, 255, 128},
-    
-    // NEW: Snake with Loop Count to 8
-    {LIVE_POS_SNAKE, MACRO_POS_COUNT_TO_8, LIVE_ANIM_MOVING_COLUMNS_8_1, LIVE_ANIM_MOVING_ROWS_8_2, false, BACKGROUND_BPM_ROW_2, 3, 77, true, 70, 255, 255, 255, 255, 128},
-    
-    // NEW: Center Block with Zone2
-    {LIVE_POS_CENTER_BLOCK, MACRO_POS_ZONE2, LIVE_ANIM_CROSS, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL, false, BACKGROUND_AUTOLIGHT_HUE2, 3, 81, true, 35, 255, 255, 255, 255, 128}
+    // Slot 0: Heat live + sustain flag for both, Autolight bg
+    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_HEAT, LIVE_ANIM_HEAT, CUSTOM_ANIM_FLAG_SUSTAIN_LIVE | CUSTOM_ANIM_FLAG_SUSTAIN_MACRO, BACKGROUND_AUTOLIGHT, 3, 3, true, 40, 255, 255, 255, 255, 128},
+
+    // Slot 1: Wide + Simple, BPM All
+    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_WIDE1, LIVE_ANIM_NONE, 0, BACKGROUND_BPM_ALL_2, 3, 1, true, 75, 255, 255, 255, 255, 128},
+    // Slot 2: Zone moving dots horizontal + vertical
+    {LIVE_POS_ZONE, MACRO_POS_ZONE, LIVE_ANIM_MOVING_DOTS2_ROW, LIVE_ANIM_MOVING_DOTS2_COL, 0, BACKGROUND_HUE_PENDULUM, 3, 1, true, 35, 255, 255, 255, 255, 128},
+
+    // Slot 3: Ripple Large + Firework Med, Diagonal Wave
+    {LIVE_POS_TRUEKEY, MACRO_POS_ZONE, LIVE_ANIM_RIPPLE_LARGE_1, LIVE_ANIM_OUTWARD_BURST_1, 0, BACKGROUND_DIAGONAL_WAVE, 3, 4, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 4: Cross + Cross 2, Breathing
+    {LIVE_POS_ZONE, MACRO_POS_TRUEKEY, LIVE_ANIM_CROSS, LIVE_ANIM_CROSS_2, 0, BACKGROUND_BREATHING, 3, 1, true, 45, 255, 255, 255, 255, 128},
+
+    // Slot 5: Column + Row, Static Hue shift
+    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_COLUMN, LIVE_ANIM_ROW, 0, BACKGROUND_STATIC_HUE1, 3, 1, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 6: Diagonal dots + All diagonal no fade, Rainbow Pinwheel
+    {LIVE_POS_ZONE, MACRO_POS_ZONE, LIVE_ANIM_MOVING_DOTS_DIAG_TL_BR_NO_FADE, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_NO_FADE, 0, BACKGROUND_RAINBOW_PINWHEEL, 3, 4, true, 40, 255, 255, 255, 255, 128},
+
+    // Slot 7: Collapsing Burst Large + Ripple Massive, Band Spiral
+    {LIVE_POS_TRUEKEY, MACRO_POS_ZONE, LIVE_COLLAPSING_BURST_LARGE, LIVE_ANIM_RIPPLE_MASSIVE_1_SOLO, 0, BACKGROUND_BAND_SPIRAL_VAL, 3, 1, true, 35, 180, 200, 255, 255, 128},
+
+    // Slot 8: Orthogonal 8 + Orthogonal 3, Cycle All
+    {LIVE_POS_ZONE, MACRO_POS_TRUEKEY, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_8_2, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_3_2, 0, BACKGROUND_CYCLE_ALL, 3, 1, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 9: Expanding Row Long + Expanding Column Long, Gradient
+    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_ROW_BURST_2, LIVE_ANIM_COLUMN_BURST_2, 0, BACKGROUND_GRADIENT_UP_DOWN, 3, 5, true, 40, 255, 255, 255, 255, 128},
+
+    // Slot 10: Outward Burst Large + Volume Rows Large, Hue Wave
+    {LIVE_POS_ZONE, MACRO_POS_ZONE, LIVE_ANIM_OUTWARD_BURST_LARGE_1, LIVE_ANIM_VOLUME_LEFT_RIGHT_3, CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_LIVE, BACKGROUND_HUE_WAVE, 3, 1, true, 45, 255, 255, 255, 255, 128},
+
+    // Slot 11: Moving Rows 8 + Moving Columns 8 Reverse, Autolight Hue cycle
+    {LIVE_POS_TRUEKEY, MACRO_POS_ZONE, LIVE_ANIM_MOVING_ROWS_8_2, LIVE_ANIM_MOVING_COLUMNS_8_1_REVERSE, 0, BACKGROUND_AUTOLIGHT_HUE1, 3, 1, true, 50, 180, 180, 255, 255, 128},
+
+    // Slot 12: Wide2 + Collapsing Burst Med, Diagonal Wave Dual Color
+    {LIVE_POS_ZONE, MACRO_POS_TRUEKEY, LIVE_ANIM_WIDE2, LIVE_COLLAPSING_BURST_MED_SOLO, 0, BACKGROUND_DIAGONAL_WAVE_DUAL_COLOR, 3, 1, true, 35, 255, 200, 255, 255, 128},
+
+    // Slot 13: Simple Solo + Ripple Med 2, BPM Pulse Fade
+    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_NONE_SOLO, LIVE_ANIM_RIPPLE_MED_2_SOLO, 0, BACKGROUND_BPM_PULSE_FADE, 3, 0, true, 60, 255, 200, 255, 255, 128},
+
+    // Slot 14: Ortho Reverse + Collapsing Burst Massive, Band Pinwheel
+    {LIVE_POS_ZONE, MACRO_POS_ZONE, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_REVERSE, LIVE_COLLAPSING_BURST_MASSIVE_SOLO, 0, BACKGROUND_BAND_PINWHEEL_VAL, 3, 4, true, 30, 255, 180, 255, 255, 128},
+
+    // --- ROW POSITIONS (slots 15-20) ---
+
+    // Slot 15: Row Center + Loop Row Center: Moving Rows 3 + Volume Left/Right Solo
+    {LIVE_POS_NOTE_ROW_COL6, MACRO_POS_LOOP_ROW_COL6, LIVE_ANIM_MOVING_ROWS_3_2, LIVE_ANIM_VOLUME_LEFT_RIGHT_2_SOLO, 0, BACKGROUND_BAND_PINWHEEL_SAT, 3, 1, true, 50, 180, 190, 255, 255, 128},
+
+    // Slot 16: Row Left Edge + Loop Row Right Edge: Volume Rows Med + Expanding Row Long (horizontal-safe)
+    {LIVE_POS_NOTE_ROW_COL0, MACRO_POS_LOOP_ROW_COL13, LIVE_ANIM_VOLUME_LEFT_RIGHT_2, LIVE_ANIM_ROW_BURST_2, 0, BACKGROUND_DIAGONAL_WAVE_DUAL_COLOR_DESAT, 3, 1, true, 45, 180, 200, 255, 255, 128},
+
+    // Slot 17: Row Right Edge + Row Left Edge: Volume LR 3 Solo + Peak Vol LR Wide (horizontal-safe)
+    {LIVE_POS_NOTE_ROW_COL13, MACRO_POS_NOTE_ROW_COL0, LIVE_ANIM_VOLUME_LEFT_RIGHT_3_SOLO, LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_2_WIDE, 0, BACKGROUND_WAVE_LEFT_RIGHT, 3, 5, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 18: Row Mixed + Loop Row Alt: Ortho 2 Reverse + Moving Dots Row (safe for any row)
+    {LIVE_POS_NOTE_ROW_MIXED, MACRO_POS_LOOP_ROW_ALT, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_2_REVERSE, LIVE_ANIM_MOVING_DOTS2_ROW, 0, BACKGROUND_AUTOLIGHT, 3, 2, true, 40, 255, 255, 255, 255, 128},
+
+    // Slot 19: Row Center + Note Col Center: Ortho 8 + Volume Bars (cross-axis variety)
+    {LIVE_POS_NOTE_ROW_COL6, MACRO_POS_NOTE_COL_ROW2, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_8_1, LIVE_ANIM_VOLUME_UP_DOWN_2, 0, BACKGROUND_CYCLE_LEFT_RIGHT, 3, 1, true, 40, 255, 255, 255, 255, 128},
+
+    // Slot 20: Row Left Edge + Loop Row Left: Moving Dots Row + Peak Vol LR Wide (horizontal-safe for edge)
+    {LIVE_POS_NOTE_ROW_COL0, MACRO_POS_LOOP_ROW_COL0, LIVE_ANIM_MOVING_DOTS2_ROW, LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE, 0, BACKGROUND_HUE_BREATHING, 3, 1, true, 50, 200, 200, 255, 255, 128},
+
+    // --- COLUMN POSITIONS (slots 21-26) ---
+
+    // Slot 21: Col Center + Loop Col Center: Moving Columns 3 + Peak Volume LR
+    {LIVE_POS_NOTE_COL_ROW2, MACRO_POS_LOOP_COL_ROW2, LIVE_ANIM_MOVING_COLUMNS_3_1, LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1, 0, BACKGROUND_BAND_SPIRAL_SAT, 3, 1, true, 50, 180, 190, 255, 255, 128},
+
+    // Slot 22: Col Top Edge + Row Mixed: Volume Bars Large Wide + Peak Vol LR Wide (vert-safe live, any macro)
+    {LIVE_POS_NOTE_COL_ROW0, MACRO_POS_NOTE_ROW_MIXED, LIVE_ANIM_VOLUME_UP_DOWN_1_WIDE, LIVE_ANIM_PEAK_VOLUME_LEFT_RIGHT_1_WIDE, 0, BACKGROUND_BAND_SPIRAL_VAL_DESAT, 3, 1, true, 35, 255, 255, 255, 255, 128},
+
+    // Slot 23: Col Bottom Edge + Loop Col Bottom: Dots Col + Ripple Large Solo (vert + omni-safe)
+    {LIVE_POS_NOTE_COL_ROW4, MACRO_POS_LOOP_COL_ROW4, LIVE_ANIM_MOVING_DOTS2_COL, LIVE_ANIM_RIPPLE_LARGE_2_SOLO, 0, BACKGROUND_AUTOLIGHT_HUE2, 3, 1, true, 40, 200, 180, 255, 255, 128},
+
+    // Slot 24: Col Mixed + Loop Row Center: Moving Columns 8 + Volume LR Wide (cross-axis)
+    {LIVE_POS_NOTE_COL_MIXED, MACRO_POS_LOOP_ROW_COL6, LIVE_ANIM_MOVING_COLUMNS_8_2, LIVE_ANIM_VOLUME_LEFT_RIGHT_2_WIDE, 0, BACKGROUND_BPM_ROW_2, 3, 1, true, 55, 180, 180, 255, 255, 128},
+
+    // Slot 25: Col Center + Row Center: Columns 8 Reverse + Moving Rows 8 Reverse (center - all safe)
+    {LIVE_POS_NOTE_COL_ROW2, MACRO_POS_NOTE_ROW_COL6, LIVE_ANIM_MOVING_COLUMNS_8_1_REVERSE, LIVE_ANIM_MOVING_ROWS_8_1_REVERSE, 0, BACKGROUND_DIAGONAL_WAVE_REVERSE, 3, 1, true, 40, 255, 255, 255, 255, 128},
+
+    // Slot 26: Col Top Edge + Block 3x3: Ripple Massive + Collapsing Burst Large (omni-safe for edge)
+    {LIVE_POS_NOTE_COL_ROW0, MACRO_POS_LOOP_BLOCK_3X3, LIVE_ANIM_RIPPLE_MASSIVE_1, LIVE_COLLAPSING_BURST_LARGE, 0, BACKGROUND_RAINBOW_MOVING_CHEVRON, 3, 4, true, 30, 200, 200, 255, 255, 128},
+
+    // --- DOT POSITIONS (slots 27-32) ---
+
+    // Slot 27: Center Dot + All Dots: Diagonal Dots Solo + Dots Ortho No Fade
+    {LIVE_POS_CENTER_DOT, MACRO_POS_NOTE_ALL_DOTS, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL_SOLO, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_NO_FADE, 0, BACKGROUND_HUE_PENDULUM_DESAT, 3, 1, true, 20, 255, 255, 255, 255, 128},
+
+    // Slot 28: Corner Dots + Loop Edge Dots: Ripple Massive Solo + Moving Columns 3
+    {LIVE_POS_NOTE_CORNER_DOTS, MACRO_POS_LOOP_EDGE_DOTS, LIVE_ANIM_RIPPLE_MASSIVE_1_SOLO, LIVE_ANIM_MOVING_COLUMNS_3_2, 0, BACKGROUND_DIAGONAL_WAVE_DUAL_COLOR, 3, 1, true, 25, 180, 180, 255, 255, 128},
+
+    // Slot 29: Edge Dots + Center Dot: Outward Burst + Ripple Med Solo
+    {LIVE_POS_NOTE_EDGE_DOTS, MACRO_POS_CENTER_DOT, LIVE_ANIM_OUTWARD_BURST_2, LIVE_ANIM_RIPPLE_MED_1_SOLO, 0, BACKGROUND_BAND_SPIRAL_SAT_DESAT, 3, 1, true, 30, 255, 255, 255, 255, 128},
+
+    // Slot 30: All Dots + Loop Corner Dots: Ortho 8 Solo + Collapsing Burst Small Solo
+    {LIVE_POS_NOTE_ALL_DOTS, MACRO_POS_LOOP_CORNER_DOTS, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_8_2_SOLO, LIVE_COLLAPSING_BURST_SMALL_SOLO, 0, BACKGROUND_CYCLE_OUT_IN, 3, 1, true, 25, 180, 180, 255, 255, 128},
+
+    // Slot 31: Center Dot + Block Center: Outward Burst Large + Cross 2 Solo
+    {LIVE_POS_CENTER_DOT, MACRO_POS_LOOP_BLOCK_CENTER, LIVE_ANIM_OUTWARD_BURST_LARGE_2, LIVE_ANIM_CROSS_2_SOLO, 0, BACKGROUND_RAINBOW_PINWHEEL_DESAT, 3, 1, true, 25, 255, 255, 255, 255, 128},
+
+    // Slot 32: Corner Dots + Edge Dots: Ripple Large 2 Solo + Volume LR 3 Wide, vel brightness
+    {LIVE_POS_NOTE_CORNER_DOTS, MACRO_POS_NOTE_EDGE_DOTS, LIVE_ANIM_RIPPLE_LARGE_2_SOLO, LIVE_ANIM_VOLUME_LEFT_RIGHT_3_WIDE, CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_LIVE | CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_MACRO, BACKGROUND_AUTOLIGHT_HUE3, 3, 1, true, 30, 200, 200, 255, 255, 128},
+
+    // --- MIXED CROSS-POSITIONAL (slots 33-38) ---
+
+    // Slot 33: TrueKey + Row Left: Simple + Volume LR Med Wide (horizontal-safe for edge macro)
+    {LIVE_POS_TRUEKEY, MACRO_POS_NOTE_ROW_COL0, LIVE_ANIM_NONE, LIVE_ANIM_VOLUME_LEFT_RIGHT_2_WIDE, 0, BACKGROUND_WAVE_LEFT_RIGHT_DESAT, 3, 1, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 34: Zone + Loop Col Top: All Diagonal + Columns 8 Reverse Solo (vert-safe macro)
+    {LIVE_POS_ZONE, MACRO_POS_LOOP_COL_ROW0, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL, LIVE_ANIM_MOVING_COLUMNS_8_1_REVERSE_SOLO, 0, BACKGROUND_BREATHING_DESAT, 3, 1, true, 40, 255, 255, 255, 255, 128},
+
+    // Slot 35: TrueKey + Col Bottom: Wide1 Solo + Expanding Col Long Solo (vert-safe macro)
+    {LIVE_POS_TRUEKEY, MACRO_POS_NOTE_COL_ROW4, LIVE_ANIM_WIDE1_SOLO, LIVE_ANIM_COLUMN_BURST_2_SOLO, 0, BACKGROUND_GRADIENT_DIAGONAL, 3, 5, true, 45, 255, 255, 255, 255, 128},
+
+    // Slot 36: Zone + Loop Row Right: Reverse Dots Row + Expanding Row Solo (horiz-safe macro)
+    {LIVE_POS_ZONE, MACRO_POS_LOOP_ROW_COL13, LIVE_ANIM_MOVING_DOTS_ROW_2_REVERSE, LIVE_ANIM_ROW_BURST_2_SOLO, 0, BACKGROUND_CYCLE_UP_DOWN, 3, 2, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 37: Col Mixed + Block 3x3: Moving Columns 3 Reverse + Dots Diag TR-BL
+    {LIVE_POS_NOTE_COL_MIXED, MACRO_POS_LOOP_BLOCK_3X3, LIVE_ANIM_MOVING_COLUMNS_3_1_REVERSE, LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE, 0, BACKGROUND_HUE_WAVE_DESAT, 3, 1, true, 40, 200, 200, 255, 255, 128},
+
+    // Slot 38: Row Center + Loop Col Center: Moving Rows 3 Rev + Columns 3 2 Reverse
+    {LIVE_POS_NOTE_ROW_COL6, MACRO_POS_LOOP_COL_ROW2, LIVE_ANIM_MOVING_ROWS_3_1_REVERSE, LIVE_ANIM_MOVING_COLUMNS_3_2_REVERSE, 0, BACKGROUND_AUTOLIGHT_HUE2_DESAT, 3, 1, true, 45, 180, 180, 255, 255, 128},
+
+    // --- SPECIAL POSITIONS (slots 39-44) ---
+
+    // Slot 39: Zone2 + Snake: Ripple Large Solo + Ortho All Solo
+    {LIVE_POS_ZONE2, MACRO_POS_SNAKE, LIVE_ANIM_RIPPLE_LARGE_1_SOLO, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL_SOLO, 0, BACKGROUND_AUTOLIGHT, 3, 1, true, 45, 255, 255, 255, 255, 128},
+
+    // Slot 40: Zone3 + Center Block: Moving Dots Row Solo + Cross 2 Solo
+    {LIVE_POS_ZONE3, MACRO_POS_CENTER_BLOCK, LIVE_ANIM_MOVING_DOTS2_ROW_SOLO, LIVE_ANIM_CROSS_2_SOLO, 0, BACKGROUND_BPM_QUADRANTS_2, 3, 1, true, 75, 255, 255, 255, 255, 128},
+
+    // Slot 41: Count to 8: Background only showcase
+    {LIVE_POS_COUNT_TO_8, MACRO_POS_COUNT_TO_8, LIVE_ANIM_NONE_SOLO, LIVE_ANIM_NONE_SOLO, 0, BACKGROUND_AUTOLIGHT_HUE3, 3, 1, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 42: Close Dots: Diagonal Dots TR-BL + Outward Burst
+    {LIVE_POS_NOTE_CLOSE_DOTS_1, MACRO_POS_NOTE_CLOSE_DOTS_2, LIVE_ANIM_MOVING_DOTS_DIAG_TR_BL_NO_FADE, LIVE_ANIM_OUTWARD_BURST_1, 0, BACKGROUND_BPM_PULSE_FADE_2, 3, 1, true, 60, 255, 255, 255, 255, 128},
+
+    // Slot 43: Pitch Mapping + Quadrant Dots: Outward Burst Large + Ripple Med 2
+    {LIVE_POS_PITCH_MAPPING_1, MACRO_POS_QUADRANT_DOTS, LIVE_ANIM_OUTWARD_BURST_LARGE_2, LIVE_ANIM_RIPPLE_MED_2, 0, BACKGROUND_AUTOLIGHT_HUE1, 3, 4, true, 40, 190, 180, 255, 255, 128},
+
+    // Slot 44: Snake + Loop Count to 8: Moving Columns 8 + Moving Rows 8
+    {LIVE_POS_SNAKE, MACRO_POS_LOOP_COUNT_TO_8, LIVE_ANIM_MOVING_COLUMNS_8_1, LIVE_ANIM_MOVING_ROWS_8_2, 0, BACKGROUND_BPM_ROW_2, 3, 1, true, 70, 255, 255, 255, 255, 128},
+
+    // --- ADDITIONAL VARIETY (slots 45-49) ---
+
+    // Slot 45: Center Block + Zone2: Cross + Dots All Orthogonal
+    {LIVE_POS_CENTER_BLOCK, MACRO_POS_ZONE2, LIVE_ANIM_CROSS, LIVE_ANIM_MOVING_DOTS_ALL_ORTHOGONAL, 0, BACKGROUND_AUTOLIGHT_HUE2, 3, 1, true, 35, 255, 255, 255, 255, 128},
+
+    // Slot 46: TrueKey + TrueKey: Dots Row Reverse + Dots Col Reverse, vel brightness
+    {LIVE_POS_TRUEKEY, MACRO_POS_TRUEKEY, LIVE_ANIM_MOVING_DOTS_ROW_1_REVERSE, LIVE_ANIM_MOVING_DOTS_COL_1_REVERSE, CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_LIVE | CUSTOM_ANIM_FLAG_VEL_BRIGHTNESS_MACRO, BACKGROUND_GRADIENT_LEFT_RIGHT, 3, 5, true, 50, 255, 255, 255, 255, 128},
+
+    // Slot 47: Zone + Quadrant: Ripple Small + Volume LR, BPM Quadrants
+    {LIVE_POS_ZONE, MACRO_POS_QUADRANT, LIVE_ANIM_RIPPLE_SMALL_1, LIVE_ANIM_VOLUME_LEFT_RIGHT_1, 0, BACKGROUND_BPM_QUADRANTS_2, 3, 1, true, 80, 255, 255, 255, 255, 128},
+
+    // Slot 48: TrueKey + Center Dot: Expanding Row Short + Diagonal Dots
+    {LIVE_POS_TRUEKEY, MACRO_POS_CENTER_DOT, LIVE_ANIM_ROW_BURST_1, LIVE_ANIM_MOVING_DOTS_ALL_DIAGONAL, 0, BACKGROUND_STATIC_HUE2_DESAT, 3, 1, true, 30, 255, 255, 255, 255, 128},
+
+    // Slot 49: Zone + TrueKey: Collapsing Burst Small + Ortho 3 Reverse, Autolight desat
+    {LIVE_POS_ZONE, MACRO_POS_TRUEKEY, LIVE_COLLAPSING_BURST_SMALL, LIVE_ANIM_MOVING_ALL_ORTHOGONAL_3_1_REVERSE, 0, BACKGROUND_AUTOLIGHT_DESAT, 3, 1, true, 40, 200, 200, 255, 255, 128}
 };
 
 uint8_t current_custom_slot = 0;
@@ -6869,27 +6900,33 @@ static const uint8_t all_effects[] = {
 };
 static const uint8_t all_effects_count = sizeof(all_effects) / sizeof(all_effects[0]);
 
-// Effects for NOTE_ROW_COL0 and COL13 - UPDATED
-// REMOVED: wide(2,3), wider(4,5), heatmap(6,7), cross short(12,13), criss cross(14,15), ripple med(38,39), outward burst(62,63,64,65)
+// Effects for NOTE_ROW_COL0 and COL13 - FIXED
+// Edge columns: only horizontal-spreading or omni-directional effects
+// REMOVED: vertical-only effects (up/down dots, up/down lines) that would only light 5 keys
 static const uint8_t row_col0_col13_effects[] = {
     // Horizontal dots long (moving dots 2)
     18, 19,
-    // Cross dots long  
+    // Cross dots long
     30, 31,
     // Ripple Large+ (40-43 in hierarchy = LARGE through MASSIVE)
     41, 43,
-    // Reverse Ripple Med+ (45, 46, 47, 49, 50, 51 in hierarchy)
+    // Reverse Ripple Med+ (49, 50, 51)
     49, 50, 51,
     // Expanding Row Long
     54, 55,
-    // Volume Row Med+ (78-85 in hierarchy)
+    // Volume Row Med+ (78-85)
     78, 79, 80, 81, 82, 83, 84, 85,
-    // Collapsing Row Med+ (98-105 in hierarchy)
+    // Collapsing Row Med+ (98-105)
     98, 99, 100, 101, 102, 103, 104, 105,
-	
-	146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165,
-	
-	130, 131, 132, 133, 134, 135, 136, 137, 114, 115, 116, 117, 118, 119, 120, 121, 110, 111, 112, 113 //coulumns
+    // Cross dots reverse + large (omni-directional)
+    146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157,
+    // Cross lines (omni-directional)
+    158, 159, 160, 161, 162, 163, 164, 165,
+    // Side Lines (horizontal) - good for edge columns
+    130, 131, 132, 133, 134, 135, 136, 137,
+    // Side Dots Large (horizontal) - good for edge columns
+    114, 115, 116, 117, 118, 119, 120, 121
+    // NOTE: Up/Down Dots (110-113) and Up/Down Lines (138-145) REMOVED - vertical only = 5 keys on edge column
 };
 static const uint8_t row_col0_col13_effects_count = sizeof(row_col0_col13_effects) / sizeof(row_col0_col13_effects[0]);
 
@@ -6921,27 +6958,33 @@ static const uint8_t row_col6_effects[] = {
 };
 static const uint8_t row_col6_effects_count = sizeof(row_col6_effects) / sizeof(row_col6_effects[0]);
 
-// Effects for NOTE_COL_ROW0 and ROW4 - UPDATED
-// REMOVED: wide(2,3), wider(4,5), heatmap(6,7), cross short(12,13), criss cross(14,15), ripple med(38,39), outward burst(62,63,64,65)
+// Effects for NOTE_COL_ROW0 and ROW4 - FIXED
+// Edge rows: only vertical-spreading or omni-directional effects
+// REMOVED: horizontal-only effects (side dots, side lines) that would only light 5 keys
 static const uint8_t col_row0_row4_effects[] = {
     // Vertical dots long (moving dots 2)
     22, 23,
-    // Cross dots long
+    // Cross dots long (omni)
     30, 31,
     // Ripple Large+ (40-43 in hierarchy = LARGE through MASSIVE)
     41, 43,
-    // Reverse Ripple Med+ (45, 46, 47, 49, 50, 51)
+    // Reverse Ripple Med+ (49, 50, 51)
     49, 50, 51,
     // Expanding Column Long
     58, 59,
-    // Volume Column Large+ (70-73 in hierarchy)
+    // Volume Column Large+ (70-73)
     70, 71, 72, 73,
-    // Collapsing Column Large+ (90-93 in hierarchy)
+    // Collapsing Column Large+ (90-93)
     90, 91, 92, 93,
-	
-	146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165,
-	
-	138, 139, 140, 141, 142, 143, 144, 145, 122, 123, 124, 125, 126, 127, 128, 129, 106, 107, 108, 109, // rows
+    // Cross dots reverse + large (omni-directional)
+    146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157,
+    // Cross lines (omni-directional)
+    158, 159, 160, 161, 162, 163, 164, 165,
+    // Up/Down Lines (vertical) - good for edge rows
+    138, 139, 140, 141, 142, 143, 144, 145,
+    // Up/Down Dots Large (vertical) - good for edge rows
+    122, 123, 124, 125, 126, 127, 128, 129
+    // NOTE: Side Dots (106-113, 114-121) and Side Lines (130-137) REMOVED - horizontal only = 5 keys on edge row
 };
 static const uint8_t col_row0_row4_effects_count = sizeof(col_row0_row4_effects) / sizeof(col_row0_row4_effects[0]);
 
@@ -7260,13 +7303,19 @@ static void apply_randomize_brightness_settings(uint8_t slot) {
     set_custom_slot_flags(slot, flags);
 }
 
-// Helper: generate a random speed >= 128 (50%+), with 70% chance of max (255)
+// Helper: generate a random speed with weighted distribution
+// 55% chance: max speed, 25% chance: 50-100%, 20% chance: 25-50%
 static uint8_t get_randomize_speed(void) {
-    if ((rand() % 100) < 70) {
-        return 255;  // 70% chance: max speed
+    uint8_t roll = rand() % 100;
+    if (roll < 55) {
+        return 255;  // 55% chance: max speed
+    } else if (roll < 80) {
+        // 25% chance: random speed between 128 and 255 (50%-100%)
+        return 128 + (rand() % 128);
+    } else {
+        // 20% chance: random speed between 64 and 127 (25%-50%)
+        return 64 + (rand() % 64);
     }
-    // 30% chance: random speed between 128 and 255 (50%-100%)
-    return 128 + (rand() % 128);
 }
 
 // Random pattern selection for Note 1 (randomly picks from slots 1-50 and randomizes color)
