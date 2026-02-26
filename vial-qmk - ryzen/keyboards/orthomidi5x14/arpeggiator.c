@@ -2427,15 +2427,15 @@ typedef struct {
 } speed_option_t;
 
 static const speed_option_t speed_options[] = {
-    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_STRAIGHT, "16th",         "16th"    },
-    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_TRIPLET,  "16th Triplet", "16thTrp" },
-    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_DOTTED,   "16th Dotted",  "16thDot" },
-    { NOTE_VALUE_EIGHTH,    TIMING_MODE_STRAIGHT, "8th",          "8th"     },
-    { NOTE_VALUE_EIGHTH,    TIMING_MODE_TRIPLET,  "8th Triplet",  "8thTrp"  },
-    { NOTE_VALUE_EIGHTH,    TIMING_MODE_DOTTED,   "8th Dotted",   "8thDot"  },
-    { NOTE_VALUE_QUARTER,   TIMING_MODE_STRAIGHT, "Quarter",      "Quarter" },
-    { NOTE_VALUE_QUARTER,   TIMING_MODE_TRIPLET,  "Qtr Triplet",  "QtrTrp"  },
-    { NOTE_VALUE_QUARTER,   TIMING_MODE_DOTTED,   "Qtr Dotted",   "QtrDot"  }
+    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_STRAIGHT, "1/16",       "1/16"    },
+    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_TRIPLET,  "1/16 Trp",   "1/16Trp" },
+    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_DOTTED,   "1/16 Dot",   "1/16Dot" },
+    { NOTE_VALUE_EIGHTH,    TIMING_MODE_STRAIGHT, "1/8",        "1/8"     },
+    { NOTE_VALUE_EIGHTH,    TIMING_MODE_TRIPLET,  "1/8 Trp",    "1/8 Trp" },
+    { NOTE_VALUE_EIGHTH,    TIMING_MODE_DOTTED,   "1/8 Dot",    "1/8 Dot" },
+    { NOTE_VALUE_QUARTER,   TIMING_MODE_STRAIGHT, "1/4",        "1/4"     },
+    { NOTE_VALUE_QUARTER,   TIMING_MODE_TRIPLET,  "1/4 Trp",    "1/4 Trp" },
+    { NOTE_VALUE_QUARTER,   TIMING_MODE_DOTTED,   "1/4 Dot",    "1/4 Dot" }
 };
 #define NUM_SPEED_OPTIONS 9
 

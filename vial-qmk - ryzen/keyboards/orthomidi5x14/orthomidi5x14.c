@@ -8990,11 +8990,11 @@ void set_keylog(uint16_t keycode, keyrecord_t *record) {
         keycode = keycode & 0xFF;
     }
 
-// During quick build, encoder 0 is handled by the quick build system
+// During quick build, top encoder (encoder 1) is handled by the quick build system
 if (quick_build_is_active() &&
     (record->event.key.row == KEYLOC_ENCODER_CW || record->event.key.row == KEYLOC_ENCODER_CCW) &&
-    record->event.key.col == 0) {
-    return;  // Don't process encoder 0 in set_keylog during quick build
+    record->event.key.col == 1) {
+    return;  // Don't process top encoder in set_keylog during quick build
 }
 
 if (record->event.key.row == KEYLOC_ENCODER_CW && ccencoder != 130) { // Encoder turned clockwise
@@ -13720,21 +13720,22 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
-    // QUICK BUILD ENCODER 0 HIJACK
-    // During quick build (setup or recording), encoder 0 rotation and click are
+    // QUICK BUILD ENCODER 1 (TOP) HIJACK
+    // During quick build (setup or recording), top encoder rotation and click are
     // consumed here and routed to the quick build system instead of normal processing.
+    // Encoder 1 = top encoder (B15), matrix position (5,1)
     // =============================================================================
     if (quick_build_is_active()) {
-        // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = encoder id)
+        // Top encoder rotation (row = KEYLOC_ENCODER_CW/CCW, col = 1 for top encoder)
         if ((record->event.key.row == KEYLOC_ENCODER_CW ||
              record->event.key.row == KEYLOC_ENCODER_CCW) &&
-            record->event.key.col == 0 && record->event.pressed) {
+            record->event.key.col == 1 && record->event.pressed) {
             bool clockwise = (record->event.key.row == KEYLOC_ENCODER_CW);
             quick_build_handle_encoder(clockwise);
             return false;  // Consume
         }
-        // Encoder 0 click (matrix position 5,0)
-        if (record->event.key.row == 5 && record->event.key.col == 0) {
+        // Top encoder click (matrix position 5,1)
+        if (record->event.key.row == 5 && record->event.key.col == 1) {
             quick_build_handle_encoder_click(record->event.pressed);
             return false;  // Consume
         }
@@ -14127,7 +14128,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             // Button released: check for 3-second hold (only when idle with saved build)
             if (quick_build_state.mode == QUICK_BUILD_NONE &&
                 timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: erase saved build
+                // Held for 3+ seconds: stop playback and erase saved build
+                arp_stop();
                 quick_build_erase();
             }
         }
@@ -14165,7 +14167,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (quick_build_state.mode == QUICK_BUILD_NONE &&
                 quick_build_state.seq_slot == slot &&
                 timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: erase saved build for this slot
+                // Held for 3+ seconds: stop playback and erase saved build for this slot
+                seq_stop(slot);
                 quick_build_erase();
             }
         }
