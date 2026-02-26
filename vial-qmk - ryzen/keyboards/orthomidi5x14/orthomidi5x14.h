@@ -852,14 +852,18 @@ void seq_set_gate_static(uint8_t gate_percent);
 void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
 
 // NEW: Quick Build System Types
+#define PRESET_ID_QUICK_BUILD 255      // Sentinel: preset lives in RAM from quick build
+
 typedef enum {
     QUICK_BUILD_NONE = 0,
-    QUICK_BUILD_ARP,
-    QUICK_BUILD_SEQ
+    QUICK_BUILD_ARP_SETUP,             // Arp parameter selection phase
+    QUICK_BUILD_SEQ_SETUP,             // Seq parameter selection phase
+    QUICK_BUILD_ARP_RECORD,            // Arp note recording phase
+    QUICK_BUILD_SEQ_RECORD             // Seq note recording phase
 } quick_build_mode_t;
 
 typedef struct {
-    quick_build_mode_t mode;           // Current build mode (NONE, ARP, or SEQ)
+    quick_build_mode_t mode;           // Current build mode
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
     uint8_t current_step;              // Current step (0-based internal)
     uint8_t note_count;                // Total notes recorded so far
@@ -868,6 +872,16 @@ typedef struct {
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
     bool has_saved_build;              // Has user completed a build?
+
+    // Setup phase state
+    uint8_t setup_param_index;         // Which parameter is being configured (0, 1, 2...)
+    uint8_t setup_arp_mode;            // Selected arp mode (arp_mode_t value)
+    uint8_t setup_note_value;          // Selected speed (NOTE_VALUE_*)
+    uint8_t setup_timing_mode;         // Selected timing (TIMING_MODE_*)
+    uint8_t setup_gate_percent;        // Selected gate length (5-100 in steps of 5)
+
+    // Recording phase encoder state
+    bool encoder_chord_held;           // Encoder click held = momentary chord mode
 } quick_build_state_t;
 
 extern quick_build_state_t quick_build_state;
@@ -882,8 +896,30 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
 void quick_build_handle_sustain_release(void);
 void quick_build_update(void);
 bool quick_build_is_active(void);
+bool quick_build_is_setup(void);
+bool quick_build_is_recording(void);
 uint8_t quick_build_get_current_step(void);
+void quick_build_handle_encoder(bool clockwise);
+void quick_build_handle_encoder_click(bool pressed);
+void quick_build_confirm_param(void);
+void quick_build_skip_step(void);
+void quick_build_undo_step(void);
 void render_big_number(uint8_t number);
+void render_quick_build_setup(void);
+void render_quick_build_recording(void);
+
+// Quick build parameter info (for OLED rendering)
+const char* quick_build_get_param_name(void);
+const char* quick_build_get_param_desc1(void);
+const char* quick_build_get_param_desc2(void);
+const char* quick_build_get_param_value(void);
+
+// Seq slot-level start for quick build playback (avoids preset reload)
+void seq_start_slot(uint8_t slot);
+
+// Velocity pipeline for arp/seq (apply curve + vel range)
+uint8_t apply_arp_velocity_pipeline(uint8_t preset_velocity_0_127);
+uint8_t apply_seq_velocity_pipeline(uint8_t preset_velocity_0_127, uint8_t slot);
 
 // Internal helper functions
 void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time);

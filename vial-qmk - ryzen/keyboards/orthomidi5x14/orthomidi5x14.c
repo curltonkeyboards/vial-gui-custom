@@ -8848,6 +8848,13 @@ void set_keylog(uint16_t keycode, keyrecord_t *record) {
         keycode = keycode & 0xFF;
     }
 
+// During quick build, encoder 0 is handled by the quick build system
+if (quick_build_is_active() &&
+    (record->event.key.row == KEYLOC_ENCODER_CW || record->event.key.row == KEYLOC_ENCODER_CCW) &&
+    record->event.key.col == 0) {
+    return;  // Don't process encoder 0 in set_keylog during quick build
+}
+
 if (record->event.key.row == KEYLOC_ENCODER_CW && ccencoder != 130) { // Encoder turned clockwise
     if (CCValue[ccencoder] < 127) {
         CCValue[ccencoder] += cc_sensitivity;
@@ -13571,6 +13578,27 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
+    // QUICK BUILD ENCODER 0 HIJACK
+    // During quick build (setup or recording), encoder 0 rotation and click are
+    // consumed here and routed to the quick build system instead of normal processing.
+    // =============================================================================
+    if (quick_build_is_active()) {
+        // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = encoder id)
+        if ((record->event.key.row == KEYLOC_ENCODER_CW ||
+             record->event.key.row == KEYLOC_ENCODER_CCW) &&
+            record->event.key.col == 0 && record->event.pressed) {
+            bool clockwise = (record->event.key.row == KEYLOC_ENCODER_CW);
+            quick_build_handle_encoder(clockwise);
+            return false;  // Consume
+        }
+        // Encoder 0 click (matrix position 5,0)
+        if (record->event.key.row == 5 && record->event.key.col == 0) {
+            quick_build_handle_encoder_click(record->event.pressed);
+            return false;  // Consume
+        }
+    }
+
+    // =============================================================================
     // NON-MIDI KEY LED ANIMATIONS
     // Trigger the same LED animation system for regular (non-MIDI) keypresses.
     // Uses synthetic note encoding: note = 128 + row*14 + col, which process_note()
@@ -13936,16 +13964,20 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (quick_build_state.has_saved_build && quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved build and not currently building: toggle play
                 arp_toggle();
-            } else if (quick_build_state.mode == QUICK_BUILD_ARP) {
-                // Currently building arp: finish and save
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
+                // In setup phase: button confirms parameter (same as encoder click)
+                quick_build_confirm_param();
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+                // Currently recording arp: finish and save
                 quick_build_finish();
             } else {
-                // Start new arp quick build
+                // Start new arp quick build (enters setup phase)
                 quick_build_start_arp();
             }
         } else {
-            // Button released: check for 3-second hold
-            if (timer_elapsed32(quick_build_state.button_press_time) > 3000) {
+            // Button released: check for 3-second hold (only when idle with saved build)
+            if (quick_build_state.mode == QUICK_BUILD_NONE &&
+                timer_elapsed32(quick_build_state.button_press_time) > 3000) {
                 // Held for 3+ seconds: erase saved build
                 quick_build_erase();
             }
@@ -13966,18 +13998,23 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 quick_build_state.mode == QUICK_BUILD_NONE &&
                 quick_build_state.seq_slot == slot) {
                 // Has saved build for this slot and not currently building: toggle play
-                seq_start(seq_state[slot].current_preset_id);
-            } else if (quick_build_state.mode == QUICK_BUILD_SEQ &&
+                seq_start_slot(slot);
+            } else if (quick_build_state.mode == QUICK_BUILD_SEQ_SETUP &&
                        quick_build_state.seq_slot == slot) {
-                // Currently building this seq slot: finish and save
+                // In setup phase: button confirms parameter
+                quick_build_confirm_param();
+            } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD &&
+                       quick_build_state.seq_slot == slot) {
+                // Currently recording this seq slot: finish and save
                 quick_build_finish();
             } else {
-                // Start new seq quick build for this slot
+                // Start new seq quick build for this slot (enters setup phase)
                 quick_build_start_seq(slot);
             }
         } else {
-            // Button released: check for 3-second hold
-            if (quick_build_state.seq_slot == slot &&
+            // Button released: check for 3-second hold (only when idle with saved build)
+            if (quick_build_state.mode == QUICK_BUILD_NONE &&
+                quick_build_state.seq_slot == slot &&
                 timer_elapsed32(quick_build_state.button_press_time) > 3000) {
                 // Held for 3+ seconds: erase saved build for this slot
                 quick_build_erase();
@@ -16548,56 +16585,121 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 #include "usb_main.h"  // For USB_DRIVER access
 
-// Render a big number on the OLED display for quick build step indication
-void render_big_number(uint8_t number) {
-    char buf[64];
-
-    // Clear the display area
-    oled_clear();
-
-    // Line 1: Title
+// Helper: write title line for quick build OLED screens
+static void render_quick_build_title(void) {
+    char buf[22];
     oled_set_cursor(0, 0);
-    if (quick_build_state.mode == QUICK_BUILD_ARP) {
-        oled_write_P(PSTR("  ARP QUICK BUILD  "), false);
-    } else if (quick_build_state.mode == QUICK_BUILD_SEQ) {
-        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD ", quick_build_state.seq_slot + 1);
+    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+        quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+        oled_write_P(PSTR(" ARP QUICK BUILD"), false);
+    } else {
+        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
         oled_write(buf, false);
     }
-
-    // Line 2: Separator
     oled_set_cursor(0, 1);
-    oled_write_P(PSTR("---------------------"), false);
+    oled_write_P(PSTR("--------------------"), false);
+}
 
-    // Lines 3-5: Big number (centered)
+// Render the setup phase OLED screen (parameter selection)
+void render_quick_build_setup(void) {
+    char buf[22];
+    oled_clear();
+
+    render_quick_build_title();
+
+    // Description lines (small text)
     oled_set_cursor(0, 3);
+    oled_write(quick_build_get_param_desc1(), false);
+    oled_set_cursor(0, 4);
+    oled_write(quick_build_get_param_desc2(), false);
 
-    if (number < 10) {
-        snprintf(buf, sizeof(buf), "      STEP %d      ", number);
-    } else if (number < 100) {
-        snprintf(buf, sizeof(buf), "     STEP %d      ", number);
+    // Selected value (centered with arrows)
+    oled_set_cursor(0, 6);
+    const char *value = quick_build_get_param_value();
+    // Center the value with >> << arrows
+    uint8_t val_len = strlen(value);
+    uint8_t total_len = val_len + 6;  // ">> " + value + " <<"
+    uint8_t pad = 0;
+    if (total_len < 21) {
+        pad = (21 - total_len) / 2;
+    }
+    memset(buf, ' ', sizeof(buf) - 1);
+    buf[21] = '\0';
+    snprintf(buf + pad, sizeof(buf) - pad, ">> %s <<", value);
+    // Ensure trailing spaces fill the line
+    uint8_t end = strlen(buf);
+    while (end < 21) buf[end++] = ' ';
+    buf[21] = '\0';
+    oled_write(buf, false);
+
+    // Instructions
+    oled_set_cursor(0, 8);
+    oled_write_P(PSTR("  Turn to select"), false);
+    oled_set_cursor(0, 9);
+    oled_write_P(PSTR("  Press to confirm"), false);
+
+    // Progress indicator
+    uint8_t total_params = 0;
+    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) total_params = 3;
+    else total_params = 2;
+
+    oled_set_cursor(0, 11);
+    snprintf(buf, sizeof(buf), "     Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
+    oled_write(buf, false);
+}
+
+// Render the recording phase OLED screen (note input)
+void render_quick_build_recording(void) {
+    char buf[22];
+    oled_clear();
+
+    render_quick_build_title();
+
+    // Step number
+    oled_set_cursor(0, 3);
+    uint8_t step = quick_build_get_current_step();
+    if (step < 10) {
+        snprintf(buf, sizeof(buf), "      STEP %d", step);
+    } else if (step < 100) {
+        snprintf(buf, sizeof(buf), "     STEP %d", step);
     } else {
-        snprintf(buf, sizeof(buf), "     STEP %d     ", number);
+        snprintf(buf, sizeof(buf), "    STEP %d", step);
     }
     oled_write(buf, false);
 
-    // Line 6: Note count
+    // Note count
     oled_set_cursor(0, 5);
-    snprintf(buf, sizeof(buf), "    %d NOTES TOTAL   ", quick_build_state.note_count);
+    snprintf(buf, sizeof(buf), "  %d notes total", quick_build_state.note_count);
     oled_write(buf, false);
 
-    // Line 7: Instruction
+    // Encoder instructions
     oled_set_cursor(0, 7);
-    if (quick_build_state.mode == QUICK_BUILD_ARP) {
-        oled_write_P(PSTR(" Press to finish     "), false);
+    oled_write_P(PSTR(" << Undo   Skip >>"), false);
+    oled_set_cursor(0, 8);
+    if (quick_build_state.encoder_chord_held) {
+        oled_write_P(PSTR(" Click: CHORD ON"), false);
     } else {
-        oled_write_P(PSTR(" Press to finish     "), false);
+        oled_write_P(PSTR(" Click: Chord mode"), false);
     }
+
+    // Finish instruction
+    oled_set_cursor(0, 10);
+    oled_write_P(PSTR(" Press btn to finish"), false);
+}
+
+// Legacy render_big_number (calls recording screen)
+void render_big_number(uint8_t number) {
+    render_quick_build_recording();
 }
 
 bool oled_task_user(void) {
-    // Check if quick build is active - if so, show big number display
+    // Check if quick build is active - show appropriate screen
     if (quick_build_is_active()) {
-        render_big_number(quick_build_get_current_step());
+        if (quick_build_is_setup()) {
+            render_quick_build_setup();
+        } else {
+            render_quick_build_recording();
+        }
         return false;
     }
 
