@@ -858,6 +858,7 @@ typedef enum {
     QUICK_BUILD_NONE = 0,
     QUICK_BUILD_ARP_SETUP,             // Arp parameter selection phase
     QUICK_BUILD_SEQ_SETUP,             // Seq parameter selection phase
+    QUICK_BUILD_ARP_ROOT,              // Arp waiting for root note press
     QUICK_BUILD_ARP_RECORD,            // Arp note recording phase
     QUICK_BUILD_SEQ_RECORD             // Seq note recording phase
 } quick_build_mode_t;

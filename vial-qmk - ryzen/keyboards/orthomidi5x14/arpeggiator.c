@@ -2047,7 +2047,8 @@ bool quick_build_is_active(void) {
 
 bool quick_build_is_setup(void) {
     return (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
-            quick_build_state.mode == QUICK_BUILD_SEQ_SETUP);
+            quick_build_state.mode == QUICK_BUILD_SEQ_SETUP ||
+            quick_build_state.mode == QUICK_BUILD_ARP_ROOT);
 }
 
 bool quick_build_is_recording(void) {
@@ -2110,8 +2111,10 @@ static void quick_build_enter_recording(void) {
         arp_state.mode = (arp_mode_t)quick_build_state.setup_arp_mode;
         arp_state.loaded_preset_id = PRESET_ID_QUICK_BUILD;
 
-        quick_build_state.mode = QUICK_BUILD_ARP_RECORD;
-        dprintf("quick_build: arp recording phase started (mode:%d speed:%d timing:%d gate:%d%%)\n",
+        // Arp goes to root note selection first (not straight to recording)
+        quick_build_state.mode = QUICK_BUILD_ARP_ROOT;
+        quick_build_state.has_root = false;
+        dprintf("quick_build: arp waiting for root note (mode:%d speed:%d timing:%d gate:%d%%)\n",
                 quick_build_state.setup_arp_mode, quick_build_state.setup_note_value,
                 quick_build_state.setup_timing_mode, quick_build_state.setup_gate_percent);
 
@@ -2192,6 +2195,16 @@ void quick_build_finish(void) {
     if (!quick_build_is_active()) return;
 
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+        // Fix pattern length: current_step points to the NEXT empty step,
+        // so the actual last step with notes is current_step - 1.
+        // Find the actual highest step that has notes recorded.
+        uint8_t max_step = 0;
+        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+            uint8_t step = NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel);
+            if (step > max_step) max_step = step;
+        }
+        arp_active_preset.pattern_length_16ths = max_step + 1;
+
         // Validate arpeggiator preset
         if (!arp_validate_preset(&arp_active_preset)) {
             dprintf("quick_build: arp validation failed, canceling\n");
@@ -2200,7 +2213,7 @@ void quick_build_finish(void) {
         }
 
         dprintf("quick_build: arp finished with %d notes, %d steps\n",
-                quick_build_state.note_count, quick_build_state.current_step + 1);
+                quick_build_state.note_count, arp_active_preset.pattern_length_16ths);
         quick_build_state.has_saved_build = true;
 
         // Mark arp to play this quick build pattern (not a factory/user preset)
@@ -2216,6 +2229,14 @@ void quick_build_finish(void) {
     } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
         uint8_t slot = quick_build_state.seq_slot;
 
+        // Fix pattern length: find actual highest step with notes
+        uint8_t max_step = 0;
+        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+            uint8_t step = NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel);
+            if (step > max_step) max_step = step;
+        }
+        seq_active_presets[slot].pattern_length_16ths = max_step + 1;
+
         // Validate sequencer preset
         if (!seq_validate_preset(&seq_active_presets[slot])) {
             dprintf("quick_build: seq validation failed, canceling\n");
@@ -2224,7 +2245,7 @@ void quick_build_finish(void) {
         }
 
         dprintf("quick_build: seq slot %d finished with %d notes, %d steps\n",
-                slot, quick_build_state.note_count, quick_build_state.current_step + 1);
+                slot, quick_build_state.note_count, seq_active_presets[slot].pattern_length_16ths);
         quick_build_state.has_saved_build = true;
 
         // Mark seq slot to play this quick build pattern
@@ -2273,6 +2294,15 @@ static void quick_build_advance_step(void) {
 
 // Handle incoming MIDI note during quick build
 void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
+    // Handle root note selection phase (arp only)
+    if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
+        quick_build_state.root_note = note;
+        quick_build_state.has_root = true;
+        quick_build_state.mode = QUICK_BUILD_ARP_RECORD;
+        dprintf("quick_build: arp root note set to %d, entering recording\n", note);
+        return;  // Root note is NOT recorded as a pattern step
+    }
+
     if (!quick_build_is_recording()) return;
 
     // Use raw_travel for velocity if available (0-255), otherwise use velocity (0-127)
@@ -2290,13 +2320,6 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
             dprintf("quick_build: arp max notes reached, finishing\n");
             quick_build_finish();
             return;
-        }
-
-        // First note = root
-        if (!quick_build_state.has_root) {
-            quick_build_state.root_note = note;
-            quick_build_state.has_root = true;
-            dprintf("quick_build: arp root note set to %d\n", note);
         }
 
         // Calculate interval from root

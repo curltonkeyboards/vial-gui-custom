@@ -3063,6 +3063,12 @@ void scan_keycode_categories(void) {
 					else if (keycode >= 0xCC08 && keycode <= 0xCC0B) { // Macro keys 1-4
 					category = 31 + (keycode - 0xCC08);  // Categories 31-34 for macros 1-4
 					}
+					else if (keycode == ARP_QUICK_BUILD) { // Arp quick build
+					category = 35;
+					}
+					else if (keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) { // Seq quick build 1-8
+					category = 36 + (keycode - SEQ_QUICK_BUILD_1);  // Categories 36-43
+					}
 					
 					//else { // REST OF EVERYTHING
                     //    category = 28;  // THE REST
@@ -7785,6 +7791,69 @@ bool rgb_matrix_indicators_kb(void) {
                                         (uint8_t)(200 * brightness_factor),
                                         0);  // Green when toggle is latched on
                 }
+            }
+        }
+    }
+
+    // Quick Build key LEDs
+    // Colors: white=empty/no build, red=has build (idle), green=playing, orange=building
+    {
+        // Arp quick build key (category 35)
+        uint8_t arp_led = get_special_key_led_index(35);
+        if (arp_led != 99 && arp_led < RGB_MATRIX_LED_COUNT) {
+            uint8_t r = 0, g = 0, b = 0;
+            if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+                quick_build_state.mode == QUICK_BUILD_ARP_ROOT ||
+                quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+                // Orange: currently building
+                r = 255; g = 140; b = 0;
+            } else if (quick_build_state.has_saved_build &&
+                       arp_state.current_preset_id == PRESET_ID_QUICK_BUILD) {
+                if (arp_state.active) {
+                    // Green: playing
+                    r = 0; g = 200; b = 0;
+                } else {
+                    // Red: has build, idle
+                    r = 200; g = 0; b = 0;
+                }
+            } else {
+                // White: empty / no quick build
+                r = 150; g = 150; b = 150;
+            }
+            rgb_matrix_set_color(arp_led,
+                                (uint8_t)(r * brightness_factor),
+                                (uint8_t)(g * brightness_factor),
+                                (uint8_t)(b * brightness_factor));
+        }
+
+        // Seq quick build keys (categories 36-43)
+        for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+            uint8_t seq_led = get_special_key_led_index(36 + s);
+            if (seq_led != 99 && seq_led < RGB_MATRIX_LED_COUNT) {
+                uint8_t r = 0, g = 0, b = 0;
+                if ((quick_build_state.mode == QUICK_BUILD_SEQ_SETUP ||
+                     quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) &&
+                    quick_build_state.seq_slot == s) {
+                    // Orange: currently building this slot
+                    r = 255; g = 140; b = 0;
+                } else if (quick_build_state.has_saved_build &&
+                           quick_build_state.seq_slot == s &&
+                           seq_state[s].current_preset_id == PRESET_ID_QUICK_BUILD) {
+                    if (seq_state[s].active) {
+                        // Green: playing
+                        r = 0; g = 200; b = 0;
+                    } else {
+                        // Red: has build, idle
+                        r = 200; g = 0; b = 0;
+                    }
+                } else {
+                    // White: empty / no quick build for this slot
+                    r = 150; g = 150; b = 150;
+                }
+                rgb_matrix_set_color(seq_led,
+                                    (uint8_t)(r * brightness_factor),
+                                    (uint8_t)(g * brightness_factor),
+                                    (uint8_t)(b * brightness_factor));
             }
         }
     }
@@ -13967,6 +14036,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
                 // In setup phase: button confirms parameter (same as encoder click)
                 quick_build_confirm_param();
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
+                // Waiting for root note: pressing button cancels
+                quick_build_cancel();
             } else if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
                 // Currently recording arp: finish and save
                 quick_build_finish();
@@ -16600,12 +16672,13 @@ static void oled_write_line(uint8_t row, const char *text) {
     oled_write(line, false);
 }
 
-// Render the setup phase OLED screen (parameter selection)
+// Render the setup phase OLED screen (parameter selection or root note prompt)
 void render_quick_build_setup(void) {
     char buf[22];
 
     // Line 0: Title
-    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
+    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+        quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
         oled_write_line(0, " ARP QUICK BUILD");
     } else {
         snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
@@ -16615,48 +16688,65 @@ void render_quick_build_setup(void) {
     // Line 1: Separator
     oled_write_line(1, "--------------------");
 
-    // Line 2: blank
-    oled_write_line(2, "");
+    if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
+        // Root note prompt screen
+        oled_write_line(2, "");
+        oled_write_line(3, "  All intervals are");
+        oled_write_line(4, "  relative to root");
+        oled_write_line(5, "");
+        oled_write_line(6, "  Play the root note");
+        oled_write_line(7, "  on the keyboard");
+        oled_write_line(8, "");
+        oled_write_line(9, "  (not recorded as");
+        oled_write_line(10, "   a pattern step)");
+        oled_write_line(11, "");
+        oled_write_line(12, "");
+        oled_write_line(13, "");
+    } else {
+        // Parameter selection screen
+        // Line 2: blank
+        oled_write_line(2, "");
 
-    // Lines 3-4: Description
-    oled_write_line(3, quick_build_get_param_desc1());
-    oled_write_line(4, quick_build_get_param_desc2());
+        // Lines 3-4: Description
+        oled_write_line(3, quick_build_get_param_desc1());
+        oled_write_line(4, quick_build_get_param_desc2());
 
-    // Line 5: blank
-    oled_write_line(5, "");
+        // Line 5: blank
+        oled_write_line(5, "");
 
-    // Line 6: Selected value with arrows
-    const char *value = quick_build_get_param_value();
-    uint8_t val_len = strlen(value);
-    uint8_t total_len = val_len + 6;  // ">> " + value + " <<"
-    uint8_t pad = 0;
-    if (total_len < 21) pad = (21 - total_len) / 2;
-    memset(buf, ' ', 21);
-    buf[21] = '\0';
-    snprintf(buf + pad, 21 - pad, ">> %s <<", value);
-    uint8_t end = strlen(buf);
-    while (end < 21) buf[end++] = ' ';
-    buf[21] = '\0';
-    oled_write_line(6, buf);
+        // Line 6: Selected value with arrows
+        const char *value = quick_build_get_param_value();
+        uint8_t val_len = strlen(value);
+        uint8_t total_len = val_len + 6;  // ">> " + value + " <<"
+        uint8_t pad = 0;
+        if (total_len < 21) pad = (21 - total_len) / 2;
+        memset(buf, ' ', 21);
+        buf[21] = '\0';
+        snprintf(buf + pad, 21 - pad, ">> %s <<", value);
+        uint8_t end = strlen(buf);
+        while (end < 21) buf[end++] = ' ';
+        buf[21] = '\0';
+        oled_write_line(6, buf);
 
-    // Line 7: blank
-    oled_write_line(7, "");
+        // Line 7: blank
+        oled_write_line(7, "");
 
-    // Lines 8-9: Instructions
-    oled_write_line(8, "  Turn to select");
-    oled_write_line(9, "  Press to confirm");
+        // Lines 8-9: Instructions
+        oled_write_line(8, "  Turn to select");
+        oled_write_line(9, "  Press to confirm");
 
-    // Line 10: blank
-    oled_write_line(10, "");
+        // Line 10: blank
+        oled_write_line(10, "");
 
-    // Line 11: Progress
-    uint8_t total_params = (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) ? 3 : 2;
-    snprintf(buf, sizeof(buf), "     Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
-    oled_write_line(11, buf);
+        // Line 11: Progress
+        uint8_t total_params = (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) ? 3 : 2;
+        snprintf(buf, sizeof(buf), "     Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
+        oled_write_line(11, buf);
 
-    // Lines 12-15: blank
-    oled_write_line(12, "");
-    oled_write_line(13, "");
+        // Lines 12-15: blank
+        oled_write_line(12, "");
+        oled_write_line(13, "");
+    }
     oled_write_line(14, "");
     oled_write_line(15, "");
 }
