@@ -46,7 +46,8 @@ typedef struct {
 #define MAX_UNIFIED_LIGHTING_NOTES 96
 static uint8_t unified_lighting_notes[MAX_UNIFIED_LIGHTING_NOTES][6]; // [channel, note, type, track_id, timestamp, velocity]
 static uint8_t unified_lighting_count = 0;
-// type: 0=live/sustained, 1=macro
+// type: 0=live/sustained, 1=macro, 2=keypress (non-MIDI, position-based)
+// For type 2: note = 128 + row*14 + col, position derived directly (no MIDI lookup)
 
 // =============================================================================
 // EFFICIENT NOTE TRACKING SYSTEM
@@ -5618,8 +5619,13 @@ static void process_note(uint8_t channel, uint8_t note, uint8_t track_id, bool i
 
     position_data_t positions;
 
-    // Get positions based on live or macro
-    if (is_live) {
+    // Handle non-MIDI keypress notes (synthetic note >= 128 encodes row/col directly)
+    if (note >= 128) {
+        uint8_t key_index = note - 128;
+        positions.count = 1;
+        positions.points[0].row = key_index / 14;
+        positions.points[0].col = key_index % 14;
+    } else if (is_live) {
         get_live_positions(channel, note, live_positioning, &positions);
     } else {
         get_macro_positions(channel, note, track_id, macro_positioning, &positions);

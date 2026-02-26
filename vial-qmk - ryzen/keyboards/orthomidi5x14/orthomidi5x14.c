@@ -13467,6 +13467,29 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
+    // NON-MIDI KEY LED ANIMATIONS
+    // Trigger the same LED animation system for regular (non-MIDI) keypresses.
+    // Uses synthetic note encoding: note = 128 + row*14 + col, which process_note()
+    // in COMBINED_LOOP.c decodes directly to row/col (bypassing MIDI note lookup).
+    // =============================================================================
+    {
+        bool is_midi_note = (keycode >= MIDI_TONE_MIN && keycode <= MIDI_TONE_MAX) ||
+                            (keycode >= 0xC600 && keycode <= 0xC647) ||   // keysplit
+                            (keycode >= 0xC670 && keycode <= 0xC6B7);     // triplesplit
+        uint8_t row = record->event.key.row;
+        uint8_t col = record->event.key.col;
+        if (!is_midi_note && row < 5 && col < 14) {
+            uint8_t synthetic_note = 128 + row * 14 + col;
+            if (record->event.pressed) {
+                uint8_t velocity = get_he_velocity_from_position(row, col);
+                add_lighting_live_note(channel_number, synthetic_note, velocity);
+            } else {
+                remove_lighting_live_note(channel_number, synthetic_note);
+            }
+        }
+    }
+
+    // =============================================================================
     // TOGGLE KEYS (TGL_00 - TGL_99, keycodes 0xEE00-0xEE63)
     // =============================================================================
     if (is_toggle_keycode(keycode)) {
