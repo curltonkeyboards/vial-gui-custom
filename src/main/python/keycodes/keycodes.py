@@ -3325,6 +3325,13 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_MODE_SINGLE", "Single\nNote", "Arpeggiator mode: single note"),
     K("ARP_MODE_CHORD_BASIC", "Chord\nBasic", "Arpeggiator mode: chord basic"),
     K("ARP_MODE_CHORD_ADVANCED", "Chord\nAdvanced", "Arpeggiator mode: chord advanced"),
+
+    # Gate quick controls
+    K("ARP_GATE_UP", "Gate\nUp 10%", "Increase arpeggiator gate by 10%"),
+    K("ARP_GATE_DOWN", "Gate\nDn 10%", "Decrease arpeggiator gate by 10%"),
+
+    # Quick Build
+    K("ARP_QUICK_BUILD", "Arp\nQuick\nBuild", "Quick build arpeggiator preset on-the-fly"),
 ]
 
 # Generate preset selection keycodes (48 factory + 20 user = 68 total)
@@ -3412,6 +3419,20 @@ KEYCODES_STEP_SEQUENCER = [
     K("SEQ_MOD_6", "Seq 6\nModifier", "Step Sequencer 6 Modifier"),
     K("SEQ_MOD_7", "Seq 7\nModifier", "Step Sequencer 7 Modifier"),
     K("SEQ_MOD_8", "Seq 8\nModifier", "Step Sequencer 8 Modifier"),
+
+    # Gate quick controls
+    K("SEQ_GATE_UP", "Gate\nUp 10%", "Increase sequencer gate by 10%"),
+    K("SEQ_GATE_DOWN", "Gate\nDn 10%", "Decrease sequencer gate by 10%"),
+
+    # Quick Build
+    K("SEQ_QUICK_BUILD_1", "Seq 1\nQuick\nBuild", "Quick build step sequencer slot 1"),
+    K("SEQ_QUICK_BUILD_2", "Seq 2\nQuick\nBuild", "Quick build step sequencer slot 2"),
+    K("SEQ_QUICK_BUILD_3", "Seq 3\nQuick\nBuild", "Quick build step sequencer slot 3"),
+    K("SEQ_QUICK_BUILD_4", "Seq 4\nQuick\nBuild", "Quick build step sequencer slot 4"),
+    K("SEQ_QUICK_BUILD_5", "Seq 5\nQuick\nBuild", "Quick build step sequencer slot 5"),
+    K("SEQ_QUICK_BUILD_6", "Seq 6\nQuick\nBuild", "Quick build step sequencer slot 6"),
+    K("SEQ_QUICK_BUILD_7", "Seq 7\nQuick\nBuild", "Quick build step sequencer slot 7"),
+    K("SEQ_QUICK_BUILD_8", "Seq 8\nQuick\nBuild", "Quick build step sequencer slot 8"),
 ]
 
 # Generate preset selection keycodes (48 factory + 20 user = 68 total)

@@ -2556,6 +2556,17 @@ class keycodes_v6:
         "SEQ_GATE_UP": 0xEF0B,  # Increase sequencer gate by 10%
         "SEQ_GATE_DOWN": 0xEF0C,  # Decrease sequencer gate by 10%
 
+        # NEW: Quick Build Buttons (0xEF74-0xEF7C) - after Toggle range
+        "ARP_QUICK_BUILD": 0xEF74,  # Quick build arpeggiator preset
+        "SEQ_QUICK_BUILD_1": 0xEF75,  # Quick build step sequencer slot 1
+        "SEQ_QUICK_BUILD_2": 0xEF76,  # Quick build step sequencer slot 2
+        "SEQ_QUICK_BUILD_3": 0xEF77,  # Quick build step sequencer slot 3
+        "SEQ_QUICK_BUILD_4": 0xEF78,  # Quick build step sequencer slot 4
+        "SEQ_QUICK_BUILD_5": 0xEF79,  # Quick build step sequencer slot 5
+        "SEQ_QUICK_BUILD_6": 0xEF7A,  # Quick build step sequencer slot 6
+        "SEQ_QUICK_BUILD_7": 0xEF7B,  # Quick build step sequencer slot 7
+        "SEQ_QUICK_BUILD_8": 0xEF7C,  # Quick build step sequencer slot 8
+
         # DKS (Dynamic Keystroke) Slots (0xED00-0xED31) - 50 slots
         "DKS_00": 0xED00,  # Base for DKS slot selection
 
