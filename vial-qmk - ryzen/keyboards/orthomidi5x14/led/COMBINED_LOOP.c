@@ -7290,10 +7290,10 @@ static void randomize_pattern_with_color(uint8_t current_slot) {
     // Apply randomize brightness rules
     apply_randomize_brightness_settings(current_slot);
 
-    // Override speeds (all speeds must be >= 128 / 50%)
+    // Override speeds: live/macro >= 50%, background fully random
     set_custom_slot_live_speed_temp(current_slot, get_randomize_speed());
     set_custom_slot_macro_speed_temp(current_slot, get_randomize_speed());
-    set_custom_slot_background_speed(current_slot, get_randomize_speed());
+    set_custom_slot_background_speed(current_slot, rand() & 0xFF);
 }
 
 // Inclusion criteria system for Loop 2 - NOW WITH WEIGHTED POSITIONING
@@ -7333,7 +7333,7 @@ static void randomize_with_criteria(uint8_t slot) {
     apply_randomize_brightness_settings(slot);
     set_custom_slot_live_speed_temp(slot, get_randomize_speed());
     set_custom_slot_macro_speed_temp(slot, get_randomize_speed());
-    set_custom_slot_background_speed(slot, get_randomize_speed());
+    set_custom_slot_background_speed(slot, rand() & 0xFF);
 }
 
 // No restrictions for Loop 3
@@ -7364,7 +7364,7 @@ static void randomize_no_restrictions(uint8_t slot) {
     apply_randomize_brightness_settings(slot);
     set_custom_slot_live_speed_temp(slot, get_randomize_speed());
     set_custom_slot_macro_speed_temp(slot, get_randomize_speed());
-    set_custom_slot_background_speed(slot, get_randomize_speed());
+    set_custom_slot_background_speed(slot, rand() & 0xFF);
 }
 
 // =============================================================================
