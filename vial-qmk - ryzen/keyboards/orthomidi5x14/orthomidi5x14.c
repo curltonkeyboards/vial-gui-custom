@@ -3212,6 +3212,14 @@ void save_custom_animations_to_eeprom(void) {
 // Load all custom slots from EEPROM
 void load_custom_animations_from_eeprom(void) {
     eeprom_read_block(custom_slots, (uint8_t*)EECONFIG_CUSTOM_ANIMATIONS, EECONFIG_CUSTOM_ANIMATIONS_SIZE);
+    // Force sane brightness defaults: animations at 100%, background capped at 50%
+    for (uint8_t i = 0; i < NUM_CUSTOM_SLOTS; i++) {
+        custom_slots[i].live_brightness = 255;
+        custom_slots[i].macro_brightness = 255;
+        if (custom_slots[i].background_brightness > 50) {
+            custom_slots[i].background_brightness = 50;
+        }
+    }
 }
 
 // Save single slot to EEPROM
@@ -3225,6 +3233,12 @@ void save_custom_slot_to_eeprom(uint8_t slot) {
 void load_custom_slot_from_eeprom(uint8_t slot) {
     if (slot < NUM_CUSTOM_SLOTS) {
         eeprom_read_block(&custom_slots[slot], (uint8_t*)(EECONFIG_CUSTOM_ANIMATIONS + (slot * sizeof(custom_animation_config_t))), sizeof(custom_animation_config_t));
+        // Force sane brightness defaults
+        custom_slots[slot].live_brightness = 255;
+        custom_slots[slot].macro_brightness = 255;
+        if (custom_slots[slot].background_brightness > 50) {
+            custom_slots[slot].background_brightness = 50;
+        }
     }
 }
 // =============================================================================
