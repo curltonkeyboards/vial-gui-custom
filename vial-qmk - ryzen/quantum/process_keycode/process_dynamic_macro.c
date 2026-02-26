@@ -3767,7 +3767,7 @@ static void lt_dispatch_event(const lt_event_t *evt) {
             if (macro_override_live_notes || !is_live_note_active(channel, note)) {
                 if (!macro_main_muted[macro_idx] || is_overdub) {
                     midi_send_noteon(&midi_device, channel, note, velocity);
-                    add_lighting_macro_note(channel, note, track_id);
+                    add_lighting_macro_note(channel, note, track_id, velocity);
                 }
             }
             mark_note_from_macro(channel, note, track_id);
@@ -3780,7 +3780,7 @@ static void lt_dispatch_event(const lt_event_t *evt) {
                 if (macro_override_live_notes || !is_live_note_active(channel, oct_note)) {
                     if (!macro_main_muted[macro_idx] || is_overdub) {
                         midi_send_noteon(&midi_device, channel, oct_note, velocity);
-                        add_lighting_macro_note(channel, oct_note, track_id);
+                        add_lighting_macro_note(channel, oct_note, track_id, velocity);
                     }
                 }
                 mark_note_from_macro(channel, oct_note, track_id);
