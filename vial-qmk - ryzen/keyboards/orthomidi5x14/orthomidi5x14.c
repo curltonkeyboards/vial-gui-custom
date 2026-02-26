@@ -16590,18 +16590,6 @@ static const char *qb_gate_names[] = {
     "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"
 };
 
-// Speed index to note_value and timing_mode mapping
-static const uint8_t qb_speed_note_value[] = {
-    NOTE_VALUE_QUARTER, NOTE_VALUE_QUARTER, NOTE_VALUE_QUARTER,
-    NOTE_VALUE_EIGHTH, NOTE_VALUE_EIGHTH, NOTE_VALUE_EIGHTH,
-    NOTE_VALUE_SIXTEENTH, NOTE_VALUE_SIXTEENTH, NOTE_VALUE_SIXTEENTH
-};
-static const uint8_t qb_speed_timing_mode[] = {
-    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET,
-    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET,
-    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET
-};
-
 // =============================================================================
 // QUICK BUILD OLED RENDERING
 // =============================================================================
@@ -16670,7 +16658,7 @@ void render_quick_build(void) {
         // Line 7: small font - param counter and instruction
         oled_set_cursor(0, 6);
         uint8_t param_max = (quick_build_state.mode == QUICK_BUILD_ARP) ? QB_PARAM_ARP_COUNT : QB_PARAM_SEQ_COUNT;
-        snprintf(buf, sizeof(buf), " param %d/%d          ", quick_build_state.current_param + 1, param_max);
+        snprintf(buf, sizeof(buf), "    param %d/%d", quick_build_state.current_param + 1, param_max);
         oled_write(buf, false);
 
         oled_set_cursor(0, 7);
