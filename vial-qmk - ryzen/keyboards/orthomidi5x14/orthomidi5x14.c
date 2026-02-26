@@ -16511,6 +16511,683 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 #include "usb_main.h"  // For USB_DRIVER access
 
+// =============================================================================
+// MODERNIZED OLED RENDERING - Large Font & Arp/Seq Visualization
+// =============================================================================
+
+// Minimal 6x8 font data for 2x rendering (ASCII 32-90 = space through Z, plus +-./)
+// Extracted from QMK's glcdfont.c - only the characters needed for status display.
+// Each character is 6 bytes (6 columns x 8 rows, column-major, LSB=top).
+static const uint8_t large_font_data[] PROGMEM = {
+    // ASCII 32 (space)
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // ASCII 33-42 skipped, offset handled by lookup
+    // ASCII 43 (+)
+    0x08, 0x08, 0x3E, 0x08, 0x08, 0x00,
+    // ASCII 44 (,) - unused but keeps alignment
+    0x00, 0x80, 0x70, 0x30, 0x00, 0x00,
+    // ASCII 45 (-)
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x00,
+    // ASCII 46 (.)
+    0x00, 0x00, 0x60, 0x60, 0x00, 0x00,
+    // ASCII 47 (/)
+    0x20, 0x10, 0x08, 0x04, 0x02, 0x00,
+    // ASCII 48-57 (0-9)
+    0x3E, 0x51, 0x49, 0x45, 0x3E, 0x00,  // 0
+    0x00, 0x42, 0x7F, 0x40, 0x00, 0x00,  // 1
+    0x72, 0x49, 0x49, 0x49, 0x46, 0x00,  // 2
+    0x21, 0x41, 0x49, 0x4D, 0x33, 0x00,  // 3
+    0x18, 0x14, 0x12, 0x7F, 0x10, 0x00,  // 4
+    0x27, 0x45, 0x45, 0x45, 0x39, 0x00,  // 5
+    0x3C, 0x4A, 0x49, 0x49, 0x31, 0x00,  // 6
+    0x41, 0x21, 0x11, 0x09, 0x07, 0x00,  // 7
+    0x36, 0x49, 0x49, 0x49, 0x36, 0x00,  // 8
+    0x46, 0x49, 0x49, 0x29, 0x1E, 0x00,  // 9
+    // ASCII 58-64 skipped
+    // ASCII 65-90 (A-Z)
+    0x7C, 0x12, 0x11, 0x12, 0x7C, 0x00,  // A
+    0x7F, 0x49, 0x49, 0x49, 0x36, 0x00,  // B
+    0x3E, 0x41, 0x41, 0x41, 0x22, 0x00,  // C
+    0x7F, 0x41, 0x41, 0x41, 0x3E, 0x00,  // D
+    0x7F, 0x49, 0x49, 0x49, 0x41, 0x00,  // E
+    0x7F, 0x09, 0x09, 0x09, 0x01, 0x00,  // F
+    0x3E, 0x41, 0x41, 0x51, 0x73, 0x00,  // G
+    0x7F, 0x08, 0x08, 0x08, 0x7F, 0x00,  // H
+    0x00, 0x41, 0x7F, 0x41, 0x00, 0x00,  // I
+    0x20, 0x40, 0x41, 0x3F, 0x01, 0x00,  // J
+    0x7F, 0x08, 0x14, 0x22, 0x41, 0x00,  // K
+    0x7F, 0x40, 0x40, 0x40, 0x40, 0x00,  // L
+    0x7F, 0x02, 0x1C, 0x02, 0x7F, 0x00,  // M
+    0x7F, 0x04, 0x08, 0x10, 0x7F, 0x00,  // N
+    0x3E, 0x41, 0x41, 0x41, 0x3E, 0x00,  // O
+    0x7F, 0x09, 0x09, 0x09, 0x06, 0x00,  // P
+    0x3E, 0x41, 0x51, 0x21, 0x5E, 0x00,  // Q
+    0x7F, 0x09, 0x19, 0x29, 0x46, 0x00,  // R
+    0x26, 0x49, 0x49, 0x49, 0x32, 0x00,  // S
+    0x03, 0x01, 0x7F, 0x01, 0x03, 0x00,  // T
+    0x3F, 0x40, 0x40, 0x40, 0x3F, 0x00,  // U
+    0x1F, 0x20, 0x40, 0x20, 0x1F, 0x00,  // V
+    0x3F, 0x40, 0x38, 0x40, 0x3F, 0x00,  // W
+    0x63, 0x14, 0x08, 0x14, 0x63, 0x00,  // X
+    0x03, 0x04, 0x78, 0x04, 0x03, 0x00,  // Y
+    0x61, 0x59, 0x49, 0x4D, 0x43, 0x00,  // Z
+};
+
+// Get 6-byte glyph data pointer for a character from our embedded font.
+// Returns pointer to 6 bytes in PROGMEM, or NULL for unsupported chars.
+static const uint8_t* large_font_get_glyph(char c) {
+    if (c == ' ') return &large_font_data[0];
+    if (c >= '+' && c <= '/') return &large_font_data[6 + (c - '+') * 6];
+    if (c >= '0' && c <= '9') return &large_font_data[36 + (c - '0') * 6];
+    if (c >= 'A' && c <= 'Z') return &large_font_data[96 + (c - 'A') * 6];
+    // Convert lowercase to uppercase
+    if (c >= 'a' && c <= 'z') return &large_font_data[96 + (c - 'a') * 6];
+    return &large_font_data[0];  // Default: space
+}
+
+// Write a single character at 2x scale (12x16 pixels) using raw bitmap writes.
+// Reads glyph from embedded font, doubles each pixel horizontally and vertically.
+// pixel_x: pixel X position (0-127), row_page: OLED page row (each page = 8px tall)
+static void oled_write_char_2x(char c, uint8_t pixel_x, uint8_t row_page) {
+    const uint8_t *glyph = large_font_get_glyph(c);
+    if (!glyph) return;
+
+    // Each original column is 1 byte (8 vertical bits). We produce 2 output pages
+    // (top half = bits 0-3 doubled, bottom half = bits 4-7 doubled).
+    uint8_t top_row[12];
+    uint8_t bot_row[12];
+
+    for (uint8_t col = 0; col < 6; col++) {
+        uint8_t src = pgm_read_byte(&glyph[col]);
+
+        // Double the lower 4 bits vertically into an 8-bit value for the top page
+        uint8_t top = 0;
+        for (uint8_t bit = 0; bit < 4; bit++) {
+            if (src & (1 << bit)) {
+                top |= (3 << (bit * 2));
+            }
+        }
+
+        // Double the upper 4 bits vertically into an 8-bit value for the bottom page
+        uint8_t bot = 0;
+        for (uint8_t bit = 0; bit < 4; bit++) {
+            if (src & (1 << (bit + 4))) {
+                bot |= (3 << (bit * 2));
+            }
+        }
+
+        // Double horizontally: each source column becomes 2 output columns
+        top_row[col * 2]     = top;
+        top_row[col * 2 + 1] = top;
+        bot_row[col * 2]     = bot;
+        bot_row[col * 2 + 1] = bot;
+    }
+
+    // Write to the OLED buffer at the correct position
+    uint16_t top_index = (uint16_t)row_page * OLED_DISPLAY_WIDTH + pixel_x;
+    uint16_t bot_index = (uint16_t)(row_page + 1) * OLED_DISPLAY_WIDTH + pixel_x;
+
+    // Bounds check
+    if (pixel_x + 12 > OLED_DISPLAY_WIDTH) return;
+    if ((row_page + 2) > (OLED_DISPLAY_HEIGHT / 8)) return;
+
+    for (uint8_t i = 0; i < 12; i++) {
+        oled_write_raw_byte(top_row[i], top_index + i);
+        oled_write_raw_byte(bot_row[i], bot_index + i);
+    }
+}
+
+// Write a string at 2x scale. Each char is 12px wide, 16px tall.
+// pixel_x: starting pixel X, row_page: starting OLED page (0-14 for 128px tall)
+static void oled_write_str_2x(const char *str, uint8_t pixel_x, uint8_t row_page) {
+    while (*str && pixel_x + 12 <= OLED_DISPLAY_WIDTH) {
+        oled_write_char_2x(*str, pixel_x, row_page);
+        pixel_x += 12;
+        str++;
+    }
+}
+
+// Clear a rectangular region of the OLED (by page rows)
+static void oled_clear_region(uint8_t start_page, uint8_t num_pages) {
+    uint16_t start = (uint16_t)start_page * OLED_DISPLAY_WIDTH;
+    uint16_t bytes = (uint16_t)num_pages * OLED_DISPLAY_WIDTH;
+    for (uint16_t i = 0; i < bytes; i++) {
+        oled_write_raw_byte(0x00, start + i);
+    }
+}
+
+// Render the modernized top section with large font for critical info.
+// Uses rows 0-7 (64px): large Layer/Channel/Transpose + normal curve/chord/notes.
+static void render_top_section_large(void) {
+    char buf[22];
+    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+    uint16_t display_bpm = current_bpm / 100000;
+
+    // --- Rows 0-1 (pages 0-1): LARGE Layer + BPM ---
+    // Clear the 2 pages for the large text
+    oled_clear_region(0, 2);
+    if (current_bpm == 0) {
+        snprintf(buf, sizeof(buf), "LAYER %d", layer);
+    } else {
+        snprintf(buf, sizeof(buf), "L%d BPM%3d", layer, (int)display_bpm);
+    }
+    // Center the text: each large char is 12px wide
+    uint8_t len = strlen(buf);
+    uint8_t start_x = (OLED_DISPLAY_WIDTH - len * 12) / 2;
+    if (len * 12 > OLED_DISPLAY_WIDTH) start_x = 0;
+    oled_write_str_2x(buf, start_x, 0);
+
+    // --- Rows 2-3 (pages 2-3): LARGE Channel + Transposition ---
+    oled_clear_region(2, 2);
+    if (keysplittransposestatus >= 1) {
+        // Keysplit: compact display
+        if (keysplitstatus >= 1) {
+            snprintf(buf, sizeof(buf), "C%d/%d T%+d/%+d",
+                (channel_number + 1), (keysplitchannel + 1),
+                transpose_number + octave_number,
+                transpose_number2 + octave_number2);
+        } else {
+            snprintf(buf, sizeof(buf), "CH%2d T%+d/%+d",
+                (channel_number + 1),
+                transpose_number + octave_number,
+                transpose_number2 + octave_number2);
+        }
+    } else {
+        if (keysplitstatus >= 1) {
+            snprintf(buf, sizeof(buf), "C%d/%d T%+d",
+                (channel_number + 1), (keysplitchannel + 1),
+                transpose_number + octave_number);
+        } else {
+            snprintf(buf, sizeof(buf), "CH%2d TRA%+d",
+                (channel_number + 1),
+                transpose_number + octave_number);
+        }
+    }
+    len = strlen(buf);
+    start_x = (OLED_DISPLAY_WIDTH - len * 12) / 2;
+    if (len * 12 > OLED_DISPLAY_WIDTH) start_x = 0;
+    oled_write_str_2x(buf, start_x, 2);
+
+    // --- Row 4 (page 4): Velocity curve name (normal 6x8 font) ---
+    oled_set_cursor(0, 4);
+    uint8_t curve = keyboard_settings.he_velocity_curve;
+    const char* curve_names[] = {"Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"};
+    if (curve <= 6) {
+        snprintf(buf, sizeof(buf), "      %s", curve_names[curve]);
+    } else {
+        uint8_t slot = curve - CURVE_USER_START;
+        if (slot < 10 && user_curves.presets[slot].name[0] != '\0') {
+            char preset_name[16];
+            strncpy(preset_name, user_curves.presets[slot].name, 15);
+            preset_name[15] = '\0';
+            snprintf(buf, sizeof(buf), "      %s", preset_name);
+        } else {
+            snprintf(buf, sizeof(buf), "      User %d", slot + 1);
+        }
+    }
+    oled_write(buf, false);
+
+    // --- Row 5 (page 5): Mode display message (temporary) or separator ---
+    oled_set_cursor(0, 5);
+    if (mode_display_active && timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
+        oled_write(mode_display_msg, false);
+    } else {
+        if (mode_display_active) mode_display_active = false;
+        oled_write_P(PSTR("---------------------"), false);
+    }
+
+    // --- Row 6 (page 6): Chord name (centered) ---
+    oled_set_cursor(0, 6);
+    {
+        char name[22];
+        int total_length = strlen(getRootName()) + strlen(getChordName()) + strlen(getBassName());
+        int total_padding = 21 - total_length;
+        if (total_padding < 0) total_padding = 0;
+        int left_padding = total_padding / 2;
+        int right_padding = total_padding - left_padding;
+        snprintf(name, sizeof(name), "%*s%s%s%s%*s",
+            left_padding, "",
+            getRootName(), getChordName(), getBassName(),
+            right_padding, "");
+        oled_write(name, false);
+    }
+
+    // --- Row 7 (page 7): Keylog (recently pressed key name) + separator ---
+    oled_set_cursor(0, 7);
+    oled_write(keylog_str, false);
+}
+
+// =============================================================================
+// PROGRESS BAR - Horizontal bar showing pattern playback position
+// =============================================================================
+
+// Render a horizontal progress bar on a single OLED page row.
+// position: current step (0-based), total: total steps, page: OLED page row
+static void render_progress_bar(uint16_t position, uint16_t total, uint8_t page) {
+    uint8_t bar[128];
+    memset(bar, 0, sizeof(bar));
+
+    if (total == 0) total = 1;
+
+    // Draw border: top and bottom pixel lines
+    for (uint8_t x = 0; x < 128; x++) {
+        bar[x] |= 0x01;  // Top border (bit 0)
+        bar[x] |= 0x80;  // Bottom border (bit 7)
+    }
+    bar[0] = 0xFF;    // Left edge
+    bar[127] = 0xFF;  // Right edge
+
+    // Fill proportional to position (inside the border, bits 1-6 = 6px tall)
+    uint8_t fill_width = (uint8_t)((uint32_t)(position + 1) * 126 / total);
+    if (fill_width > 126) fill_width = 126;
+    for (uint8_t x = 1; x <= fill_width; x++) {
+        bar[x] |= 0x7E;  // Fill bits 1-6
+    }
+
+    // Write the bar row
+    uint16_t index = (uint16_t)page * OLED_DISPLAY_WIDTH;
+    for (uint8_t i = 0; i < 128; i++) {
+        oled_write_raw_byte(bar[i], index + i);
+    }
+}
+
+// =============================================================================
+// ARPEGGIATOR STEP VISUALIZATION
+// =============================================================================
+
+// Render arpeggiator step view showing note pattern and current position.
+// Displays each step as a column whose height represents velocity/interval.
+// The active step is highlighted (inverted).
+static void render_arp_step_view(void) {
+    arp_preset_t *preset = &arp_active_preset;
+    uint8_t note_count = preset->note_count;
+    if (note_count == 0) note_count = 1;
+
+    // Calculate column width: divide 128px among visible steps
+    // Show up to 32 steps, scroll if more
+    uint8_t visible_steps = note_count;
+    if (visible_steps > 32) visible_steps = 32;
+    uint8_t col_width = 128 / visible_steps;
+    if (col_width < 2) col_width = 2;
+    if (col_width > 16) col_width = 16;
+
+    // Determine current active step from pattern position
+    uint8_t active_step = 0;
+    if (arp_state.active && preset->pattern_length_16ths > 0) {
+        // Map current_position_16ths to the closest note step
+        uint16_t pos = arp_state.current_position_16ths;
+        for (uint8_t i = 0; i < note_count; i++) {
+            uint8_t step_time = NOTE_GET_TIMING(preset->notes[i].packed_timing_vel);
+            if (step_time <= pos) {
+                active_step = i;
+            }
+        }
+    }
+
+    // Scroll offset if there are many steps
+    uint8_t scroll_offset = 0;
+    if (note_count > 32) {
+        if (active_step > 16) {
+            scroll_offset = active_step - 16;
+            if (scroll_offset + 32 > note_count) {
+                scroll_offset = note_count - 32;
+            }
+        }
+    }
+
+    // Render into 4 page rows (pages 10-13 = 32px tall)
+    // Each step column: velocity determines fill height (0-31 pixels)
+    uint8_t rows[4][128];
+    memset(rows, 0, sizeof(rows));
+
+    for (uint8_t i = 0; i < visible_steps; i++) {
+        uint8_t step_idx = i + scroll_offset;
+        if (step_idx >= note_count) break;
+
+        uint8_t velocity = NOTE_GET_VELOCITY(preset->notes[step_idx].packed_timing_vel);
+        uint8_t note_idx = NOTE_GET_NOTE(preset->notes[step_idx].note_octave);
+        int8_t octave = NOTE_GET_OCTAVE(preset->notes[step_idx].note_octave);
+        bool is_active = (step_idx == active_step && arp_state.active);
+
+        // Map velocity (0-127) to bar height (0-31 pixels, bottom-up)
+        uint8_t bar_height = (velocity * 31) / 127;
+        if (bar_height == 0 && velocity > 0) bar_height = 1;
+
+        uint8_t x_start = i * col_width;
+        uint8_t x_end = x_start + col_width - 1;
+        if (x_end >= 128) x_end = 127;
+
+        // Draw the column (bottom-aligned within the 32px space)
+        // Page 3 (bottom) is bits closest to bottom of the 32px region
+        for (uint8_t px_y = 0; px_y < 32; px_y++) {
+            bool filled = (px_y < bar_height);
+            // Convert from bottom-up px_y to top-down page/bit
+            uint8_t actual_y = 31 - px_y;
+            uint8_t page_row = actual_y / 8;
+            uint8_t bit_pos = actual_y % 8;
+
+            if (filled) {
+                for (uint8_t x = x_start + 1; x < x_end; x++) {
+                    rows[page_row][x] |= (1 << bit_pos);
+                }
+            }
+
+            // Active step: draw bright border on left/right edges
+            if (is_active) {
+                rows[page_row][x_start] |= (1 << bit_pos);
+                if (x_end < 128) rows[page_row][x_end] |= (1 << bit_pos);
+            }
+        }
+
+        // Draw step separator (thin vertical line on left edge)
+        if (!is_active) {
+            for (uint8_t r = 0; r < 4; r++) {
+                rows[r][x_start] |= 0x01;  // Just a dot at the top of each page
+            }
+        }
+
+        // Draw a small note letter at the bottom of active step
+        if (is_active && col_width >= 6) {
+            // We'll mark the bottom row with a different pattern for the active step
+            for (uint8_t x = x_start + 1; x < x_end && x < 128; x++) {
+                rows[3][x] |= 0x80;  // Bottom pixel line highlight
+            }
+        }
+    }
+
+    // Write all 4 page rows to OLED (pages 10-13)
+    for (uint8_t r = 0; r < 4; r++) {
+        uint16_t index = (uint16_t)(10 + r) * OLED_DISPLAY_WIDTH;
+        for (uint8_t x = 0; x < 128; x++) {
+            oled_write_raw_byte(rows[r][x], index + x);
+        }
+    }
+}
+
+// =============================================================================
+// SEQUENCER GRID VISUALIZATION (Mini piano-roll style)
+// =============================================================================
+
+// Render step sequencer as a grid: X = time steps, Y = note pitch.
+// Active step column is highlighted. Notes shown as filled cells.
+static void render_seq_grid_view(uint8_t slot) {
+    if (slot >= MAX_SEQ_SLOTS) return;
+    seq_preset_t *preset = &seq_active_presets[slot];
+    uint8_t note_count = preset->note_count;
+    if (note_count == 0) return;
+
+    // Find pitch range for Y-axis scaling
+    uint8_t min_note = 127, max_note = 0;
+    for (uint8_t i = 0; i < note_count; i++) {
+        uint8_t n = NOTE_GET_NOTE(preset->notes[i].note_octave);
+        int8_t oct = NOTE_GET_OCTAVE(preset->notes[i].note_octave);
+        uint8_t midi_note = 60 + (oct * 12) + n;  // Approximate MIDI note
+        if (midi_note < min_note) min_note = midi_note;
+        if (midi_note > max_note) max_note = midi_note;
+    }
+    uint8_t pitch_range = max_note - min_note + 1;
+    if (pitch_range == 0) pitch_range = 1;
+    if (pitch_range > 32) pitch_range = 32;  // Cap for display
+
+    // Current active step
+    uint8_t active_step = 0;
+    if (seq_state[slot].active && preset->pattern_length_16ths > 0) {
+        uint16_t pos = seq_state[slot].current_position_16ths;
+        for (uint8_t i = 0; i < note_count; i++) {
+            uint8_t step_time = NOTE_GET_TIMING(preset->notes[i].packed_timing_vel);
+            if (step_time <= pos) {
+                active_step = i;
+            }
+        }
+    }
+
+    // Time axis: each step gets equal horizontal space
+    uint8_t visible_steps = note_count;
+    if (visible_steps > 64) visible_steps = 64;
+    uint8_t col_width = 128 / visible_steps;
+    if (col_width < 2) col_width = 2;
+
+    // Render into 4 page rows (32px)
+    uint8_t rows[4][128];
+    memset(rows, 0, sizeof(rows));
+
+    for (uint8_t i = 0; i < visible_steps && i < note_count; i++) {
+        uint8_t n = NOTE_GET_NOTE(preset->notes[i].note_octave);
+        int8_t oct = NOTE_GET_OCTAVE(preset->notes[i].note_octave);
+        uint8_t midi_note = 60 + (oct * 12) + n;
+        uint8_t velocity = NOTE_GET_VELOCITY(preset->notes[i].packed_timing_vel);
+        bool is_active = (i == active_step && seq_state[slot].active);
+
+        // Map pitch to Y position (0-31, higher pitch = higher on display)
+        uint8_t y_pos;
+        if (pitch_range > 1) {
+            y_pos = (uint8_t)((uint16_t)(midi_note - min_note) * 30 / (pitch_range - 1));
+        } else {
+            y_pos = 15;  // Center
+        }
+        y_pos = 31 - y_pos;  // Invert (high notes at top)
+
+        uint8_t x_start = i * col_width;
+        uint8_t x_end = x_start + col_width - 1;
+        if (x_end >= 128) x_end = 127;
+
+        // Draw the note as a filled rectangle (2-3 pixels tall based on velocity)
+        uint8_t note_height = 1 + (velocity > 64 ? 1 : 0) + (velocity > 100 ? 1 : 0);
+        for (int8_t dy = 0; dy < note_height && (y_pos + dy) < 32; dy++) {
+            uint8_t actual_y = y_pos + dy;
+            uint8_t page_row = actual_y / 8;
+            uint8_t bit_pos = actual_y % 8;
+            for (uint8_t x = x_start; x <= x_end && x < 128; x++) {
+                rows[page_row][x] |= (1 << bit_pos);
+            }
+        }
+
+        // Active step: full-height column marker (dotted)
+        if (is_active) {
+            for (uint8_t r = 0; r < 4; r++) {
+                rows[r][x_start] |= 0x55;  // Dotted vertical line
+            }
+        }
+    }
+
+    // Write to OLED pages 10-13
+    for (uint8_t r = 0; r < 4; r++) {
+        uint16_t index = (uint16_t)(10 + r) * OLED_DISPLAY_WIDTH;
+        for (uint8_t x = 0; x < 128; x++) {
+            oled_write_raw_byte(rows[r][x], index + x);
+        }
+    }
+}
+
+// =============================================================================
+// ARP/SEQ DISPLAY DISPATCHER
+// =============================================================================
+
+// Check if any sequencer slot is active
+static bool any_seq_slot_active(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) return true;
+    }
+    return false;
+}
+
+// Count active sequencer slots
+static uint8_t count_active_seq_slots(void) {
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) count++;
+    }
+    return count;
+}
+
+// Find first active sequencer slot
+static uint8_t first_active_seq_slot(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) return i;
+    }
+    return 0;
+}
+
+// Render the arp/seq visualization in the bottom half (pages 8-15).
+static void render_arp_seq_display(void) {
+    char buf[22];
+    uint16_t display_bpm = current_bpm / 100000;
+
+    bool arp_active = arp_state.active;
+    uint8_t active_seq_count = count_active_seq_slots();
+
+    if (arp_active && active_seq_count == 0) {
+        // --- Arpeggiator only ---
+        arp_preset_t *preset = &arp_active_preset;
+
+        // Row 8: ARP header with preset ID
+        oled_set_cursor(0, 8);
+        snprintf(buf, sizeof(buf), "ARP Preset %-3d %s",
+            arp_state.current_preset_id,
+            arp_state.latch_mode ? "LATCH" : "     ");
+        oled_write(buf, false);
+
+        // Row 9: Timing info
+        oled_set_cursor(0, 9);
+        const char *note_val_names[] = {"1/4", "1/8", "1/16"};
+        const char *timing_names[] = {"", " T", " D"};
+        uint8_t nv = preset->note_value;
+        uint8_t tm = preset->timing_mode & TIMING_MODE_MASK;
+        if (nv >= NOTE_VALUE_COUNT) nv = 0;
+        if (tm > 2) tm = 0;
+        snprintf(buf, sizeof(buf), "BPM%3d Gate%3d%% %s%s",
+            (int)display_bpm,
+            preset->gate_length_percent,
+            note_val_names[nv],
+            timing_names[tm]);
+        oled_write(buf, false);
+
+        // Rows 10-13: Step visualization (rendered via raw bitmaps)
+        render_arp_step_view();
+
+        // Row 14: Position info
+        oled_set_cursor(0, 14);
+        snprintf(buf, sizeof(buf), "Step %d/%d  Notes:%d  ",
+            (int)(arp_state.current_position_16ths + 1),
+            (int)preset->pattern_length_16ths,
+            preset->note_count);
+        oled_write(buf, false);
+
+        // Row 15: Progress bar
+        render_progress_bar(
+            arp_state.current_position_16ths,
+            preset->pattern_length_16ths,
+            15);
+
+    } else if (!arp_active && active_seq_count == 1) {
+        // --- Single sequencer ---
+        uint8_t slot = first_active_seq_slot();
+        seq_preset_t *preset = &seq_active_presets[slot];
+
+        // Row 8: SEQ header
+        oled_set_cursor(0, 8);
+        snprintf(buf, sizeof(buf), "SEQ%d Preset %-3d     ",
+            slot + 1,
+            seq_state[slot].current_preset_id);
+        oled_write(buf, false);
+
+        // Row 9: Timing info
+        oled_set_cursor(0, 9);
+        const char *note_val_names2[] = {"1/4", "1/8", "1/16"};
+        uint8_t nv = preset->note_value;
+        if (nv >= NOTE_VALUE_COUNT) nv = 0;
+        snprintf(buf, sizeof(buf), "BPM%3d Gate%3d%% Ch%-2d",
+            (int)display_bpm,
+            preset->gate_length_percent,
+            seq_state[slot].locked_channel + 1);
+        oled_write(buf, false);
+
+        // Rows 10-13: Grid visualization
+        render_seq_grid_view(slot);
+
+        // Row 14: Position info
+        oled_set_cursor(0, 14);
+        snprintf(buf, sizeof(buf), "Pos %d/%d  T%+d       ",
+            (int)(seq_state[slot].current_position_16ths + 1),
+            (int)preset->pattern_length_16ths,
+            seq_state[slot].locked_transpose);
+        oled_write(buf, false);
+
+        // Row 15: Progress bar
+        render_progress_bar(
+            seq_state[slot].current_position_16ths,
+            preset->pattern_length_16ths,
+            15);
+
+    } else {
+        // --- Multi-sequencer overview (and/or arp + seq) ---
+        oled_set_cursor(0, 8);
+        if (arp_active) {
+            oled_write_P(PSTR("ARP+SEQ OVERVIEW     "), false);
+        } else {
+            oled_write_P(PSTR("SEQ OVERVIEW         "), false);
+        }
+
+        // Rows 9-12: Mini progress bars for each active slot (2 per row)
+        for (uint8_t row = 0; row < 4; row++) {
+            oled_set_cursor(0, 9 + row);
+            buf[0] = '\0';
+            for (uint8_t col = 0; col < 2; col++) {
+                uint8_t slot = row * 2 + col;
+                if (slot < MAX_SEQ_SLOTS && seq_state[slot].active) {
+                    seq_preset_t *p = &seq_active_presets[slot];
+                    uint16_t pos = seq_state[slot].current_position_16ths;
+                    uint16_t total = p->pattern_length_16ths;
+                    if (total == 0) total = 1;
+                    uint8_t fill = (uint8_t)((uint32_t)pos * 5 / total);  // 0-5 blocks
+                    char mini[11];
+                    snprintf(mini, sizeof(mini), "S%d:", slot + 1);
+                    for (uint8_t b = 0; b < 5; b++) {
+                        mini[3 + b] = (b < fill) ? '#' : '.';
+                    }
+                    mini[8] = ' ';
+                    mini[9] = ' ';
+                    mini[10] = '\0';
+                    strcat(buf, mini);
+                } else if (slot < MAX_SEQ_SLOTS) {
+                    strcat(buf, "          ");
+                }
+            }
+            oled_write(buf, false);
+        }
+
+        // Row 13: Arp status if active
+        oled_set_cursor(0, 13);
+        if (arp_active) {
+            uint16_t pos = arp_state.current_position_16ths;
+            uint16_t total = arp_active_preset.pattern_length_16ths;
+            if (total == 0) total = 1;
+            uint8_t fill = (uint8_t)((uint32_t)pos * 10 / total);
+            snprintf(buf, sizeof(buf), "ARP:");
+            for (uint8_t b = 0; b < 10; b++) {
+                buf[4 + b] = (b < fill) ? '#' : '.';
+            }
+            buf[14] = ' ';
+            buf[15] = '\0';
+            strcat(buf, "      ");
+            oled_write(buf, false);
+        } else {
+            oled_write_P(PSTR("                     "), false);
+        }
+
+        // Row 14: BPM and sync status
+        oled_set_cursor(0, 14);
+        snprintf(buf, sizeof(buf), "BPM%3d Sync:%s      ",
+            (int)display_bpm,
+            (arp_active && arp_state.sync_mode) ? "ON" : "OFF");
+        oled_write(buf, false);
+
+        // Row 15: Separator
+        oled_set_cursor(0, 15);
+        oled_write_P(PSTR("---------------------"), false);
+    }
+}
+
 // Render a big number on the OLED display for quick build step indication
 void render_big_number(uint8_t number) {
     char buf[64];
@@ -16558,50 +17235,31 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // Check if quick build is active - if so, show big number display
+    // Check if quick build is active - if so, show big number display (full screen)
     if (quick_build_is_active()) {
         render_big_number(quick_build_get_current_step());
         return false;
     }
 
-    // Normal display mode
-    // Buffer to store the formatted string
-    char str[22] = "";
-    char name[124] = "";  // Define `name` buffer to be used later
-    // Get the current layer and format it into `str`
-    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-    uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
+    // === TOP HALF (rows 0-7): Modernized large-font display ===
+    render_top_section_large();
 
-    if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
-	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
-    // Write the layer information to the OLED
-    oled_write(str, false);
+    // === BOTTOM HALF (rows 8-15): Priority-based display ===
+    // Priority: 1) Arp/Seq visualization  2) Loop interface  3) Virtual piano
+    led_usb_state = host_keyboard_led_state();
 
-    // Display temporary mode message if active
-    if (mode_display_active) {
-        if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
-            oled_write(mode_display_msg, false);
-        } else {
-            mode_display_active = false;
-        }
+    if (arp_state.active || any_seq_slot_active()) {
+        // Arpeggiator/Sequencer active: show step visualization
+        render_arp_seq_display();
+    } else if (dynamic_macro_has_activity()) {
+        // Loop macros active: show loop interface
+        render_interface(0, 8);
+    } else {
+        // Default: show animated virtual piano keyboard
+        render_luna(0, 1);
     }
 
-    // Render keylog information
-    oled_render_keylog();
-    // Add separator line to `name` and write to OLED
-    //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
-    // You only need to add the separator once, not three times.
-    oled_write(name, false);
-
-if (!dynamic_macro_has_activity()) {
-    led_usb_state = host_keyboard_led_state();
-        render_luna(0, 1);
-} else {
-    // Show Luna keyboard when no macros have data
-    led_usb_state = host_keyboard_led_state();
-	render_interface(0, 8);
-};
-return false;
+    return false;
 }
 
 void matrix_scan_user(void) {
