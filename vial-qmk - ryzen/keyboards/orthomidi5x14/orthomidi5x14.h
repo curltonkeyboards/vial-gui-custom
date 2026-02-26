@@ -917,6 +917,7 @@ const char* quick_build_get_param_name(void);
 const char* quick_build_get_param_desc1(void);
 const char* quick_build_get_param_desc2(void);
 const char* quick_build_get_param_value(void);
+const char* quick_build_get_param_value_big(void);  // Short name for 2x font (NULL = use normal font)
 
 // Seq slot-level start for quick build playback (avoids preset reload)
 void seq_start_slot(uint8_t slot);

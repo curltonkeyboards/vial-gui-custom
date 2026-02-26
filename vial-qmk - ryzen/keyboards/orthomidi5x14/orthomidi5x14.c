@@ -16758,43 +16758,111 @@ static const char* midi_note_name(uint8_t note, char *buf, uint8_t buf_size) {
     return buf;
 }
 
+// Helper: write a centered line (normal font)
+static void oled_write_line_centered(uint8_t row, const char *text) {
+    char line[22];
+    memset(line, ' ', 21);
+    line[21] = '\0';
+    uint8_t len = strlen(text);
+    if (len > 21) len = 21;
+    uint8_t pad = (21 - len) / 2;
+    memcpy(line + pad, text, len);
+    oled_set_cursor(0, row);
+    oled_write(line, false);
+}
+
+// Access OLED font data for 2x big font rendering
+// Font array defined in drivers/oled/glcdfont.c (included by oled_driver.c)
+extern const unsigned char font[] PROGMEM;
+
+// Render text centered in 2x size (12px wide × 16px tall per character)
+// Takes 2 OLED page rows (page and page+1). Clears entire 128px width.
+static void oled_write_big_centered(uint8_t page, const char *text) {
+    uint8_t top_buf[128];
+    uint8_t bot_buf[128];
+    memset(top_buf, 0, 128);
+    memset(bot_buf, 0, 128);
+
+    uint8_t len = strlen(text);
+    if (len > 10) len = 10;  // Max 10 chars at 12px each = 120px
+    uint8_t total_width = len * 12;
+    uint8_t start_x = (total_width < 128) ? (128 - total_width) / 2 : 0;
+
+    for (uint8_t ci = 0; ci < len; ci++) {
+        uint8_t c = (uint8_t)text[ci];
+        if (c < 0x20 || c > 0x7E) c = 0x20;  // Default to space
+
+        const uint8_t *glyph = &font[c * OLED_FONT_WIDTH];
+        uint8_t x = start_x + ci * 12;
+
+        for (uint8_t col = 0; col < OLED_FONT_WIDTH; col++) {
+            if (x + col * 2 + 1 >= 128) break;
+
+            uint8_t b = pgm_read_byte(&glyph[col]);
+
+            // Expand vertically: each bit becomes 2 bits
+            uint8_t top = 0, bot = 0;
+            if (b & 0x01) top |= 0x03;
+            if (b & 0x02) top |= 0x0C;
+            if (b & 0x04) top |= 0x30;
+            if (b & 0x08) top |= 0xC0;
+            if (b & 0x10) bot |= 0x03;
+            if (b & 0x20) bot |= 0x0C;
+            if (b & 0x40) bot |= 0x30;
+            if (b & 0x80) bot |= 0xC0;
+
+            // Expand horizontally: each column becomes 2 columns
+            top_buf[x + col * 2]     = top;
+            top_buf[x + col * 2 + 1] = top;
+            bot_buf[x + col * 2]     = bot;
+            bot_buf[x + col * 2 + 1] = bot;
+        }
+    }
+
+    // Write both page rows
+    oled_set_cursor(0, page);
+    oled_write_raw((char*)top_buf, 128);
+    oled_set_cursor(0, page + 1);
+    oled_write_raw((char*)bot_buf, 128);
+}
+
 // Render the setup phase OLED screen (parameter selection or root note prompt)
 void render_quick_build_setup(void) {
     char buf[22];
 
-    // Line 0: Title
+    // Line 0: Title (centered)
     if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
         quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
-        oled_write_line(0, " ARP QUICK BUILD");
+        oled_write_line_centered(0, "ARP QUICK BUILD");
     } else {
-        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
-        oled_write_line(0, buf);
+        snprintf(buf, sizeof(buf), "SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
+        oled_write_line_centered(0, buf);
     }
 
     // Line 1: Separator
-    oled_write_line(1, "--------------------");
+    oled_write_line(1, "---------------------");
 
     if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
         // Root note selection screen
         oled_write_line(2, "");
-        oled_write_line(3, " Select the root note");
-        oled_write_line(4, " (not a pattern step)");
+        oled_write_line_centered(3, "Select the root note");
+        oled_write_line_centered(4, "(not a pattern step)");
         oled_write_line(5, "");
 
         if (quick_build_state.candidate_ready) {
             // Show the candidate note name
             char note_buf[8];
             midi_note_name(quick_build_state.candidate_root, note_buf, sizeof(note_buf));
-            snprintf(buf, sizeof(buf), "   Root: %s", note_buf);
-            oled_write_line(6, buf);
+            snprintf(buf, sizeof(buf), "Root: %s", note_buf);
+            oled_write_line_centered(6, buf);
             oled_write_line(7, "");
-            oled_write_line(8, " Press top knob or");
-            oled_write_line(9, " button to confirm");
+            oled_write_line_centered(8, "Press top knob or");
+            oled_write_line_centered(9, "button to confirm");
             oled_write_line(10, "");
-            oled_write_line(11, " Play key to change");
+            oled_write_line_centered(11, "Play key to change");
         } else {
-            oled_write_line(6, "  Play a key on the");
-            oled_write_line(7, "  keyboard ...");
+            oled_write_line_centered(6, "Play a key on the");
+            oled_write_line_centered(7, "keyboard ...");
             oled_write_line(8, "");
             oled_write_line(9, "");
             oled_write_line(10, "");
@@ -16807,37 +16875,36 @@ void render_quick_build_setup(void) {
         oled_write_line(2, "");
 
         // Lines 3-4: Description
-        oled_write_line(3, quick_build_get_param_desc1());
-        oled_write_line(4, quick_build_get_param_desc2());
+        oled_write_line_centered(3, quick_build_get_param_desc1());
+        oled_write_line_centered(4, quick_build_get_param_desc2());
 
         // Line 5: blank
         oled_write_line(5, "");
 
-        // Line 6: Selected value with arrows
-        const char *value = quick_build_get_param_value();
-        uint8_t val_len = strlen(value);
-        uint8_t total_len = val_len + 6;  // ">> " + value + " <<"
-        uint8_t pad = 0;
-        if (total_len < 21) pad = (21 - total_len) / 2;
-        memset(buf, ' ', 21);
-        buf[21] = '\0';
-        snprintf(buf + pad, 21 - pad, ">> %s <<", value);
-        uint8_t end = strlen(buf);
-        while (end < 21) buf[end++] = ' ';
-        buf[21] = '\0';
-        oled_write_line(6, buf);
+        // Lines 6-7: Selected value (big font for speed/gate, normal for mode)
+        const char *big_value = quick_build_get_param_value_big();
+        if (big_value != NULL) {
+            // Speed or Gate: render in 2x font (takes lines 6-7)
+            oled_write_big_centered(6, big_value);
+        } else {
+            // Arp mode: normal font with arrows
+            const char *value = quick_build_get_param_value();
+            snprintf(buf, sizeof(buf), ">> %s <<", value);
+            oled_write_line_centered(6, buf);
+            oled_write_line(7, "");
+        }
 
-        oled_write_line(7, "");
+        // Lines 8-9: Instructions with arrows
+        oled_write_line_centered(8, "<< turn top knob >>");
+        oled_write_line_centered(9, "press to confirm");
 
-        // Lines 8-9: Instructions
-        oled_write_line(8, " Turn top knob to");
-        oled_write_line(9, " select, press to");
-        oled_write_line(10, " confirm");
+        // Line 10: blank
+        oled_write_line(10, "");
 
         // Line 11: Progress
         uint8_t total_params = (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) ? 3 : 2;
-        snprintf(buf, sizeof(buf), "     Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
-        oled_write_line(11, buf);
+        snprintf(buf, sizeof(buf), "Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
+        oled_write_line_centered(11, buf);
 
         oled_write_line(12, "");
         oled_write_line(13, "");
@@ -16850,54 +16917,54 @@ void render_quick_build_setup(void) {
 void render_quick_build_recording(void) {
     char buf[22];
 
-    // Line 0: Title
+    // Line 0: Title (centered)
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-        oled_write_line(0, " ARP QUICK BUILD");
+        oled_write_line_centered(0, "ARP QUICK BUILD");
     } else {
-        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
-        oled_write_line(0, buf);
+        snprintf(buf, sizeof(buf), "SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
+        oled_write_line_centered(0, buf);
     }
 
     // Line 1: Separator
-    oled_write_line(1, "--------------------");
+    oled_write_line(1, "---------------------");
 
     // Line 2: blank
     oled_write_line(2, "");
 
-    // Line 3: Step number
+    // Line 3: Step number (centered)
     uint8_t step = quick_build_get_current_step();
-    snprintf(buf, sizeof(buf), "      STEP %d", step);
-    oled_write_line(3, buf);
+    snprintf(buf, sizeof(buf), "STEP %d", step);
+    oled_write_line_centered(3, buf);
 
     // Line 4: blank
     oled_write_line(4, "");
 
-    // Line 5: Note count
-    snprintf(buf, sizeof(buf), "   %d notes total", quick_build_state.note_count);
-    oled_write_line(5, buf);
+    // Line 5: Note count (centered)
+    snprintf(buf, sizeof(buf), "%d notes total", quick_build_state.note_count);
+    oled_write_line_centered(5, buf);
 
     // Line 6: blank
     oled_write_line(6, "");
 
-    // Line 7: Top knob skip/undo
-    oled_write_line(7, " << Undo   Skip >>");
-    oled_write_line(8, " (turn top knob)");
+    // Line 7-8: Top knob skip/undo
+    oled_write_line_centered(7, "<< Undo   Skip >>");
+    oled_write_line_centered(8, "(turn top knob)");
 
     // Line 9: Chord mode status
     if (quick_build_state.encoder_chord_held) {
-        oled_write_line(9, " Top knob: CHORD ON");
+        oled_write_line_centered(9, "Top knob: CHORD ON");
     } else {
-        oled_write_line(9, " Hold knob: Chord");
+        oled_write_line_centered(9, "Hold knob: Chord");
     }
 
     // Line 10: blank
     oled_write_line(10, "");
 
-    // Line 11: Finish instruction
-    oled_write_line(11, " Press btn to finish");
+    // Lines 11-12: Finish instruction (split across 2 lines)
+    oled_write_line_centered(11, "Press knob or Quick");
+    oled_write_line_centered(12, "Build btn to finish");
 
-    // Lines 12-15: blank
-    oled_write_line(12, "");
+    // Lines 13-15: blank
     oled_write_line(13, "");
     oled_write_line(14, "");
     oled_write_line(15, "");

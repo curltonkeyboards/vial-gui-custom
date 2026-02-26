@@ -2423,18 +2423,19 @@ typedef struct {
     uint8_t note_value;
     uint8_t timing_mode;
     const char *name;
+    const char *short_name;  // Abbreviated name for 2x OLED font (max 8 chars)
 } speed_option_t;
 
 static const speed_option_t speed_options[] = {
-    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_STRAIGHT, "16th" },
-    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_TRIPLET,  "16th Triplet" },
-    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_DOTTED,   "16th Dotted" },
-    { NOTE_VALUE_EIGHTH,    TIMING_MODE_STRAIGHT, "8th" },
-    { NOTE_VALUE_EIGHTH,    TIMING_MODE_TRIPLET,  "8th Triplet" },
-    { NOTE_VALUE_EIGHTH,    TIMING_MODE_DOTTED,   "8th Dotted" },
-    { NOTE_VALUE_QUARTER,   TIMING_MODE_STRAIGHT, "Quarter" },
-    { NOTE_VALUE_QUARTER,   TIMING_MODE_TRIPLET,  "Qtr Triplet" },
-    { NOTE_VALUE_QUARTER,   TIMING_MODE_DOTTED,   "Qtr Dotted" }
+    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_STRAIGHT, "16th",         "16th"    },
+    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_TRIPLET,  "16th Triplet", "16thTrp" },
+    { NOTE_VALUE_SIXTEENTH, TIMING_MODE_DOTTED,   "16th Dotted",  "16thDot" },
+    { NOTE_VALUE_EIGHTH,    TIMING_MODE_STRAIGHT, "8th",          "8th"     },
+    { NOTE_VALUE_EIGHTH,    TIMING_MODE_TRIPLET,  "8th Triplet",  "8thTrp"  },
+    { NOTE_VALUE_EIGHTH,    TIMING_MODE_DOTTED,   "8th Dotted",   "8thDot"  },
+    { NOTE_VALUE_QUARTER,   TIMING_MODE_STRAIGHT, "Quarter",      "Quarter" },
+    { NOTE_VALUE_QUARTER,   TIMING_MODE_TRIPLET,  "Qtr Triplet",  "QtrTrp"  },
+    { NOTE_VALUE_QUARTER,   TIMING_MODE_DOTTED,   "Qtr Dotted",   "QtrDot"  }
 };
 #define NUM_SPEED_OPTIONS 9
 
@@ -2547,6 +2548,28 @@ const char* quick_build_get_param_value(void) {
         }
     }
     return "";
+}
+
+// Get shortened value string for 2x big font display (speed/gate only)
+// Returns NULL for params that should use normal font (e.g. arp mode)
+const char* quick_build_get_param_value_big(void) {
+    static char buf[16];
+    bool is_arp = (quick_build_state.mode == QUICK_BUILD_ARP_SETUP);
+    uint8_t param = quick_build_state.setup_param_index;
+
+    bool is_speed_param = (is_arp && param == 1) || (!is_arp && param == 0);
+    bool is_gate_param = (is_arp && param == 2) || (!is_arp && param == 1);
+
+    if (is_speed_param) {
+        uint8_t idx = get_speed_index(quick_build_state.setup_note_value,
+                                      quick_build_state.setup_timing_mode);
+        return speed_options[idx].short_name;
+    }
+    if (is_gate_param) {
+        snprintf(buf, sizeof(buf), "%d%%", quick_build_state.setup_gate_percent);
+        return buf;
+    }
+    return NULL;  // Arp mode: use normal font
 }
 
 // Cycle the current parameter value (encoder rotation)
