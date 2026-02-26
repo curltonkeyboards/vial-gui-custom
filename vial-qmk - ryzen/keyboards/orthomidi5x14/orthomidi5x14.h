@@ -732,8 +732,6 @@ typedef struct {
 
     // Locked-in values (captured when sequencer starts playing)
     uint8_t locked_channel;             // Locked MIDI channel
-    uint8_t locked_velocity_min;        // Locked velocity minimum
-    uint8_t locked_velocity_max;        // Locked velocity maximum
     int8_t locked_transpose;            // Locked transposition value
 } seq_state_t;
 
@@ -858,8 +856,32 @@ typedef enum {
     QUICK_BUILD_SEQ
 } quick_build_mode_t;
 
+typedef enum {
+    QB_PHASE_PARAMS = 0,     // Setting up parameters (mode/speed/gate)
+    QB_PHASE_RECORDING,      // Recording notes
+} quick_build_phase_t;
+
+// Parameter indices for arp quick build (mode → speed → gate)
+#define QB_PARAM_ARP_MODE  0
+#define QB_PARAM_ARP_SPEED 1
+#define QB_PARAM_ARP_GATE  2
+#define QB_PARAM_ARP_COUNT 3
+
+// Parameter indices for seq quick build (speed → gate)
+#define QB_PARAM_SEQ_SPEED 0
+#define QB_PARAM_SEQ_GATE  1
+#define QB_PARAM_SEQ_COUNT 2
+
+// Speed option count: quarter/eighth/16th × straight/dotted/triplet = 9
+#define QB_SPEED_OPTION_COUNT 9
+// Gate option count: 10% to 100% in steps of 10
+#define QB_GATE_OPTION_COUNT 10
+// Arp mode option count: 5 modes
+#define QB_ARP_MODE_OPTION_COUNT 5
+
 typedef struct {
     quick_build_mode_t mode;           // Current build mode (NONE, ARP, or SEQ)
+    quick_build_phase_t phase;         // Current phase (params or recording)
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
     uint8_t current_step;              // Current step (0-based internal)
     uint8_t note_count;                // Total notes recorded so far
@@ -868,6 +890,13 @@ typedef struct {
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
     bool has_saved_build;              // Has user completed a build?
+    uint8_t current_param;             // Which parameter is being configured (QB_PARAM_*)
+    uint8_t param_selection;           // Current encoder position within parameter options
+    bool encoder_chord_held;           // Encoder click held = momentary chord grouping
+    // Remembered settings from last session
+    uint8_t last_arp_mode;             // Last used arp mode selection index
+    uint8_t last_speed;                // Last used speed selection index (0-8)
+    uint8_t last_gate;                 // Last used gate selection index (0-9)
 } quick_build_state_t;
 
 extern quick_build_state_t quick_build_state;
@@ -883,7 +912,11 @@ void quick_build_handle_sustain_release(void);
 void quick_build_update(void);
 bool quick_build_is_active(void);
 uint8_t quick_build_get_current_step(void);
-void render_big_number(uint8_t number);
+void quick_build_encoder_rotate(bool clockwise);
+void quick_build_encoder_click(bool pressed);
+void quick_build_confirm_param(void);
+void render_quick_build(void);
+uint8_t apply_arp_velocity_curve(uint8_t stored_velocity_0_127);
 
 // Internal helper functions
 void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time);

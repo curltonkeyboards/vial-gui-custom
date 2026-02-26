@@ -512,6 +512,31 @@ void set_he_velocity_range(uint8_t min, uint8_t max) {
     he_velocity_max = max;
 }
 
+// Apply the current velocity curve to an arp/seq stored velocity (0-127)
+// This replaces the old per-slot min/max velocity system.
+// Stored velocity is scaled to 0-255, run through the active curve, then
+// mapped through the global min/max range to produce a final MIDI velocity.
+uint8_t apply_arp_velocity_curve(uint8_t stored_velocity_0_127) {
+    // Scale 0-127 to 0-255 range (the curve input domain)
+    uint16_t raw_value = ((uint16_t)stored_velocity_0_127 * 255) / 127;
+    if (raw_value > 255) raw_value = 255;
+
+    // Apply current velocity curve
+    uint8_t curve_index = keyboard_settings.he_velocity_curve;
+    uint8_t curved_value = apply_curve((uint8_t)raw_value, curve_index);
+
+    // Map through global min/max
+    uint8_t min_vel = keyboard_settings.he_velocity_min;
+    uint8_t max_vel = keyboard_settings.he_velocity_max;
+    uint8_t range = max_vel - min_vel;
+    int16_t velocity = min_vel + ((int16_t)curved_value * range) / 255;
+
+    // Clamp to valid MIDI velocity range (1-127)
+    if (velocity < 1) velocity = 1;
+    if (velocity > 127) velocity = 127;
+    return (uint8_t)velocity;
+}
+
 // Helper: Get velocity curve for a specific key with 3-tier priority
 // split_type: 0=base, 1=keysplit, 2=triplesplit
 // Priority 1: Per-key curve (if flag enabled)
@@ -11110,38 +11135,7 @@ break;
 		
 
 } else if (keycode == 0xC436){ // Velocity Up
-    // Check if any sequencer modifier is held
-    bool any_seq_mod_held = false;
-    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
-        if (seq_modifier_held[i]) {
-            int16_t new_min = seq_state[i].locked_velocity_min + velocity_sensitivity;
-            int16_t new_max = seq_state[i].locked_velocity_max + velocity_sensitivity;
-
-            // Clamp to valid range
-            if (new_min > 127) new_min = 127;
-            if (new_max > 127) new_max = 127;
-
-            // Check if we can move both without violating dynamic_range
-            int16_t current_range = seq_state[i].locked_velocity_max - seq_state[i].locked_velocity_min;
-
-            if (current_range >= dynamic_range) {
-                // Current range meets or exceeds dynamic_range, move both
-                seq_state[i].locked_velocity_min = (uint8_t)new_min;
-                seq_state[i].locked_velocity_max = (uint8_t)new_max;
-            } else {
-                // Current range is less than dynamic_range, only move min
-                seq_state[i].locked_velocity_min = (uint8_t)new_min;
-                if (seq_state[i].locked_velocity_min > seq_state[i].locked_velocity_max) {
-                    seq_state[i].locked_velocity_max = seq_state[i].locked_velocity_min;
-                }
-            }
-
-            snprintf(name, sizeof(name), "Seq %d VEL %d-%d", i + 1, seq_state[i].locked_velocity_min, seq_state[i].locked_velocity_max);
-            any_seq_mod_held = true;
-        }
-    }
-
-    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         // Normal behavior - affect HE velocity min/max ranges
         int16_t new_min = he_velocity_min + velocity_sensitivity;
         int16_t new_max = he_velocity_max + velocity_sensitivity;
@@ -11166,7 +11160,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "VEL %d-%d", he_velocity_min, he_velocity_max);
-    } else if (!any_seq_mod_held && keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
+    } else if (keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
         // Keysplit modifier held - affect keysplit velocity ranges
         int16_t new_min = keysplit_he_velocity_min + velocity_sensitivity;
         int16_t new_max = keysplit_he_velocity_max + velocity_sensitivity;
@@ -11191,7 +11185,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "KS VEL %d-%d", keysplit_he_velocity_min, keysplit_he_velocity_max);
-    } else if (!any_seq_mod_held && triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
+    } else if (triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
         // Triplesplit modifier held - affect triplesplit velocity ranges
         int16_t new_min = triplesplit_he_velocity_min + velocity_sensitivity;
         int16_t new_max = triplesplit_he_velocity_max + velocity_sensitivity;
@@ -11216,7 +11210,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "TS VEL %d-%d", triplesplit_he_velocity_min, triplesplit_he_velocity_max);
-    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
+    } else if (is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -11241,38 +11235,7 @@ break;
 
 // Velocity Down (0xC437)
 } else if (keycode == 0xC437){ // Velocity Down
-    // Check if any sequencer modifier is held
-    bool any_seq_mod_held = false;
-    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
-        if (seq_modifier_held[i]) {
-            int16_t new_min = seq_state[i].locked_velocity_min - velocity_sensitivity;
-            int16_t new_max = seq_state[i].locked_velocity_max - velocity_sensitivity;
-
-            // Clamp to valid range
-            if (new_min < 0) new_min = 0;
-            if (new_max < 0) new_max = 0;
-
-            // Check if we can move both without violating dynamic_range
-            int16_t current_range = seq_state[i].locked_velocity_max - seq_state[i].locked_velocity_min;
-
-            if (current_range >= dynamic_range) {
-                // Current range meets or exceeds dynamic_range, move both
-                seq_state[i].locked_velocity_min = (uint8_t)new_min;
-                seq_state[i].locked_velocity_max = (uint8_t)new_max;
-            } else {
-                // Current range is less than dynamic_range, only move max
-                seq_state[i].locked_velocity_max = (uint8_t)new_max;
-                if (seq_state[i].locked_velocity_max < seq_state[i].locked_velocity_min) {
-                    seq_state[i].locked_velocity_min = seq_state[i].locked_velocity_max;
-                }
-            }
-
-            snprintf(name, sizeof(name), "Seq %d VEL %d-%d", i + 1, seq_state[i].locked_velocity_min, seq_state[i].locked_velocity_max);
-            any_seq_mod_held = true;
-        }
-    }
-
-    if (!any_seq_mod_held && !is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
+    if (!is_any_macro_modifier_active() && !keysplitmodifierheld && !triplesplitmodifierheld) {
         // Normal behavior - affect HE velocity min/max ranges
         int16_t new_min = he_velocity_min - velocity_sensitivity;
         int16_t new_max = he_velocity_max - velocity_sensitivity;
@@ -11297,7 +11260,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "VEL %d-%d", he_velocity_min, he_velocity_max);
-    } else if (!any_seq_mod_held && keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
+    } else if (keysplitmodifierheld && !is_any_macro_modifier_active() && !triplesplitmodifierheld) {
         // Keysplit modifier held - affect keysplit velocity ranges
         int16_t new_min = keysplit_he_velocity_min - velocity_sensitivity;
         int16_t new_max = keysplit_he_velocity_max - velocity_sensitivity;
@@ -11322,7 +11285,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "KS VEL %d-%d", keysplit_he_velocity_min, keysplit_he_velocity_max);
-    } else if (!any_seq_mod_held && triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
+    } else if (triplesplitmodifierheld && !is_any_macro_modifier_active() && !keysplitmodifierheld) {
         // Triplesplit modifier held - affect triplesplit velocity ranges
         int16_t new_min = triplesplit_he_velocity_min - velocity_sensitivity;
         int16_t new_max = triplesplit_he_velocity_max - velocity_sensitivity;
@@ -11347,7 +11310,7 @@ break;
         }
 
         snprintf(name, sizeof(name), "TS VEL %d-%d", triplesplit_he_velocity_min, triplesplit_he_velocity_max);
-    } else if (!any_seq_mod_held && is_any_macro_modifier_active()) {
+    } else if (is_any_macro_modifier_active()) {
         // Macro modifier is held - check if overdub button is also held
         if (overdub_button_held && overdub_advanced_mode) {
             // Macro modifier + overdub button held in advanced mode - apply to overdub
@@ -13557,6 +13520,22 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
+    // QUICK BUILD: HIJACK ENCODER 0 ROTATION
+    // During quick build, encoder 0 CW/CCW is intercepted for parameter
+    // scrolling (params phase) or step navigation (recording phase).
+    // Encoder 1 is NOT affected and continues to work normally.
+    // =============================================================================
+    if ((record->event.key.row == KEYLOC_ENCODER_CW || record->event.key.row == KEYLOC_ENCODER_CCW)
+        && record->event.key.col == 0  // Encoder 0 only
+        && quick_build_is_active()) {
+        if (record->event.pressed) {
+            bool clockwise = (record->event.key.row == KEYLOC_ENCODER_CW);
+            quick_build_encoder_rotate(clockwise);
+        }
+        return false;  // Swallow the event - don't send normal keycodes
+    }
+
+    // =============================================================================
     // NON-MIDI KEY LED ANIMATIONS
     // Trigger the same LED animation system for regular (non-MIDI) keypresses.
     // Uses synthetic note encoding: note = 128 + row*14 + col, which process_note()
@@ -13919,21 +13898,28 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             // Record press time for 3-second hold detection
             quick_build_state.button_press_time = timer_read32();
 
-            if (quick_build_state.has_saved_build && quick_build_state.mode == QUICK_BUILD_NONE) {
+            if (quick_build_state.mode == QUICK_BUILD_ARP && quick_build_state.phase == QB_PHASE_PARAMS) {
+                // In params phase: button press confirms current parameter
+                quick_build_confirm_param();
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP && quick_build_state.phase == QB_PHASE_RECORDING) {
+                // In recording phase: finish and save
+                quick_build_finish();
+            } else if (quick_build_state.has_saved_build && quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved build and not currently building: toggle play
                 arp_toggle();
-            } else if (quick_build_state.mode == QUICK_BUILD_ARP) {
-                // Currently building arp: finish and save
-                quick_build_finish();
             } else {
-                // Start new arp quick build
+                // Start new arp quick build (enters params phase)
                 quick_build_start_arp();
             }
         } else {
             // Button released: check for 3-second hold
             if (timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: erase saved build
-                quick_build_erase();
+                // Held for 3+ seconds: erase saved build or cancel current build
+                if (quick_build_state.mode != QUICK_BUILD_NONE) {
+                    quick_build_cancel();
+                } else {
+                    quick_build_erase();
+                }
             }
         }
         set_keylog(keycode, record);
@@ -13948,25 +13934,35 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             // Record press time for 3-second hold detection
             quick_build_state.button_press_time = timer_read32();
 
-            if (quick_build_state.has_saved_build &&
+            if (quick_build_state.mode == QUICK_BUILD_SEQ &&
+                quick_build_state.seq_slot == slot &&
+                quick_build_state.phase == QB_PHASE_PARAMS) {
+                // In params phase: button press confirms current parameter
+                quick_build_confirm_param();
+            } else if (quick_build_state.mode == QUICK_BUILD_SEQ &&
+                       quick_build_state.seq_slot == slot &&
+                       quick_build_state.phase == QB_PHASE_RECORDING) {
+                // In recording phase: finish and save
+                quick_build_finish();
+            } else if (quick_build_state.has_saved_build &&
                 quick_build_state.mode == QUICK_BUILD_NONE &&
                 quick_build_state.seq_slot == slot) {
                 // Has saved build for this slot and not currently building: toggle play
                 seq_start(seq_state[slot].current_preset_id);
-            } else if (quick_build_state.mode == QUICK_BUILD_SEQ &&
-                       quick_build_state.seq_slot == slot) {
-                // Currently building this seq slot: finish and save
-                quick_build_finish();
             } else {
-                // Start new seq quick build for this slot
+                // Start new seq quick build for this slot (enters params phase)
                 quick_build_start_seq(slot);
             }
         } else {
             // Button released: check for 3-second hold
             if (quick_build_state.seq_slot == slot &&
                 timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: erase saved build for this slot
-                quick_build_erase();
+                // Held for 3+ seconds: erase saved build or cancel current build
+                if (quick_build_state.mode != QUICK_BUILD_NONE) {
+                    quick_build_cancel();
+                } else {
+                    quick_build_erase();
+                }
             }
         }
         set_keylog(keycode, record);
@@ -16534,56 +16530,187 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 #include "usb_main.h"  // For USB_DRIVER access
 
-// Render a big number on the OLED display for quick build step indication
-void render_big_number(uint8_t number) {
-    char buf[64];
+// =============================================================================
+// 2x-SCALE OLED FONT RENDERER
+// =============================================================================
+// Renders text at 2x the normal font size (12x16 pixels per character)
+// by reading the standard 6x8 font glyphs and doubling each pixel.
+// The font[] array stores each glyph as OLED_FONT_WIDTH (6) bytes,
+// each byte being a column of 8 vertical pixels (LSB = top).
 
-    // Clear the display area
+// Font array is defined in glcdfont.c (included by oled_driver.c)
+extern const unsigned char font[] PROGMEM;
+
+static void oled_write_char_2x(uint8_t px_x, uint8_t px_y, char c) {
+    uint8_t cast_data = (uint8_t)c;
+    if (cast_data < OLED_FONT_START || cast_data > OLED_FONT_END) return;
+
+    const uint8_t *glyph = &font[(cast_data - OLED_FONT_START) * OLED_FONT_WIDTH];
+
+    for (uint8_t col = 0; col < OLED_FONT_WIDTH; col++) {
+        uint8_t col_data = pgm_read_byte(&glyph[col]);
+        for (uint8_t bit = 0; bit < 8; bit++) {
+            bool on = (col_data >> bit) & 1;
+            // Draw a 2x2 block for each pixel
+            oled_write_pixel(px_x + col * 2,     px_y + bit * 2,     on);
+            oled_write_pixel(px_x + col * 2 + 1, px_y + bit * 2,     on);
+            oled_write_pixel(px_x + col * 2,     px_y + bit * 2 + 1, on);
+            oled_write_pixel(px_x + col * 2 + 1, px_y + bit * 2 + 1, on);
+        }
+    }
+}
+
+// Write a string at 2x scale, centered horizontally on the 128-pixel-wide display
+static void oled_write_string_2x_centered(uint8_t px_y, const char *str) {
+    uint8_t len = strlen(str);
+    uint8_t char_width_2x = OLED_FONT_WIDTH * 2;  // 12 pixels per char
+    uint8_t total_width = len * char_width_2x;
+    uint8_t start_x = (total_width < 128) ? (128 - total_width) / 2 : 0;
+
+    for (uint8_t i = 0; i < len && (start_x + i * char_width_2x) < 128; i++) {
+        oled_write_char_2x(start_x + i * char_width_2x, px_y, str[i]);
+    }
+}
+
+// =============================================================================
+// QUICK BUILD PARAMETER DISPLAY STRINGS
+// =============================================================================
+
+static const char *qb_arp_mode_names[] = {
+    "SINGLE SYNC", "SINGLE UNSYNC", "CHORD SYNC", "CHORD UNSYNC", "CHORD ADV"
+};
+
+static const char *qb_speed_names[] = {
+    "QUARTER", "QUARTER DOT", "QUARTER TRIP",
+    "EIGHTH", "EIGHTH DOT", "EIGHTH TRIP",
+    "16TH", "16TH DOT", "16TH TRIP"
+};
+
+static const char *qb_gate_names[] = {
+    "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"
+};
+
+// Speed index to note_value and timing_mode mapping
+static const uint8_t qb_speed_note_value[] = {
+    NOTE_VALUE_QUARTER, NOTE_VALUE_QUARTER, NOTE_VALUE_QUARTER,
+    NOTE_VALUE_EIGHTH, NOTE_VALUE_EIGHTH, NOTE_VALUE_EIGHTH,
+    NOTE_VALUE_SIXTEENTH, NOTE_VALUE_SIXTEENTH, NOTE_VALUE_SIXTEENTH
+};
+static const uint8_t qb_speed_timing_mode[] = {
+    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET,
+    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET,
+    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET
+};
+
+// =============================================================================
+// QUICK BUILD OLED RENDERING
+// =============================================================================
+
+void render_quick_build(void) {
+    char buf[22];
     oled_clear();
 
-    // Line 1: Title
-    oled_set_cursor(0, 0);
-    if (quick_build_state.mode == QUICK_BUILD_ARP) {
-        oled_write_P(PSTR("  ARP QUICK BUILD  "), false);
-    } else if (quick_build_state.mode == QUICK_BUILD_SEQ) {
-        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD ", quick_build_state.seq_slot + 1);
+    if (quick_build_state.phase == QB_PHASE_PARAMS) {
+        // --- PARAMETER SETUP PHASE ---
+        // Line 0: small font - parameter description
+        oled_set_cursor(0, 0);
+        if (quick_build_state.mode == QUICK_BUILD_ARP) {
+            switch (quick_build_state.current_param) {
+                case QB_PARAM_ARP_MODE:
+                    oled_write_P(PSTR(" how arp handles notes"), false);
+                    break;
+                case QB_PARAM_ARP_SPEED:
+                    oled_write_P(PSTR("    pattern rate     "), false);
+                    break;
+                case QB_PARAM_ARP_GATE:
+                    oled_write_P(PSTR("  note sustain length"), false);
+                    break;
+            }
+        } else {
+            switch (quick_build_state.current_param) {
+                case QB_PARAM_SEQ_SPEED:
+                    oled_write_P(PSTR("    pattern rate     "), false);
+                    break;
+                case QB_PARAM_SEQ_GATE:
+                    oled_write_P(PSTR("  note sustain length"), false);
+                    break;
+            }
+        }
+
+        // Line 1: Separator
+        oled_set_cursor(0, 1);
+        oled_write_P(PSTR("---------------------"), false);
+
+        // Lines 3-5 (pixel rows 24-39): BIG 2x text - current option value
+        const char *value_str = "";
+        if (quick_build_state.mode == QUICK_BUILD_ARP) {
+            switch (quick_build_state.current_param) {
+                case QB_PARAM_ARP_MODE:
+                    value_str = qb_arp_mode_names[quick_build_state.param_selection % QB_ARP_MODE_OPTION_COUNT];
+                    break;
+                case QB_PARAM_ARP_SPEED:
+                    value_str = qb_speed_names[quick_build_state.param_selection % QB_SPEED_OPTION_COUNT];
+                    break;
+                case QB_PARAM_ARP_GATE:
+                    value_str = qb_gate_names[quick_build_state.param_selection % QB_GATE_OPTION_COUNT];
+                    break;
+            }
+        } else {
+            switch (quick_build_state.current_param) {
+                case QB_PARAM_SEQ_SPEED:
+                    value_str = qb_speed_names[quick_build_state.param_selection % QB_SPEED_OPTION_COUNT];
+                    break;
+                case QB_PARAM_SEQ_GATE:
+                    value_str = qb_gate_names[quick_build_state.param_selection % QB_GATE_OPTION_COUNT];
+                    break;
+            }
+        }
+        oled_write_string_2x_centered(24, value_str);
+
+        // Line 7: small font - param counter and instruction
+        oled_set_cursor(0, 6);
+        uint8_t param_max = (quick_build_state.mode == QUICK_BUILD_ARP) ? QB_PARAM_ARP_COUNT : QB_PARAM_SEQ_COUNT;
+        snprintf(buf, sizeof(buf), " param %d/%d          ", quick_build_state.current_param + 1, param_max);
         oled_write(buf, false);
-    }
 
-    // Line 2: Separator
-    oled_set_cursor(0, 1);
-    oled_write_P(PSTR("---------------------"), false);
+        oled_set_cursor(0, 7);
+        oled_write_P(PSTR("turn=change press=ok"), false);
 
-    // Lines 3-5: Big number (centered)
-    oled_set_cursor(0, 3);
-
-    if (number < 10) {
-        snprintf(buf, sizeof(buf), "      STEP %d      ", number);
-    } else if (number < 100) {
-        snprintf(buf, sizeof(buf), "     STEP %d      ", number);
     } else {
-        snprintf(buf, sizeof(buf), "     STEP %d     ", number);
-    }
-    oled_write(buf, false);
+        // --- RECORDING PHASE ---
+        // Line 0: Title
+        oled_set_cursor(0, 0);
+        if (quick_build_state.mode == QUICK_BUILD_ARP) {
+            oled_write_P(PSTR("  ARP QUICK BUILD  "), false);
+        } else {
+            snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD ", quick_build_state.seq_slot + 1);
+            oled_write(buf, false);
+        }
 
-    // Line 6: Note count
-    oled_set_cursor(0, 5);
-    snprintf(buf, sizeof(buf), "    %d NOTES TOTAL   ", quick_build_state.note_count);
-    oled_write(buf, false);
+        // Line 1: Separator
+        oled_set_cursor(0, 1);
+        oled_write_P(PSTR("---------------------"), false);
 
-    // Line 7: Instruction
-    oled_set_cursor(0, 7);
-    if (quick_build_state.mode == QUICK_BUILD_ARP) {
-        oled_write_P(PSTR(" Press to finish     "), false);
-    } else {
-        oled_write_P(PSTR(" Press to finish     "), false);
+        // Lines 3-5 (pixel rows 24-39): BIG 2x step number
+        uint8_t step = quick_build_state.current_step + 1;
+        snprintf(buf, sizeof(buf), "STEP %d", step);
+        oled_write_string_2x_centered(24, buf);
+
+        // Line 6: Note count
+        oled_set_cursor(0, 6);
+        snprintf(buf, sizeof(buf), "   %d NOTES TOTAL   ", quick_build_state.note_count);
+        oled_write(buf, false);
+
+        // Line 7: Encoder hints
+        oled_set_cursor(0, 7);
+        oled_write_P(PSTR("enc:back/skip/chord"), false);
     }
 }
 
 bool oled_task_user(void) {
-    // Check if quick build is active - if so, show big number display
+    // Check if quick build is active - if so, show quick build display
     if (quick_build_is_active()) {
-        render_big_number(quick_build_get_current_step());
+        render_quick_build();
         return false;
     }
 
@@ -16679,7 +16806,13 @@ void matrix_scan_user(void) {
 	static bool encoder0_click_prev_state = true;
 	bool encoder0_click_state = readPin(B14);
 	if (encoder0_click_state != encoder0_click_prev_state) {
-		action_exec(MAKE_KEYEVENT(5, 0, !encoder0_click_state));
+		if (quick_build_is_active()) {
+			// During quick build: intercept encoder 0 click for chord mode / confirm
+			bool pressed = !encoder0_click_state;  // Active low
+			quick_build_encoder_click(pressed);
+		} else {
+			action_exec(MAKE_KEYEVENT(5, 0, !encoder0_click_state));
+		}
 		encoder0_click_prev_state = encoder0_click_state;
 	}
 

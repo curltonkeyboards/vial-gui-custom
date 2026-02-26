@@ -38,14 +38,14 @@ arp_state_t arp_state = {
 
 // Step Sequencer runtime state (8 slots)
 seq_state_t seq_state[MAX_SEQ_SLOTS] = {
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0}
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_transpose = 0}
 };
 
 // Step Sequencer modifier tracking
@@ -594,8 +594,6 @@ void arp_init(void) {
         seq_state[i].rate_override = 0;
         seq_state[i].master_gate_override = 0;
         seq_state[i].locked_channel = 0;
-        seq_state[i].locked_velocity_min = 1;
-        seq_state[i].locked_velocity_max = 127;
         seq_state[i].locked_transpose = 0;
         seq_modifier_held[i] = false;
     }
@@ -768,7 +766,7 @@ void arp_update(void) {
                 if (final_note < 0) final_note = 0;
                 if (final_note > 127) final_note = 127;
 
-                uint8_t raw_travel = unpacked.velocity;
+                uint8_t raw_travel = apply_arp_velocity_curve(unpacked.velocity);
 
                 // Send note-on
                 midi_send_noteon_arp(unsynced_notes[u].channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -857,7 +855,7 @@ void arp_update(void) {
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
-                uint8_t raw_travel = note->velocity;
+                uint8_t raw_travel = apply_arp_velocity_curve(note->velocity);
                 uint8_t channel = channel_number;  // Use current MIDI channel
 
                 // Send note-on
@@ -901,7 +899,7 @@ void arp_update(void) {
                         if (final_note < 0) final_note = 0;
                         if (final_note > 127) final_note = 127;
 
-                        uint8_t raw_travel = note->velocity;
+                        uint8_t raw_travel = apply_arp_velocity_curve(note->velocity);
 
                         // Send note-on
                         midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -935,7 +933,7 @@ void arp_update(void) {
                             if (final_note < 0) final_note = 0;
                             if (final_note > 127) final_note = 127;
 
-                            uint8_t raw_travel = note->velocity;
+                            uint8_t raw_travel = apply_arp_velocity_curve(note->velocity);
 
                             // Send note-on
                             midi_send_noteon_arp(channel, (uint8_t)final_note, raw_travel, raw_travel);
@@ -974,7 +972,7 @@ void arp_update(void) {
                     if (final_note < 0) final_note = 0;
                     if (final_note > 127) final_note = 127;
 
-                    uint8_t raw_travel = note->velocity;
+                    uint8_t raw_travel = apply_arp_velocity_curve(note->velocity);
 
                     // Gate at base rate (NOT subdivided - each note gets full step duration)
                     uint32_t base_gate_ms = (ms_per_16th * gate_percent) / 100;
@@ -1072,13 +1070,10 @@ void seq_start(uint8_t preset_id) {
 
     // Lock in global values when sequencer starts
     seq_state[slot].locked_channel = channel_number;
-    seq_state[slot].locked_velocity_min = he_velocity_min;
-    seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;  // Always starts at 0, changes only with modifier
 
-    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d)\n",
+    dprintf("seq: started preset %d in slot %d (ch:%d trans:%d)\n",
             preset_id, slot, seq_state[slot].locked_channel,
-            seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max,
             seq_state[slot].locked_transpose);
 }
 
@@ -1178,7 +1173,7 @@ void seq_update(void) {
 // MIDI NOTE SENDING FOR SEQUENCER (with locked-in values)
 // =============================================================================
 
-// Send note-on for sequencer using locked-in channel/velocity/transpose
+// Send note-on for sequencer using locked-in channel/transpose + velocity curve
 void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127) {
     if (slot >= MAX_SEQ_SLOTS) return;
 
@@ -1192,17 +1187,11 @@ void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127) {
     if (transposed_note < 0) transposed_note = 0;
     if (transposed_note > 127) transposed_note = 127;
 
-    // Scale velocity using locked-in min/max range
-    uint8_t min_vel = seq_state[slot].locked_velocity_min;
-    uint8_t max_vel = seq_state[slot].locked_velocity_max;
-
-    // Scale from 0-127 to min_vel-max_vel
-    uint8_t scaled_velocity = min_vel + ((velocity_0_127 * (max_vel - min_vel)) / 127);
-
-    uint8_t raw_travel = scaled_velocity;
+    // Apply velocity curve (replaces old locked min/max system)
+    uint8_t final_velocity = apply_arp_velocity_curve(velocity_0_127);
 
     // Send the note
-    midi_send_noteon_arp(channel, (uint8_t)transposed_note, raw_travel, raw_travel);
+    midi_send_noteon_arp(channel, (uint8_t)transposed_note, final_velocity, final_velocity);
 }
 
 // =============================================================================
@@ -2039,17 +2028,21 @@ void quick_build_start_arp(void) {
 
     // Initialize state
     quick_build_state.mode = QUICK_BUILD_ARP;
+    quick_build_state.phase = QB_PHASE_PARAMS;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
     quick_build_state.has_saved_build = false;
     quick_build_state.sustain_held_last_check = false;
+    quick_build_state.encoder_chord_held = false;
+    quick_build_state.current_param = QB_PARAM_ARP_MODE;
+    quick_build_state.param_selection = quick_build_state.last_arp_mode;
 
-    // Clear and initialize arp_active_preset
+    // Clear and initialize arp_active_preset (values will be set during param confirm)
     memset(&arp_active_preset, 0, sizeof(arp_preset_t));
     arp_active_preset.preset_type = PRESET_TYPE_ARPEGGIATOR;
     arp_active_preset.note_count = 0;
-    arp_active_preset.pattern_length_16ths = 1;  // Start with 1 step
+    arp_active_preset.pattern_length_16ths = 1;
     arp_active_preset.gate_length_percent = 80;
     arp_active_preset.timing_mode = TIMING_MODE_STRAIGHT;
     arp_active_preset.note_value = NOTE_VALUE_SIXTEENTH;
@@ -2058,7 +2051,7 @@ void quick_build_start_arp(void) {
     // Mark as custom preset (not from EEPROM)
     arp_state.loaded_preset_id = 255;
 
-    dprintf("quick_build: arp builder ready, waiting for first note\n");
+    dprintf("quick_build: arp builder started, entering parameter setup\n");
 }
 
 // Start quick build for step sequencer (specific slot)
@@ -2080,17 +2073,21 @@ void quick_build_start_seq(uint8_t slot) {
 
     // Initialize state
     quick_build_state.mode = QUICK_BUILD_SEQ;
+    quick_build_state.phase = QB_PHASE_PARAMS;
     quick_build_state.seq_slot = slot;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_saved_build = false;
     quick_build_state.sustain_held_last_check = false;
+    quick_build_state.encoder_chord_held = false;
+    quick_build_state.current_param = QB_PARAM_SEQ_SPEED;
+    quick_build_state.param_selection = quick_build_state.last_speed;
 
-    // Clear and initialize seq preset for this slot
+    // Clear and initialize seq preset for this slot (values set during param confirm)
     memset(&seq_active_presets[slot], 0, sizeof(seq_preset_t));
     seq_active_presets[slot].preset_type = PRESET_TYPE_STEP_SEQUENCER;
     seq_active_presets[slot].note_count = 0;
-    seq_active_presets[slot].pattern_length_16ths = 1;  // Start with 1 step
+    seq_active_presets[slot].pattern_length_16ths = 1;
     seq_active_presets[slot].gate_length_percent = 80;
     seq_active_presets[slot].timing_mode = TIMING_MODE_STRAIGHT;
     seq_active_presets[slot].note_value = NOTE_VALUE_SIXTEENTH;
@@ -2099,7 +2096,7 @@ void quick_build_start_seq(uint8_t slot) {
     // Mark as custom preset (not from EEPROM)
     seq_state[slot].loaded_preset_id = 255;
 
-    dprintf("quick_build: seq builder ready for slot %d, waiting for first note\n", slot);
+    dprintf("quick_build: seq builder started for slot %d, entering parameter setup\n", slot);
 }
 
 // Cancel quick build and return to normal mode
@@ -2109,10 +2106,13 @@ void quick_build_cancel(void) {
     dprintf("quick_build: canceling build mode %d\n", quick_build_state.mode);
 
     quick_build_state.mode = QUICK_BUILD_NONE;
+    quick_build_state.phase = QB_PHASE_PARAMS;
     quick_build_state.has_saved_build = false;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
+    quick_build_state.encoder_chord_held = false;
+    quick_build_state.current_param = 0;
 
     dprintf("quick_build: canceled\n");
 }
@@ -2160,9 +2160,11 @@ void quick_build_erase(void) {
 
     quick_build_state.has_saved_build = false;
     quick_build_state.mode = QUICK_BUILD_NONE;
+    quick_build_state.phase = QB_PHASE_PARAMS;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
+    quick_build_state.encoder_chord_held = false;
 
     dprintf("quick_build: erased\n");
 }
@@ -2186,12 +2188,16 @@ static void quick_build_advance_step(void) {
 void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
     if (!quick_build_is_active()) return;
 
+    // Only record notes during the recording phase, not during parameter setup
+    if (quick_build_state.phase != QB_PHASE_RECORDING) return;
+
     // Use raw_travel for velocity if available (0-255), otherwise use velocity (0-127)
     uint8_t record_velocity = (raw_travel > 0) ? (raw_travel >> 1) : velocity;  // Scale to 0-127
 
-    // Track if we need to advance step (only if sustain is NOT held)
+    // Track if we need to advance step (only if sustain/chord mode is NOT active)
     extern bool get_live_sustain_state(void);
     bool sustain_held = get_live_sustain_state();
+    bool chord_mode = sustain_held || quick_build_state.encoder_chord_held;
     bool should_advance = false;
 
     if (quick_build_state.mode == QUICK_BUILD_ARP) {
@@ -2227,8 +2233,8 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
         dprintf("quick_build: arp recorded note %d (interval %+d) at step %d\n",
                 note, interval, quick_build_state.current_step + 1);
 
-        // Advance step if sustain not held
-        if (!sustain_held) {
+        // Advance step if not in chord mode (sustain or encoder click)
+        if (!chord_mode) {
             should_advance = true;
         }
 
@@ -2258,8 +2264,8 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
         dprintf("quick_build: seq slot %d recorded note %d at step %d\n",
                 slot, note, quick_build_state.current_step + 1);
 
-        // Advance step if sustain not held
-        if (!sustain_held) {
+        // Advance step if not in chord mode (sustain or encoder click)
+        if (!chord_mode) {
             should_advance = true;
         }
     }
@@ -2283,6 +2289,7 @@ void quick_build_handle_sustain_release(void) {
 // Update function - call this from matrix_scan or similar periodic location
 void quick_build_update(void) {
     if (!quick_build_is_active()) return;
+    if (quick_build_state.phase != QB_PHASE_RECORDING) return;
 
     // Check for sustain state changes (need external function)
     extern bool get_live_sustain_state(void);
@@ -2295,4 +2302,257 @@ void quick_build_update(void) {
     }
 
     quick_build_state.sustain_held_last_check = sustain_now;
+}
+
+// =============================================================================
+// QUICK BUILD: ENCODER AND PARAMETER CONTROL
+// =============================================================================
+
+// Speed index to note_value and timing_mode mapping (local to arpeggiator.c)
+static const uint8_t qb_speed_to_note_value[] = {
+    NOTE_VALUE_QUARTER, NOTE_VALUE_QUARTER, NOTE_VALUE_QUARTER,
+    NOTE_VALUE_EIGHTH, NOTE_VALUE_EIGHTH, NOTE_VALUE_EIGHTH,
+    NOTE_VALUE_SIXTEENTH, NOTE_VALUE_SIXTEENTH, NOTE_VALUE_SIXTEENTH
+};
+static const uint8_t qb_speed_to_timing_mode[] = {
+    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET,
+    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET,
+    TIMING_MODE_STRAIGHT, TIMING_MODE_DOTTED, TIMING_MODE_TRIPLET
+};
+
+// Arp mode index to arp_mode_t mapping
+static const arp_mode_t qb_arp_mode_values[] = {
+    ARPMODE_SINGLE_NOTE_SYNCED,
+    ARPMODE_SINGLE_NOTE_UNSYNCED,
+    ARPMODE_CHORD_SYNCED,
+    ARPMODE_CHORD_UNSYNCED,
+    ARPMODE_CHORD_ADVANCED
+};
+
+// Get the number of options for the current parameter
+static uint8_t qb_get_option_count(void) {
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        switch (quick_build_state.current_param) {
+            case QB_PARAM_ARP_MODE:  return QB_ARP_MODE_OPTION_COUNT;
+            case QB_PARAM_ARP_SPEED: return QB_SPEED_OPTION_COUNT;
+            case QB_PARAM_ARP_GATE:  return QB_GATE_OPTION_COUNT;
+        }
+    } else {
+        switch (quick_build_state.current_param) {
+            case QB_PARAM_SEQ_SPEED: return QB_SPEED_OPTION_COUNT;
+            case QB_PARAM_SEQ_GATE:  return QB_GATE_OPTION_COUNT;
+        }
+    }
+    return 1;
+}
+
+// Navigate back to a previous step (encoder CCW during recording)
+static void quick_build_select_previous_step(void) {
+    if (quick_build_state.current_step == 0) return;  // Can't go before step 0
+
+    quick_build_state.current_step--;
+
+    // Update pattern length
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        arp_active_preset.pattern_length_16ths = quick_build_state.current_step + 1;
+    } else {
+        uint8_t slot = quick_build_state.seq_slot;
+        seq_active_presets[slot].pattern_length_16ths = quick_build_state.current_step + 1;
+    }
+
+    dprintf("quick_build: navigated back to step %d\n", quick_build_state.current_step + 1);
+}
+
+// Erase all notes on the current step (called when encoder is clicked on a step with notes)
+static void quick_build_erase_current_step(void) {
+    uint8_t step = quick_build_state.current_step;
+    uint8_t notes_removed = 0;
+
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        // Remove all notes at the current step position
+        uint8_t write_idx = 0;
+        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+            uint8_t note_timing = NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel);
+            if (note_timing == step) {
+                notes_removed++;
+            } else {
+                if (write_idx != i) {
+                    arp_active_preset.notes[write_idx] = arp_active_preset.notes[i];
+                }
+                write_idx++;
+            }
+        }
+        quick_build_state.note_count = write_idx;
+        arp_active_preset.note_count = write_idx;
+    } else {
+        uint8_t slot = quick_build_state.seq_slot;
+        uint8_t write_idx = 0;
+        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+            uint8_t note_timing = NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel);
+            if (note_timing == step) {
+                notes_removed++;
+            } else {
+                if (write_idx != i) {
+                    seq_active_presets[slot].notes[write_idx] = seq_active_presets[slot].notes[i];
+                }
+                write_idx++;
+            }
+        }
+        quick_build_state.note_count = write_idx;
+        seq_active_presets[slot].note_count = write_idx;
+    }
+
+    dprintf("quick_build: erased %d notes from step %d\n", notes_removed, step + 1);
+}
+
+// Check if the current step has any notes on it
+static bool quick_build_step_has_notes(uint8_t step) {
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+            if (NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel) == step) return true;
+        }
+    } else {
+        uint8_t slot = quick_build_state.seq_slot;
+        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+            if (NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel) == step) return true;
+        }
+    }
+    return false;
+}
+
+// Handle encoder 0 rotation during quick build
+void quick_build_encoder_rotate(bool clockwise) {
+    if (!quick_build_is_active()) return;
+
+    if (quick_build_state.phase == QB_PHASE_PARAMS) {
+        // During parameter setup: scroll through options
+        uint8_t count = qb_get_option_count();
+        if (clockwise) {
+            quick_build_state.param_selection = (quick_build_state.param_selection + 1) % count;
+        } else {
+            if (quick_build_state.param_selection == 0) {
+                quick_build_state.param_selection = count - 1;
+            } else {
+                quick_build_state.param_selection--;
+            }
+        }
+    } else {
+        // During recording:
+        // CW = skip step (advance without recording)
+        // CCW = select previous step
+        if (clockwise) {
+            quick_build_advance_step();
+            dprintf("quick_build: skipped to step %d\n", quick_build_state.current_step + 1);
+        } else {
+            quick_build_select_previous_step();
+        }
+    }
+}
+
+// Handle encoder 0 click during quick build
+void quick_build_encoder_click(bool pressed) {
+    if (!quick_build_is_active()) return;
+
+    if (quick_build_state.phase == QB_PHASE_PARAMS) {
+        // During parameter setup: click confirms current parameter
+        if (pressed) {
+            quick_build_confirm_param();
+        }
+    } else {
+        // During recording: momentary chord mode
+        if (pressed) {
+            quick_build_state.encoder_chord_held = true;
+            // If this step already has notes, erase them to allow replacement
+            if (quick_build_step_has_notes(quick_build_state.current_step)) {
+                quick_build_erase_current_step();
+            }
+        } else {
+            quick_build_state.encoder_chord_held = false;
+            // On release: advance step (like sustain release)
+            if (quick_build_state.note_count > 0) {
+                quick_build_advance_step();
+            }
+        }
+    }
+}
+
+// Confirm current parameter and advance to next (or start recording)
+void quick_build_confirm_param(void) {
+    if (!quick_build_is_active() || quick_build_state.phase != QB_PHASE_PARAMS) return;
+
+    uint8_t sel = quick_build_state.param_selection;
+
+    if (quick_build_state.mode == QUICK_BUILD_ARP) {
+        switch (quick_build_state.current_param) {
+            case QB_PARAM_ARP_MODE:
+                // Apply arp mode
+                arp_state.mode = qb_arp_mode_values[sel % QB_ARP_MODE_OPTION_COUNT];
+                quick_build_state.last_arp_mode = sel;
+                dprintf("quick_build: arp mode set to %d\n", sel);
+
+                // Move to speed parameter
+                quick_build_state.current_param = QB_PARAM_ARP_SPEED;
+                quick_build_state.param_selection = quick_build_state.last_speed;
+                return;
+
+            case QB_PARAM_ARP_SPEED: {
+                // Apply speed to preset
+                uint8_t speed_idx = sel % QB_SPEED_OPTION_COUNT;
+                arp_active_preset.note_value = qb_speed_to_note_value[speed_idx];
+                arp_active_preset.timing_mode = qb_speed_to_timing_mode[speed_idx];
+                quick_build_state.last_speed = sel;
+                dprintf("quick_build: speed set to note_value=%d timing=%d\n",
+                        arp_active_preset.note_value, arp_active_preset.timing_mode);
+
+                // Move to gate parameter
+                quick_build_state.current_param = QB_PARAM_ARP_GATE;
+                quick_build_state.param_selection = quick_build_state.last_gate;
+                return;
+            }
+
+            case QB_PARAM_ARP_GATE: {
+                // Apply gate to preset
+                uint8_t gate_idx = sel % QB_GATE_OPTION_COUNT;
+                arp_active_preset.gate_length_percent = (gate_idx + 1) * 10;  // 10%, 20%, ... 100%
+                quick_build_state.last_gate = sel;
+                dprintf("quick_build: gate set to %d%%\n", arp_active_preset.gate_length_percent);
+
+                // All params done - transition to recording
+                quick_build_state.phase = QB_PHASE_RECORDING;
+                dprintf("quick_build: arp entering recording mode\n");
+                return;
+            }
+        }
+    } else {
+        // Step Sequencer: speed → gate
+        switch (quick_build_state.current_param) {
+            case QB_PARAM_SEQ_SPEED: {
+                uint8_t slot = quick_build_state.seq_slot;
+                uint8_t speed_idx = sel % QB_SPEED_OPTION_COUNT;
+                seq_active_presets[slot].note_value = qb_speed_to_note_value[speed_idx];
+                seq_active_presets[slot].timing_mode = qb_speed_to_timing_mode[speed_idx];
+                quick_build_state.last_speed = sel;
+                dprintf("quick_build: seq speed set to note_value=%d timing=%d\n",
+                        seq_active_presets[slot].note_value, seq_active_presets[slot].timing_mode);
+
+                // Move to gate parameter
+                quick_build_state.current_param = QB_PARAM_SEQ_GATE;
+                quick_build_state.param_selection = quick_build_state.last_gate;
+                return;
+            }
+
+            case QB_PARAM_SEQ_GATE: {
+                uint8_t slot = quick_build_state.seq_slot;
+                uint8_t gate_idx = sel % QB_GATE_OPTION_COUNT;
+                seq_active_presets[slot].gate_length_percent = (gate_idx + 1) * 10;
+                quick_build_state.last_gate = sel;
+                dprintf("quick_build: seq gate set to %d%%\n", seq_active_presets[slot].gate_length_percent);
+
+                // All params done - transition to recording
+                quick_build_state.phase = QB_PHASE_RECORDING;
+                dprintf("quick_build: seq entering recording mode\n");
+                return;
+            }
+        }
+    }
 }
