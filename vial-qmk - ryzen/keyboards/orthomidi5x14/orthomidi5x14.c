@@ -16585,104 +16585,137 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 #include "usb_main.h"  // For USB_DRIVER access
 
-// Helper: write title line for quick build OLED screens
-static void render_quick_build_title(void) {
-    char buf[22];
-    oled_set_cursor(0, 0);
-    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
-        quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-        oled_write_P(PSTR(" ARP QUICK BUILD"), false);
-    } else {
-        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
-        oled_write(buf, false);
-    }
-    oled_set_cursor(0, 1);
-    oled_write_P(PSTR("--------------------"), false);
+// Track quick build OLED state for one-time clear on transition
+static bool quick_build_oled_active = false;
+
+// Helper: write a full 21-char padded line at a given row
+static void oled_write_line(uint8_t row, const char *text) {
+    char line[22];
+    memset(line, ' ', 21);
+    line[21] = '\0';
+    uint8_t len = strlen(text);
+    if (len > 21) len = 21;
+    memcpy(line, text, len);
+    oled_set_cursor(0, row);
+    oled_write(line, false);
 }
 
 // Render the setup phase OLED screen (parameter selection)
 void render_quick_build_setup(void) {
     char buf[22];
 
-    render_quick_build_title();
+    // Line 0: Title
+    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
+        oled_write_line(0, " ARP QUICK BUILD");
+    } else {
+        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
+        oled_write_line(0, buf);
+    }
 
-    // Description lines (small text)
-    oled_set_cursor(0, 3);
-    oled_write(quick_build_get_param_desc1(), false);
-    oled_set_cursor(0, 4);
-    oled_write(quick_build_get_param_desc2(), false);
+    // Line 1: Separator
+    oled_write_line(1, "--------------------");
 
-    // Selected value (centered with arrows)
-    oled_set_cursor(0, 6);
+    // Line 2: blank
+    oled_write_line(2, "");
+
+    // Lines 3-4: Description
+    oled_write_line(3, quick_build_get_param_desc1());
+    oled_write_line(4, quick_build_get_param_desc2());
+
+    // Line 5: blank
+    oled_write_line(5, "");
+
+    // Line 6: Selected value with arrows
     const char *value = quick_build_get_param_value();
-    // Center the value with >> << arrows
     uint8_t val_len = strlen(value);
     uint8_t total_len = val_len + 6;  // ">> " + value + " <<"
     uint8_t pad = 0;
-    if (total_len < 21) {
-        pad = (21 - total_len) / 2;
-    }
-    memset(buf, ' ', sizeof(buf) - 1);
+    if (total_len < 21) pad = (21 - total_len) / 2;
+    memset(buf, ' ', 21);
     buf[21] = '\0';
-    snprintf(buf + pad, sizeof(buf) - pad, ">> %s <<", value);
-    // Ensure trailing spaces fill the line
+    snprintf(buf + pad, 21 - pad, ">> %s <<", value);
     uint8_t end = strlen(buf);
     while (end < 21) buf[end++] = ' ';
     buf[21] = '\0';
-    oled_write(buf, false);
+    oled_write_line(6, buf);
 
-    // Instructions
-    oled_set_cursor(0, 8);
-    oled_write_P(PSTR("  Turn to select"), false);
-    oled_set_cursor(0, 9);
-    oled_write_P(PSTR("  Press to confirm"), false);
+    // Line 7: blank
+    oled_write_line(7, "");
 
-    // Progress indicator
-    uint8_t total_params = 0;
-    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) total_params = 3;
-    else total_params = 2;
+    // Lines 8-9: Instructions
+    oled_write_line(8, "  Turn to select");
+    oled_write_line(9, "  Press to confirm");
 
-    oled_set_cursor(0, 11);
+    // Line 10: blank
+    oled_write_line(10, "");
+
+    // Line 11: Progress
+    uint8_t total_params = (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) ? 3 : 2;
     snprintf(buf, sizeof(buf), "     Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
-    oled_write(buf, false);
+    oled_write_line(11, buf);
+
+    // Lines 12-15: blank
+    oled_write_line(12, "");
+    oled_write_line(13, "");
+    oled_write_line(14, "");
+    oled_write_line(15, "");
 }
 
 // Render the recording phase OLED screen (note input)
 void render_quick_build_recording(void) {
     char buf[22];
 
-    render_quick_build_title();
+    // Line 0: Title
+    if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+        oled_write_line(0, " ARP QUICK BUILD");
+    } else {
+        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
+        oled_write_line(0, buf);
+    }
 
-    // Step number
-    oled_set_cursor(0, 3);
+    // Line 1: Separator
+    oled_write_line(1, "--------------------");
+
+    // Line 2: blank
+    oled_write_line(2, "");
+
+    // Line 3: Step number
     uint8_t step = quick_build_get_current_step();
-    if (step < 10) {
-        snprintf(buf, sizeof(buf), "      STEP %d", step);
-    } else if (step < 100) {
-        snprintf(buf, sizeof(buf), "     STEP %d", step);
-    } else {
-        snprintf(buf, sizeof(buf), "    STEP %d", step);
-    }
-    oled_write(buf, false);
+    snprintf(buf, sizeof(buf), "      STEP %d", step);
+    oled_write_line(3, buf);
 
-    // Note count
-    oled_set_cursor(0, 5);
-    snprintf(buf, sizeof(buf), "  %d notes total", quick_build_state.note_count);
-    oled_write(buf, false);
+    // Line 4: blank
+    oled_write_line(4, "");
 
-    // Encoder instructions
-    oled_set_cursor(0, 7);
-    oled_write_P(PSTR(" << Undo   Skip >>"), false);
-    oled_set_cursor(0, 8);
+    // Line 5: Note count
+    snprintf(buf, sizeof(buf), "   %d notes total", quick_build_state.note_count);
+    oled_write_line(5, buf);
+
+    // Line 6: blank
+    oled_write_line(6, "");
+
+    // Line 7: Encoder skip/undo
+    oled_write_line(7, " << Undo   Skip >>");
+
+    // Line 8: Chord mode status
     if (quick_build_state.encoder_chord_held) {
-        oled_write_P(PSTR(" Click: CHORD ON"), false);
+        oled_write_line(8, "  Click: CHORD ON");
     } else {
-        oled_write_P(PSTR(" Click: Chord mode"), false);
+        oled_write_line(8, "  Click: Chord mode");
     }
 
-    // Finish instruction
-    oled_set_cursor(0, 10);
-    oled_write_P(PSTR(" Press btn to finish"), false);
+    // Line 9: blank
+    oled_write_line(9, "");
+
+    // Line 10: Finish instruction
+    oled_write_line(10, " Press btn to finish");
+
+    // Lines 11-15: blank
+    oled_write_line(11, "");
+    oled_write_line(12, "");
+    oled_write_line(13, "");
+    oled_write_line(14, "");
+    oled_write_line(15, "");
 }
 
 // Legacy render_big_number (calls recording screen)
@@ -16694,9 +16727,13 @@ bool oled_task_user(void) {
     if (quick_build_is_active()) {
         // =========================================================
         // QUICK BUILD MODE: Full OLED takeover
-        // Replaces ALL normal content (layer, BPM, keylog, luna, etc.)
         // =========================================================
-        oled_clear();
+
+        // One-time full clear when entering quick build (wipes luna raw pixels)
+        if (!quick_build_oled_active) {
+            oled_clear();
+            quick_build_oled_active = true;
+        }
 
         if (quick_build_is_setup()) {
             render_quick_build_setup();
@@ -16707,6 +16744,12 @@ bool oled_task_user(void) {
         // =========================================================
         // NORMAL MODE: Layer, BPM, keylog, luna/interface
         // =========================================================
+
+        // One-time full clear when leaving quick build (wipes text residue)
+        if (quick_build_oled_active) {
+            oled_clear();
+            quick_build_oled_active = false;
+        }
 
         // Buffer to store the formatted string
         char str[22] = "";
