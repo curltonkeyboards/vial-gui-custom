@@ -16603,7 +16603,6 @@ static void render_quick_build_title(void) {
 // Render the setup phase OLED screen (parameter selection)
 void render_quick_build_setup(void) {
     char buf[22];
-    oled_clear();
 
     render_quick_build_title();
 
@@ -16651,7 +16650,6 @@ void render_quick_build_setup(void) {
 // Render the recording phase OLED screen (note input)
 void render_quick_build_recording(void) {
     char buf[22];
-    oled_clear();
 
     render_quick_build_title();
 
@@ -16693,54 +16691,61 @@ void render_big_number(uint8_t number) {
 }
 
 bool oled_task_user(void) {
-    // Check if quick build is active - show appropriate screen
     if (quick_build_is_active()) {
+        // =========================================================
+        // QUICK BUILD MODE: Full OLED takeover
+        // Replaces ALL normal content (layer, BPM, keylog, luna, etc.)
+        // =========================================================
+        oled_clear();
+
         if (quick_build_is_setup()) {
             render_quick_build_setup();
         } else {
             render_quick_build_recording();
         }
-        return false;
-    }
+    } else {
+        // =========================================================
+        // NORMAL MODE: Layer, BPM, keylog, luna/interface
+        // =========================================================
 
-    // Normal display mode
-    // Buffer to store the formatted string
-    char str[22] = "";
-    char name[124] = "";  // Define `name` buffer to be used later
-    // Get the current layer and format it into `str`
-    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-    uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
+        // Buffer to store the formatted string
+        char str[22] = "";
+        char name[124] = "";  // Define `name` buffer to be used later
+        // Get the current layer and format it into `str`
+        uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+        uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
 
-    if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
-	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
-    // Write the layer information to the OLED
-    oled_write(str, false);
+        if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
+        else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
+        // Write the layer information to the OLED
+        oled_write(str, false);
 
-    // Display temporary mode message if active
-    if (mode_display_active) {
-        if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
-            oled_write(mode_display_msg, false);
+        // Display temporary mode message if active
+        if (mode_display_active) {
+            if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
+                oled_write(mode_display_msg, false);
+            } else {
+                mode_display_active = false;
+            }
+        }
+
+        // Render keylog information
+        oled_render_keylog();
+        // Add separator line to `name` and write to OLED
+        //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
+        // You only need to add the separator once, not three times.
+        oled_write(name, false);
+
+        if (!dynamic_macro_has_activity()) {
+            led_usb_state = host_keyboard_led_state();
+            render_luna(0, 1);
         } else {
-            mode_display_active = false;
+            // Show Luna keyboard when no macros have data
+            led_usb_state = host_keyboard_led_state();
+            render_interface(0, 8);
         }
     }
-
-    // Render keylog information
-    oled_render_keylog();
-    // Add separator line to `name` and write to OLED
-    //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
-    // You only need to add the separator once, not three times.
-    oled_write(name, false);
-
-if (!dynamic_macro_has_activity()) {
-    led_usb_state = host_keyboard_led_state();
-        render_luna(0, 1);
-} else {
-    // Show Luna keyboard when no macros have data
-    led_usb_state = host_keyboard_led_state();
-	render_interface(0, 8);
-};
-return false;
+    return false;
 }
 
 void matrix_scan_user(void) {
