@@ -69,6 +69,8 @@ quick_build_state_t quick_build_state = {
     .note_count = 0,
     .root_note = 0,
     .has_root = false,
+    .candidate_root = 0,
+    .candidate_ready = false,
     .sustain_held_last_check = false,
     .button_press_time = 0,
     .has_saved_build = false,
@@ -2080,6 +2082,8 @@ void quick_build_start_arp(void) {
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
+    quick_build_state.candidate_root = 0;
+    quick_build_state.candidate_ready = false;
     quick_build_state.has_saved_build = false;
     quick_build_state.sustain_held_last_check = false;
     quick_build_state.encoder_chord_held = false;
@@ -2295,12 +2299,12 @@ static void quick_build_advance_step(void) {
 // Handle incoming MIDI note during quick build
 void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
     // Handle root note selection phase (arp only)
+    // Note press just sets candidate - user must press encoder/button to confirm
     if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
-        quick_build_state.root_note = note;
-        quick_build_state.has_root = true;
-        quick_build_state.mode = QUICK_BUILD_ARP_RECORD;
-        dprintf("quick_build: arp root note set to %d, entering recording\n", note);
-        return;  // Root note is NOT recorded as a pattern step
+        quick_build_state.candidate_root = note;
+        quick_build_state.candidate_ready = true;
+        dprintf("quick_build: candidate root note %d, waiting for confirm\n", note);
+        return;  // Don't record, don't transition yet
     }
 
     if (!quick_build_is_recording()) return;
@@ -2623,11 +2627,28 @@ void quick_build_handle_encoder(bool clockwise) {
     }
 }
 
+// Confirm root note and enter recording phase
+void quick_build_confirm_root(void) {
+    if (quick_build_state.mode != QUICK_BUILD_ARP_ROOT) return;
+    if (!quick_build_state.candidate_ready) return;
+
+    quick_build_state.root_note = quick_build_state.candidate_root;
+    quick_build_state.has_root = true;
+    quick_build_state.mode = QUICK_BUILD_ARP_RECORD;
+    dprintf("quick_build: root note confirmed as %d, entering recording\n", quick_build_state.root_note);
+}
+
 void quick_build_handle_encoder_click(bool pressed) {
-    if (quick_build_is_setup()) {
-        // Setup phase: click confirms parameter (on press only)
+    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+        quick_build_state.mode == QUICK_BUILD_SEQ_SETUP) {
+        // Setup param phase: click confirms parameter (on press only)
         if (pressed) {
             quick_build_confirm_param();
+        }
+    } else if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
+        // Root note phase: click confirms root (on press only)
+        if (pressed) {
+            quick_build_confirm_root();
         }
     } else if (quick_build_is_recording()) {
         // Recording phase: momentary chord mode

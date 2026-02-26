@@ -868,8 +868,10 @@ typedef struct {
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
     uint8_t current_step;              // Current step (0-based internal)
     uint8_t note_count;                // Total notes recorded so far
-    uint8_t root_note;                 // First note played (arp only, for interval calculation)
-    bool has_root;                     // Have we recorded the root yet? (arp only)
+    uint8_t root_note;                 // Confirmed root note (arp only, for interval calculation)
+    bool has_root;                     // Has root been confirmed?
+    uint8_t candidate_root;            // Note being previewed in root selection (0=none pressed yet)
+    bool candidate_ready;              // A candidate root note has been pressed and is awaiting confirm
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
     bool has_saved_build;              // Has user completed a build?
@@ -903,6 +905,7 @@ uint8_t quick_build_get_current_step(void);
 void quick_build_handle_encoder(bool clockwise);
 void quick_build_handle_encoder_click(bool pressed);
 void quick_build_confirm_param(void);
+void quick_build_confirm_root(void);
 void quick_build_skip_step(void);
 void quick_build_undo_step(void);
 void render_big_number(uint8_t number);

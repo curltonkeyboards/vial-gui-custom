@@ -3069,6 +3069,18 @@ void scan_keycode_categories(void) {
 					else if (keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) { // Seq quick build 1-8
 					category = 36 + (keycode - SEQ_QUICK_BUILD_1);  // Categories 36-43
 					}
+					else if (keycode == ARP_PLAY) { // Arp play/toggle
+					category = 44;
+					}
+					else if (keycode == SEQ_PLAY) { // Seq play/toggle
+					category = 45;
+					}
+					else if (keycode >= ARP_PRESET_BASE && keycode < (ARP_PRESET_BASE + 68)) { // Arp direct presets
+					category = 46;
+					}
+					else if (keycode >= SEQ_PRESET_BASE && keycode < (SEQ_PRESET_BASE + 68)) { // Seq direct presets
+					category = 47;
+					}
 					
 					//else { // REST OF EVERYTHING
                     //    category = 28;  // THE REST
@@ -7854,6 +7866,67 @@ bool rgb_matrix_indicators_kb(void) {
                                     (uint8_t)(r * brightness_factor),
                                     (uint8_t)(g * brightness_factor),
                                     (uint8_t)(b * brightness_factor));
+            }
+        }
+
+        // Normal arp/seq play buttons and preset buttons
+        // Arp play button (category 44): green when active, dim white when idle
+        uint8_t arp_play_led = get_special_key_led_index(44);
+        if (arp_play_led != 99 && arp_play_led < RGB_MATRIX_LED_COUNT) {
+            if (arp_state.active) {
+                rgb_matrix_set_color(arp_play_led,
+                    0, (uint8_t)(200 * brightness_factor), 0);
+            } else {
+                rgb_matrix_set_color(arp_play_led,
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor));
+            }
+        }
+
+        // Seq play button (category 45): green when any slot active, dim white when idle
+        uint8_t seq_play_led = get_special_key_led_index(45);
+        if (seq_play_led != 99 && seq_play_led < RGB_MATRIX_LED_COUNT) {
+            bool any_seq_active = false;
+            for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+                if (seq_state[s].active) { any_seq_active = true; break; }
+            }
+            if (any_seq_active) {
+                rgb_matrix_set_color(seq_play_led,
+                    0, (uint8_t)(200 * brightness_factor), 0);
+            } else {
+                rgb_matrix_set_color(seq_play_led,
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor));
+            }
+        }
+
+        // Arp preset buttons (category 46): highlight the active preset
+        {
+            uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+            for (uint8_t i = 0; i < led_categories[current_layer].count; i++) {
+                if (led_categories[current_layer].leds[i].category == 46) {
+                    uint8_t led = led_categories[current_layer].leds[i].led_index;
+                    if (led < RGB_MATRIX_LED_COUNT) {
+                        if (arp_state.active) {
+                            rgb_matrix_set_color(led,
+                                0, (uint8_t)(120 * brightness_factor), 0);
+                        }
+                    }
+                } else if (led_categories[current_layer].leds[i].category == 47) {
+                    uint8_t led = led_categories[current_layer].leds[i].led_index;
+                    if (led < RGB_MATRIX_LED_COUNT) {
+                        bool any_seq_active = false;
+                        for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+                            if (seq_state[s].active) { any_seq_active = true; break; }
+                        }
+                        if (any_seq_active) {
+                            rgb_matrix_set_color(led,
+                                0, (uint8_t)(120 * brightness_factor), 0);
+                        }
+                    }
+                }
             }
         }
     }
@@ -14037,8 +14110,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 // In setup phase: button confirms parameter (same as encoder click)
                 quick_build_confirm_param();
             } else if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
-                // Waiting for root note: pressing button cancels
-                quick_build_cancel();
+                // Root note phase: confirm if candidate is ready, cancel if not
+                if (quick_build_state.candidate_ready) {
+                    quick_build_confirm_root();
+                } else {
+                    quick_build_cancel();
+                }
             } else if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
                 // Currently recording arp: finish and save
                 quick_build_finish();
@@ -16672,6 +16749,15 @@ static void oled_write_line(uint8_t row, const char *text) {
     oled_write(line, false);
 }
 
+// Helper: get MIDI note name string (e.g. "C4", "F#3")
+static const char *note_names[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+static const char* midi_note_name(uint8_t note, char *buf, uint8_t buf_size) {
+    uint8_t octave = note / 12;
+    uint8_t name_idx = note % 12;
+    snprintf(buf, buf_size, "%s%d", note_names[name_idx], octave);
+    return buf;
+}
+
 // Render the setup phase OLED screen (parameter selection or root note prompt)
 void render_quick_build_setup(void) {
     char buf[22];
@@ -16689,22 +16775,35 @@ void render_quick_build_setup(void) {
     oled_write_line(1, "--------------------");
 
     if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
-        // Root note prompt screen
+        // Root note selection screen
         oled_write_line(2, "");
-        oled_write_line(3, "  All intervals are");
-        oled_write_line(4, "  relative to root");
+        oled_write_line(3, " Select the root note");
+        oled_write_line(4, " (not a pattern step)");
         oled_write_line(5, "");
-        oled_write_line(6, "  Play the root note");
-        oled_write_line(7, "  on the keyboard");
-        oled_write_line(8, "");
-        oled_write_line(9, "  (not recorded as");
-        oled_write_line(10, "   a pattern step)");
-        oled_write_line(11, "");
+
+        if (quick_build_state.candidate_ready) {
+            // Show the candidate note name
+            char note_buf[8];
+            midi_note_name(quick_build_state.candidate_root, note_buf, sizeof(note_buf));
+            snprintf(buf, sizeof(buf), "   Root: %s", note_buf);
+            oled_write_line(6, buf);
+            oled_write_line(7, "");
+            oled_write_line(8, " Press top knob or");
+            oled_write_line(9, " button to confirm");
+            oled_write_line(10, "");
+            oled_write_line(11, " Play key to change");
+        } else {
+            oled_write_line(6, "  Play a key on the");
+            oled_write_line(7, "  keyboard ...");
+            oled_write_line(8, "");
+            oled_write_line(9, "");
+            oled_write_line(10, "");
+            oled_write_line(11, "");
+        }
         oled_write_line(12, "");
         oled_write_line(13, "");
     } else {
         // Parameter selection screen
-        // Line 2: blank
         oled_write_line(2, "");
 
         // Lines 3-4: Description
@@ -16728,22 +16827,18 @@ void render_quick_build_setup(void) {
         buf[21] = '\0';
         oled_write_line(6, buf);
 
-        // Line 7: blank
         oled_write_line(7, "");
 
         // Lines 8-9: Instructions
-        oled_write_line(8, "  Turn to select");
-        oled_write_line(9, "  Press to confirm");
-
-        // Line 10: blank
-        oled_write_line(10, "");
+        oled_write_line(8, " Turn top knob to");
+        oled_write_line(9, " select, press to");
+        oled_write_line(10, " confirm");
 
         // Line 11: Progress
         uint8_t total_params = (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) ? 3 : 2;
         snprintf(buf, sizeof(buf), "     Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
         oled_write_line(11, buf);
 
-        // Lines 12-15: blank
         oled_write_line(12, "");
         oled_write_line(13, "");
     }
@@ -16784,24 +16879,24 @@ void render_quick_build_recording(void) {
     // Line 6: blank
     oled_write_line(6, "");
 
-    // Line 7: Encoder skip/undo
+    // Line 7: Top knob skip/undo
     oled_write_line(7, " << Undo   Skip >>");
+    oled_write_line(8, " (turn top knob)");
 
-    // Line 8: Chord mode status
+    // Line 9: Chord mode status
     if (quick_build_state.encoder_chord_held) {
-        oled_write_line(8, "  Click: CHORD ON");
+        oled_write_line(9, " Top knob: CHORD ON");
     } else {
-        oled_write_line(8, "  Click: Chord mode");
+        oled_write_line(9, " Hold knob: Chord");
     }
 
-    // Line 9: blank
-    oled_write_line(9, "");
+    // Line 10: blank
+    oled_write_line(10, "");
 
-    // Line 10: Finish instruction
-    oled_write_line(10, " Press btn to finish");
+    // Line 11: Finish instruction
+    oled_write_line(11, " Press btn to finish");
 
-    // Lines 11-15: blank
-    oled_write_line(11, "");
+    // Lines 12-15: blank
     oled_write_line(12, "");
     oled_write_line(13, "");
     oled_write_line(14, "");
