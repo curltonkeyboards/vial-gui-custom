@@ -16845,8 +16845,6 @@ static void render_arp_step_view(void) {
         if (step_idx >= note_count) break;
 
         uint8_t velocity = NOTE_GET_VELOCITY(preset->notes[step_idx].packed_timing_vel);
-        uint8_t note_idx = NOTE_GET_NOTE(preset->notes[step_idx].note_octave);
-        int8_t octave = NOTE_GET_OCTAVE(preset->notes[step_idx].note_octave);
         bool is_active = (step_idx == active_step && arp_state.active);
 
         // Map velocity (0-127) to bar height (0-31 pixels, bottom-up)
@@ -17067,7 +17065,7 @@ static void render_arp_seq_display(void) {
 
         // Row 14: Position info
         oled_set_cursor(0, 14);
-        snprintf(buf, sizeof(buf), "Step %d/%d  Notes:%d  ",
+        snprintf(buf, sizeof(buf), "S%d/%d N:%d",
             (int)(arp_state.current_position_16ths + 1),
             (int)preset->pattern_length_16ths,
             preset->note_count);
@@ -17086,17 +17084,14 @@ static void render_arp_seq_display(void) {
 
         // Row 8: SEQ header
         oled_set_cursor(0, 8);
-        snprintf(buf, sizeof(buf), "SEQ%d Preset %-3d     ",
+        snprintf(buf, sizeof(buf), "SEQ%d Preset %-3d",
             slot + 1,
             seq_state[slot].current_preset_id);
         oled_write(buf, false);
 
         // Row 9: Timing info
         oled_set_cursor(0, 9);
-        const char *note_val_names2[] = {"1/4", "1/8", "1/16"};
-        uint8_t nv = preset->note_value;
-        if (nv >= NOTE_VALUE_COUNT) nv = 0;
-        snprintf(buf, sizeof(buf), "BPM%3d Gate%3d%% Ch%-2d",
+        snprintf(buf, sizeof(buf), "BPM%3d G%3d%% Ch%d",
             (int)display_bpm,
             preset->gate_length_percent,
             seq_state[slot].locked_channel + 1);
@@ -17107,7 +17102,7 @@ static void render_arp_seq_display(void) {
 
         // Row 14: Position info
         oled_set_cursor(0, 14);
-        snprintf(buf, sizeof(buf), "Pos %d/%d  T%+d       ",
+        snprintf(buf, sizeof(buf), "Pos %d/%d T%+d",
             (int)(seq_state[slot].current_position_16ths + 1),
             (int)preset->pattern_length_16ths,
             seq_state[slot].locked_transpose);
@@ -17177,7 +17172,7 @@ static void render_arp_seq_display(void) {
 
         // Row 14: BPM and sync status
         oled_set_cursor(0, 14);
-        snprintf(buf, sizeof(buf), "BPM%3d Sync:%s      ",
+        snprintf(buf, sizeof(buf), "BPM%3d Sync:%s",
             (int)display_bpm,
             (arp_active && arp_state.sync_mode) ? "ON" : "OFF");
         oled_write(buf, false);
