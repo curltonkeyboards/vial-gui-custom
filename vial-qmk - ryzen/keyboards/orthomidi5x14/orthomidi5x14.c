@@ -7819,7 +7819,7 @@ bool rgb_matrix_indicators_kb(void) {
                 quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
                 // Orange: currently building
                 r = 255; g = 140; b = 0;
-            } else if (quick_build_state.has_saved_build &&
+            } else if (quick_build_state.has_saved_arp_build &&
                        arp_state.current_preset_id == PRESET_ID_QUICK_BUILD) {
                 if (arp_state.active) {
                     // Green: playing
@@ -7848,8 +7848,7 @@ bool rgb_matrix_indicators_kb(void) {
                     quick_build_state.seq_slot == s) {
                     // Orange: currently building this slot
                     r = 255; g = 140; b = 0;
-                } else if (quick_build_state.has_saved_build &&
-                           quick_build_state.seq_slot == s &&
+                } else if (quick_build_state.has_saved_seq_build[s] &&
                            seq_state[s].current_preset_id == PRESET_ID_QUICK_BUILD) {
                     if (seq_state[s].active) {
                         // Green: playing
@@ -14104,8 +14103,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             // Record press time for 3-second hold detection
             quick_build_state.button_press_time = timer_read32();
 
-            if (quick_build_state.has_saved_build && quick_build_state.mode == QUICK_BUILD_NONE) {
-                // Has saved build and not currently building: toggle play
+            if (quick_build_state.has_saved_arp_build && quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Has saved arp build and not currently building: toggle play
                 arp_toggle();
             } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
                 // In setup phase: button confirms parameter (same as encoder click)
@@ -14125,12 +14124,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 quick_build_start_arp();
             }
         } else {
-            // Button released: check for 3-second hold (only when idle with saved build)
+            // Button released: check for 3-second hold (only when idle with saved arp build)
             if (quick_build_state.mode == QUICK_BUILD_NONE &&
+                quick_build_state.has_saved_arp_build &&
                 timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: stop playback and erase saved build
+                // Held for 3+ seconds: stop playback and erase saved arp build
                 arp_stop();
-                quick_build_erase();
+                quick_build_erase_arp();
             }
         }
         set_keylog(keycode, record);
@@ -14145,10 +14145,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             // Record press time for 3-second hold detection
             quick_build_state.button_press_time = timer_read32();
 
-            if (quick_build_state.has_saved_build &&
-                quick_build_state.mode == QUICK_BUILD_NONE &&
-                quick_build_state.seq_slot == slot) {
-                // Has saved build for this slot and not currently building: toggle play
+            if (quick_build_state.has_saved_seq_build[slot] &&
+                quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Has saved seq build for this slot and not currently building: toggle play
                 seq_start_slot(slot);
             } else if (quick_build_state.mode == QUICK_BUILD_SEQ_SETUP &&
                        quick_build_state.seq_slot == slot) {
@@ -14165,11 +14164,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         } else {
             // Button released: check for 3-second hold (only when idle with saved build)
             if (quick_build_state.mode == QUICK_BUILD_NONE &&
-                quick_build_state.seq_slot == slot &&
+                quick_build_state.has_saved_seq_build[slot] &&
                 timer_elapsed32(quick_build_state.button_press_time) > 3000) {
                 // Held for 3+ seconds: stop playback and erase saved build for this slot
                 seq_stop(slot);
-                quick_build_erase();
+                quick_build_erase_seq(slot);
             }
         }
         set_keylog(keycode, record);

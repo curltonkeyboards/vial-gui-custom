@@ -874,7 +874,8 @@ typedef struct {
     bool candidate_ready;              // A candidate root note has been pressed and is awaiting confirm
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
-    bool has_saved_build;              // Has user completed a build?
+    bool has_saved_arp_build;          // Has user completed an arp build?
+    bool has_saved_seq_build[8];       // Has user completed a seq build? (per slot)
 
     // Setup phase state
     uint8_t setup_param_index;         // Which parameter is being configured (0, 1, 2...)
@@ -894,7 +895,8 @@ void quick_build_start_arp(void);
 void quick_build_start_seq(uint8_t slot);
 void quick_build_cancel(void);
 void quick_build_finish(void);
-void quick_build_erase(void);
+void quick_build_erase_arp(void);
+void quick_build_erase_seq(uint8_t slot);
 void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void quick_build_handle_sustain_release(void);
 void quick_build_update(void);

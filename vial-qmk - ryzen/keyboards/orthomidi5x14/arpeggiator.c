@@ -73,7 +73,8 @@ quick_build_state_t quick_build_state = {
     .candidate_ready = false,
     .sustain_held_last_check = false,
     .button_press_time = 0,
-    .has_saved_build = false,
+    .has_saved_arp_build = false,
+    .has_saved_seq_build = {false},
     .setup_param_index = 0,
     .setup_arp_mode = 0,
     .setup_note_value = NOTE_VALUE_SIXTEENTH,
@@ -2099,7 +2100,7 @@ void quick_build_start_arp(void) {
     quick_build_state.has_root = false;
     quick_build_state.candidate_root = 0;
     quick_build_state.candidate_ready = false;
-    quick_build_state.has_saved_build = false;
+    quick_build_state.has_saved_arp_build = false;
     quick_build_state.sustain_held_last_check = false;
     quick_build_state.encoder_chord_held = false;
 
@@ -2181,7 +2182,7 @@ void quick_build_start_seq(uint8_t slot) {
     quick_build_state.seq_slot = slot;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
-    quick_build_state.has_saved_build = false;
+    quick_build_state.has_saved_seq_build[slot] = false;
     quick_build_state.sustain_held_last_check = false;
     quick_build_state.encoder_chord_held = false;
 
@@ -2201,7 +2202,8 @@ void quick_build_cancel(void) {
     dprintf("quick_build: canceling build mode %d\n", quick_build_state.mode);
 
     quick_build_state.mode = QUICK_BUILD_NONE;
-    quick_build_state.has_saved_build = false;
+    // Don't clear saved flags - cancel only aborts the in-progress build,
+    // not previously completed builds of either type
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
@@ -2233,7 +2235,7 @@ void quick_build_finish(void) {
 
         dprintf("quick_build: arp finished with %d notes, %d steps\n",
                 quick_build_state.note_count, arp_active_preset.pattern_length_16ths);
-        quick_build_state.has_saved_build = true;
+        quick_build_state.has_saved_arp_build = true;
 
         // Mark arp to play this quick build pattern (not a factory/user preset)
         arp_state.current_preset_id = PRESET_ID_QUICK_BUILD;
@@ -2265,7 +2267,7 @@ void quick_build_finish(void) {
 
         dprintf("quick_build: seq slot %d finished with %d notes, %d steps\n",
                 slot, quick_build_state.note_count, seq_active_presets[slot].pattern_length_16ths);
-        quick_build_state.has_saved_build = true;
+        quick_build_state.has_saved_seq_build[slot] = true;
 
         // Mark seq slot to play this quick build pattern
         seq_state[slot].current_preset_id = PRESET_ID_QUICK_BUILD;
@@ -2283,17 +2285,26 @@ void quick_build_finish(void) {
     dprintf("quick_build: saved to RAM, ready to play\n");
 }
 
-// Erase the saved quick build
-void quick_build_erase(void) {
-    dprintf("quick_build: erasing saved build\n");
-
-    quick_build_state.has_saved_build = false;
+// Erase the saved arp quick build
+void quick_build_erase_arp(void) {
+    dprintf("quick_build: erasing saved arp build\n");
+    quick_build_state.has_saved_arp_build = false;
     quick_build_state.mode = QUICK_BUILD_NONE;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
+    dprintf("quick_build: arp erased\n");
+}
 
-    dprintf("quick_build: erased\n");
+// Erase the saved seq quick build for a specific slot
+void quick_build_erase_seq(uint8_t slot) {
+    if (slot >= MAX_SEQ_SLOTS) return;
+    dprintf("quick_build: erasing saved seq build slot %d\n", slot);
+    quick_build_state.has_saved_seq_build[slot] = false;
+    quick_build_state.mode = QUICK_BUILD_NONE;
+    quick_build_state.current_step = 0;
+    quick_build_state.note_count = 0;
+    dprintf("quick_build: seq slot %d erased\n", slot);
 }
 
 // Advance to next step
@@ -2324,7 +2335,9 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
 
     if (!quick_build_is_recording()) return;
 
-    // Use raw_travel for velocity if available (0-255), otherwise use velocity (0-127)
+    // raw_travel carries the velocity mode output (0-255, pre-curve) from the matrix scan.
+    // This captures the actual played velocity regardless of velocity mode (speed, peak, fixed, blend).
+    // On playback, apply_arp_velocity_pipeline() will re-apply the curve + range mapping.
     uint8_t record_velocity = (raw_travel > 0) ? (raw_travel >> 1) : velocity;  // Scale to 0-127
 
     // Track if we need to advance step (only if sustain/chord mode is NOT held)
