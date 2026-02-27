@@ -16760,7 +16760,6 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 // Track quick build OLED state for one-time clear on transition
 static bool quick_build_oled_active = false;
-static bool qb_cleared_oled_active = false;  // Track "Cleared" screen for transition clears
 
 // Helper: write a full 21-char padded line at a given row
 static void oled_write_line(uint8_t row, const char *text) {
@@ -16774,12 +16773,15 @@ static void oled_write_line(uint8_t row, const char *text) {
     oled_write(line, false);
 }
 
-// Helper: get MIDI note name string (e.g. "C4", "F#3")
-static const char *note_names[] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+// Helper: get MIDI note name string using the codebase's established naming convention
+// (midi_note_names[] array: MIDI 0 = "C-4", MIDI 60 = "C1", MIDI 72 = "C2", etc.)
+extern const char midi_note_names[168][5];
 static const char* midi_note_name(uint8_t note, char *buf, uint8_t buf_size) {
-    uint8_t octave = note / 12;
-    uint8_t name_idx = note % 12;
-    snprintf(buf, buf_size, "%s%d", note_names[name_idx], octave);
+    if (note < 168) {
+        snprintf(buf, buf_size, "%s", midi_note_names[note]);
+    } else {
+        snprintf(buf, buf_size, "?%d", note);
+    }
     return buf;
 }
 
@@ -17017,45 +17019,15 @@ bool oled_task_user(void) {
         } else {
             render_quick_build_recording();
         }
-    } else if (qb_erase_display_time > 0 &&
-               timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
-        // =========================================================
-        // CLEARED MESSAGE: Brief full-screen "Arp Cleared" / "Seq N Cleared"
-        // =========================================================
-
-        if (quick_build_oled_active) {
-            oled_clear();
-            quick_build_oled_active = false;
-        }
-        if (!qb_cleared_oled_active) {
-            oled_clear();
-            qb_cleared_oled_active = true;
-        }
-
-        if (qb_erase_display_type == 1) {
-            oled_write_big_centered(6, "Arp");
-            oled_write_big_centered(9, "Cleared");
-        } else if (qb_erase_display_type == 2) {
-            char slot_str[8];
-            snprintf(slot_str, sizeof(slot_str), "Seq %d", qb_erase_display_slot + 1);
-            oled_write_big_centered(6, slot_str);
-            oled_write_big_centered(9, "Cleared");
-        }
-
     } else {
         // =========================================================
         // NORMAL MODE: Layer, BPM, keylog, luna/interface
         // =========================================================
 
-        // One-time full clear when leaving quick build or cleared screen
+        // One-time full clear when leaving quick build
         if (quick_build_oled_active) {
             oled_clear();
             quick_build_oled_active = false;
-        }
-        if (qb_cleared_oled_active) {
-            oled_clear();
-            qb_cleared_oled_active = false;
-            qb_erase_display_time = 0;  // Reset so we don't re-enter
         }
 
         // Buffer to store the formatted string
@@ -17124,10 +17096,18 @@ void matrix_scan_user(void) {
             // Erase arp quick build
             arp_stop();
             quick_build_erase_arp();
+            // Show "Arp Cleared" in normal OLED mode_display area
+            snprintf(mode_display_msg, sizeof(mode_display_msg), "\n    Arp Cleared");
+            mode_display_timer = timer_read32();
+            mode_display_active = true;
         } else if (qb_erase_hold_type == 2) {
             // Erase seq quick build for this slot
             seq_stop(qb_erase_hold_slot);
             quick_build_erase_seq(qb_erase_hold_slot);
+            // Show "Seq N Cleared" in normal OLED mode_display area
+            snprintf(mode_display_msg, sizeof(mode_display_msg), "\n   Seq %d Cleared", qb_erase_hold_slot + 1);
+            mode_display_timer = timer_read32();
+            mode_display_active = true;
         }
     }
 

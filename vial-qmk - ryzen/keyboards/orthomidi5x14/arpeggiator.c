@@ -2405,7 +2405,7 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
 
         // For sequencer: store absolute MIDI note
         uint8_t note_index = note % 12;  // 0-11 (C-B)
-        int8_t octave_offset = (note / 12) - 5;  // Relative to middle C octave
+        int8_t octave_offset = note / 12;  // Direct MIDI octave (playback = octave*12 + note_index)
 
         // Pack note data
         seq_active_presets[slot].notes[quick_build_state.note_count].packed_timing_vel =
