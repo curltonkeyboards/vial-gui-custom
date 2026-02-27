@@ -711,24 +711,26 @@ void arp_start(uint8_t preset_id) {
 void arp_stop(void) {
     if (!arp_state.active) return;
 
-    // Behavior depends on sync mode
-    if (arp_state.sync_mode) {
-        // Finish gates: let current notes complete their gate length
-        // process_arp_note_offs() will handle this naturally
-        dprintf("arp: stopping (sync mode - finishing gates)\n");
-    } else {
-        // Next step: immediately stop on next step boundary
-        // For now, stop immediately (can refine later)
-        dprintf("arp: stopping (unsync mode - immediate)\n");
-    }
+    dprintf("arp: stopping\n");
 
     arp_state.active = false;
     arp_state.latch_mode = false;
     arp_state.key_held = false;
     arp_state.notes_released = false;
 
-    // Note: We don't immediately send note-offs here
-    // Let the gate timing system handle it naturally
+    // Immediately send note-offs for all active arp notes to prevent stuck notes
+    for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
+        if (arp_notes[i].active) {
+            midi_send_noteoff_arp(arp_notes[i].channel,
+                                 arp_notes[i].note,
+                                 arp_notes[i].velocity);
+            arp_notes[i].active = false;
+            arp_note_count--;
+            dprintf("arp: force-off note ch:%d note:%d\n",
+                    arp_notes[i].channel, arp_notes[i].note);
+        }
+    }
+    arp_note_count = 0;  // Safety reset
 }
 
 void arp_update(void) {
@@ -1122,11 +1124,40 @@ void seq_stop(uint8_t slot) {
 
     if (seq_state[slot].active) {
         seq_state[slot].active = false;
+
+        // Immediately send note-offs for all active arp notes to prevent stuck notes
+        // (seq uses arp_notes[] for gate tracking)
+        for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
+            if (arp_notes[i].active) {
+                midi_send_noteoff_arp(arp_notes[i].channel,
+                                     arp_notes[i].note,
+                                     arp_notes[i].velocity);
+                arp_notes[i].active = false;
+                arp_note_count--;
+                dprintf("seq: force-off note ch:%d note:%d\n",
+                        arp_notes[i].channel, arp_notes[i].note);
+            }
+        }
+        arp_note_count = 0;  // Safety reset
+
         dprintf("seq: stopped slot %d\n", slot);
     }
 }
 
 void seq_stop_all(void) {
+    // Send note-offs for all active arp notes first (seq uses arp_notes[])
+    for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
+        if (arp_notes[i].active) {
+            midi_send_noteoff_arp(arp_notes[i].channel,
+                                 arp_notes[i].note,
+                                 arp_notes[i].velocity);
+            arp_notes[i].active = false;
+            dprintf("seq: force-off note ch:%d note:%d\n",
+                    arp_notes[i].channel, arp_notes[i].note);
+        }
+    }
+    arp_note_count = 0;  // Safety reset
+
     for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
         if (seq_state[i].active) {
             seq_state[i].active = false;
