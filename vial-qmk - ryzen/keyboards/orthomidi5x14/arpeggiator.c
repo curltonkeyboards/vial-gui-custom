@@ -4,6 +4,7 @@
 #include QMK_KEYBOARD_H
 #include "orthomidi5x14.h"
 #include "process_midi.h"
+#include "process_dynamic_macro.h"
 #include "timer.h"
 #include "eeprom.h"
 #include <string.h>
@@ -831,6 +832,21 @@ void arp_update(void) {
     uint32_t current_time = timer_read32();
     if (current_time < arp_state.next_note_time) {
         return;  // Not yet time
+    }
+
+    // Check for deferred loop record stop at this step boundary
+    if (loop_deferred_record_stop_pending) {
+        execute_deferred_record_stop();
+        // Don't play this step's notes - stop happens before the step
+        // Still advance timing so arp continues normally
+        uint32_t ms_per_16th_defer = get_ms_per_16th(preset);
+        arp_state.current_position_16ths++;
+        if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
+            arp_state.current_position_16ths = 0;
+            arp_state.pattern_start_time = current_time;
+        }
+        arp_state.next_note_time = current_time + ms_per_16th_defer;
+        return;
     }
 
     // Special case: Random preset - randomize note indices

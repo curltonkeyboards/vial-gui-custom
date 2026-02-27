@@ -297,6 +297,7 @@ static void execute_command_batch(void);
 static void clear_command_batch(void);
 static bool add_command_to_batch(uint8_t command_type, uint8_t macro_id);
 bool sample_mode_active = false;  // Track whether sample mode is active
+bool loop_deferred_record_stop_pending = false;  // Arp-synced deferred stop
 void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int8_t direction);
 void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_pointer, int8_t direction, midi_event_t **macro_end, uint32_t *start_time);
 void dynamic_macro_actual_start(uint32_t *start_time);
@@ -6476,6 +6477,48 @@ if (macro_num > 0) {
     first_note_recorded = false;
 }
 
+// Execute a deferred record stop (called from arp_update at step boundary)
+void execute_deferred_record_stop(void) {
+    if (!loop_deferred_record_stop_pending) return;
+    if (macro_id == 0) {
+        loop_deferred_record_stop_pending = false;
+        return;
+    }
+
+    uint8_t saved_macro_id = macro_id;
+    uint8_t macro_idx = saved_macro_id - 1;
+    midi_event_t *rec_start = get_macro_buffer(saved_macro_id);
+    midi_event_t **rec_end_ptr = get_macro_end_ptr(saved_macro_id);
+
+    // End recording (current_bpm is still 0, so record_end will calculate BPM
+    // from loop length and auto-start internal clock)
+    dynamic_macro_record_end(rec_start, macro_pointer, +1, rec_end_ptr, &recording_start_time);
+
+    // Override BPM to exactly 120 (user requirement for arp-synced stops)
+    current_bpm = 12000000;
+    bpm_source_macro = saved_macro_id;
+
+    // Update MIDI clock tempo to match the forced 120 BPM
+    if (is_internal_clock_active()) {
+        internal_clock_tempo_changed();
+    } else if (!is_external_clock_active()) {
+        internal_clock_start();
+    }
+
+    // Reset recording state
+    macro_id = 0;
+    stop_dynamic_macro_recording();
+
+    // Start playback if macro has content
+    if (!is_macro_empty && !skip_autoplay_for_macro[macro_idx]) {
+        dynamic_macro_play(rec_start, *rec_end_ptr, +1);
+        dprintf("dynamic macro: deferred stop - started playback of macro %d\n", saved_macro_id);
+    }
+
+    loop_deferred_record_stop_pending = false;
+    dprintf("dynamic macro: deferred record stop executed for macro %d (BPM forced to 120)\n", saved_macro_id);
+}
+
 // Modify the existing cycle_macro_speed function to handle BPM source macro
 static void cycle_macro_speed(uint8_t macro_num) {
     if (macro_num < 1 || macro_num > MAX_MACROS) return;
@@ -9905,27 +9948,32 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 // End overdub recording
                 end_overdub_recording_mode_aware(macro_num, false, false);
                 dprintf("dynamic macro: ended overdub recording for macro %d\n", macro_num);
+            } else if (current_bpm == 0 && arp_is_active() && live_note_count > 0) {
+                // Arp-synced deferred stop: arp is playing with held notes, no BPM set.
+                // Defer record stop to next arp step boundary for timing alignment.
+                loop_deferred_record_stop_pending = true;
+                dprintf("dynamic macro: deferring record stop to next arp step\n");
             } else {
                 // Normal recording - stop and start playback immediately (for non-double-tap case)
                 midi_event_t *rec_start = get_macro_buffer(macro_id);
                 midi_event_t **rec_end_ptr = get_macro_end_ptr(macro_id);
-                
+
                 // Check if we need to enter overdub mode
-                bool should_enter_overdub = macro_in_overdub_mode[macro_idx] || 
+                bool should_enter_overdub = macro_in_overdub_mode[macro_idx] ||
                                            (overdub_button_held && macro_id == macro_num);
-                
+
                 // End recording
                 dynamic_macro_record_end(rec_start, macro_pointer, +1, rec_end_ptr, &recording_start_time);
-                
+
                 // Reset recording state
                 macro_id = 0;
                 stop_dynamic_macro_recording();
-                
+
                 // Start playback (if not skipped)
                 if (!is_macro_empty && !skip_autoplay_for_macro[macro_id - 1]) {
                     dynamic_macro_play(rec_start, *rec_end_ptr, +1);
                     dprintf("dynamic macro: started playback after recording macro %d\n", macro_id);
-                    
+
                     // If flag was set to enter overdub, set it up now
                     if (should_enter_overdub) {
                         start_overdub_recording(macro_num);

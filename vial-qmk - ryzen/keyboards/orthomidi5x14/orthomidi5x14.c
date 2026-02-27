@@ -7814,7 +7814,14 @@ bool rgb_matrix_indicators_kb(void) {
         uint8_t arp_led = get_special_key_led_index(35);
         if (arp_led != 99 && arp_led < RGB_MATRIX_LED_COUNT) {
             uint8_t r = 0, g = 0, b = 0;
-            if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+            if (qb_erase_display_type == 1 && qb_erase_display_time > 0 &&
+                timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
+                // Cyan flash: just cleared
+                r = 0; g = 200; b = 200;
+            } else if (qb_erase_hold_type == 1 && !qb_erase_triggered) {
+                // Purple: hold in progress, approaching erase
+                r = 180; g = 0; b = 200;
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
                 quick_build_state.mode == QUICK_BUILD_ARP_ROOT ||
                 quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
                 // Orange: currently building
@@ -7843,7 +7850,16 @@ bool rgb_matrix_indicators_kb(void) {
             uint8_t seq_led = get_special_key_led_index(36 + s);
             if (seq_led != 99 && seq_led < RGB_MATRIX_LED_COUNT) {
                 uint8_t r = 0, g = 0, b = 0;
-                if ((quick_build_state.mode == QUICK_BUILD_SEQ_SETUP ||
+                if (qb_erase_display_type == 2 && qb_erase_display_slot == s &&
+                    qb_erase_display_time > 0 &&
+                    timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
+                    // Cyan flash: just cleared
+                    r = 0; g = 200; b = 200;
+                } else if (qb_erase_hold_type == 2 && qb_erase_hold_slot == s &&
+                           !qb_erase_triggered) {
+                    // Purple: hold in progress, approaching erase
+                    r = 180; g = 0; b = 200;
+                } else if ((quick_build_state.mode == QUICK_BUILD_SEQ_SETUP ||
                      quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) &&
                     quick_build_state.seq_slot == s) {
                     // Orange: currently building this slot
@@ -8989,11 +9005,11 @@ void set_keylog(uint16_t keycode, keyrecord_t *record) {
         keycode = keycode & 0xFF;
     }
 
-// During quick build, top encoder (encoder 1) is handled by the quick build system
+// During quick build, encoder 0 rotation is handled by the quick build system
 if (quick_build_is_active() &&
     (record->event.key.row == KEYLOC_ENCODER_CW || record->event.key.row == KEYLOC_ENCODER_CCW) &&
-    record->event.key.col == 1) {
-    return;  // Don't process top encoder in set_keylog during quick build
+    record->event.key.col == 0) {
+    return;  // Don't process encoder 0 rotation in set_keylog during quick build
 }
 
 if (record->event.key.row == KEYLOC_ENCODER_CW && ccencoder != 130) { // Encoder turned clockwise
@@ -13719,21 +13735,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
-    // QUICK BUILD ENCODER 1 (TOP) HIJACK
-    // During quick build (setup or recording), top encoder rotation and click are
+    // QUICK BUILD ENCODER HIJACK
+    // During quick build (setup or recording), encoder rotation and click are
     // consumed here and routed to the quick build system instead of normal processing.
-    // Encoder 1 = top encoder (B15), matrix position (5,1)
+    // Rotation: encoder 0 (col 0), Click: encoder 1 (col 1)
     // =============================================================================
     if (quick_build_is_active()) {
-        // Top encoder rotation (row = KEYLOC_ENCODER_CW/CCW, col = 1 for top encoder)
+        // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = 0)
         if ((record->event.key.row == KEYLOC_ENCODER_CW ||
              record->event.key.row == KEYLOC_ENCODER_CCW) &&
-            record->event.key.col == 1 && record->event.pressed) {
+            record->event.key.col == 0 && record->event.pressed) {
             bool clockwise = (record->event.key.row == KEYLOC_ENCODER_CW);
             quick_build_handle_encoder(clockwise);
             return false;  // Consume
         }
-        // Top encoder click (matrix position 5,1)
+        // Encoder 1 click (matrix position 5,1)
         if (record->event.key.row == 5 && record->event.key.col == 1) {
             quick_build_handle_encoder_click(record->event.pressed);
             return false;  // Consume
@@ -14100,12 +14116,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // ARPEGGIATOR QUICK BUILD
     if (keycode == ARP_QUICK_BUILD) {
         if (record->event.pressed) {
-            // Record press time for 3-second hold detection
-            quick_build_state.button_press_time = timer_read32();
-
             if (quick_build_state.has_saved_arp_build && quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved arp build and not currently building: toggle play
                 arp_toggle();
+                // Start tracking hold for erase
+                qb_erase_hold_type = 1;  // arp
+                qb_erase_hold_start = timer_read32();
+                qb_erase_triggered = false;
             } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
                 // In setup phase: button confirms parameter (same as encoder click)
                 quick_build_confirm_param();
@@ -14124,13 +14141,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 quick_build_start_arp();
             }
         } else {
-            // Button released: check for 3-second hold (only when idle with saved arp build)
-            if (quick_build_state.mode == QUICK_BUILD_NONE &&
-                quick_build_state.has_saved_arp_build &&
-                timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: stop playback and erase saved arp build
-                arp_stop();
-                quick_build_erase_arp();
+            // Button released: clear hold tracking
+            if (qb_erase_hold_type == 1) {
+                qb_erase_hold_type = 0;
             }
         }
         set_keylog(keycode, record);
@@ -14142,13 +14155,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         uint8_t slot = keycode - SEQ_QUICK_BUILD_1;  // 0-7
 
         if (record->event.pressed) {
-            // Record press time for 3-second hold detection
-            quick_build_state.button_press_time = timer_read32();
-
             if (quick_build_state.has_saved_seq_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved seq build for this slot and not currently building: toggle play
                 seq_start_slot(slot);
+                // Start tracking hold for erase
+                qb_erase_hold_type = 2;  // seq
+                qb_erase_hold_slot = slot;
+                qb_erase_hold_start = timer_read32();
+                qb_erase_triggered = false;
             } else if (quick_build_state.mode == QUICK_BUILD_SEQ_SETUP &&
                        quick_build_state.seq_slot == slot) {
                 // In setup phase: button confirms parameter
@@ -14162,13 +14177,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 quick_build_start_seq(slot);
             }
         } else {
-            // Button released: check for 3-second hold (only when idle with saved build)
-            if (quick_build_state.mode == QUICK_BUILD_NONE &&
-                quick_build_state.has_saved_seq_build[slot] &&
-                timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: stop playback and erase saved build for this slot
-                seq_stop(slot);
-                quick_build_erase_seq(slot);
+            // Button released: clear hold tracking
+            if (qb_erase_hold_type == 2 && qb_erase_hold_slot == slot) {
+                qb_erase_hold_type = 0;
             }
         }
         set_keylog(keycode, record);
@@ -16738,6 +16749,18 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 // Track quick build OLED state for one-time clear on transition
 static bool quick_build_oled_active = false;
+static bool qb_cleared_oled_active = false;  // Track "Cleared" screen for transition clears
+
+// Quick build erase-on-hold tracking
+static uint8_t qb_erase_hold_type = 0;     // 0=none, 1=arp, 2=seq
+static uint8_t qb_erase_hold_slot = 0;     // seq slot (only for type==2)
+static uint32_t qb_erase_hold_start = 0;   // timer when hold started
+static bool qb_erase_triggered = false;     // erase already happened this hold
+static uint32_t qb_erase_display_time = 0;  // when erase was triggered (for OLED/LED display)
+static uint8_t qb_erase_display_type = 0;   // what was cleared: 1=arp, 2=seq (for OLED text)
+static uint8_t qb_erase_display_slot = 0;   // seq slot that was cleared
+#define QB_ERASE_HOLD_MS 3000
+#define QB_ERASE_DISPLAY_MS 1500            // how long to show "Cleared" message
 
 // Helper: write a full 21-char padded line at a given row
 static void oled_write_line(uint8_t row, const char *text) {
@@ -16994,15 +17017,45 @@ bool oled_task_user(void) {
         } else {
             render_quick_build_recording();
         }
+    } else if (qb_erase_display_time > 0 &&
+               timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
+        // =========================================================
+        // CLEARED MESSAGE: Brief full-screen "Arp Cleared" / "Seq N Cleared"
+        // =========================================================
+
+        if (quick_build_oled_active) {
+            oled_clear();
+            quick_build_oled_active = false;
+        }
+        if (!qb_cleared_oled_active) {
+            oled_clear();
+            qb_cleared_oled_active = true;
+        }
+
+        if (qb_erase_display_type == 1) {
+            oled_write_big_centered(6, "Arp");
+            oled_write_big_centered(9, "Cleared");
+        } else if (qb_erase_display_type == 2) {
+            char slot_str[8];
+            snprintf(slot_str, sizeof(slot_str), "Seq %d", qb_erase_display_slot + 1);
+            oled_write_big_centered(6, slot_str);
+            oled_write_big_centered(9, "Cleared");
+        }
+
     } else {
         // =========================================================
         // NORMAL MODE: Layer, BPM, keylog, luna/interface
         // =========================================================
 
-        // One-time full clear when leaving quick build (wipes text residue)
+        // One-time full clear when leaving quick build or cleared screen
         if (quick_build_oled_active) {
             oled_clear();
             quick_build_oled_active = false;
+        }
+        if (qb_cleared_oled_active) {
+            oled_clear();
+            qb_cleared_oled_active = false;
+            qb_erase_display_time = 0;  // Reset so we don't re-enter
         }
 
         // Buffer to store the formatted string
@@ -17059,6 +17112,24 @@ void matrix_scan_user(void) {
 
     // Update quick build sustain monitoring
     quick_build_update();
+
+    // Check for quick build erase-on-hold (3 second hold triggers erase)
+    if (qb_erase_hold_type > 0 && !qb_erase_triggered &&
+        timer_elapsed32(qb_erase_hold_start) >= QB_ERASE_HOLD_MS) {
+        qb_erase_triggered = true;
+        qb_erase_display_time = timer_read32();
+        qb_erase_display_type = qb_erase_hold_type;
+        qb_erase_display_slot = qb_erase_hold_slot;
+        if (qb_erase_hold_type == 1) {
+            // Erase arp quick build
+            arp_stop();
+            quick_build_erase_arp();
+        } else if (qb_erase_hold_type == 2) {
+            // Erase seq quick build for this slot
+            seq_stop(qb_erase_hold_slot);
+            quick_build_erase_seq(qb_erase_hold_slot);
+        }
+    }
 
 #ifdef JOYSTICK_ENABLE
     // Update joystick/gaming controller state
