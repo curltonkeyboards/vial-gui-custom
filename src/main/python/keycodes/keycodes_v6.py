@@ -2557,7 +2557,10 @@ class keycodes_v6:
         "SEQ_GATE_DOWN": 0xEF0C,  # Decrease sequencer gate by 10%
 
         # NEW: Quick Build Buttons (0xEF74-0xEF7C) - after Toggle range
-        "ARP_QUICK_BUILD": 0xEF74,  # Quick build arpeggiator preset
+        "ARP_QUICK_BUILD_1": 0xEF74,  # Quick build arpeggiator slot 1
+        "ARP_QUICK_BUILD_2": 0xEF7D,  # Quick build arpeggiator slot 2
+        "ARP_QUICK_BUILD_3": 0xEF7E,  # Quick build arpeggiator slot 3
+        "ARP_QUICK_BUILD_4": 0xEF7F,  # Quick build arpeggiator slot 4
         "SEQ_QUICK_BUILD_1": 0xEF75,  # Quick build step sequencer slot 1
         "SEQ_QUICK_BUILD_2": 0xEF76,  # Quick build step sequencer slot 2
         "SEQ_QUICK_BUILD_3": 0xEF77,  # Quick build step sequencer slot 3

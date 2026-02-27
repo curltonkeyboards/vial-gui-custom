@@ -3074,8 +3074,13 @@ void scan_keycode_categories(void) {
 					else if (keycode >= 0xCC08 && keycode <= 0xCC0B) { // Macro keys 1-4
 					category = 31 + (keycode - 0xCC08);  // Categories 31-34 for macros 1-4
 					}
-					else if (keycode == ARP_QUICK_BUILD) { // Arp quick build
-					category = 35;
+					else if (keycode == ARP_QUICK_BUILD_1 || keycode == ARP_QUICK_BUILD_2 ||
+					         keycode == ARP_QUICK_BUILD_3 || keycode == ARP_QUICK_BUILD_4) {
+					// Arp quick build slots 1-4: categories 35, 48, 49, 50
+					if (keycode == ARP_QUICK_BUILD_1) category = 35;
+					else if (keycode == ARP_QUICK_BUILD_2) category = 48;
+					else if (keycode == ARP_QUICK_BUILD_3) category = 49;
+					else category = 50;
 					}
 					else if (keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) { // Seq quick build 1-8
 					category = 36 + (keycode - SEQ_QUICK_BUILD_1);  // Categories 36-43
@@ -7821,39 +7826,50 @@ bool rgb_matrix_indicators_kb(void) {
     // Quick Build key LEDs
     // Colors: white=empty/no build, red=has build (idle), green=playing, orange=building
     {
-        // Arp quick build key (category 35)
-        uint8_t arp_led = get_special_key_led_index(35);
-        if (arp_led != 99 && arp_led < RGB_MATRIX_LED_COUNT) {
-            uint8_t r = 0, g = 0, b = 0;
-            if (qb_erase_display_type == 1 && qb_erase_display_time > 0 &&
-                timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
-                // Cyan flash: just cleared
-                r = 0; g = 200; b = 200;
-            } else if (qb_erase_hold_type == 1 && !qb_erase_triggered) {
-                // Purple: hold in progress, approaching erase
-                r = 180; g = 0; b = 200;
-            } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
-                quick_build_state.mode == QUICK_BUILD_ARP_ROOT ||
-                quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-                // Orange: currently building
-                r = 255; g = 140; b = 0;
-            } else if (quick_build_state.has_saved_arp_build &&
-                       arp_state.current_preset_id == PRESET_ID_QUICK_BUILD) {
-                if (arp_state.active) {
-                    // Green: playing
-                    r = 0; g = 200; b = 0;
-                } else {
-                    // Red: has build, idle
-                    r = 200; g = 0; b = 0;
+        // Arp quick build keys (4 slots: categories 35, 48, 49, 50)
+        {
+            static const uint8_t arp_qb_categories[MAX_ARP_QB_SLOTS] = {35, 48, 49, 50};
+            for (uint8_t s = 0; s < MAX_ARP_QB_SLOTS; s++) {
+                uint8_t arp_led = get_special_key_led_index(arp_qb_categories[s]);
+                if (arp_led != 99 && arp_led < RGB_MATRIX_LED_COUNT) {
+                    uint8_t r = 0, g = 0, b = 0;
+                    if (qb_erase_display_type == 1 && qb_erase_display_slot == s &&
+                        qb_erase_display_time > 0 &&
+                        timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
+                        // Cyan flash: just cleared
+                        r = 0; g = 200; b = 200;
+                    } else if (qb_erase_hold_type == 1 && qb_erase_hold_slot == s &&
+                               !qb_erase_triggered) {
+                        // Purple: hold in progress, approaching erase
+                        r = 180; g = 0; b = 200;
+                    } else if ((quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+                        quick_build_state.mode == QUICK_BUILD_ARP_ROOT ||
+                        quick_build_state.mode == QUICK_BUILD_ARP_RECORD) &&
+                        quick_build_state.arp_slot == s) {
+                        // Orange: currently building this slot
+                        r = 255; g = 140; b = 0;
+                    } else if (quick_build_state.has_saved_arp_build[s] &&
+                               arp_state.current_preset_id == PRESET_ID_QUICK_BUILD) {
+                        if (arp_state.active) {
+                            // Green: playing (only the active slot)
+                            r = 0; g = 200; b = 0;
+                        } else {
+                            // Red: has build, idle
+                            r = 200; g = 0; b = 0;
+                        }
+                    } else if (quick_build_state.has_saved_arp_build[s]) {
+                        // Red: has build but different preset loaded
+                        r = 200; g = 0; b = 0;
+                    } else {
+                        // White: empty / no quick build for this slot
+                        r = 150; g = 150; b = 150;
+                    }
+                    rgb_matrix_set_color(arp_led,
+                                        (uint8_t)(r * brightness_factor),
+                                        (uint8_t)(g * brightness_factor),
+                                        (uint8_t)(b * brightness_factor));
                 }
-            } else {
-                // White: empty / no quick build
-                r = 150; g = 150; b = 150;
             }
-            rgb_matrix_set_color(arp_led,
-                                (uint8_t)(r * brightness_factor),
-                                (uint8_t)(g * brightness_factor),
-                                (uint8_t)(b * brightness_factor));
         }
 
         // Seq quick build keys (categories 36-43)
@@ -14124,36 +14140,49 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // QUICK BUILD BUTTONS (0xEF0D-0xEF15)
     // =============================================================================
 
-    // ARPEGGIATOR QUICK BUILD
-    if (keycode == ARP_QUICK_BUILD) {
+    // ARPEGGIATOR QUICK BUILD (4 slots)
+    if (keycode == ARP_QUICK_BUILD_1 || keycode == ARP_QUICK_BUILD_2 ||
+        keycode == ARP_QUICK_BUILD_3 || keycode == ARP_QUICK_BUILD_4) {
+        uint8_t slot;
+        if (keycode == ARP_QUICK_BUILD_1) slot = 0;
+        else if (keycode == ARP_QUICK_BUILD_2) slot = 1;
+        else if (keycode == ARP_QUICK_BUILD_3) slot = 2;
+        else slot = 3;
+
         if (record->event.pressed) {
-            if (quick_build_state.has_saved_arp_build && quick_build_state.mode == QUICK_BUILD_NONE) {
-                // Has saved arp build and not currently building: toggle play
+            if (quick_build_state.has_saved_arp_build[slot] &&
+                quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Has saved arp build for this slot and not currently building: load & toggle play
+                quick_build_load_arp_slot(slot);
                 arp_toggle();
                 // Start tracking hold for erase
                 qb_erase_hold_type = 1;  // arp
+                qb_erase_hold_slot = slot;
                 qb_erase_hold_start = timer_read32();
                 qb_erase_triggered = false;
-            } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
-                // In setup phase: button confirms parameter (same as encoder click)
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP &&
+                       quick_build_state.arp_slot == slot) {
+                // In setup phase for this slot: button confirms parameter
                 quick_build_confirm_param();
-            } else if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
-                // Root note phase: confirm if candidate is ready, cancel if not
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT &&
+                       quick_build_state.arp_slot == slot) {
+                // Root note phase for this slot: confirm if candidate is ready, cancel if not
                 if (quick_build_state.candidate_ready) {
                     quick_build_confirm_root();
                 } else {
                     quick_build_cancel();
                 }
-            } else if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-                // Currently recording arp: finish and save
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD &&
+                       quick_build_state.arp_slot == slot) {
+                // Currently recording this arp slot: finish and save
                 quick_build_finish();
-            } else {
-                // Start new arp quick build (enters setup phase)
-                quick_build_start_arp();
+            } else if (quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Start new arp quick build for this slot (enters setup phase)
+                quick_build_start_arp(slot);
             }
         } else {
             // Button released: clear hold tracking
-            if (qb_erase_hold_type == 1) {
+            if (qb_erase_hold_type == 1 && qb_erase_hold_slot == slot) {
                 qb_erase_hold_type = 0;
             }
         }
@@ -16860,7 +16889,8 @@ void render_quick_build_setup(void) {
     // Line 0: Title (centered)
     if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
         quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
-        oled_write_line_centered(0, "ARP QUICK BUILD");
+        snprintf(buf, sizeof(buf), "ARP %d QUICK BUILD", quick_build_state.arp_slot + 1);
+        oled_write_line_centered(0, buf);
     } else {
         snprintf(buf, sizeof(buf), "SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
         oled_write_line_centered(0, buf);
@@ -16946,7 +16976,8 @@ void render_quick_build_recording(void) {
 
     // Line 0: Title (centered)
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-        oled_write_line_centered(0, "ARP QUICK BUILD");
+        snprintf(buf, sizeof(buf), "ARP %d QUICK BUILD", quick_build_state.arp_slot + 1);
+        oled_write_line_centered(0, buf);
     } else {
         snprintf(buf, sizeof(buf), "SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
         oled_write_line_centered(0, buf);
@@ -17093,11 +17124,11 @@ void matrix_scan_user(void) {
         qb_erase_display_type = qb_erase_hold_type;
         qb_erase_display_slot = qb_erase_hold_slot;
         if (qb_erase_hold_type == 1) {
-            // Erase arp quick build
+            // Erase arp quick build for this slot
             arp_stop();
-            quick_build_erase_arp();
-            // Show "Arp Cleared" in normal OLED mode_display area
-            snprintf(mode_display_msg, sizeof(mode_display_msg), "\n    Arp Cleared");
+            quick_build_erase_arp(qb_erase_hold_slot);
+            // Show "Arp N Cleared" in normal OLED mode_display area
+            snprintf(mode_display_msg, sizeof(mode_display_msg), "\n   Arp %d Cleared", qb_erase_hold_slot + 1);
             mode_display_timer = timer_read32();
             mode_display_active = true;
         } else if (qb_erase_hold_type == 2) {

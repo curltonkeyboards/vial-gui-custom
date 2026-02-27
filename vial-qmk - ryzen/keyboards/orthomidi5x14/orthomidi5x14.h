@@ -366,7 +366,7 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define SEQ_GATE_DOWN           0xEF0C  // Decrease sequencer gate by 10%
 
 // NEW: Quick Build Buttons (0xEF74-0xEF7C) - after Toggle range (0xEF10-0xEF73)
-#define ARP_QUICK_BUILD         0xEF74  // Quick build arpeggiator preset
+#define ARP_QUICK_BUILD_1       0xEF74  // Quick build arpeggiator slot 1
 #define SEQ_QUICK_BUILD_1       0xEF75  // Quick build step sequencer slot 1
 #define SEQ_QUICK_BUILD_2       0xEF76  // Quick build step sequencer slot 2
 #define SEQ_QUICK_BUILD_3       0xEF77  // Quick build step sequencer slot 3
@@ -375,6 +375,9 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define SEQ_QUICK_BUILD_6       0xEF7A  // Quick build step sequencer slot 6
 #define SEQ_QUICK_BUILD_7       0xEF7B  // Quick build step sequencer slot 7
 #define SEQ_QUICK_BUILD_8       0xEF7C  // Quick build step sequencer slot 8
+#define ARP_QUICK_BUILD_2       0xEF7D  // Quick build arpeggiator slot 2
+#define ARP_QUICK_BUILD_3       0xEF7E  // Quick build arpeggiator slot 3
+#define ARP_QUICK_BUILD_4       0xEF7F  // Quick build arpeggiator slot 4
 
 // =============================================================================
 // GAMING / JOYSTICK SYSTEM
@@ -853,6 +856,7 @@ void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
 
 // NEW: Quick Build System Types
 #define PRESET_ID_QUICK_BUILD 255      // Sentinel: preset lives in RAM from quick build
+#define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
 
 typedef enum {
     QUICK_BUILD_NONE = 0,
@@ -865,6 +869,7 @@ typedef enum {
 
 typedef struct {
     quick_build_mode_t mode;           // Current build mode
+    uint8_t arp_slot;                  // Which arp slot we're building (0-3)
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
     uint8_t current_step;              // Current step (0-based internal)
     uint8_t note_count;                // Total notes recorded so far
@@ -874,7 +879,7 @@ typedef struct {
     bool candidate_ready;              // A candidate root note has been pressed and is awaiting confirm
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
-    bool has_saved_arp_build;          // Has user completed an arp build?
+    bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (per slot)
     bool has_saved_seq_build[8];       // Has user completed a seq build? (per slot)
 
     // Setup phase state
@@ -891,11 +896,12 @@ typedef struct {
 extern quick_build_state_t quick_build_state;
 
 // NEW: Quick Build functions
-void quick_build_start_arp(void);
+void quick_build_start_arp(uint8_t slot);
 void quick_build_start_seq(uint8_t slot);
 void quick_build_cancel(void);
 void quick_build_finish(void);
-void quick_build_erase_arp(void);
+void quick_build_erase_arp(uint8_t slot);
+void quick_build_load_arp_slot(uint8_t slot);
 void quick_build_erase_seq(uint8_t slot);
 void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void quick_build_handle_sustain_release(void);

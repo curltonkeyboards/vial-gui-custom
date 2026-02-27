@@ -3331,7 +3331,10 @@ KEYCODES_ARPEGGIATOR = [
     K("ARP_GATE_DOWN", "Gate\nDn 10%", "Decrease arpeggiator gate by 10%"),
 
     # Quick Build
-    K("ARP_QUICK_BUILD", "Arp\nQuick\nBuild", "Quick build arpeggiator preset on-the-fly"),
+    K("ARP_QUICK_BUILD_1", "Arp 1\nQuick\nBuild", "Quick build arpeggiator slot 1"),
+    K("ARP_QUICK_BUILD_2", "Arp 2\nQuick\nBuild", "Quick build arpeggiator slot 2"),
+    K("ARP_QUICK_BUILD_3", "Arp 3\nQuick\nBuild", "Quick build arpeggiator slot 3"),
+    K("ARP_QUICK_BUILD_4", "Arp 4\nQuick\nBuild", "Quick build arpeggiator slot 4"),
 ]
 
 # Generate preset selection keycodes (48 factory + 20 user = 68 total)

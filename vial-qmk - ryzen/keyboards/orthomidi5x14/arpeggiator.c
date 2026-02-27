@@ -65,6 +65,7 @@ bool arp_is_active(void) {
 // Quick build state (initialized to all zeros/false)
 quick_build_state_t quick_build_state = {
     .mode = QUICK_BUILD_NONE,
+    .arp_slot = 0,
     .seq_slot = 0,
     .current_step = 0,
     .note_count = 0,
@@ -74,7 +75,7 @@ quick_build_state_t quick_build_state = {
     .candidate_ready = false,
     .sustain_held_last_check = false,
     .button_press_time = 0,
-    .has_saved_arp_build = false,
+    .has_saved_arp_build = {false},
     .has_saved_seq_build = {false},
     .setup_param_index = 0,
     .setup_arp_mode = 0,
@@ -83,6 +84,9 @@ quick_build_state_t quick_build_state = {
     .setup_gate_percent = 80,
     .encoder_chord_held = false
 };
+
+// Storage for 4 arp quick build presets (each 200 bytes)
+static arp_preset_t arp_quick_build_storage[MAX_ARP_QB_SLOTS];
 
 // Remember last-used quick build settings across builds
 static uint8_t last_arp_mode = 0;
@@ -2095,9 +2099,10 @@ uint8_t quick_build_get_current_step(void) {
     return quick_build_state.current_step + 1;  // Return 1-indexed
 }
 
-// Start quick build for arpeggiator
-void quick_build_start_arp(void) {
-    dprintf("quick_build: starting arp builder (setup phase)\n");
+// Start quick build for arpeggiator (slot 0-3)
+void quick_build_start_arp(uint8_t slot) {
+    if (slot >= MAX_ARP_QB_SLOTS) return;
+    dprintf("quick_build: starting arp slot %d builder (setup phase)\n", slot);
 
     // Stop any playing arp
     if (arp_state.active) {
@@ -2111,12 +2116,13 @@ void quick_build_start_arp(void) {
 
     // Enter setup phase (parameter selection before recording)
     quick_build_state.mode = QUICK_BUILD_ARP_SETUP;
+    quick_build_state.arp_slot = slot;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
     quick_build_state.candidate_root = 0;
     quick_build_state.candidate_ready = false;
-    quick_build_state.has_saved_arp_build = false;
+    quick_build_state.has_saved_arp_build[slot] = false;
     quick_build_state.sustain_held_last_check = false;
     quick_build_state.encoder_chord_held = false;
 
@@ -2127,7 +2133,7 @@ void quick_build_start_arp(void) {
     quick_build_state.setup_timing_mode = last_timing_mode;
     quick_build_state.setup_gate_percent = last_gate_percent;
 
-    dprintf("quick_build: arp setup phase started\n");
+    dprintf("quick_build: arp slot %d setup phase started\n", slot);
 }
 
 // Transition from setup to recording phase (called after all params confirmed)
@@ -2232,6 +2238,8 @@ void quick_build_finish(void) {
     if (!quick_build_is_active()) return;
 
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+        uint8_t arp_slot = quick_build_state.arp_slot;
+
         // Fix pattern length: current_step points to the NEXT empty step,
         // so the actual last step with notes is current_step - 1.
         // Find the actual highest step that has notes recorded.
@@ -2249,9 +2257,12 @@ void quick_build_finish(void) {
             return;
         }
 
-        dprintf("quick_build: arp finished with %d notes, %d steps\n",
-                quick_build_state.note_count, arp_active_preset.pattern_length_16ths);
-        quick_build_state.has_saved_arp_build = true;
+        dprintf("quick_build: arp slot %d finished with %d notes, %d steps\n",
+                arp_slot, quick_build_state.note_count, arp_active_preset.pattern_length_16ths);
+
+        // Save to storage slot and mark as saved
+        memcpy(&arp_quick_build_storage[arp_slot], &arp_active_preset, sizeof(arp_preset_t));
+        quick_build_state.has_saved_arp_build[arp_slot] = true;
 
         // Mark arp to play this quick build pattern (not a factory/user preset)
         arp_state.current_preset_id = PRESET_ID_QUICK_BUILD;
@@ -2301,15 +2312,31 @@ void quick_build_finish(void) {
     dprintf("quick_build: saved to RAM, ready to play\n");
 }
 
-// Erase the saved arp quick build
-void quick_build_erase_arp(void) {
-    dprintf("quick_build: erasing saved arp build\n");
-    quick_build_state.has_saved_arp_build = false;
+// Erase the saved arp quick build for a specific slot
+void quick_build_erase_arp(uint8_t slot) {
+    if (slot >= MAX_ARP_QB_SLOTS) return;
+    dprintf("quick_build: erasing saved arp build slot %d\n", slot);
+    quick_build_state.has_saved_arp_build[slot] = false;
     quick_build_state.mode = QUICK_BUILD_NONE;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
     quick_build_state.has_root = false;
-    dprintf("quick_build: arp erased\n");
+    dprintf("quick_build: arp slot %d erased\n", slot);
+}
+
+// Load an arp quick build slot into the active preset for playback
+void quick_build_load_arp_slot(uint8_t slot) {
+    if (slot >= MAX_ARP_QB_SLOTS) return;
+    if (!quick_build_state.has_saved_arp_build[slot]) return;
+
+    // Copy from storage to the active preset
+    memcpy(&arp_active_preset, &arp_quick_build_storage[slot], sizeof(arp_preset_t));
+
+    // Mark arp to use this quick build preset
+    arp_state.current_preset_id = PRESET_ID_QUICK_BUILD;
+    arp_state.loaded_preset_id = PRESET_ID_QUICK_BUILD;
+
+    dprintf("quick_build: loaded arp slot %d into active preset\n", slot);
 }
 
 // Erase the saved seq quick build for a specific slot
