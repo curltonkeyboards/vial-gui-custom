@@ -586,16 +586,7 @@ void reset_loop_settings(void) {
 }
 
 bool is_macro_effectively_playing(uint8_t i) {
-    if (macro_playback[i].is_playing || overdub_playback[i].is_playing) return true;
-    // BPM sync mode: only count this macro as "effectively playing" if it has content
-    // that could participate in loop synchronization. Without this check, arp/seq BPM
-    // would cause empty macros to appear as playing, breaking the recording path.
-    if (current_bpm > 0 && bpm_source_macro == 0) {
-        midi_event_t *start = get_macro_buffer(i + 1);
-        midi_event_t **end_ptr = get_macro_end_ptr(i + 1);
-        if (start && end_ptr && *end_ptr != start) return true;
-    }
-    return false;
+    return macro_playback[i].is_playing || (current_bpm > 0 && bpm_source_macro == 0) || overdub_playback[i].is_playing;
 }
 
 // Transpose variables for each macro (-127 to +127 semitones)

@@ -445,12 +445,6 @@ void seq_select_preset(uint8_t preset_id) {
             return;
         }
 
-        // Initialize BPM if not set
-        if (current_bpm == 0) {
-            current_bpm = 12000000;  // 120.00000 BPM
-            dprintf("seq: initialized BPM to 120\n");
-        }
-
         // Set current preset for this slot
         seq_state[slot].current_preset_id = preset_id;
         seq_start(preset_id);
@@ -1399,12 +1393,6 @@ void arp_handle_key_press(uint8_t preset_id) {
     bool is_double_tap = (arp_state.last_tap_time > 0) &&
                          (now - arp_state.last_tap_time) < ARP_DOUBLE_TAP_WINDOW;
 
-    // Initialize BPM if not set
-    if (current_bpm == 0) {
-        current_bpm = 12000000;  // 120.00000 BPM
-        dprintf("arp: initialized BPM to 120\n");
-    }
-
     // Start arp with the requested preset
     arp_start(preset_id);
 
@@ -1442,10 +1430,6 @@ void arp_toggle(void) {
         arp_stop();
         dprintf("arp: toggled OFF\n");
     } else {
-        if (current_bpm == 0) {
-            current_bpm = 12000000;
-            dprintf("arp: initialized BPM to 120\n");
-        }
         arp_start(arp_state.current_preset_id);
         dprintf("arp: toggled ON with preset %d\n", arp_state.current_preset_id);
     }
@@ -2841,11 +2825,6 @@ void seq_start_slot(uint8_t slot) {
         seq_stop(slot);
         dprintf("seq: slot %d toggled OFF\n", slot);
         return;
-    }
-
-    if (current_bpm == 0) {
-        current_bpm = 12000000;
-        dprintf("seq: initialized BPM to 120\n");
     }
 
     // Start the slot directly (preset already in RAM)
