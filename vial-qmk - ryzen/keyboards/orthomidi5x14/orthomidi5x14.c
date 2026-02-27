@@ -690,6 +690,17 @@ static char mode_display_msg[64] = "";
 static bool mode_display_active = false;
 #define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
 
+// Quick build erase-on-hold tracking (declared early for use in rgb_matrix_indicators_kb and process_record_user)
+static uint8_t qb_erase_hold_type = 0;     // 0=none, 1=arp, 2=seq
+static uint8_t qb_erase_hold_slot = 0;     // seq slot (only for type==2)
+static uint32_t qb_erase_hold_start = 0;   // timer when hold started
+static bool qb_erase_triggered = false;     // erase already happened this hold
+static uint32_t qb_erase_display_time = 0;  // when erase was triggered (for OLED/LED display)
+static uint8_t qb_erase_display_type = 0;   // what was cleared: 1=arp, 2=seq (for OLED text)
+static uint8_t qb_erase_display_slot = 0;   // seq slot that was cleared
+#define QB_ERASE_HOLD_MS 3000
+#define QB_ERASE_DISPLAY_MS 1500            // how long to show "Cleared" message
+
 // ============================================================================
 // EXTERNAL CLOCK RECEPTION STATE
 // ============================================================================
@@ -16750,17 +16761,6 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 // Track quick build OLED state for one-time clear on transition
 static bool quick_build_oled_active = false;
 static bool qb_cleared_oled_active = false;  // Track "Cleared" screen for transition clears
-
-// Quick build erase-on-hold tracking
-static uint8_t qb_erase_hold_type = 0;     // 0=none, 1=arp, 2=seq
-static uint8_t qb_erase_hold_slot = 0;     // seq slot (only for type==2)
-static uint32_t qb_erase_hold_start = 0;   // timer when hold started
-static bool qb_erase_triggered = false;     // erase already happened this hold
-static uint32_t qb_erase_display_time = 0;  // when erase was triggered (for OLED/LED display)
-static uint8_t qb_erase_display_type = 0;   // what was cleared: 1=arp, 2=seq (for OLED text)
-static uint8_t qb_erase_display_slot = 0;   // seq slot that was cleared
-#define QB_ERASE_HOLD_MS 3000
-#define QB_ERASE_DISPLAY_MS 1500            // how long to show "Cleared" message
 
 // Helper: write a full 21-char padded line at a given row
 static void oled_write_line(uint8_t row, const char *text) {
