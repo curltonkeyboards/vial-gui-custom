@@ -490,6 +490,16 @@ uint8_t get_raw_travel_from_record(keyrecord_t *record) {
     return 0; // No analog data available
 }
 
+// Helper function to get velocity mode output from keyrecord
+// Returns 0-255 raw velocity from velocity modes (pre-curve), or 0 if not available.
+// This is what the velocity mode (fixed/speed/peak/blend) computed, before the curve is applied.
+uint8_t get_raw_velocity_from_record(keyrecord_t *record) {
+    if (analog_mode > 0 && record != NULL) {
+        return analog_matrix_get_velocity_raw(record->event.key.row, record->event.key.col);
+    }
+    return 0; // No analog data available
+}
+
 // Modified noteon functions
 void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity) {
     // Velocity has already been determined by the caller (chord generator, arp, etc.)
@@ -980,7 +990,8 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 
             if (record->event.pressed) {
                 uint8_t velocity = velocity_number;
-                uint8_t raw_travel = get_raw_travel_from_record(record);
+                // Get velocity mode output (0-255, pre-curve) for quick build recording
+                uint8_t raw_vel_for_qb = get_raw_velocity_from_record(record);
 
                 // Only compute velocity for note-on (note-off uses fixed 127)
                 if (analog_mode > 0) {
@@ -992,7 +1003,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t note = midi_compute_note(keycode);
                 // Store final velocity for GUI polling (shows actual sent velocity)
                 analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
-                midi_send_noteon_with_recording(channel, note, velocity, raw_travel, 0);  // note_type=0 (base)
+                midi_send_noteon_with_recording(channel, note, velocity, raw_vel_for_qb, 0);  // note_type=0 (base)
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, note, velocity);
                 tone_status[1][tone] += 1;
                 if (tone_status[0][tone] == MIDI_INVALID_NOTE) {
@@ -1022,7 +1033,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 
             if (record->event.pressed) {
                 uint8_t velocity = 0;
-                uint8_t raw_travel = get_raw_travel_from_record(record);
+                uint8_t raw_vel_for_qb = get_raw_velocity_from_record(record);
 
                 // Only compute velocity for note-on (note-off uses fixed 127)
                 // keysplitvelocitystatus: 0=disabled, 1=keysplit only, 2=triplesplit only, 3=both
@@ -1040,7 +1051,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t noteb = midi_compute_note2(keycode);
                 // Store final velocity for GUI polling (shows actual sent velocity)
                 analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
-                midi_send_noteon_with_recording(channel, noteb, velocity, raw_travel, 1);  // note_type=1 (keysplit)
+                midi_send_noteon_with_recording(channel, noteb, velocity, raw_vel_for_qb, 1);  // note_type=1 (keysplit)
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, noteb, velocity);
                 toneb_status[1][toneb] += 1;
                 if (toneb_status[0][toneb] == MIDI_INVALID_NOTE) {
@@ -1069,7 +1080,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
 
             if (record->event.pressed) {
                 uint8_t velocity = 0;
-                uint8_t raw_travel = get_raw_travel_from_record(record);
+                uint8_t raw_vel_for_qb = get_raw_velocity_from_record(record);
 
                 // Only compute velocity for note-on (note-off uses fixed 127)
                 // keysplitvelocitystatus: 0=disabled, 1=keysplit only, 2=triplesplit only, 3=both
@@ -1087,7 +1098,7 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 uint8_t notec = midi_compute_note3(keycode);
                 // Store final velocity for GUI polling (shows actual sent velocity)
                 analog_matrix_store_final_velocity(record->event.key.row, record->event.key.col, velocity);
-                midi_send_noteon_with_recording(channel, notec, velocity, raw_travel, 2);  // note_type=2 (triplesplit)
+                midi_send_noteon_with_recording(channel, notec, velocity, raw_vel_for_qb, 2);  // note_type=2 (triplesplit)
                 dprintf("midi noteon channel:%d note:%d velocity:%d\n", channel, notec, velocity);
                 tonec_status[1][tonec] += 1;
                 if (tonec_status[0][tonec] == MIDI_INVALID_NOTE) {

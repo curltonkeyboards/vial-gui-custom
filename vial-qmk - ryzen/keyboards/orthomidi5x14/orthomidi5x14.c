@@ -690,6 +690,17 @@ static char mode_display_msg[64] = "";
 static bool mode_display_active = false;
 #define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
 
+// Quick build erase-on-hold tracking (declared early for use in rgb_matrix_indicators_kb and process_record_user)
+static uint8_t qb_erase_hold_type = 0;     // 0=none, 1=arp, 2=seq
+static uint8_t qb_erase_hold_slot = 0;     // seq slot (only for type==2)
+static uint32_t qb_erase_hold_start = 0;   // timer when hold started
+static bool qb_erase_triggered = false;     // erase already happened this hold
+static uint32_t qb_erase_display_time = 0;  // when erase was triggered (for OLED/LED display)
+static uint8_t qb_erase_display_type = 0;   // what was cleared: 1=arp, 2=seq (for OLED text)
+static uint8_t qb_erase_display_slot = 0;   // seq slot that was cleared
+#define QB_ERASE_HOLD_MS 1500
+#define QB_ERASE_DISPLAY_MS 1500            // how long to show "Cleared" message
+
 // ============================================================================
 // EXTERNAL CLOCK RECEPTION STATE
 // ============================================================================
@@ -3062,6 +3073,29 @@ void scan_keycode_categories(void) {
 					}
 					else if (keycode >= 0xCC08 && keycode <= 0xCC0B) { // Macro keys 1-4
 					category = 31 + (keycode - 0xCC08);  // Categories 31-34 for macros 1-4
+					}
+					else if (keycode == ARP_QUICK_BUILD_1 || keycode == ARP_QUICK_BUILD_2 ||
+					         keycode == ARP_QUICK_BUILD_3 || keycode == ARP_QUICK_BUILD_4) {
+					// Arp quick build slots 1-4: categories 35, 48, 49, 50
+					if (keycode == ARP_QUICK_BUILD_1) category = 35;
+					else if (keycode == ARP_QUICK_BUILD_2) category = 48;
+					else if (keycode == ARP_QUICK_BUILD_3) category = 49;
+					else category = 50;
+					}
+					else if (keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) { // Seq quick build 1-8
+					category = 36 + (keycode - SEQ_QUICK_BUILD_1);  // Categories 36-43
+					}
+					else if (keycode == ARP_PLAY) { // Arp play/toggle
+					category = 44;
+					}
+					else if (keycode == SEQ_PLAY) { // Seq play/toggle
+					category = 45;
+					}
+					else if (keycode >= ARP_PRESET_BASE && keycode < (ARP_PRESET_BASE + 68)) { // Arp direct presets
+					category = 46;
+					}
+					else if (keycode >= SEQ_PRESET_BASE && keycode < (SEQ_PRESET_BASE + 68)) { // Seq direct presets
+					category = 47;
 					}
 					
 					//else { // REST OF EVERYTHING
@@ -7789,6 +7823,153 @@ bool rgb_matrix_indicators_kb(void) {
         }
     }
 
+    // Quick Build key LEDs
+    // Colors: white=empty/no build, red=has build (idle), green=playing, orange=building
+    {
+        // Arp quick build keys (4 slots: categories 35, 48, 49, 50)
+        {
+            static const uint8_t arp_qb_categories[MAX_ARP_QB_SLOTS] = {35, 48, 49, 50};
+            for (uint8_t s = 0; s < MAX_ARP_QB_SLOTS; s++) {
+                uint8_t arp_led = get_special_key_led_index(arp_qb_categories[s]);
+                if (arp_led != 99 && arp_led < RGB_MATRIX_LED_COUNT) {
+                    uint8_t r = 0, g = 0, b = 0;
+                    if (qb_erase_display_type == 1 && qb_erase_display_slot == s &&
+                        qb_erase_display_time > 0 &&
+                        timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
+                        // Cyan flash: just cleared
+                        r = 0; g = 200; b = 200;
+                    } else if (qb_erase_hold_type == 1 && qb_erase_hold_slot == s &&
+                               !qb_erase_triggered) {
+                        // Purple: hold in progress, approaching erase
+                        r = 180; g = 0; b = 200;
+                    } else if ((quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+                        quick_build_state.mode == QUICK_BUILD_ARP_ROOT ||
+                        quick_build_state.mode == QUICK_BUILD_ARP_RECORD) &&
+                        quick_build_state.arp_slot == s) {
+                        // Orange: currently building this slot
+                        r = 255; g = 140; b = 0;
+                    } else if (quick_build_state.has_saved_arp_build[s] &&
+                               arp_state.active &&
+                               arp_state.current_preset_id == PRESET_ID_QUICK_BUILD &&
+                               quick_build_state.active_arp_qb_slot == s) {
+                        // Green: this specific slot is playing
+                        r = 0; g = 200; b = 0;
+                    } else if (quick_build_state.has_saved_arp_build[s]) {
+                        // Red: has build, idle (or a different slot is playing)
+                        r = 200; g = 0; b = 0;
+                    } else {
+                        // White: empty / no quick build for this slot
+                        r = 150; g = 150; b = 150;
+                    }
+                    rgb_matrix_set_color(arp_led,
+                                        (uint8_t)(r * brightness_factor),
+                                        (uint8_t)(g * brightness_factor),
+                                        (uint8_t)(b * brightness_factor));
+                }
+            }
+        }
+
+        // Seq quick build keys (categories 36-43)
+        for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+            uint8_t seq_led = get_special_key_led_index(36 + s);
+            if (seq_led != 99 && seq_led < RGB_MATRIX_LED_COUNT) {
+                uint8_t r = 0, g = 0, b = 0;
+                if (qb_erase_display_type == 2 && qb_erase_display_slot == s &&
+                    qb_erase_display_time > 0 &&
+                    timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
+                    // Cyan flash: just cleared
+                    r = 0; g = 200; b = 200;
+                } else if (qb_erase_hold_type == 2 && qb_erase_hold_slot == s &&
+                           !qb_erase_triggered) {
+                    // Purple: hold in progress, approaching erase
+                    r = 180; g = 0; b = 200;
+                } else if ((quick_build_state.mode == QUICK_BUILD_SEQ_SETUP ||
+                     quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) &&
+                    quick_build_state.seq_slot == s) {
+                    // Orange: currently building this slot
+                    r = 255; g = 140; b = 0;
+                } else if (quick_build_state.has_saved_seq_build[s] &&
+                           seq_state[s].current_preset_id == PRESET_ID_QUICK_BUILD) {
+                    if (seq_state[s].active) {
+                        // Green: playing
+                        r = 0; g = 200; b = 0;
+                    } else {
+                        // Red: has build, idle
+                        r = 200; g = 0; b = 0;
+                    }
+                } else {
+                    // White: empty / no quick build for this slot
+                    r = 150; g = 150; b = 150;
+                }
+                rgb_matrix_set_color(seq_led,
+                                    (uint8_t)(r * brightness_factor),
+                                    (uint8_t)(g * brightness_factor),
+                                    (uint8_t)(b * brightness_factor));
+            }
+        }
+
+        // Normal arp/seq play buttons and preset buttons
+        // Arp play button (category 44): green when active, dim white when idle
+        uint8_t arp_play_led = get_special_key_led_index(44);
+        if (arp_play_led != 99 && arp_play_led < RGB_MATRIX_LED_COUNT) {
+            if (arp_state.active) {
+                rgb_matrix_set_color(arp_play_led,
+                    0, (uint8_t)(200 * brightness_factor), 0);
+            } else {
+                rgb_matrix_set_color(arp_play_led,
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor));
+            }
+        }
+
+        // Seq play button (category 45): green when any slot active, dim white when idle
+        uint8_t seq_play_led = get_special_key_led_index(45);
+        if (seq_play_led != 99 && seq_play_led < RGB_MATRIX_LED_COUNT) {
+            bool any_seq_active = false;
+            for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+                if (seq_state[s].active) { any_seq_active = true; break; }
+            }
+            if (any_seq_active) {
+                rgb_matrix_set_color(seq_play_led,
+                    0, (uint8_t)(200 * brightness_factor), 0);
+            } else {
+                rgb_matrix_set_color(seq_play_led,
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor),
+                    (uint8_t)(80 * brightness_factor));
+            }
+        }
+
+        // Arp preset buttons (category 46): highlight the active preset
+        {
+            uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+            for (uint8_t i = 0; i < led_categories[current_layer].count; i++) {
+                if (led_categories[current_layer].leds[i].category == 46) {
+                    uint8_t led = led_categories[current_layer].leds[i].led_index;
+                    if (led < RGB_MATRIX_LED_COUNT) {
+                        if (arp_state.active) {
+                            rgb_matrix_set_color(led,
+                                0, (uint8_t)(120 * brightness_factor), 0);
+                        }
+                    }
+                } else if (led_categories[current_layer].leds[i].category == 47) {
+                    uint8_t led = led_categories[current_layer].leds[i].led_index;
+                    if (led < RGB_MATRIX_LED_COUNT) {
+                        bool any_seq_active = false;
+                        for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+                            if (seq_state[s].active) { any_seq_active = true; break; }
+                        }
+                        if (any_seq_active) {
+                            rgb_matrix_set_color(led,
+                                0, (uint8_t)(120 * brightness_factor), 0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 	if (smartchordlight != 3) {
     // SmartChord lighting functionality
     // Define the color mappings for each chord key index
@@ -8847,6 +9028,13 @@ void set_keylog(uint16_t keycode, keyrecord_t *record) {
         (keycode >= QK_LAYER_TAP && keycode <= QK_LAYER_TAP_MAX)) {
         keycode = keycode & 0xFF;
     }
+
+// During quick build, encoder 0 rotation is handled by the quick build system
+if (quick_build_is_active() &&
+    (record->event.key.row == KEYLOC_ENCODER_CW || record->event.key.row == KEYLOC_ENCODER_CCW) &&
+    record->event.key.col == 0) {
+    return;  // Don't process encoder 0 rotation in set_keylog during quick build
+}
 
 if (record->event.key.row == KEYLOC_ENCODER_CW && ccencoder != 130) { // Encoder turned clockwise
     if (CCValue[ccencoder] < 127) {
@@ -13571,6 +13759,28 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
+    // QUICK BUILD ENCODER HIJACK
+    // During quick build (setup or recording), encoder rotation and click are
+    // consumed here and routed to the quick build system instead of normal processing.
+    // Rotation: encoder 0 (col 0), Click: encoder 1 (col 1)
+    // =============================================================================
+    if (quick_build_is_active()) {
+        // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = 0)
+        if ((record->event.key.row == KEYLOC_ENCODER_CW ||
+             record->event.key.row == KEYLOC_ENCODER_CCW) &&
+            record->event.key.col == 0 && record->event.pressed) {
+            bool clockwise = (record->event.key.row == KEYLOC_ENCODER_CW);
+            quick_build_handle_encoder(clockwise);
+            return false;  // Consume
+        }
+        // Encoder 1 click (matrix position 5,1)
+        if (record->event.key.row == 5 && record->event.key.col == 1) {
+            quick_build_handle_encoder_click(record->event.pressed);
+            return false;  // Consume
+        }
+    }
+
+    // =============================================================================
     // NON-MIDI KEY LED ANIMATIONS
     // Trigger the same LED animation system for regular (non-MIDI) keypresses.
     // Uses synthetic note encoding: note = 128 + row*14 + col, which process_note()
@@ -13927,27 +14137,61 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // QUICK BUILD BUTTONS (0xEF0D-0xEF15)
     // =============================================================================
 
-    // ARPEGGIATOR QUICK BUILD
-    if (keycode == ARP_QUICK_BUILD) {
-        if (record->event.pressed) {
-            // Record press time for 3-second hold detection
-            quick_build_state.button_press_time = timer_read32();
+    // ARPEGGIATOR QUICK BUILD (4 slots)
+    if (keycode == ARP_QUICK_BUILD_1 || keycode == ARP_QUICK_BUILD_2 ||
+        keycode == ARP_QUICK_BUILD_3 || keycode == ARP_QUICK_BUILD_4) {
+        uint8_t slot;
+        if (keycode == ARP_QUICK_BUILD_1) slot = 0;
+        else if (keycode == ARP_QUICK_BUILD_2) slot = 1;
+        else if (keycode == ARP_QUICK_BUILD_3) slot = 2;
+        else slot = 3;
 
-            if (quick_build_state.has_saved_build && quick_build_state.mode == QUICK_BUILD_NONE) {
-                // Has saved build and not currently building: toggle play
-                arp_toggle();
-            } else if (quick_build_state.mode == QUICK_BUILD_ARP) {
-                // Currently building arp: finish and save
+        if (record->event.pressed) {
+            if (quick_build_state.has_saved_arp_build[slot] &&
+                quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Has saved arp build for this slot and not currently building
+                if (arp_state.active && quick_build_state.active_arp_qb_slot == slot) {
+                    // Same slot already playing: toggle off
+                    arp_stop();
+                } else if (arp_state.active) {
+                    // Different slot playing: switch to this one
+                    quick_build_load_arp_slot(slot);
+                    arp_stop();
+                    arp_start(PRESET_ID_QUICK_BUILD);
+                } else {
+                    // Arp not playing: load and start
+                    quick_build_load_arp_slot(slot);
+                    arp_toggle();
+                }
+                // Start tracking hold for erase
+                qb_erase_hold_type = 1;  // arp
+                qb_erase_hold_slot = slot;
+                qb_erase_hold_start = timer_read32();
+                qb_erase_triggered = false;
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP &&
+                       quick_build_state.arp_slot == slot) {
+                // In setup phase for this slot: button confirms parameter
+                quick_build_confirm_param();
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT &&
+                       quick_build_state.arp_slot == slot) {
+                // Root note phase for this slot: confirm if candidate is ready, cancel if not
+                if (quick_build_state.candidate_ready) {
+                    quick_build_confirm_root();
+                } else {
+                    quick_build_cancel();
+                }
+            } else if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD &&
+                       quick_build_state.arp_slot == slot) {
+                // Currently recording this arp slot: finish and save
                 quick_build_finish();
-            } else {
-                // Start new arp quick build
-                quick_build_start_arp();
+            } else if (quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Start new arp quick build for this slot (enters setup phase)
+                quick_build_start_arp(slot);
             }
         } else {
-            // Button released: check for 3-second hold
-            if (timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: erase saved build
-                quick_build_erase();
+            // Button released: clear hold tracking
+            if (qb_erase_hold_type == 1 && qb_erase_hold_slot == slot) {
+                qb_erase_hold_type = 0;
             }
         }
         set_keylog(keycode, record);
@@ -13959,28 +14203,31 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         uint8_t slot = keycode - SEQ_QUICK_BUILD_1;  // 0-7
 
         if (record->event.pressed) {
-            // Record press time for 3-second hold detection
-            quick_build_state.button_press_time = timer_read32();
-
-            if (quick_build_state.has_saved_build &&
-                quick_build_state.mode == QUICK_BUILD_NONE &&
-                quick_build_state.seq_slot == slot) {
-                // Has saved build for this slot and not currently building: toggle play
-                seq_start(seq_state[slot].current_preset_id);
-            } else if (quick_build_state.mode == QUICK_BUILD_SEQ &&
+            if (quick_build_state.has_saved_seq_build[slot] &&
+                quick_build_state.mode == QUICK_BUILD_NONE) {
+                // Has saved seq build for this slot and not currently building: toggle play
+                seq_start_slot(slot);
+                // Start tracking hold for erase
+                qb_erase_hold_type = 2;  // seq
+                qb_erase_hold_slot = slot;
+                qb_erase_hold_start = timer_read32();
+                qb_erase_triggered = false;
+            } else if (quick_build_state.mode == QUICK_BUILD_SEQ_SETUP &&
                        quick_build_state.seq_slot == slot) {
-                // Currently building this seq slot: finish and save
+                // In setup phase: button confirms parameter
+                quick_build_confirm_param();
+            } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD &&
+                       quick_build_state.seq_slot == slot) {
+                // Currently recording this seq slot: finish and save
                 quick_build_finish();
             } else {
-                // Start new seq quick build for this slot
+                // Start new seq quick build for this slot (enters setup phase)
                 quick_build_start_seq(slot);
             }
         } else {
-            // Button released: check for 3-second hold
-            if (quick_build_state.seq_slot == slot &&
-                timer_elapsed32(quick_build_state.button_press_time) > 3000) {
-                // Held for 3+ seconds: erase saved build for this slot
-                quick_build_erase();
+            // Button released: clear hold tracking
+            if (qb_erase_hold_type == 2 && qb_erase_hold_slot == slot) {
+                qb_erase_hold_type = 0;
             }
         }
         set_keylog(keycode, record);
@@ -16548,97 +16795,321 @@ oled_rotation_t oled_init_kb(oled_rotation_t rotation) { return OLED_ROTATION_0;
 
 #include "usb_main.h"  // For USB_DRIVER access
 
-// Render a big number on the OLED display for quick build step indication
-void render_big_number(uint8_t number) {
-    char buf[64];
+// Track quick build OLED state for one-time clear on transition
+static bool quick_build_oled_active = false;
 
-    // Clear the display area
-    oled_clear();
-
-    // Line 1: Title
-    oled_set_cursor(0, 0);
-    if (quick_build_state.mode == QUICK_BUILD_ARP) {
-        oled_write_P(PSTR("  ARP QUICK BUILD  "), false);
-    } else if (quick_build_state.mode == QUICK_BUILD_SEQ) {
-        snprintf(buf, sizeof(buf), " SEQ SLOT %d BUILD ", quick_build_state.seq_slot + 1);
-        oled_write(buf, false);
-    }
-
-    // Line 2: Separator
-    oled_set_cursor(0, 1);
-    oled_write_P(PSTR("---------------------"), false);
-
-    // Lines 3-5: Big number (centered)
-    oled_set_cursor(0, 3);
-
-    if (number < 10) {
-        snprintf(buf, sizeof(buf), "      STEP %d      ", number);
-    } else if (number < 100) {
-        snprintf(buf, sizeof(buf), "     STEP %d      ", number);
-    } else {
-        snprintf(buf, sizeof(buf), "     STEP %d     ", number);
-    }
-    oled_write(buf, false);
-
-    // Line 6: Note count
-    oled_set_cursor(0, 5);
-    snprintf(buf, sizeof(buf), "    %d NOTES TOTAL   ", quick_build_state.note_count);
-    oled_write(buf, false);
-
-    // Line 7: Instruction
-    oled_set_cursor(0, 7);
-    if (quick_build_state.mode == QUICK_BUILD_ARP) {
-        oled_write_P(PSTR(" Press to finish     "), false);
-    } else {
-        oled_write_P(PSTR(" Press to finish     "), false);
-    }
+// Helper: write a full 21-char padded line at a given row
+static void oled_write_line(uint8_t row, const char *text) {
+    char line[22];
+    memset(line, ' ', 21);
+    line[21] = '\0';
+    uint8_t len = strlen(text);
+    if (len > 21) len = 21;
+    memcpy(line, text, len);
+    oled_set_cursor(0, row);
+    oled_write(line, false);
 }
 
-bool oled_task_user(void) {
-    // Check if quick build is active - if so, show big number display
-    if (quick_build_is_active()) {
-        render_big_number(quick_build_get_current_step());
-        return false;
+// Helper: get MIDI note name string using the codebase's established naming convention
+// (midi_note_names[] array: MIDI 0 = "C-4", MIDI 60 = "C1", MIDI 72 = "C2", etc.)
+extern const char midi_note_names[168][5];
+static const char* midi_note_name(uint8_t note, char *buf, uint8_t buf_size) {
+    // Display convention: shift +2 octaves to match user expectation
+    // (midi_note_names[0]="C-4" but users expect MIDI 0 to display as "C-2")
+    uint8_t display_note = note + 24;
+    if (display_note < 168) {
+        snprintf(buf, buf_size, "%s", midi_note_names[display_note]);
+    } else {
+        snprintf(buf, buf_size, "?%d", note);
     }
+    return buf;
+}
 
-    // Normal display mode
-    // Buffer to store the formatted string
-    char str[22] = "";
-    char name[124] = "";  // Define `name` buffer to be used later
-    // Get the current layer and format it into `str`
-    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-    uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
+// Helper: write a centered line (normal font)
+static void oled_write_line_centered(uint8_t row, const char *text) {
+    char line[22];
+    memset(line, ' ', 21);
+    line[21] = '\0';
+    uint8_t len = strlen(text);
+    if (len > 21) len = 21;
+    uint8_t pad = (21 - len) / 2;
+    memcpy(line + pad, text, len);
+    oled_set_cursor(0, row);
+    oled_write(line, false);
+}
 
-    if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
-	 else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
-    // Write the layer information to the OLED
-    oled_write(str, false);
+// Access OLED font data for 2x big font rendering
+// Font array defined in drivers/oled/glcdfont.c (included by oled_driver.c)
+extern const unsigned char font[] PROGMEM;
 
-    // Display temporary mode message if active
-    if (mode_display_active) {
-        if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
-            oled_write(mode_display_msg, false);
-        } else {
-            mode_display_active = false;
+// Render text centered in 2x size (12px wide × 16px tall per character)
+// Takes 2 OLED page rows (page and page+1). Clears entire 128px width.
+static void oled_write_big_centered(uint8_t page, const char *text) {
+    uint8_t top_buf[128];
+    uint8_t bot_buf[128];
+    memset(top_buf, 0, 128);
+    memset(bot_buf, 0, 128);
+
+    uint8_t len = strlen(text);
+    if (len > 10) len = 10;  // Max 10 chars at 12px each = 120px
+    uint8_t total_width = len * 12;
+    uint8_t start_x = (total_width < 128) ? (128 - total_width) / 2 : 0;
+
+    for (uint8_t ci = 0; ci < len; ci++) {
+        uint8_t c = (uint8_t)text[ci];
+        if (c < 0x20 || c > 0x7E) c = 0x20;  // Default to space
+
+        const uint8_t *glyph = &font[c * OLED_FONT_WIDTH];
+        uint8_t x = start_x + ci * 12;
+
+        for (uint8_t col = 0; col < OLED_FONT_WIDTH; col++) {
+            if (x + col * 2 + 1 >= 128) break;
+
+            uint8_t b = pgm_read_byte(&glyph[col]);
+
+            // Expand vertically: each bit becomes 2 bits
+            uint8_t top = 0, bot = 0;
+            if (b & 0x01) top |= 0x03;
+            if (b & 0x02) top |= 0x0C;
+            if (b & 0x04) top |= 0x30;
+            if (b & 0x08) top |= 0xC0;
+            if (b & 0x10) bot |= 0x03;
+            if (b & 0x20) bot |= 0x0C;
+            if (b & 0x40) bot |= 0x30;
+            if (b & 0x80) bot |= 0xC0;
+
+            // Expand horizontally: each column becomes 2 columns
+            top_buf[x + col * 2]     = top;
+            top_buf[x + col * 2 + 1] = top;
+            bot_buf[x + col * 2]     = bot;
+            bot_buf[x + col * 2 + 1] = bot;
         }
     }
 
-    // Render keylog information
-    oled_render_keylog();
-    // Add separator line to `name` and write to OLED
-    //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
-    // You only need to add the separator once, not three times.
-    oled_write(name, false);
+    // Write both page rows
+    oled_set_cursor(0, page);
+    oled_write_raw((char*)top_buf, 128);
+    oled_set_cursor(0, page + 1);
+    oled_write_raw((char*)bot_buf, 128);
+}
 
-if (!dynamic_macro_has_activity()) {
-    led_usb_state = host_keyboard_led_state();
-        render_luna(0, 1);
-} else {
-    // Show Luna keyboard when no macros have data
-    led_usb_state = host_keyboard_led_state();
-	render_interface(0, 8);
-};
-return false;
+// Render the setup phase OLED screen (parameter selection or root note prompt)
+void render_quick_build_setup(void) {
+    char buf[22];
+
+    // Line 0: Title (centered)
+    if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
+        quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
+        snprintf(buf, sizeof(buf), "ARP %d QUICK BUILD", quick_build_state.arp_slot + 1);
+        oled_write_line_centered(0, buf);
+    } else {
+        snprintf(buf, sizeof(buf), "SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
+        oled_write_line_centered(0, buf);
+    }
+
+    // Line 1: Separator
+    oled_write_line(1, "---------------------");
+
+    if (quick_build_state.mode == QUICK_BUILD_ARP_ROOT) {
+        // Root note selection screen
+        oled_write_line(2, "");
+        oled_write_line_centered(3, "Select the root note");
+        oled_write_line_centered(4, "(not a pattern step)");
+        oled_write_line(5, "");
+
+        if (quick_build_state.candidate_ready) {
+            // Show the candidate note name
+            char note_buf[8];
+            midi_note_name(quick_build_state.candidate_root, note_buf, sizeof(note_buf));
+            snprintf(buf, sizeof(buf), "Root: %s", note_buf);
+            oled_write_line_centered(6, buf);
+            oled_write_line(7, "");
+            oled_write_line_centered(8, "Press top knob or");
+            oled_write_line_centered(9, "button to confirm");
+            oled_write_line(10, "");
+            oled_write_line_centered(11, "Play key to change");
+        } else {
+            oled_write_line_centered(6, "Play a key on the");
+            oled_write_line_centered(7, "keyboard ...");
+            oled_write_line(8, "");
+            oled_write_line(9, "");
+            oled_write_line(10, "");
+            oled_write_line(11, "");
+        }
+        oled_write_line(12, "");
+        oled_write_line(13, "");
+    } else {
+        // Parameter selection screen
+        oled_write_line(2, "");
+
+        // Lines 3-4: Description
+        oled_write_line_centered(3, quick_build_get_param_desc1());
+        oled_write_line_centered(4, quick_build_get_param_desc2());
+
+        // Line 5: blank
+        oled_write_line(5, "");
+
+        // Lines 6-7: Selected value (big font for speed/gate, normal for mode)
+        const char *big_value = quick_build_get_param_value_big();
+        if (big_value != NULL) {
+            // Speed or Gate: render in 2x font (takes lines 6-7)
+            oled_write_big_centered(6, big_value);
+        } else {
+            // Arp mode: normal font with arrows
+            const char *value = quick_build_get_param_value();
+            snprintf(buf, sizeof(buf), ">> %s <<", value);
+            oled_write_line_centered(6, buf);
+            oled_write_line(7, "");
+        }
+
+        // Lines 8-9: Instructions with arrows
+        oled_write_line_centered(8, "<< turn top knob >>");
+        oled_write_line_centered(9, "press to confirm");
+
+        // Line 10: blank
+        oled_write_line(10, "");
+
+        // Line 11: Progress
+        uint8_t total_params = (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) ? 3 : 2;
+        snprintf(buf, sizeof(buf), "Param %d/%d", quick_build_state.setup_param_index + 1, total_params);
+        oled_write_line_centered(11, buf);
+
+        oled_write_line(12, "");
+        oled_write_line(13, "");
+    }
+    oled_write_line(14, "");
+    oled_write_line(15, "");
+}
+
+// Render the recording phase OLED screen (note input)
+void render_quick_build_recording(void) {
+    char buf[22];
+
+    // Line 0: Title (centered)
+    if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+        snprintf(buf, sizeof(buf), "ARP %d QUICK BUILD", quick_build_state.arp_slot + 1);
+        oled_write_line_centered(0, buf);
+    } else {
+        snprintf(buf, sizeof(buf), "SEQ SLOT %d BUILD", quick_build_state.seq_slot + 1);
+        oled_write_line_centered(0, buf);
+    }
+
+    // Line 1: Separator
+    oled_write_line(1, "---------------------");
+
+    // Line 2: blank
+    oled_write_line(2, "");
+
+    // Line 3: Step number (centered)
+    uint8_t step = quick_build_get_current_step();
+    snprintf(buf, sizeof(buf), "STEP %d", step);
+    oled_write_line_centered(3, buf);
+
+    // Line 4: blank
+    oled_write_line(4, "");
+
+    // Line 5: Note count (centered)
+    snprintf(buf, sizeof(buf), "%d notes total", quick_build_state.note_count);
+    oled_write_line_centered(5, buf);
+
+    // Line 6: blank
+    oled_write_line(6, "");
+
+    // Line 7-8: Top knob skip/undo
+    oled_write_line_centered(7, "<< Undo   Skip >>");
+    oled_write_line_centered(8, "(turn top knob)");
+
+    // Line 9: Chord mode status
+    if (quick_build_state.encoder_chord_held) {
+        oled_write_line_centered(9, "Top knob: CHORD ON");
+    } else {
+        oled_write_line_centered(9, "Hold knob: Chord");
+    }
+
+    // Line 10: blank
+    oled_write_line(10, "");
+
+    // Lines 11-12: Finish instruction (split across 2 lines)
+    oled_write_line_centered(11, "Press knob or Quick");
+    oled_write_line_centered(12, "Build btn to finish");
+
+    // Lines 13-15: blank
+    oled_write_line(13, "");
+    oled_write_line(14, "");
+    oled_write_line(15, "");
+}
+
+// Legacy render_big_number (calls recording screen)
+void render_big_number(uint8_t number) {
+    render_quick_build_recording();
+}
+
+bool oled_task_user(void) {
+    if (quick_build_is_active()) {
+        // =========================================================
+        // QUICK BUILD MODE: Full OLED takeover
+        // =========================================================
+
+        // One-time full clear when entering quick build (wipes luna raw pixels)
+        if (!quick_build_oled_active) {
+            oled_clear();
+            quick_build_oled_active = true;
+        }
+
+        if (quick_build_is_setup()) {
+            render_quick_build_setup();
+        } else {
+            render_quick_build_recording();
+        }
+    } else {
+        // =========================================================
+        // NORMAL MODE: Layer, BPM, keylog, luna/interface
+        // =========================================================
+
+        // One-time full clear when leaving quick build
+        if (quick_build_oled_active) {
+            oled_clear();
+            quick_build_oled_active = false;
+        }
+
+        // Buffer to store the formatted string
+        char str[22] = "";
+        char name[124] = "";  // Define `name` buffer to be used later
+        // Get the current layer and format it into `str`
+        uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+        uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
+
+        if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
+        else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
+        // Write the layer information to the OLED
+        oled_write(str, false);
+
+        // Display temporary mode message if active
+        if (mode_display_active) {
+            if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
+                oled_write(mode_display_msg, false);
+            } else {
+                mode_display_active = false;
+            }
+        }
+
+        // Render keylog information
+        oled_render_keylog();
+        // Add separator line to `name` and write to OLED
+        //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
+        // You only need to add the separator once, not three times.
+        oled_write(name, false);
+
+        if (!dynamic_macro_has_activity()) {
+            led_usb_state = host_keyboard_led_state();
+            render_luna(0, 1);
+        } else {
+            // Show Luna keyboard when no macros have data
+            led_usb_state = host_keyboard_led_state();
+            render_interface(0, 8);
+        }
+    }
+    return false;
 }
 
 void matrix_scan_user(void) {
@@ -16655,6 +17126,44 @@ void matrix_scan_user(void) {
 
     // Update quick build sustain monitoring
     quick_build_update();
+
+    // Check for quick build erase-on-hold (3 second hold triggers erase)
+    if (qb_erase_hold_type > 0 && !qb_erase_triggered &&
+        timer_elapsed32(qb_erase_hold_start) >= QB_ERASE_HOLD_MS) {
+        qb_erase_triggered = true;
+        qb_erase_display_time = timer_read32();
+        qb_erase_display_type = qb_erase_hold_type;
+        qb_erase_display_slot = qb_erase_hold_slot;
+        if (qb_erase_hold_type == 1) {
+            // Erase arp quick build for this slot
+            arp_stop();
+            quick_build_erase_arp(qb_erase_hold_slot);
+            // Show "Arp N Cleared" in keylog area (like button press names)
+            {
+                char msg[22];
+                snprintf(msg, sizeof(msg), "Arp %d Cleared", qb_erase_hold_slot + 1);
+                int len = strlen(msg);
+                int pad = 21 - len;
+                int lpad = pad / 2;
+                int rpad = pad - lpad;
+                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, rpad, "");
+            }
+        } else if (qb_erase_hold_type == 2) {
+            // Erase seq quick build for this slot
+            seq_stop(qb_erase_hold_slot);
+            quick_build_erase_seq(qb_erase_hold_slot);
+            // Show "Seq N Cleared" in keylog area (like button press names)
+            {
+                char msg[22];
+                snprintf(msg, sizeof(msg), "Seq %d Cleared", qb_erase_hold_slot + 1);
+                int len = strlen(msg);
+                int pad = 21 - len;
+                int lpad = pad / 2;
+                int rpad = pad - lpad;
+                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, rpad, "");
+            }
+        }
+    }
 
 #ifdef JOYSTICK_ENABLE
     // Update joystick/gaming controller state

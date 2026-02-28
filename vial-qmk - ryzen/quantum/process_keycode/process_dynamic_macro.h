@@ -89,6 +89,10 @@ void setup_dynamic_macro_recording(uint8_t macro_id, void *macro_buffer1, void *
                                   void **macro_pointer, uint32_t *recording_start_time);
 void stop_dynamic_macro_recording(void);
 
+// Arp-synced deferred record stop
+extern bool loop_deferred_record_stop_pending;
+void execute_deferred_record_stop(void);
+
 // Handle loop trigger from process_midi.c
 void dynamic_macro_handle_loop_trigger(void);
 

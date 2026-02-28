@@ -4749,7 +4749,7 @@ class ArpeggiatorTab(QScrollArea):
         control_layout = FlowLayout()
         for keycode in self.arp_keycodes:
             if keycode_filter(keycode):
-                if "GATE" not in keycode.qmk_id and "RATE" not in keycode.qmk_id and "MODE" not in keycode.qmk_id:
+                if "GATE" not in keycode.qmk_id and "RATE" not in keycode.qmk_id and "MODE" not in keycode.qmk_id and "QUICK" not in keycode.qmk_id:
                     btn = SquareButton()
                     btn.setRelSize(KEYCODE_BTN_RATIO)
                     btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -4759,7 +4759,22 @@ class ArpeggiatorTab(QScrollArea):
                     control_layout.addWidget(btn)
         control_group.setLayout(control_layout)
         self.main_layout.addWidget(control_group)
-        
+
+        # Quick Build section
+        quick_build_group = QGroupBox("Quick Build")
+        quick_build_layout = FlowLayout()
+        for keycode in self.arp_keycodes:
+            if keycode_filter(keycode) and "QUICK" in keycode.qmk_id:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                quick_build_layout.addWidget(btn)
+        quick_build_group.setLayout(quick_build_layout)
+        self.main_layout.addWidget(quick_build_group)
+
         # Gate section
         gate_group = QGroupBox("Gate Length")
         gate_layout = FlowLayout()
@@ -4883,7 +4898,7 @@ class StepSequencerTab(QScrollArea):
         control_layout = FlowLayout()
         for keycode in self.seq_keycodes:
             if keycode_filter(keycode):
-                if "GATE" not in keycode.qmk_id and "RATE" not in keycode.qmk_id:
+                if "GATE" not in keycode.qmk_id and "RATE" not in keycode.qmk_id and "QUICK" not in keycode.qmk_id:
                     btn = SquareButton()
                     btn.setRelSize(KEYCODE_BTN_RATIO)
                     btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
@@ -4893,7 +4908,22 @@ class StepSequencerTab(QScrollArea):
                     control_layout.addWidget(btn)
         control_group.setLayout(control_layout)
         self.main_layout.addWidget(control_group)
-        
+
+        # Quick Build section
+        quick_build_group = QGroupBox("Quick Build")
+        quick_build_layout = FlowLayout()
+        for keycode in self.seq_keycodes:
+            if keycode_filter(keycode) and "QUICK" in keycode.qmk_id:
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                quick_build_layout.addWidget(btn)
+        quick_build_group.setLayout(quick_build_layout)
+        self.main_layout.addWidget(quick_build_group)
+
         # Gate section
         gate_group = QGroupBox("Gate Length")
         gate_layout = FlowLayout()
