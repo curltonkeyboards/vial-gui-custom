@@ -9948,11 +9948,11 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 // End overdub recording
                 end_overdub_recording_mode_aware(macro_num, false, false);
                 dprintf("dynamic macro: ended overdub recording for macro %d\n", macro_num);
-            } else if (current_bpm == 0 && arp_is_active() && live_note_count > 0) {
-                // Arp-synced deferred stop: arp is playing with held notes, no BPM set.
-                // Defer record stop to next arp step boundary for timing alignment.
+            } else if (current_bpm == 0 && (arp_is_active() || seq_is_any_active())) {
+                // Deferred stop: arp/seq is playing with no BPM set (first recording).
+                // Defer record stop to next arp/seq step boundary for timing alignment.
                 loop_deferred_record_stop_pending = true;
-                dprintf("dynamic macro: deferring record stop to next arp step\n");
+                dprintf("dynamic macro: deferring record stop to next arp/seq step\n");
             } else {
                 // Normal recording - stop and start playback immediately (for non-double-tap case)
                 midi_event_t *rec_start = get_macro_buffer(macro_id);

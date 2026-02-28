@@ -58,6 +58,14 @@ bool arp_is_active(void) {
     return arp_state.active;
 }
 
+// Helper: check if any step sequencer slot is active
+bool seq_is_any_active(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) return true;
+    }
+    return false;
+}
+
 // =============================================================================
 // QUICK BUILD SYSTEM
 // =============================================================================
@@ -745,9 +753,10 @@ void arp_update(void) {
 
     // Check requirements based on preset type
     if (preset->preset_type == PRESET_TYPE_ARPEGGIATOR) {
-        if (live_note_count == 0) {
+        if (live_note_count == 0 && !loop_deferred_record_stop_pending) {
             // No notes held - mark for pattern restart when notes return
             // Don't stop: arp stays armed while button is held or latched
+            // (Skip this early return if deferred stop is pending so it can execute at step boundary)
             arp_state.notes_released = true;
             return;
         }
@@ -1183,6 +1192,19 @@ void seq_stop_all(void) {
 }
 
 void seq_update(void) {
+    // Check for deferred loop record stop at first active seq step boundary
+    if (loop_deferred_record_stop_pending) {
+        for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+            if (!seq_state[s].active) continue;
+            uint32_t ct = timer_read32();
+            if (ct >= seq_state[s].next_note_time) {
+                // Step boundary reached - execute deferred stop
+                execute_deferred_record_stop();
+                break;  // Only execute once
+            }
+        }
+    }
+
     // Update all active sequencer slots
     for (uint8_t slot = 0; slot < MAX_SEQ_SLOTS; slot++) {
         if (!seq_state[slot].active) continue;

@@ -799,6 +799,7 @@ void arp_handle_button_release(void);
 void arp_handle_key_press(uint8_t preset_id);
 void arp_handle_key_release(void);
 bool arp_is_active(void);
+bool seq_is_any_active(void);
 void arp_set_master_gate(uint8_t gate_percent);
 void seq_set_master_gate(uint8_t gate_percent);
 void arp_set_mode(arp_mode_t mode);
