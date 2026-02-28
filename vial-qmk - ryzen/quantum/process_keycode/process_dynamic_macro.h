@@ -96,9 +96,6 @@ void execute_deferred_record_stop(void);
 // Handle loop trigger from process_midi.c
 void dynamic_macro_handle_loop_trigger(void);
 
-// Get ms until next beat boundary for a given step duration
-uint32_t get_time_to_next_beat_boundary(uint32_t step_ms);
-
 // Optional user hooks
 void dynamic_macro_record_start_user(int8_t direction);
 void dynamic_macro_play_user(int8_t direction);

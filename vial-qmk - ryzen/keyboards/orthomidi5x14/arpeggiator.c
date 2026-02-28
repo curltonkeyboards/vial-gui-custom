@@ -22,7 +22,7 @@ uint8_t arp_note_count = 0;
 // Arpeggiator runtime state
 arp_state_t arp_state = {
     .active = false,
-    .sync_mode = SEQ_SYNC_BPM,  // Start with BPM sync
+    .sync_mode = true,  // Start with sync enabled
     .latch_mode = false,
     .mode = ARPMODE_SINGLE_NOTE_SYNCED,
     .current_preset_id = 0,
@@ -40,14 +40,14 @@ arp_state_t arp_state = {
 
 // Step Sequencer runtime state (8 slots)
 seq_state_t seq_state[MAX_SEQ_SLOTS] = {
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
-    {.active = false, .sync_mode = SEQ_SYNC_BPM, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0}
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0},
+    {.active = false, .sync_mode = true, .current_preset_id = 68, .loaded_preset_id = 255, .rate_override = 0, .master_gate_override = 0, .locked_channel = 0, .locked_velocity_min = 1, .locked_velocity_max = 127, .locked_transpose = 0}
 };
 
 // Step Sequencer modifier tracking
@@ -621,7 +621,7 @@ void arp_init(void) {
     arp_state.latch_mode = false;
     arp_state.current_preset_id = 0;
     arp_state.loaded_preset_id = 255;  // No preset loaded
-    arp_state.sync_mode = SEQ_SYNC_BPM;
+    arp_state.sync_mode = true;
     arp_state.mode = ARPMODE_SINGLE_NOTE_SYNCED;
     arp_state.rate_override = 0;
     arp_state.master_gate_override = 0;
@@ -671,7 +671,7 @@ void arp_start(uint8_t preset_id) {
         }
 
         // Handle preset switching based on sync mode
-        if (arp_state.sync_mode != SEQ_SYNC_UNSYNCED) {
+        if (arp_state.sync_mode) {
             // Apply progress to new pattern
             arp_state.current_position_16ths = (uint16_t)(progress * arp_active_preset.pattern_length_16ths);
             dprintf("arp: switching preset with sync, progress: %d%%\n", (int)(progress * 100));
@@ -691,13 +691,10 @@ void arp_start(uint8_t preset_id) {
         arp_state.current_position_16ths = 0;
         arp_state.pattern_start_time = timer_read32();
 
-        // If BPM sync mode, quantize start to next beat boundary
-        if (arp_state.sync_mode == SEQ_SYNC_BPM && current_bpm > 0) {
-            uint32_t ms_per_step = get_ms_per_16th(&arp_active_preset);
-            uint32_t delay = get_time_to_next_beat_boundary(ms_per_step);
-            if (delay > 0) {
-                arp_state.next_note_time = timer_read32() + delay;
-            }
+        // If sync mode, wait for next beat to start
+        if (arp_state.sync_mode) {
+            // TODO: Sync to BPM beat boundary
+            // For now, start immediately
         }
     }
 
@@ -1133,6 +1130,7 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
     seq_state[slot].pattern_start_time = timer_read32();
+    seq_state[slot].next_note_time = timer_read32();  // Start immediately
 
     // Lock in global values when sequencer starts
     seq_state[slot].locked_channel = channel_number;
@@ -1140,28 +1138,10 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;  // Always starts at 0, changes only with modifier
 
-    // Apply sync based on sync_mode
-    uint8_t sync = seq_state[slot].sync_mode;
-    bool has_other_playing = dynamic_macro_is_playing();
-    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
-        if (i != slot && seq_state[i].active) { has_other_playing = true; break; }
-    }
-
-    if (sync == SEQ_SYNC_BPM && current_bpm > 0) {
-        uint32_t ms_per_step = seq_get_ms_per_16th(&seq_active_presets[slot], slot);
-        uint32_t delay = get_time_to_next_beat_boundary(ms_per_step);
-        seq_state[slot].next_note_time = timer_read32() + delay;
-    } else if ((sync == SEQ_SYNC_BPM || sync == SEQ_SYNC_LOOP) && has_other_playing) {
-        seq_state[slot].next_note_time = timer_read32();
-        dynamic_macro_handle_loop_trigger();
-    } else {
-        seq_state[slot].next_note_time = timer_read32();
-    }
-
-    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d sync:%d)\n",
+    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d)\n",
             preset_id, slot, seq_state[slot].locked_channel,
             seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max,
-            seq_state[slot].locked_transpose, sync);
+            seq_state[slot].locked_transpose);
 }
 
 void seq_stop(uint8_t slot) {
@@ -1290,16 +1270,6 @@ void seq_update(void) {
         if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
             seq_state[slot].current_position_16ths = 0;
             seq_state[slot].pattern_start_time = current_time;
-
-            // BPM mode: quantize pattern restart to next beat boundary
-            if (seq_state[slot].sync_mode == SEQ_SYNC_BPM && current_bpm > 0) {
-                uint32_t ms_per_step = seq_get_ms_per_16th(preset, slot);
-                uint32_t delay = get_time_to_next_beat_boundary(ms_per_step);
-                seq_state[slot].next_note_time = current_time + delay;
-                continue;  // Skip the normal next_note_time calculation
-            }
-            // LOOP mode: loop trigger handles restarts via seq_handle_loop_trigger()
-            // UNSYNCED: falls through to normal timing below
         }
 
         // Calculate next note time
@@ -1367,57 +1337,12 @@ void seq_reset_overrides(void) {
 }
 
 void seq_toggle_sync_mode(void) {
-    // Cycle sync mode: BPM → LOOP → UNSYNCED → BPM
-    uint8_t new_mode = (seq_state[0].sync_mode + 1) % 3;
+    // Toggle sync mode for all sequencer slots
+    bool new_mode = !seq_state[0].sync_mode;  // Use slot 0 as reference
     for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
         seq_state[i].sync_mode = new_mode;
     }
-    dprintf("seq: sync mode: %d (%s)\n", new_mode,
-            new_mode == SEQ_SYNC_BPM ? "BPM" :
-            new_mode == SEQ_SYNC_LOOP ? "LOOP" : "UNSYNCED");
-}
-
-uint8_t seq_get_sync_mode(void) {
-    return seq_state[0].sync_mode;
-}
-
-// Get the total loop length of a seq slot in milliseconds
-uint32_t seq_get_loop_length_ms(uint8_t slot) {
-    if (slot >= MAX_SEQ_SLOTS || !seq_state[slot].active) return 0;
-    seq_preset_t *preset = &seq_active_presets[slot];
-    if (preset->pattern_length_16ths == 0) return 0;
-    uint32_t ms_per_step = seq_get_ms_per_16th(preset, slot);
-    return ms_per_step * preset->pattern_length_16ths;
-}
-
-// Called from process_dynamic_macro when a loop trigger fires
-// Restarts seq slots in BPM/LOOP mode that are near their pattern end
-void seq_handle_loop_trigger(void) {
-    uint32_t current_time = timer_read32();
-
-    for (uint8_t slot = 0; slot < MAX_SEQ_SLOTS; slot++) {
-        if (!seq_state[slot].active) continue;
-        if (seq_state[slot].sync_mode == SEQ_SYNC_UNSYNCED) continue;
-
-        uint32_t loop_len = seq_get_loop_length_ms(slot);
-        if (loop_len == 0) continue;
-
-        // Calculate position in current pattern loop
-        uint32_t elapsed = current_time - seq_state[slot].pattern_start_time;
-        uint32_t position_in_loop = elapsed % loop_len;
-        uint32_t time_to_end = loop_len - position_in_loop;
-
-        // Use 25% of loop length as threshold (same as macro loop trigger)
-        uint32_t threshold = loop_len / 4;
-
-        if (time_to_end <= threshold) {
-            // Near end of pattern - restart now (first note plays immediately)
-            seq_state[slot].current_position_16ths = 0;
-            seq_state[slot].pattern_start_time = current_time;
-            seq_state[slot].next_note_time = current_time;
-            dprintf("seq: loop trigger restarted slot %d\n", slot);
-        }
-    }
+    dprintf("seq: sync mode: %d\n", new_mode);
 }
 
 void seq_set_master_gate(uint8_t gate_percent) {
@@ -1570,11 +1495,10 @@ void arp_handle_button_release(void) {
 }
 
 void arp_toggle_sync_mode(void) {
-    // Cycle sync mode: BPM → LOOP → UNSYNCED → BPM
-    arp_state.sync_mode = (arp_state.sync_mode + 1) % 3;
-    dprintf("arp: sync mode: %d (%s)\n", arp_state.sync_mode,
-            arp_state.sync_mode == SEQ_SYNC_BPM ? "BPM" :
-            arp_state.sync_mode == SEQ_SYNC_LOOP ? "LOOP" : "UNSYNCED");
+    arp_state.sync_mode = !arp_state.sync_mode;
+    dprintf("arp: sync mode: %d\n", arp_state.sync_mode);
+
+    // TODO: Update OLED display
 }
 
 void arp_set_master_gate(uint8_t gate_percent) {
@@ -2991,42 +2915,13 @@ void seq_start_slot(uint8_t slot) {
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
     seq_state[slot].pattern_start_time = timer_read32();
+    seq_state[slot].next_note_time = timer_read32();
 
     // Use the channel from when the seq was built (not the current keyboard channel)
     seq_state[slot].locked_channel = quick_build_state.saved_seq_channel[slot];
     seq_state[slot].locked_velocity_min = he_velocity_min;
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;
-
-    // Apply sync based on sync_mode
-    uint8_t sync = seq_state[slot].sync_mode;
-    bool has_other_playing = dynamic_macro_is_playing();
-    // Check if other seq slots are active (not counting this one since we just set it)
-    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
-        if (i != slot && seq_state[i].active) { has_other_playing = true; break; }
-    }
-
-    if (sync == SEQ_SYNC_BPM && current_bpm > 0) {
-        // BPM mode with BPM present: quantize start to next beat boundary
-        uint32_t ms_per_step = seq_get_ms_per_16th(&seq_active_presets[slot], slot);
-        uint32_t delay = get_time_to_next_beat_boundary(ms_per_step);
-        seq_state[slot].next_note_time = timer_read32() + delay;
-        dprintf("seq: slot %d BPM sync start, delay %lu ms\n", slot, delay);
-    } else if (sync == SEQ_SYNC_BPM && has_other_playing) {
-        // BPM mode fallback: no BPM but other loops/seqs playing, use loop trigger
-        seq_state[slot].next_note_time = timer_read32();
-        dynamic_macro_handle_loop_trigger();
-        dprintf("seq: slot %d BPM sync fallback to loop trigger\n", slot);
-    } else if (sync == SEQ_SYNC_LOOP && has_other_playing) {
-        // LOOP mode: sync to other playing loops/seqs via loop trigger
-        seq_state[slot].next_note_time = timer_read32();
-        dynamic_macro_handle_loop_trigger();
-        dprintf("seq: slot %d LOOP sync via loop trigger\n", slot);
-    } else {
-        // UNSYNCED or nothing to sync to: start immediately
-        seq_state[slot].next_note_time = timer_read32();
-        dprintf("seq: slot %d unsynced start\n", slot);
-    }
 
     dprintf("seq: started slot %d directly (quick build, ch:%d vel:%d-%d)\n",
             slot, seq_state[slot].locked_channel,

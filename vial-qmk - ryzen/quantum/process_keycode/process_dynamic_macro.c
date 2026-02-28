@@ -668,31 +668,23 @@ static uint32_t calculate_restart_proximity_threshold(uint8_t macro_idx) {
     
     // No BPM set - fall back to loop-based timing (25% of shortest loop)
     uint32_t shortest_real_loop = 0;
-
+    
     // Find the shortest REAL-WORLD loop among all macros that have content
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
         if (macro_has_content[i] && macro_playback[i].loop_length > 0) {
             // Calculate real-world loop duration accounting for speed
             float speed_factor = macro_speed_factor[i];
             uint32_t real_loop_duration;
-
+            
             if (speed_factor > 0.0f) {
                 real_loop_duration = (uint32_t)(macro_playback[i].loop_length / speed_factor);
             } else {
                 continue; // Skip paused macros
             }
-
+            
             if (shortest_real_loop == 0 || real_loop_duration < shortest_real_loop) {
                 shortest_real_loop = real_loop_duration;
             }
-        }
-    }
-
-    // Also consider active step sequencer loops as "playing loops"
-    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
-        uint32_t seq_loop = seq_get_loop_length_ms(i);
-        if (seq_loop > 0 && (shortest_real_loop == 0 || seq_loop < shortest_real_loop)) {
-            shortest_real_loop = seq_loop;
         }
     }
     
@@ -708,25 +700,6 @@ static uint32_t calculate_restart_proximity_threshold(uint8_t macro_idx) {
     // Final fallback if nothing else works
     dprintf("dynamic macro: using fallback threshold %d ms\n", RESTART_PROXIMITY_THRESHOLD);
     return RESTART_PROXIMITY_THRESHOLD;
-}
-
-// Get ms until next beat boundary for a given step duration
-// Used by seq/arp for BPM-synced starts and pattern restarts
-uint32_t get_time_to_next_beat_boundary(uint32_t step_ms) {
-    if (current_bpm == 0 || step_ms == 0) return 0;
-
-    uint32_t now = timer_read32();
-
-    // Use BPM source macro timer as reference point for the beat grid
-    uint32_t ref_time = 0;
-    if (bpm_source_macro > 0 && bpm_source_macro <= MAX_MACROS) {
-        ref_time = macro_playback[bpm_source_macro - 1].timer;
-    }
-
-    uint32_t elapsed = now - ref_time;
-    uint32_t position = elapsed % step_ms;
-    if (position == 0) return 0;  // Already on boundary
-    return step_ms - position;
 }
 
 static void send_loop_message(uint8_t cc_number, uint8_t value) {
@@ -9772,11 +9745,7 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 break;
             }
         }
-        // Also treat active seqs as "playing" for sync purposes
-        if (!any_macros_playing && seq_is_any_active()) {
-            any_macros_playing = true;
-        }
-
+        
         // Different behavior based on whether M2 is empty and if macros are playing
         if (this_macro_empty) {
             // M2 is empty - quick record handoff behavior
@@ -9930,8 +9899,8 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
         return false;
     }      
 
-    if (!this_macro_playing && playing_count == 0 && !seq_is_any_active()) {
-        // NORMAL RECORD MODE (nothing else playing - no macros, no seqs)
+    if (!this_macro_playing && playing_count == 0) {
+        // NORMAL RECORD MODE
         if (macro_id == 0 && !is_macro_primed) {
             // Check if macro already exists
             if (macro_start != *macro_end_ptr) {
@@ -10626,12 +10595,9 @@ void dynamic_macro_handle_loop_trigger(void) {
             }
         }
     }
-
+    
     // Original loop trigger handling
     check_loop_trigger();
-
-    // Also sync step sequencers that are in BPM/LOOP mode
-    seq_handle_loop_trigger();
 }
 
 // Helper function to check if any modulations are active for a macro
