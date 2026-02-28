@@ -2295,6 +2295,7 @@ void quick_build_finish(void) {
         dprintf("quick_build: seq slot %d finished with %d notes, %d steps\n",
                 slot, quick_build_state.note_count, seq_active_presets[slot].pattern_length_16ths);
         quick_build_state.has_saved_seq_build[slot] = true;
+        quick_build_state.saved_seq_channel[slot] = channel_number;  // Remember channel at build time
 
         // Mark seq slot to play this quick build pattern
         seq_state[slot].current_preset_id = PRESET_ID_QUICK_BUILD;
@@ -2889,8 +2890,8 @@ void seq_start_slot(uint8_t slot) {
     seq_state[slot].pattern_start_time = timer_read32();
     seq_state[slot].next_note_time = timer_read32();
 
-    // Lock in current global values
-    seq_state[slot].locked_channel = channel_number;
+    // Use the channel from when the seq was built (not the current keyboard channel)
+    seq_state[slot].locked_channel = quick_build_state.saved_seq_channel[slot];
     seq_state[slot].locked_velocity_min = he_velocity_min;
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;

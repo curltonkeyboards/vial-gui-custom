@@ -698,7 +698,7 @@ static bool qb_erase_triggered = false;     // erase already happened this hold
 static uint32_t qb_erase_display_time = 0;  // when erase was triggered (for OLED/LED display)
 static uint8_t qb_erase_display_type = 0;   // what was cleared: 1=arp, 2=seq (for OLED text)
 static uint8_t qb_erase_display_slot = 0;   // seq slot that was cleared
-#define QB_ERASE_HOLD_MS 3000
+#define QB_ERASE_HOLD_MS 1500
 #define QB_ERASE_DISPLAY_MS 1500            // how long to show "Cleared" message
 
 // ============================================================================
@@ -14152,9 +14152,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             if (quick_build_state.has_saved_arp_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
-                // Has saved arp build for this slot and not currently building: load & toggle play
-                quick_build_load_arp_slot(slot);
-                arp_toggle();
+                // Has saved arp build for this slot and not currently building
+                if (arp_state.active) {
+                    // Arp already playing: switch to this slot (don't toggle off)
+                    quick_build_load_arp_slot(slot);
+                    // Restart from beginning with new preset
+                    arp_stop();
+                    arp_start(PRESET_ID_QUICK_BUILD);
+                } else {
+                    // Arp not playing: load and start
+                    quick_build_load_arp_slot(slot);
+                    arp_toggle();
+                }
                 // Start tracking hold for erase
                 qb_erase_hold_type = 1;  // arp
                 qb_erase_hold_slot = slot;
@@ -16806,8 +16815,11 @@ static void oled_write_line(uint8_t row, const char *text) {
 // (midi_note_names[] array: MIDI 0 = "C-4", MIDI 60 = "C1", MIDI 72 = "C2", etc.)
 extern const char midi_note_names[168][5];
 static const char* midi_note_name(uint8_t note, char *buf, uint8_t buf_size) {
-    if (note < 168) {
-        snprintf(buf, buf_size, "%s", midi_note_names[note]);
+    // Display convention: shift +2 octaves to match user expectation
+    // (midi_note_names[0]="C-4" but users expect MIDI 0 to display as "C-2")
+    uint8_t display_note = note + 24;
+    if (display_note < 168) {
+        snprintf(buf, buf_size, "%s", midi_note_names[display_note]);
     } else {
         snprintf(buf, buf_size, "?%d", note);
     }
@@ -17127,18 +17139,30 @@ void matrix_scan_user(void) {
             // Erase arp quick build for this slot
             arp_stop();
             quick_build_erase_arp(qb_erase_hold_slot);
-            // Show "Arp N Cleared" in normal OLED mode_display area
-            snprintf(mode_display_msg, sizeof(mode_display_msg), "\n   Arp %d Cleared", qb_erase_hold_slot + 1);
-            mode_display_timer = timer_read32();
-            mode_display_active = true;
+            // Show "Arp N Cleared" in keylog area (like button press names)
+            {
+                char msg[22];
+                snprintf(msg, sizeof(msg), "Arp %d Cleared", qb_erase_hold_slot + 1);
+                int len = strlen(msg);
+                int pad = 21 - len;
+                int lpad = pad / 2;
+                int rpad = pad - lpad;
+                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, rpad, "");
+            }
         } else if (qb_erase_hold_type == 2) {
             // Erase seq quick build for this slot
             seq_stop(qb_erase_hold_slot);
             quick_build_erase_seq(qb_erase_hold_slot);
-            // Show "Seq N Cleared" in normal OLED mode_display area
-            snprintf(mode_display_msg, sizeof(mode_display_msg), "\n   Seq %d Cleared", qb_erase_hold_slot + 1);
-            mode_display_timer = timer_read32();
-            mode_display_active = true;
+            // Show "Seq N Cleared" in keylog area (like button press names)
+            {
+                char msg[22];
+                snprintf(msg, sizeof(msg), "Seq %d Cleared", qb_erase_hold_slot + 1);
+                int len = strlen(msg);
+                int pad = 21 - len;
+                int lpad = pad / 2;
+                int rpad = pad - lpad;
+                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, rpad, "");
+            }
         }
     }
 

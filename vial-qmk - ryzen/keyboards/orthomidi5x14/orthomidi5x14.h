@@ -881,6 +881,7 @@ typedef struct {
     uint32_t button_press_time;        // For 3-second hold detection
     bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (per slot)
     bool has_saved_seq_build[8];       // Has user completed a seq build? (per slot)
+    uint8_t saved_seq_channel[8];      // MIDI channel at time of seq build (per slot)
 
     // Setup phase state
     uint8_t setup_param_index;         // Which parameter is being configured (0, 1, 2...)
