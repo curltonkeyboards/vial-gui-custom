@@ -272,7 +272,12 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define SEQ_STOP_ALL        0xEE81  // Stop all playing sequencers
 #define SEQ_NEXT_PRESET     0xEE82  // Navigate to next seq preset
 #define SEQ_PREV_PRESET     0xEE83  // Navigate to previous seq preset
-#define SEQ_SYNC_TOGGLE     0xEE84  // Toggle sync mode (BPM-locked vs free-running)
+#define SEQ_SYNC_TOGGLE     0xEE84  // Toggle sync mode (BPM/LOOP/UNSYNCED)
+
+// Step Sequencer Sync Modes
+#define SEQ_SYNC_BPM        0   // Sync to BPM beat boundaries, fallback to loop trigger, then unsynced
+#define SEQ_SYNC_LOOP       1   // Sync to loop trigger (other loops/seqs), fallback to unsynced
+#define SEQ_SYNC_UNSYNCED   2   // Always play immediately
 #define SEQ_GATE_RESET      0xEE85  // Reset gate to preset default
 #define SEQ_RESET_TO_DEFAULT 0xEE86 // Reset all overrides to preset defaults
 
@@ -704,7 +709,7 @@ typedef struct __attribute__((packed)) {
 // Arpeggiator runtime state
 typedef struct {
     bool active;                        // Is arp currently running
-    bool sync_mode;                     // Sync to BPM beat boundaries
+    uint8_t sync_mode;                  // Sync mode (SEQ_SYNC_BPM/LOOP/UNSYNCED)
     bool latch_mode;                    // Continue after keys released (double-tap)
     arp_mode_t mode;                    // Playback mode (see arp_mode_t enum)
     uint8_t current_preset_id;          // Which preset is selected (for NEXT/PREV)
@@ -724,7 +729,7 @@ typedef struct {
 #define MAX_SEQ_SLOTS 8
 typedef struct {
     bool active;                        // Is this seq slot currently running
-    bool sync_mode;                     // Sync to BPM beat boundaries
+    uint8_t sync_mode;                  // Sync mode (SEQ_SYNC_BPM/LOOP/UNSYNCED)
     uint8_t current_preset_id;          // Which preset is selected (for NEXT/PREV)
     uint8_t loaded_preset_id;           // Which preset is currently loaded in RAM
     uint32_t next_note_time;            // When to play next note
@@ -790,6 +795,9 @@ void seq_stop(uint8_t slot);        // Stop specific sequencer slot
 void seq_stop_all(void);            // Stop all sequencers
 void arp_toggle_sync_mode(void);
 void seq_toggle_sync_mode(void);
+uint8_t seq_get_sync_mode(void);
+void seq_handle_loop_trigger(void);
+uint32_t seq_get_loop_length_ms(uint8_t slot);
 void arp_next_preset(void);
 void arp_prev_preset(void);
 void seq_next_preset(void);

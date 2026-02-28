@@ -13871,7 +13871,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == ARP_SYNC_TOGGLE) {
         if (record->event.pressed) {
             arp_toggle_sync_mode();
-            set_keylog(keycode, record);
+            const char *mode_name = (arp_state.sync_mode == SEQ_SYNC_BPM) ? "Arp Sync BPM" :
+                                    (arp_state.sync_mode == SEQ_SYNC_LOOP) ? "Arp Sync Loop" :
+                                                                             "Arp Unsynced";
+            int len = strlen(mode_name);
+            int pad = 21 - len;
+            int lpad = pad / 2;
+            int rpad = pad - lpad;
+            snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", mode_name, rpad, "");
         }
         return false;
     }
@@ -14076,7 +14083,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == SEQ_SYNC_TOGGLE) {
         if (record->event.pressed) {
             seq_toggle_sync_mode();
-            set_keylog(keycode, record);
+            uint8_t mode = seq_get_sync_mode();
+            const char *mode_name = (mode == SEQ_SYNC_BPM) ? "Seq Sync BPM" :
+                                    (mode == SEQ_SYNC_LOOP) ? "Seq Sync Loop" :
+                                                              "Seq Unsynced";
+            int len = strlen(mode_name);
+            int pad = 21 - len;
+            int lpad = pad / 2;
+            int rpad = pad - lpad;
+            snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", mode_name, rpad, "");
         }
         return false;
     }
