@@ -881,6 +881,7 @@ typedef struct {
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
     bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (per slot)
+    uint8_t active_arp_qb_slot;        // Which arp QB slot is currently loaded (0-3, 255=none)
     bool has_saved_seq_build[8];       // Has user completed a seq build? (per slot)
     uint8_t saved_seq_channel[8];      // MIDI channel at time of seq build (per slot)
 

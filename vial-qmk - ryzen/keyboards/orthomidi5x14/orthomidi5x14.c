@@ -7849,16 +7849,13 @@ bool rgb_matrix_indicators_kb(void) {
                         // Orange: currently building this slot
                         r = 255; g = 140; b = 0;
                     } else if (quick_build_state.has_saved_arp_build[s] &&
-                               arp_state.current_preset_id == PRESET_ID_QUICK_BUILD) {
-                        if (arp_state.active) {
-                            // Green: playing (only the active slot)
-                            r = 0; g = 200; b = 0;
-                        } else {
-                            // Red: has build, idle
-                            r = 200; g = 0; b = 0;
-                        }
+                               arp_state.active &&
+                               arp_state.current_preset_id == PRESET_ID_QUICK_BUILD &&
+                               quick_build_state.active_arp_qb_slot == s) {
+                        // Green: this specific slot is playing
+                        r = 0; g = 200; b = 0;
                     } else if (quick_build_state.has_saved_arp_build[s]) {
-                        // Red: has build but different preset loaded
+                        // Red: has build, idle (or a different slot is playing)
                         r = 200; g = 0; b = 0;
                     } else {
                         // White: empty / no quick build for this slot
@@ -14153,10 +14150,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (quick_build_state.has_saved_arp_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved arp build for this slot and not currently building
-                if (arp_state.active) {
-                    // Arp already playing: switch to this slot (don't toggle off)
+                if (arp_state.active && quick_build_state.active_arp_qb_slot == slot) {
+                    // Same slot already playing: toggle off
+                    arp_stop();
+                } else if (arp_state.active) {
+                    // Different slot playing: switch to this one
                     quick_build_load_arp_slot(slot);
-                    // Restart from beginning with new preset
                     arp_stop();
                     arp_start(PRESET_ID_QUICK_BUILD);
                 } else {

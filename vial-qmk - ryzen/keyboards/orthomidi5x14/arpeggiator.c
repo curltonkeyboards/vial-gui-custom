@@ -84,6 +84,7 @@ quick_build_state_t quick_build_state = {
     .sustain_held_last_check = false,
     .button_press_time = 0,
     .has_saved_arp_build = {false},
+    .active_arp_qb_slot = 255,
     .has_saved_seq_build = {false},
     .setup_param_index = 0,
     .setup_arp_mode = 0,
@@ -2285,6 +2286,7 @@ void quick_build_finish(void) {
         // Save to storage slot and mark as saved
         memcpy(&arp_quick_build_storage[arp_slot], &arp_active_preset, sizeof(arp_preset_t));
         quick_build_state.has_saved_arp_build[arp_slot] = true;
+        quick_build_state.active_arp_qb_slot = arp_slot;
 
         // Mark arp to play this quick build pattern (not a factory/user preset)
         arp_state.current_preset_id = PRESET_ID_QUICK_BUILD;
@@ -2354,6 +2356,9 @@ void quick_build_load_arp_slot(uint8_t slot) {
 
     // Copy from storage to the active preset
     memcpy(&arp_active_preset, &arp_quick_build_storage[slot], sizeof(arp_preset_t));
+
+    // Track which slot is active
+    quick_build_state.active_arp_qb_slot = slot;
 
     // Mark arp to use this quick build preset
     arp_state.current_preset_id = PRESET_ID_QUICK_BUILD;
