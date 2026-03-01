@@ -831,8 +831,12 @@ void arp_update(void) {
                 unsynced_notes[u].current_position_16ths = 0;
             }
 
-            // Set this note's next note time
-            unsynced_notes[u].next_note_time = current_time + ms_per_16th;
+            // Accumulative timing: base next step on scheduled time, not execution time
+            unsynced_notes[u].next_note_time += ms_per_16th;
+            // Safety: if more than 1 step behind, snap forward to prevent rapid catch-up
+            if (current_time > unsynced_notes[u].next_note_time + ms_per_16th) {
+                unsynced_notes[u].next_note_time = current_time + ms_per_16th;
+            }
         }
 
         return;  // Chord unsynced handles everything independently
@@ -859,7 +863,12 @@ void arp_update(void) {
             arp_state.current_position_16ths = 0;
             arp_state.pattern_start_time = current_time;
         }
-        arp_state.next_note_time = current_time + ms_per_16th_defer;
+        // Accumulative timing: base next step on scheduled time, not execution time
+        arp_state.next_note_time += ms_per_16th_defer;
+        // Safety: if more than 1 step behind, snap forward to prevent rapid catch-up
+        if (current_time > arp_state.next_note_time + ms_per_16th_defer) {
+            arp_state.next_note_time = current_time + ms_per_16th_defer;
+        }
         return;
     }
 
@@ -1068,8 +1077,12 @@ void arp_update(void) {
                         }
                     }
 
-                    // Next note at base rate (each note gets full step timing)
-                    arp_state.next_note_time = current_time + ms_per_16th;
+                    // Accumulative timing: base next step on scheduled time, not execution time
+                    arp_state.next_note_time += ms_per_16th;
+                    // Safety: if more than 1 step behind, snap forward to prevent rapid catch-up
+                    if (current_time > arp_state.next_note_time + ms_per_16th) {
+                        arp_state.next_note_time = current_time + ms_per_16th;
+                    }
 
                     // Return early - chord advanced handles position advancement above
                     return;
@@ -1092,9 +1105,15 @@ void arp_update(void) {
         dprintf("arp: pattern loop\n");
     }
 
-    // Calculate next note time
+    // Accumulative timing: base next step on scheduled time, not execution time
+    // This prevents timing drift from note processing overhead and ensures
+    // perfectly regular step intervals, including across pattern loop boundaries
     uint32_t ms_per_16th_final = get_ms_per_16th(preset);
-    arp_state.next_note_time = current_time + ms_per_16th_final;
+    arp_state.next_note_time += ms_per_16th_final;
+    // Safety: if more than 1 step behind, snap forward to prevent rapid catch-up
+    if (current_time > arp_state.next_note_time + ms_per_16th_final) {
+        arp_state.next_note_time = current_time + ms_per_16th_final;
+    }
 }
 
 // =============================================================================
@@ -1272,9 +1291,15 @@ void seq_update(void) {
             seq_state[slot].pattern_start_time = current_time;
         }
 
-        // Calculate next note time
+        // Accumulative timing: base next step on scheduled time, not execution time
+        // This prevents timing drift from note processing overhead and ensures
+        // perfectly regular step intervals, including across pattern loop boundaries
         uint32_t ms_per_16th = seq_get_ms_per_16th(preset, slot);
-        seq_state[slot].next_note_time = current_time + ms_per_16th;
+        seq_state[slot].next_note_time += ms_per_16th;
+        // Safety: if more than 1 step behind, snap forward to prevent rapid catch-up
+        if (current_time > seq_state[slot].next_note_time + ms_per_16th) {
+            seq_state[slot].next_note_time = current_time + ms_per_16th;
+        }
     }
 }
 
