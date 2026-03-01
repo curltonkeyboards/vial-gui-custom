@@ -721,6 +721,7 @@ typedef struct {
     uint8_t rate_override;              // 0=use preset, else override (NOTE_VALUE_* | TIMING_MODE_*)
     uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
     uint32_t pattern_start_time;        // When current pattern loop started
+    uint16_t anchor_step;               // Total note events since pattern start (for anchored timing in chord advanced)
     uint32_t last_tap_time;             // For double-tap detection
     bool key_held;                      // Is arp button physically held
     bool notes_released;                // True when all MIDI keys released while arp active (for pattern restart)

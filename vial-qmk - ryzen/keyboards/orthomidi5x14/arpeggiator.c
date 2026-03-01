@@ -33,6 +33,7 @@ arp_state_t arp_state = {
     .rate_override = 0,
     .master_gate_override = 0,
     .pattern_start_time = 0,
+    .anchor_step = 0,
     .last_tap_time = 0,
     .key_held = false,
     .notes_released = false
@@ -191,6 +192,7 @@ typedef struct {
     uint8_t midi_note;        // MIDI note number this is tracking (0 = slot inactive)
     uint8_t channel;          // MIDI channel
     uint32_t next_note_time;  // When to play next arp step for this note
+    uint32_t anchor_start_time;  // When this note's pattern started (for anchored timing)
     uint16_t current_position_16ths;  // This note's position in the pattern
     bool active;
 } unsynced_note_state_t;
@@ -229,6 +231,7 @@ static int8_t add_unsynced_note(uint8_t midi_note, uint8_t channel, uint32_t sta
             unsynced_notes[i].midi_note = midi_note;
             unsynced_notes[i].channel = channel;
             unsynced_notes[i].next_note_time = start_time;
+            unsynced_notes[i].anchor_start_time = start_time;  // Anchor for drift-free timing
             unsynced_notes[i].current_position_16ths = 0;
             unsynced_notes[i].active = true;
             unsynced_note_count++;
@@ -539,102 +542,113 @@ static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpack
     }
 }
 
-// Calculate milliseconds per 16th note based on current BPM and timing mode
-// Uses arp_state.rate_override if set, otherwise uses preset values
+// =============================================================================
+// HIGH-PRECISION ANCHORED TIMING
+// =============================================================================
+//
+// Computes the exact millisecond offset for step N using 64-bit math and the
+// full-precision BPM value (stored as BPM * 100000). This eliminates cumulative
+// drift that occurred with the old approach of integer-truncating BPM then adding
+// a truncated ms_per_step to current_time each step.
+//
+// Formula: offset_ms = (step * 6,000,000,000 * multiplier * timing_num)
+//                      / (4 * bpm_format * timing_den)
+//
+// Where bpm_format = actual_bpm * 100000 (e.g., 120.55 BPM = 12055000)
+//
+// The anchored pattern is:
+//   next_note_time = pattern_start_time + compute_step_time_offset(next_step, ...)
+// Instead of the drifting:
+//   next_note_time = current_time + ms_per_step
+//
+// At the pattern loop boundary, pattern_start_time advances by the exact pattern
+// duration rather than resetting to current_time, maintaining alignment.
+// =============================================================================
+
+// Compute millisecond offset for step N at the given note value and timing mode.
+// Uses full-precision BPM (no integer truncation).
+static uint32_t compute_step_time_offset(uint16_t step, uint8_t note_value, uint8_t timing_mode) {
+    uint32_t bpm = get_effective_bpm();  // BPM * 100000 format
+
+    // Note value multiplier (how many 16ths per step)
+    uint8_t multiplier = 1;
+    switch (note_value) {
+        case NOTE_VALUE_QUARTER:   multiplier = 4; break;
+        case NOTE_VALUE_EIGHTH:    multiplier = 2; break;
+        case NOTE_VALUE_SIXTEENTH:
+        default:                   multiplier = 1; break;
+    }
+
+    // Timing mode numerator/denominator
+    uint8_t timing_num = 1, timing_den = 1;
+    if (timing_mode & TIMING_MODE_TRIPLET) {
+        timing_num = 2; timing_den = 3;  // 2/3 duration
+    } else if (timing_mode & TIMING_MODE_DOTTED) {
+        timing_num = 3; timing_den = 2;  // 3/2 duration
+    }
+
+    // 64-bit calculation: (step * 6,000,000,000 * multiplier * timing_num) / (4 * bpm * timing_den)
+    // Max numerator: 127 * 6e9 * 4 * 3 = 9.144e12, well within uint64_t range
+    uint64_t numerator = (uint64_t)step * 6000000000ULL * multiplier * timing_num;
+    uint64_t denominator = (uint64_t)4 * bpm * timing_den;
+
+    return (uint32_t)(numerator / denominator);
+}
+
+// Calculate milliseconds per step for arpeggiator (used for gate duration calculations).
+// Uses arp_state.rate_override if set, otherwise uses preset values.
 static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
-    uint32_t actual_bpm = get_effective_bpm() / 100000;
-    if (actual_bpm == 0) actual_bpm = 120;
-
-    // Base calculation: quarter note duration / 4 = 16th note duration
-    uint32_t base_ms = (60000 / actual_bpm) / 4;
-
-    // Determine note_value and timing_mode - use override if set
     uint8_t note_value, timing_mode;
     if (arp_state.rate_override != 0) {
-        // Extract note value and timing mode from rate_override
         note_value = arp_state.rate_override & ~TIMING_MODE_MASK;
         timing_mode = arp_state.rate_override & TIMING_MODE_MASK;
     } else {
-        // Use preset values
         note_value = preset->note_value;
         timing_mode = preset->timing_mode;
     }
-
-    // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
-    uint8_t multiplier = 1;
-    switch (note_value) {
-        case NOTE_VALUE_QUARTER:
-            multiplier = 4;  // Quarter notes are 4× 16ths
-            break;
-        case NOTE_VALUE_EIGHTH:
-            multiplier = 2;  // Eighth notes are 2× 16ths
-            break;
-        case NOTE_VALUE_SIXTEENTH:
-        default:
-            multiplier = 1;  // Sixteenth notes are 1× 16ths
-            break;
-    }
-    base_ms *= multiplier;
-
-    // Apply timing mode (triplet or dotted)
-    if (timing_mode & TIMING_MODE_TRIPLET) {
-        // Triplet timing: compress to 2/3 of normal duration
-        base_ms = (base_ms * 2) / 3;
-    } else if (timing_mode & TIMING_MODE_DOTTED) {
-        // Dotted timing: extend to 3/2 of normal duration
-        base_ms = (base_ms * 3) / 2;
-    }
-
-    return base_ms;
+    return compute_step_time_offset(1, note_value, timing_mode);
 }
 
-// Calculate milliseconds per 16th note for sequencer presets
-// Uses seq_state[slot].rate_override if set, otherwise uses preset values
+// Compute anchored next_note_time for arpeggiator.
+// Returns: pattern_start_time + exact offset for the given step number.
+static uint32_t arp_anchored_next_time(const arp_preset_t *preset, uint16_t step) {
+    uint8_t note_value, timing_mode;
+    if (arp_state.rate_override != 0) {
+        note_value = arp_state.rate_override & ~TIMING_MODE_MASK;
+        timing_mode = arp_state.rate_override & TIMING_MODE_MASK;
+    } else {
+        note_value = preset->note_value;
+        timing_mode = preset->timing_mode;
+    }
+    return arp_state.pattern_start_time + compute_step_time_offset(step, note_value, timing_mode);
+}
+
+// Calculate milliseconds per step for sequencer (used for gate duration calculations).
+// Uses seq_state[slot].rate_override if set, otherwise uses preset values.
 static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset, uint8_t slot) {
-    uint32_t actual_bpm = get_effective_bpm() / 100000;
-    if (actual_bpm == 0) actual_bpm = 120;
-
-    // Base calculation: quarter note duration / 4 = 16th note duration
-    uint32_t base_ms = (60000 / actual_bpm) / 4;
-
-    // Determine note_value and timing_mode - use override if set
     uint8_t note_value, timing_mode;
     if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
-        // Extract note value and timing mode from rate_override
         note_value = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
         timing_mode = seq_state[slot].rate_override & TIMING_MODE_MASK;
     } else {
-        // Use preset values
         note_value = preset->note_value;
         timing_mode = preset->timing_mode;
     }
+    return compute_step_time_offset(1, note_value, timing_mode);
+}
 
-    // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
-    uint8_t multiplier = 1;
-    switch (note_value) {
-        case NOTE_VALUE_QUARTER:
-            multiplier = 4;  // Quarter notes are 4× 16ths
-            break;
-        case NOTE_VALUE_EIGHTH:
-            multiplier = 2;  // Eighth notes are 2× 16ths
-            break;
-        case NOTE_VALUE_SIXTEENTH:
-        default:
-            multiplier = 1;  // Sixteenth notes are 1× 16ths
-            break;
+// Compute anchored next_note_time for sequencer slot.
+// Returns: pattern_start_time + exact offset for the given step number.
+static uint32_t seq_anchored_next_time(const seq_preset_t *preset, uint8_t slot, uint16_t step) {
+    uint8_t note_value, timing_mode;
+    if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
+        note_value = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
+        timing_mode = seq_state[slot].rate_override & TIMING_MODE_MASK;
+    } else {
+        note_value = preset->note_value;
+        timing_mode = preset->timing_mode;
     }
-    base_ms *= multiplier;
-
-    // Apply timing mode (triplet or dotted)
-    if (timing_mode & TIMING_MODE_TRIPLET) {
-        // Triplet timing: compress to 2/3 of normal duration
-        base_ms = (base_ms * 2) / 3;
-    } else if (timing_mode & TIMING_MODE_DOTTED) {
-        // Dotted timing: extend to 3/2 of normal duration
-        base_ms = (base_ms * 3) / 2;
-    }
-
-    return base_ms;
+    return seq_state[slot].pattern_start_time + compute_step_time_offset(step, note_value, timing_mode);
 }
 
 
@@ -743,6 +757,7 @@ void arp_start(uint8_t preset_id) {
     arp_state.current_preset_id = preset_id;
     arp_state.active = true;
     arp_state.current_note_in_chord = 0;
+    arp_state.anchor_step = 0;
     arp_state.notes_released = false;
 
     // Defer start to next seq step if synced mode and a step sequencer is running
@@ -822,6 +837,7 @@ void arp_update(void) {
             arp_state.notes_released = false;
             arp_state.current_position_16ths = 0;
             arp_state.current_note_in_chord = 0;
+            arp_state.anchor_step = 0;
             arp_state.pattern_start_time = timer_read32();
             arp_state.next_note_time = timer_read32();  // Play immediately
             reset_unsynced_notes();  // Clear per-note states for chord unsynced
@@ -883,11 +899,33 @@ void arp_update(void) {
             // Advance this note's position
             unsynced_notes[u].current_position_16ths++;
             if (unsynced_notes[u].current_position_16ths >= preset->pattern_length_16ths) {
+                // Pattern loop: advance anchor by exact pattern duration (no drift)
+                uint8_t nv, tm;
+                if (arp_state.rate_override != 0) {
+                    nv = arp_state.rate_override & ~TIMING_MODE_MASK;
+                    tm = arp_state.rate_override & TIMING_MODE_MASK;
+                } else {
+                    nv = preset->note_value;
+                    tm = preset->timing_mode;
+                }
+                unsynced_notes[u].anchor_start_time += compute_step_time_offset(
+                    preset->pattern_length_16ths, nv, tm);
                 unsynced_notes[u].current_position_16ths = 0;
             }
 
-            // Set this note's next note time
-            unsynced_notes[u].next_note_time = current_time + ms_per_16th;
+            // Anchored next note time: anchor_start + offset for next position
+            {
+                uint8_t nv, tm;
+                if (arp_state.rate_override != 0) {
+                    nv = arp_state.rate_override & ~TIMING_MODE_MASK;
+                    tm = arp_state.rate_override & TIMING_MODE_MASK;
+                } else {
+                    nv = preset->note_value;
+                    tm = preset->timing_mode;
+                }
+                unsynced_notes[u].next_note_time = unsynced_notes[u].anchor_start_time +
+                    compute_step_time_offset(unsynced_notes[u].current_position_16ths, nv, tm);
+            }
         }
 
         // Fire loop trigger on every arp step (when no macro loop is playing)
@@ -913,13 +951,16 @@ void arp_update(void) {
         execute_deferred_record_stop();
         // Don't play this step's notes - stop happens before the step
         // Still advance timing so arp continues normally
-        uint32_t ms_per_16th_defer = get_ms_per_16th(preset);
         arp_state.current_position_16ths++;
         if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
+            // Pattern loop: advance anchor by exact pattern duration (no drift)
+            arp_state.pattern_start_time += compute_step_time_offset(
+                preset->pattern_length_16ths,
+                (arp_state.rate_override != 0) ? (arp_state.rate_override & ~TIMING_MODE_MASK) : preset->note_value,
+                (arp_state.rate_override != 0) ? (arp_state.rate_override & TIMING_MODE_MASK) : preset->timing_mode);
             arp_state.current_position_16ths = 0;
-            arp_state.pattern_start_time = current_time;
         }
-        arp_state.next_note_time = current_time + ms_per_16th_defer;
+        arp_state.next_note_time = arp_anchored_next_time(preset, arp_state.current_position_16ths);
 
         // Fire loop trigger on every arp step (when no macro loop is playing)
         if (!dynamic_macro_is_playing()) {
@@ -1116,6 +1157,7 @@ void arp_update(void) {
 
                     // Advance to next note in chord
                     arp_state.current_note_in_chord++;
+                    arp_state.anchor_step++;
 
                     // Check if we've played all notes for this step
                     if (arp_state.current_note_in_chord >= live_note_count) {
@@ -1127,14 +1169,24 @@ void arp_update(void) {
 
                         // Check for loop
                         if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
+                            // Pattern loop: advance anchor by exact pattern duration (no drift)
+                            // Use anchor_step to compute exact elapsed time for variable chord sizes
+                            uint8_t nv = (arp_state.rate_override != 0) ? (arp_state.rate_override & ~TIMING_MODE_MASK) : preset->note_value;
+                            uint8_t tm = (arp_state.rate_override != 0) ? (arp_state.rate_override & TIMING_MODE_MASK) : preset->timing_mode;
+                            arp_state.pattern_start_time += compute_step_time_offset(arp_state.anchor_step, nv, tm);
+                            arp_state.anchor_step = 0;
                             arp_state.current_position_16ths = 0;
-                            arp_state.pattern_start_time = current_time;
                             dprintf("arp: pattern loop\n");
                         }
                     }
 
-                    // Next note at base rate (each note gets full step timing)
-                    arp_state.next_note_time = current_time + ms_per_16th;
+                    // Anchored next note time using total steps since pattern start
+                    {
+                        uint8_t nv = (arp_state.rate_override != 0) ? (arp_state.rate_override & ~TIMING_MODE_MASK) : preset->note_value;
+                        uint8_t tm = (arp_state.rate_override != 0) ? (arp_state.rate_override & TIMING_MODE_MASK) : preset->timing_mode;
+                        arp_state.next_note_time = arp_state.pattern_start_time +
+                            compute_step_time_offset(arp_state.anchor_step, nv, tm);
+                    }
 
                     // Fire loop trigger on every arp step (when no macro loop is playing)
                     if (!dynamic_macro_is_playing()) {
@@ -1157,14 +1209,17 @@ void arp_update(void) {
 
     // Check for loop
     if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
+        // Pattern loop: advance anchor by exact pattern duration (no drift)
+        arp_state.pattern_start_time += compute_step_time_offset(
+            preset->pattern_length_16ths,
+            (arp_state.rate_override != 0) ? (arp_state.rate_override & ~TIMING_MODE_MASK) : preset->note_value,
+            (arp_state.rate_override != 0) ? (arp_state.rate_override & TIMING_MODE_MASK) : preset->timing_mode);
         arp_state.current_position_16ths = 0;
-        arp_state.pattern_start_time = current_time;
         dprintf("arp: pattern loop\n");
     }
 
-    // Calculate next note time
-    uint32_t ms_per_16th_final = get_ms_per_16th(preset);
-    arp_state.next_note_time = current_time + ms_per_16th_final;
+    // Anchored next note time: pattern_start + offset for next position
+    arp_state.next_note_time = arp_anchored_next_time(preset, arp_state.current_position_16ths);
 
     // Fire loop trigger on every arp step (when no macro loop is playing)
     if (!dynamic_macro_is_playing()) {
@@ -1357,8 +1412,18 @@ void seq_update(void) {
 
         // Check for loop (restart)
         if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
+            // Pattern loop: advance anchor by exact pattern duration (no drift)
+            uint8_t nv, tm;
+            if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
+                nv = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
+                tm = seq_state[slot].rate_override & TIMING_MODE_MASK;
+            } else {
+                nv = preset->note_value;
+                tm = preset->timing_mode;
+            }
+            seq_state[slot].pattern_start_time += compute_step_time_offset(
+                preset->pattern_length_16ths, nv, tm);
             seq_state[slot].current_position_16ths = 0;
-            seq_state[slot].pattern_start_time = current_time;
 
             // Fire loop trigger on seq restart (all slots)
             dynamic_macro_handle_loop_trigger();
@@ -1370,12 +1435,13 @@ void seq_update(void) {
             arp_state.next_note_time = current_time;
             arp_state.pattern_start_time = current_time;
             arp_state.current_position_16ths = 0;
+            arp_state.anchor_step = 0;
             dprintf("arp: deferred start released by seq step\n");
         }
 
-        // Calculate next note time
-        uint32_t ms_per_16th = seq_get_ms_per_16th(preset, slot);
-        seq_state[slot].next_note_time = current_time + ms_per_16th;
+        // Anchored next note time: pattern_start + offset for next position
+        seq_state[slot].next_note_time = seq_anchored_next_time(preset, slot,
+            seq_state[slot].current_position_16ths);
     }
 }
 
