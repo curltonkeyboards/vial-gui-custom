@@ -2181,16 +2181,18 @@ uint8_t quick_build_get_current_step(void) {
 // Start quick build for arpeggiator (slot 0-3)
 void quick_build_start_arp(uint8_t slot) {
     if (slot >= MAX_ARP_QB_SLOTS) return;
+
+    // Ignore if already in any quick build mode
+    if (quick_build_state.mode != QUICK_BUILD_NONE) {
+        dprintf("quick_build: ignoring arp start, already in quick build mode %d\n", quick_build_state.mode);
+        return;
+    }
+
     dprintf("quick_build: starting arp slot %d builder (setup phase)\n", slot);
 
     // Stop any playing arp
     if (arp_state.active) {
         arp_stop();
-    }
-
-    // Cancel other quick build if active
-    if (quick_build_state.mode != QUICK_BUILD_NONE) {
-        quick_build_cancel();
     }
 
     // Enter setup phase (parameter selection before recording)
@@ -2268,15 +2270,16 @@ void quick_build_start_seq(uint8_t slot) {
         return;
     }
 
+    // Ignore if already in any quick build mode
+    if (quick_build_state.mode != QUICK_BUILD_NONE) {
+        dprintf("quick_build: ignoring seq start, already in quick build mode %d\n", quick_build_state.mode);
+        return;
+    }
+
     dprintf("quick_build: starting seq builder for slot %d (setup phase)\n", slot);
 
     // Stop all playing sequencers
     seq_stop_all();
-
-    // Cancel other quick build if active
-    if (quick_build_state.mode != QUICK_BUILD_NONE) {
-        quick_build_cancel();
-    }
 
     // Enter setup phase
     quick_build_state.mode = QUICK_BUILD_SEQ_SETUP;
