@@ -471,6 +471,45 @@ void seq_select_preset(uint8_t preset_id) {
 // (kept here as stub for now, will be removed when linking with factory preset file)
 
 // =============================================================================
+// GLOBAL BEAT GRID (shared time reference for arp, seq, and loop alignment)
+// =============================================================================
+// All arp/seq step timing derives from this single origin point.
+// This eliminates cumulative drift by computing absolute timestamps
+// instead of accumulating per-step durations.
+
+static uint64_t beat_grid_origin_us = 0;  // Microsecond timestamp of beat 0
+static bool beat_grid_active = false;
+
+// Set/reset the beat grid origin (called when loops start, restart, or BPM changes)
+void sync_beat_grid_origin(uint32_t origin_ms) {
+    beat_grid_origin_us = (uint64_t)origin_ms * 1000;
+    beat_grid_active = true;
+
+    // Snap running arp to grid
+    if (arp_state.active) {
+        arp_state.current_position_16ths = 0;
+        arp_state.next_note_time = origin_ms;
+        arp_state.pattern_start_time = origin_ms;
+    }
+
+    // Snap all running sequencers to grid
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active) {
+            seq_state[i].current_position_16ths = 0;
+            seq_state[i].grid_start_step = 0;
+            seq_state[i].next_note_time = origin_ms;
+            seq_state[i].pattern_start_time = origin_ms;
+        }
+    }
+
+    dprintf("beat_grid: origin set to %lu ms\n", origin_ms);
+}
+
+bool is_beat_grid_active(void) {
+    return beat_grid_active;
+}
+
+// =============================================================================
 // CORE ARPEGGIATOR LOGIC
 // =============================================================================
 
@@ -504,102 +543,123 @@ static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpack
     }
 }
 
-// Calculate milliseconds per 16th note based on current BPM and timing mode
-// Uses arp_state.rate_override if set, otherwise uses preset values
-static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
-    uint32_t actual_bpm = get_effective_bpm() / 100000;
-    if (actual_bpm == 0) actual_bpm = 120;
+// =============================================================================
+// HIGH-PRECISION BPM STEP CALCULATION
+// =============================================================================
+// Uses 64-bit microsecond math to avoid integer truncation.
+// Old method: 60000 / (bpm/100000) / 4 → two integer divisions → loses fractional BPM
+// New method: 6,000,000,000,000 / bpm / 4 → single 64-bit division → full precision
+//
+// Example at 130.47 BPM (sixteenth notes):
+//   Old: 60000/130/4 = 115ms (error: +0.054ms/step, +3.5ms/bar)
+//   New: 6000000000000/13047000/4 = 114946us (error: ~0us/step)
 
-    // Base calculation: quarter note duration / 4 = 16th note duration
-    uint32_t base_ms = (60000 / actual_bpm) / 4;
+// Core: compute microseconds per step from raw note_value and timing_mode
+static uint32_t get_us_per_step(uint8_t note_value, uint8_t timing_mode) {
+    uint32_t bpm = get_effective_bpm();  // Format: actual_bpm * 100000
 
-    // Determine note_value and timing_mode - use override if set
-    uint8_t note_value, timing_mode;
-    if (arp_state.rate_override != 0) {
-        // Extract note value and timing mode from rate_override
-        note_value = arp_state.rate_override & ~TIMING_MODE_MASK;
-        timing_mode = arp_state.rate_override & TIMING_MODE_MASK;
-    } else {
-        // Use preset values
-        note_value = preset->note_value;
-        timing_mode = preset->timing_mode;
-    }
+    // Quarter note duration in microseconds (64-bit to avoid overflow):
+    // = 60,000,000 us / (bpm / 100000)
+    // = 60,000,000 * 100000 / bpm
+    // = 6,000,000,000,000 / bpm
+    uint64_t quarter_us = 6000000000000ULL / bpm;
 
-    // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
-    uint8_t multiplier = 1;
+    // 16th note = quarter / 4
+    uint64_t step_us = quarter_us / 4;
+
+    // Apply note value multiplier
     switch (note_value) {
-        case NOTE_VALUE_QUARTER:
-            multiplier = 4;  // Quarter notes are 4× 16ths
-            break;
-        case NOTE_VALUE_EIGHTH:
-            multiplier = 2;  // Eighth notes are 2× 16ths
-            break;
+        case NOTE_VALUE_QUARTER:   step_us *= 4; break;
+        case NOTE_VALUE_EIGHTH:    step_us *= 2; break;
         case NOTE_VALUE_SIXTEENTH:
-        default:
-            multiplier = 1;  // Sixteenth notes are 1× 16ths
-            break;
+        default: break;
     }
-    base_ms *= multiplier;
 
-    // Apply timing mode (triplet or dotted)
+    // Apply timing mode
     if (timing_mode & TIMING_MODE_TRIPLET) {
-        // Triplet timing: compress to 2/3 of normal duration
-        base_ms = (base_ms * 2) / 3;
+        step_us = (step_us * 2) / 3;
     } else if (timing_mode & TIMING_MODE_DOTTED) {
-        // Dotted timing: extend to 3/2 of normal duration
-        base_ms = (base_ms * 3) / 2;
+        step_us = (step_us * 3) / 2;
     }
 
-    return base_ms;
+    return (uint32_t)step_us;
 }
 
-// Calculate milliseconds per 16th note for sequencer presets
-// Uses seq_state[slot].rate_override if set, otherwise uses preset values
-static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset, uint8_t slot) {
-    uint32_t actual_bpm = get_effective_bpm() / 100000;
-    if (actual_bpm == 0) actual_bpm = 120;
-
-    // Base calculation: quarter note duration / 4 = 16th note duration
-    uint32_t base_ms = (60000 / actual_bpm) / 4;
-
-    // Determine note_value and timing_mode - use override if set
-    uint8_t note_value, timing_mode;
-    if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
-        // Extract note value and timing mode from rate_override
-        note_value = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
-        timing_mode = seq_state[slot].rate_override & TIMING_MODE_MASK;
+// Extract note_value and timing_mode from arp state/preset
+static void get_arp_rate_params(const arp_preset_t *preset, uint8_t *note_value, uint8_t *timing_mode) {
+    if (arp_state.rate_override != 0) {
+        *note_value = arp_state.rate_override & ~TIMING_MODE_MASK;
+        *timing_mode = arp_state.rate_override & TIMING_MODE_MASK;
     } else {
-        // Use preset values
-        note_value = preset->note_value;
-        timing_mode = preset->timing_mode;
+        *note_value = preset->note_value;
+        *timing_mode = preset->timing_mode;
     }
+}
 
-    // Apply note value multiplier (quarter=4x, eighth=2x, sixteenth=1x)
-    uint8_t multiplier = 1;
-    switch (note_value) {
-        case NOTE_VALUE_QUARTER:
-            multiplier = 4;  // Quarter notes are 4× 16ths
-            break;
-        case NOTE_VALUE_EIGHTH:
-            multiplier = 2;  // Eighth notes are 2× 16ths
-            break;
-        case NOTE_VALUE_SIXTEENTH:
-        default:
-            multiplier = 1;  // Sixteenth notes are 1× 16ths
-            break;
+// Extract note_value and timing_mode from seq state/preset
+static void get_seq_rate_params(const seq_preset_t *preset, uint8_t slot, uint8_t *note_value, uint8_t *timing_mode) {
+    if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
+        *note_value = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
+        *timing_mode = seq_state[slot].rate_override & TIMING_MODE_MASK;
+    } else {
+        *note_value = preset->note_value;
+        *timing_mode = preset->timing_mode;
     }
-    base_ms *= multiplier;
+}
 
-    // Apply timing mode (triplet or dotted)
-    if (timing_mode & TIMING_MODE_TRIPLET) {
-        // Triplet timing: compress to 2/3 of normal duration
-        base_ms = (base_ms * 2) / 3;
-    } else if (timing_mode & TIMING_MODE_DOTTED) {
-        // Dotted timing: extend to 3/2 of normal duration
-        base_ms = (base_ms * 3) / 2;
+// Get microseconds per step for arpeggiator
+static uint32_t arp_get_us_per_step(const arp_preset_t *preset) {
+    uint8_t note_value, timing_mode;
+    get_arp_rate_params(preset, &note_value, &timing_mode);
+    return get_us_per_step(note_value, timing_mode);
+}
+
+// Get microseconds per step for sequencer
+static uint32_t seq_get_us_per_step(const seq_preset_t *preset, uint8_t slot) {
+    uint8_t note_value, timing_mode;
+    get_seq_rate_params(preset, slot, &note_value, &timing_mode);
+    return get_us_per_step(note_value, timing_mode);
+}
+
+// Calculate next absolute step time on the beat grid (eliminates cumulative drift)
+// Returns millisecond timestamp for the next step.
+// If beat grid is not active, falls back to relative timing from pattern_start_time.
+static uint32_t calc_next_step_time_arp(const arp_preset_t *preset, uint16_t next_position_16ths) {
+    uint32_t step_us = arp_get_us_per_step(preset);
+    if (beat_grid_active) {
+        // Absolute grid timing: step N fires at origin + N * step_duration
+        uint64_t abs_us = beat_grid_origin_us + (uint64_t)next_position_16ths * step_us;
+        return (uint32_t)(abs_us / 1000);
+    } else {
+        // Fallback: relative to pattern start (still uses precise step_us)
+        uint64_t abs_us = (uint64_t)arp_state.pattern_start_time * 1000 +
+                          (uint64_t)next_position_16ths * step_us;
+        return (uint32_t)(abs_us / 1000);
     }
+}
 
-    return base_ms;
+static uint32_t calc_next_step_time_seq(const seq_preset_t *preset, uint8_t slot, uint16_t next_position_16ths) {
+    uint32_t step_us = seq_get_us_per_step(preset, slot);
+    if (beat_grid_active) {
+        // Absolute grid timing using global step offset for multi-seq alignment
+        uint64_t global_step = seq_state[slot].grid_start_step + next_position_16ths;
+        uint64_t abs_us = beat_grid_origin_us + global_step * step_us;
+        return (uint32_t)(abs_us / 1000);
+    } else {
+        // Fallback: relative to this slot's pattern start
+        uint64_t abs_us = (uint64_t)seq_state[slot].pattern_start_time * 1000 +
+                          (uint64_t)next_position_16ths * step_us;
+        return (uint32_t)(abs_us / 1000);
+    }
+}
+
+// Backward-compatible wrappers (returns ms, used for gate duration calculations)
+static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
+    return arp_get_us_per_step(preset) / 1000;
+}
+
+static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset, uint8_t slot) {
+    return seq_get_us_per_step(preset, slot) / 1000;
 }
 
 
@@ -853,13 +913,12 @@ void arp_update(void) {
         execute_deferred_record_stop();
         // Don't play this step's notes - stop happens before the step
         // Still advance timing so arp continues normally
-        uint32_t ms_per_16th_defer = get_ms_per_16th(preset);
         arp_state.current_position_16ths++;
         if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
             arp_state.current_position_16ths = 0;
             arp_state.pattern_start_time = current_time;
         }
-        arp_state.next_note_time = current_time + ms_per_16th_defer;
+        arp_state.next_note_time = calc_next_step_time_arp(preset, arp_state.current_position_16ths);
         return;
     }
 
@@ -1068,8 +1127,8 @@ void arp_update(void) {
                         }
                     }
 
-                    // Next note at base rate (each note gets full step timing)
-                    arp_state.next_note_time = current_time + ms_per_16th;
+                    // Next note at base rate using precise step duration
+                    arp_state.next_note_time = current_time + (arp_get_us_per_step(preset) / 1000);
 
                     // Return early - chord advanced handles position advancement above
                     return;
@@ -1092,9 +1151,8 @@ void arp_update(void) {
         dprintf("arp: pattern loop\n");
     }
 
-    // Calculate next note time
-    uint32_t ms_per_16th_final = get_ms_per_16th(preset);
-    arp_state.next_note_time = current_time + ms_per_16th_final;
+    // Calculate next note time using absolute grid (eliminates cumulative drift)
+    arp_state.next_note_time = calc_next_step_time_arp(preset, arp_state.current_position_16ths);
 }
 
 // =============================================================================
@@ -1129,8 +1187,28 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].current_preset_id = preset_id;
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
-    seq_state[slot].pattern_start_time = timer_read32();
-    seq_state[slot].next_note_time = timer_read32();  // Start immediately
+
+    uint32_t now = timer_read32();
+    seq_state[slot].pattern_start_time = now;
+
+    // Snap to beat grid for multi-sequencer alignment
+    if (beat_grid_active) {
+        // Calculate which global step we're on using precise microsecond math
+        uint32_t step_us = seq_get_us_per_step(&seq_active_presets[slot], slot);
+        if (step_us > 0) {
+            uint64_t elapsed_us = (uint64_t)now * 1000 - beat_grid_origin_us;
+            uint32_t global_step = (uint32_t)(elapsed_us / step_us);
+            seq_state[slot].grid_start_step = global_step;
+            // Start at next grid-aligned step
+            seq_state[slot].next_note_time = (uint32_t)((beat_grid_origin_us + (uint64_t)(global_step + 1) * step_us) / 1000);
+        } else {
+            seq_state[slot].grid_start_step = 0;
+            seq_state[slot].next_note_time = now;
+        }
+    } else {
+        seq_state[slot].grid_start_step = 0;
+        seq_state[slot].next_note_time = now;  // Start immediately (no grid yet)
+    }
 
     // Lock in global values when sequencer starts
     seq_state[slot].locked_channel = channel_number;
@@ -1138,10 +1216,10 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;  // Always starts at 0, changes only with modifier
 
-    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d)\n",
+    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d grid_step:%lu)\n",
             preset_id, slot, seq_state[slot].locked_channel,
             seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max,
-            seq_state[slot].locked_transpose);
+            seq_state[slot].locked_transpose, seq_state[slot].grid_start_step);
 }
 
 void seq_stop(uint8_t slot) {
@@ -1270,11 +1348,12 @@ void seq_update(void) {
         if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
             seq_state[slot].current_position_16ths = 0;
             seq_state[slot].pattern_start_time = current_time;
+            // Advance grid offset so next pattern cycle stays aligned
+            seq_state[slot].grid_start_step += preset->pattern_length_16ths;
         }
 
-        // Calculate next note time
-        uint32_t ms_per_16th = seq_get_ms_per_16th(preset, slot);
-        seq_state[slot].next_note_time = current_time + ms_per_16th;
+        // Calculate next note time using absolute grid (eliminates cumulative drift)
+        seq_state[slot].next_note_time = calc_next_step_time_seq(preset, slot, seq_state[slot].current_position_16ths);
     }
 }
 
@@ -2914,8 +2993,26 @@ void seq_start_slot(uint8_t slot) {
     // Start the slot directly (preset already in RAM)
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
-    seq_state[slot].pattern_start_time = timer_read32();
-    seq_state[slot].next_note_time = timer_read32();
+
+    uint32_t now = timer_read32();
+    seq_state[slot].pattern_start_time = now;
+
+    // Snap to beat grid for multi-sequencer alignment (same logic as seq_start)
+    if (beat_grid_active) {
+        uint32_t step_us = seq_get_us_per_step(&seq_active_presets[slot], slot);
+        if (step_us > 0) {
+            uint64_t elapsed_us = (uint64_t)now * 1000 - beat_grid_origin_us;
+            uint32_t global_step = (uint32_t)(elapsed_us / step_us);
+            seq_state[slot].grid_start_step = global_step;
+            seq_state[slot].next_note_time = (uint32_t)((beat_grid_origin_us + (uint64_t)(global_step + 1) * step_us) / 1000);
+        } else {
+            seq_state[slot].grid_start_step = 0;
+            seq_state[slot].next_note_time = now;
+        }
+    } else {
+        seq_state[slot].grid_start_step = 0;
+        seq_state[slot].next_note_time = now;
+    }
 
     // Use the channel from when the seq was built (not the current keyboard channel)
     seq_state[slot].locked_channel = quick_build_state.saved_seq_channel[slot];
@@ -2923,9 +3020,10 @@ void seq_start_slot(uint8_t slot) {
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;
 
-    dprintf("seq: started slot %d directly (quick build, ch:%d vel:%d-%d)\n",
+    dprintf("seq: started slot %d directly (quick build, ch:%d vel:%d-%d grid_step:%lu)\n",
             slot, seq_state[slot].locked_channel,
-            seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max);
+            seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max,
+            seq_state[slot].grid_start_step);
 }
 
 // =============================================================================

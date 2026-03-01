@@ -6750,10 +6750,15 @@ void update_bpm_flash(void) {
 
 void reset_bpm_timing_for_loop_start(void) {
     if (current_bpm != 0 && bpm_source_macro != 0) {
+        uint32_t now = timer_read32();
         // Reset to beat 1 and start timing from now
-        last_bpm_flash_time = timer_read32();
+        last_bpm_flash_time = now;
         bpm_beat_count = 1;
         bpm_flash_state = true;  // Start with flash on for beat 1
+
+        // Sync the beat grid so arp/seq align to loop playback
+        sync_beat_grid_origin(now);
+
         dprintf("bpm: reset timing for loop start (automatic BPM)\n");
     }
 }

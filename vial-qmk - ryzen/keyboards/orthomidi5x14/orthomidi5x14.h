@@ -732,6 +732,7 @@ typedef struct {
     uint8_t rate_override;              // 0=use preset, else override (NOTE_VALUE_* | TIMING_MODE_*)
     uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
     uint32_t pattern_start_time;        // When current pattern loop started
+    uint32_t grid_start_step;           // Global beat grid step when this seq started (for multi-seq alignment)
 
     // Locked-in values (captured when sequencer starts playing)
     uint8_t locked_channel;             // Locked MIDI channel
@@ -807,6 +808,10 @@ void arp_set_rate_override(uint8_t note_value, uint8_t timing_mode);
 void seq_set_rate_override(uint8_t note_value, uint8_t timing_mode);
 void arp_reset_overrides(void);
 void seq_reset_overrides(void);
+
+// Beat grid synchronization (shared reference for arp, seq, and loop alignment)
+void sync_beat_grid_origin(uint32_t origin_ms);
+bool is_beat_grid_active(void);
 
 // Arpeggiator note press order tracking (called from process_midi.c)
 void arp_track_note_pressed(uint8_t live_note_index);

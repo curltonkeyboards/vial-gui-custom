@@ -200,7 +200,8 @@ typedef struct {
     bool waiting_for_loop_gap;
     uint32_t next_event_time;
     uint32_t loop_gap_time;
-    uint32_t loop_length;  // ADD THIS FIELD
+    uint32_t loop_length;       // Milliseconds (kept for backward compat)
+    uint64_t loop_length_us;    // Microseconds (precise, for exact BPM-multiplicative timing)
 } macro_playback_state_t;
 
 // Loop Messaging Variables
@@ -639,67 +640,24 @@ static uint8_t apply_channel_transformations(uint8_t original_channel, int8_t ch
 }
 
 static uint32_t calculate_restart_proximity_threshold(uint8_t macro_idx) {
-    // If unsynced mode is active, return 0 (immediate restart)
+    // With exact BPM-multiplicative loop lengths (from the new quantization in
+    // dynamic_macro_record_end), all loops are exact multiples of the quarter note.
+    // This means loops will naturally align at their boundaries without fuzzy matching.
+    //
+    // We use a tight 2ms tolerance to account for:
+    //   - 1ms ISR tick granularity
+    //   - Sub-ms rounding from us→ms conversion in loop_length
+    //
+    // Previously this returned up to 500ms (full quarter note), which caused
+    // premature restarts and sync issues. The exact loop lengths make that unnecessary.
+
+    // Unsynced modes still get immediate restart (0ms)
     if ((unsynced_mode_active == 2 || unsynced_mode_active == 5)) {
-        dprintf("dynamic macro: unsynced mode active - using 0ms threshold\n");
         return 0;
     }
-    
-    // If BPM is set (from any source), use quarter note duration
-    if (current_bpm > 0 && (unsynced_mode_active == 1)) {
-        // Calculate quarter note duration from BPM
-        // current_bpm is in format where 120 BPM = 12000000 (BPM * 100000)
-        // Quarter note time = 60000ms / (current_bpm / 100000)
-        // = 6000000000 / current_bpm
-        uint32_t quarter_note_ms = 6000000000ULL / current_bpm;
-        
-        return quarter_note_ms;
-    }
-	
-	if (current_bpm > 0 && (unsynced_mode_active == 3)) {
-        // Calculate quarter note duration from BPM
-        // current_bpm is in format where 120 BPM = 12000000 (BPM * 100000)
-        // Quarter note time = 60000ms / (current_bpm / 100000)
-        // = 6000000000 / current_bpm
-        uint32_t quarter_note_ms = (6000000000ULL / current_bpm) / 3;
-        
-        return quarter_note_ms;
-    }
-    
-    // No BPM set - fall back to loop-based timing (25% of shortest loop)
-    uint32_t shortest_real_loop = 0;
-    
-    // Find the shortest REAL-WORLD loop among all macros that have content
-    for (uint8_t i = 0; i < MAX_MACROS; i++) {
-        if (macro_has_content[i] && macro_playback[i].loop_length > 0) {
-            // Calculate real-world loop duration accounting for speed
-            float speed_factor = macro_speed_factor[i];
-            uint32_t real_loop_duration;
-            
-            if (speed_factor > 0.0f) {
-                real_loop_duration = (uint32_t)(macro_playback[i].loop_length / speed_factor);
-            } else {
-                continue; // Skip paused macros
-            }
-            
-            if (shortest_real_loop == 0 || real_loop_duration < shortest_real_loop) {
-                shortest_real_loop = real_loop_duration;
-            }
-        }
-    }
-    
-    if (shortest_real_loop > 0) {
-        uint32_t threshold = shortest_real_loop / 4;  // 25% of shortest real-world loop time
-        
-        dprintf("dynamic macro: threshold = %lu ms (25%% of shortest real-world loop %lu ms)\n", 
-                threshold, shortest_real_loop);
-        
-        return threshold;
-    }
-    
-    // Final fallback if nothing else works
-    dprintf("dynamic macro: using fallback threshold %d ms\n", RESTART_PROXIMITY_THRESHOLD);
-    return RESTART_PROXIMITY_THRESHOLD;
+
+    // All synced modes: tight tolerance (loops are now exact BPM multiples)
+    return 2;
 }
 
 static void send_loop_message(uint8_t cc_number, uint8_t value) {
@@ -925,8 +883,9 @@ void dynamic_macro_init(void) {
         macro_playback[i].next_event_time = 0;
         macro_playback[i].loop_gap_time = 0;
         macro_playback[i].loop_length = 0;
+        macro_playback[i].loop_length_us = 0;
         macro_main_muted[i] = false;
-        
+
         // COMPLETE OVERDUB PLAYBACK STATE RESET
         overdub_playback[i].current = NULL;
         overdub_playback[i].end = NULL;
@@ -938,7 +897,8 @@ void dynamic_macro_init(void) {
         overdub_playback[i].next_event_time = 0;
         overdub_playback[i].loop_gap_time = 0;
         overdub_playback[i].loop_length = 0;
-		
+        overdub_playback[i].loop_length_us = 0;
+
 		capture_early_overdub_events[i] = false;
 		early_overdub_count[i] = 0;
 		memset(early_overdub_buffer[i], 0, sizeof(early_overdub_buffer[i]));
@@ -1592,6 +1552,7 @@ static bool merge_overdub_buffer(uint8_t macro_idx) {
             // Set up INDEPENDENT overdub playback state
             overdub_playback[macro_idx].loop_gap_time = overdub_independent_gap_time[macro_idx];
             overdub_playback[macro_idx].loop_length = overdub_independent_loop_length[macro_idx];
+            overdub_playback[macro_idx].loop_length_us = (uint64_t)overdub_independent_loop_length[macro_idx] * 1000;
             
             // CRITICAL: Force overdub to use independent timing if currently playing
             if (overdub_playback[macro_idx].is_playing) {
@@ -1641,6 +1602,7 @@ static bool merge_overdub_buffer(uint8_t macro_idx) {
             macro_playback_state_t *original_state = &macro_playback[macro_idx];
             overdub_playback[macro_idx].loop_gap_time = original_state->loop_gap_time;
             overdub_playback[macro_idx].loop_length = original_state->loop_length;
+            overdub_playback[macro_idx].loop_length_us = original_state->loop_length_us;
             
             dprintf("dynamic macro: merged first SYNCED overdub for macro %d (%d events, synced to parent)\n", 
                     macro_num, copy_count);
@@ -2043,8 +2005,9 @@ void start_overdub_recording(uint8_t macro_num) {
             loop_length = 2000;
         }
         state->loop_length = loop_length;
+        state->loop_length_us = (uint64_t)loop_length * 1000;
     }
-    
+
     uint32_t position_in_loop = speed_adjusted_elapsed % loop_length;
     uint32_t real_time_offset_to_loop_start;
     if (speed_factor > 0.0f) {
@@ -2096,6 +2059,7 @@ void dynamic_macro_play_overdub(uint8_t macro_num) {
             overdub_independent_timer[macro_idx] = timer_read32();
             overdub_state->timer = overdub_independent_timer[macro_idx];
             overdub_state->loop_length = overdub_independent_loop_length[macro_idx];
+            overdub_state->loop_length_us = (uint64_t)overdub_independent_loop_length[macro_idx] * 1000;
             overdub_state->loop_gap_time = overdub_independent_gap_time[macro_idx];
             
             dprintf("dynamic macro: started INDEPENDENT overdub playback for macro %d (%lu ms loop)\n", 
@@ -2525,6 +2489,7 @@ static void execute_command_batch(void) {
                         
                         // Store loop timing
                         state->loop_length = max_timestamp + state->loop_gap_time;
+                        state->loop_length_us = (uint64_t)state->loop_length * 1000;
                         
                         // Pre-initialize global loop timing variables
                         uint32_t current_time = timer_read32();
@@ -3436,8 +3401,9 @@ static void check_loop_trigger(void) {
                     overdub_independent_timer[i] = timer_read32();
                     overdub_state->timer = overdub_independent_timer[i];
                     overdub_state->loop_length = overdub_independent_loop_length[i];
+                    overdub_state->loop_length_us = (uint64_t)overdub_independent_loop_length[i] * 1000;
                     overdub_state->loop_gap_time = overdub_independent_gap_time[i];
-                    
+
                     dprintf("dynamic macro: unmuted and started independent overdub for macro %d\n", i + 1);
                 } else {
                     // Original mode: Synced overdub playback (complex positioning logic from original)
@@ -6272,53 +6238,56 @@ void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_po
 if (macro_num > 0) {
     macro_playback_state_t *state = &macro_playback[macro_num - 1];
     state->loop_gap_time = loop_gap_time;
-    
+
     // Calculate total loop length using the corrected last_event_time
     state->loop_length = last_event_time + loop_gap_time;
-    
+    state->loop_length_us = (uint64_t)state->loop_length * 1000;  // Initial estimate
+
 		// NEW: Auto-quantize to bpm master loop if in synced mode
 	// AUTO-QUANTIZE: Different behavior based on unsynced mode
 	if ((unsynced_mode_active == 2 || unsynced_mode_active == 5)) {
 		// MODE 2 (Fully Unsynced): NEVER quantize
 		dprintf("dynamic macro: unsynced mode 2 - no quantization\n");
-		
+
 	} else if (unsynced_mode_active == 1 || unsynced_mode_active == 3) {
 		// MODE 1 or 3: ALWAYS quantize to nearest quarter note (if BPM exists)
+		// Uses microsecond precision for exact BPM-multiplicative loop lengths
 		if (current_bpm > 0) {
-			// Calculate quarter note length in milliseconds
-			uint32_t quarter_note_ms = (6000000000ULL) / current_bpm;
-			
+			// Calculate quarter note length in MICROSECONDS (full precision)
+			uint64_t quarter_us = 6000000000000ULL / current_bpm;
+
 			// Calculate how many quarter notes this loop is
-			uint32_t calculated_length = state->loop_length;
-			float num_quarter_notes = (float)calculated_length / (float)quarter_note_ms;
-			
-			// Round to nearest quarter note (minimum 1 quarter note)
-			uint32_t rounded_quarter_notes = (uint32_t)(num_quarter_notes + 0.5f);
+			uint64_t raw_length_us = (uint64_t)state->loop_length * 1000;
+			uint32_t rounded_quarter_notes = (uint32_t)((raw_length_us + quarter_us / 2) / quarter_us);
 			if (rounded_quarter_notes < 1) {
 				rounded_quarter_notes = 1;
 			}
-			
+
 			// Cap at reasonable maximum (64 quarter notes = 16 bars)
 			if (rounded_quarter_notes > 64) {
 				rounded_quarter_notes = 64;
 				dprintf("dynamic macro: capped quantization to 64 quarter notes\n");
 			}
-			
-			uint32_t quantized_length = rounded_quarter_notes * quarter_note_ms;
-			
+
+			// Exact microsecond length (no rounding error)
+			uint64_t exact_length_us = (uint64_t)rounded_quarter_notes * quarter_us;
+			uint32_t quantized_length = (uint32_t)((exact_length_us + 500) / 1000);  // Round to nearest ms
+
 			// Adjust loop_gap_time to achieve the quantized length
 			if (quantized_length > last_event_time) {
 				loop_gap_time = quantized_length - last_event_time;
 				state->loop_length = quantized_length;
-				
-				dprintf("dynamic macro: mode %d - quantized loop %d to %lu quarter notes (%lu ms, was %lu ms)\n", 
-						unsynced_mode_active, macro_num, rounded_quarter_notes, quantized_length, calculated_length);
+				state->loop_length_us = exact_length_us;
+
+				dprintf("dynamic macro: mode %d - quantized loop %d to %lu quarter notes (%lu ms, was %lu ms)\n",
+						unsynced_mode_active, macro_num, rounded_quarter_notes, quantized_length,
+						(uint32_t)(raw_length_us / 1000));
 			}
 		}
-		
+
 	} else if (unsynced_mode_active == 0 || unsynced_mode_active == 4) {
 		// MODE 0 (Normal Synced): Behavior depends on whether something is playing
-		
+
 		// Check if any other macros or overdubs are playing
 		uint8_t playing_count = 0;
 		for (uint8_t i = 0; i < MAX_MACROS; i++) {
@@ -6326,47 +6295,57 @@ if (macro_num > 0) {
 				playing_count++;
 			}
 		}
-		
+
 		if (playing_count > 0) {
-			// Something is playing: Use ORIGINAL quantization to master loop multiples
-			if (bpm_source_macro != 0 && bpm_source_macro != macro_num) {
+			// Something is playing: Quantize using BPM-derived quarter note (microsecond precision)
+			if (current_bpm > 0) {
+				uint64_t quarter_us = 6000000000000ULL / current_bpm;
+				uint64_t raw_length_us = (uint64_t)state->loop_length * 1000;
+				uint32_t rounded_quarter_notes = (uint32_t)((raw_length_us + quarter_us / 2) / quarter_us);
+				if (rounded_quarter_notes < 1) rounded_quarter_notes = 1;
+				if (rounded_quarter_notes > 64) rounded_quarter_notes = 64;
+
+				uint64_t exact_length_us = (uint64_t)rounded_quarter_notes * quarter_us;
+				uint32_t quantized_length = (uint32_t)((exact_length_us + 500) / 1000);
+
+				if (quantized_length > last_event_time) {
+					loop_gap_time = quantized_length - last_event_time;
+					state->loop_length = quantized_length;
+					state->loop_length_us = exact_length_us;
+
+					dprintf("dynamic macro: mode 0 - quantized to %lu quarter notes (%lu ms)\n",
+							rounded_quarter_notes, quantized_length);
+				}
+			} else if (bpm_source_macro != 0 && bpm_source_macro != macro_num) {
+				// Fallback: quantize to master loop multiples if no BPM but master exists
 				uint8_t master_idx = bpm_source_macro - 1;
-				
-				// Only quantize if the master loop is actually playing
 				if (macro_playback[master_idx].is_playing && !macro_main_muted[master_idx]) {
 					uint32_t master_loop_length = macro_playback[master_idx].loop_length;
-					
+
 					if (master_loop_length > 0 && master_loop_length < 60000) {
-						// Find the closest multiple of master loop length
 						uint32_t calculated_length = state->loop_length;
 						float multiple = (float)calculated_length / (float)master_loop_length;
-						
-						// Round to nearest multiple
+
 						uint32_t quantized_length;
 						if (multiple < 1.25f) {
-							quantized_length = master_loop_length; // 1x
+							quantized_length = master_loop_length;
 						} else if (multiple < 1.75f) {
-							quantized_length = master_loop_length + (master_loop_length / 2); // 1.5x
+							quantized_length = master_loop_length + (master_loop_length / 2);
 						} else {
-							// Round to nearest integer multiple (cap at 8x)
 							uint32_t rounded_multiple = (uint32_t)(multiple + 0.5f);
-							if (rounded_multiple > 8) {
-								rounded_multiple = 8;
-							}
+							if (rounded_multiple > 8) rounded_multiple = 8;
 							quantized_length = rounded_multiple * master_loop_length;
 						}
-						
-						// Adjust loop_gap_time to achieve the quantized length
+
 						if (quantized_length > last_event_time) {
 							loop_gap_time = quantized_length - last_event_time;
 							state->loop_length = quantized_length;
-							
-							dprintf("dynamic macro: mode 0 - quantized to master loop multiple (%lu ms)\n", 
+							state->loop_length_us = (uint64_t)quantized_length * 1000;
+
+							dprintf("dynamic macro: mode 0 - quantized to master loop multiple (%lu ms)\n",
 									quantized_length);
 						}
 					}
-				} else {
-					dprintf("dynamic macro: mode 0 - master loop not playing, no quantization\n");
 				}
 			}
 		} else {
@@ -6377,35 +6356,57 @@ if (macro_num > 0) {
     // ========================================================================
     // BPM CALCULATION WITH MIDI CLOCK INTEGRATION
     // ========================================================================
-    
+
     bool bpm_was_zero = (current_bpm == 0);
     bool bpm_changed = false;
-    
+
     if (current_bpm == 0 && state->loop_length > 1000) {
         // Start with 4-beat assumption
         uint32_t calculated_bpm = (24000000000ULL) / state->loop_length;
-        
+
         // Keep halving if too high (maybe it's 8 beats, 16 beats, etc.)
         while (calculated_bpm > 20000000) {  // While > 200 BPM
             calculated_bpm = calculated_bpm / 2;
         }
-        
+
         // Keep doubling if too low (maybe it's 2 beats, 1 beat, etc.)
         while (calculated_bpm < 8000000) {   // While < 80 BPM
             calculated_bpm = calculated_bpm * 2;
         }
-        
+
         // Check if we got it in range
         if (calculated_bpm >= 6000000 && calculated_bpm <= 20000000) {
             current_bpm = calculated_bpm;
             bpm_source_macro = macro_num;  // Track which macro set the BPM
             bpm_changed = true;
-            
+
             // Store this macro's recording BPM
             macro_recording_bpm[macro_num - 1] = current_bpm;
             macro_has_content[macro_num - 1] = true;
-            
-            dprintf("dynamic macro: recorded macro %d at BPM %lu.%05lu\n", 
+
+            // RE-DERIVE EXACT LOOP LENGTH: Now that we have a BPM, make the loop
+            // an exact multiple of the BPM-derived quarter note. This ensures all
+            // future loops quantized to this BPM will have perfectly multiplicative lengths.
+            {
+                uint64_t quarter_us = 6000000000000ULL / current_bpm;
+                uint64_t raw_length_us = (uint64_t)state->loop_length * 1000;
+                uint32_t num_quarters = (uint32_t)((raw_length_us + quarter_us / 2) / quarter_us);
+                if (num_quarters < 1) num_quarters = 1;
+
+                uint64_t exact_length_us = (uint64_t)num_quarters * quarter_us;
+                state->loop_length_us = exact_length_us;
+                state->loop_length = (uint32_t)((exact_length_us + 500) / 1000);
+
+                // Update gap time to match new exact length
+                if (state->loop_length > last_event_time) {
+                    state->loop_gap_time = state->loop_length - last_event_time;
+                }
+
+                dprintf("dynamic macro: re-derived exact loop length: %lu ms (%lu quarter notes, BPM %lu.%05lu)\n",
+                        state->loop_length, num_quarters, current_bpm / 100000, current_bpm % 100000);
+            }
+
+            dprintf("dynamic macro: recorded macro %d at BPM %lu.%05lu\n",
                     macro_num, current_bpm / 100000, current_bpm % 100000);
         } else {
             dprintf("dynamic macro: could not find reasonable BPM for loop length\n");
@@ -6414,8 +6415,8 @@ if (macro_num > 0) {
         // Macro recorded while BPM already exists - store current BPM as this macro's base
         macro_recording_bpm[macro_num - 1] = current_bpm;
         macro_has_content[macro_num - 1] = true;
-        
-        dprintf("dynamic macro: recorded macro %d at current BPM %lu.%05lu\n", 
+
+        dprintf("dynamic macro: recorded macro %d at current BPM %lu.%05lu\n",
                 macro_num, current_bpm / 100000, current_bpm % 100000);
     }
     
@@ -6452,6 +6453,7 @@ if (macro_num > 0) {
             // Initialize overdub playback state
             overdub_playback[macro_num - 1].buffer_start = overdub_buffers[macro_num - 1];
             overdub_playback[macro_num - 1].loop_length = state->loop_length;
+            overdub_playback[macro_num - 1].loop_length_us = state->loop_length_us;
             overdub_playback[macro_num - 1].loop_gap_time = state->loop_gap_time;
             
             dprintf("dynamic macro: allocated %lu events for macro %d overdub buffer\n", 
@@ -6494,11 +6496,14 @@ void execute_deferred_record_stop(void) {
     // from loop length and auto-start internal clock)
     dynamic_macro_record_end(rec_start, macro_pointer, +1, rec_end_ptr, &recording_start_time);
 
-    // Override BPM to exactly 120 (user requirement for arp-synced stops)
-    current_bpm = 12000000;
+    // Use the BPM that record_end calculated from the actual loop length.
+    // Previously this forced current_bpm = 12000000 (120.0 BPM) regardless of
+    // actual tempo, causing mismatches between loop playback and arp/seq timing.
+    // Now record_end's BPM calculation stands — it derives BPM from the loop's
+    // actual duration, preserving the true tempo.
     bpm_source_macro = saved_macro_id;
 
-    // Update MIDI clock tempo to match the forced 120 BPM
+    // Ensure MIDI clock is running at the correct tempo
     if (is_internal_clock_active()) {
         internal_clock_tempo_changed();
     } else if (!is_external_clock_active()) {
@@ -6516,7 +6521,8 @@ void execute_deferred_record_stop(void) {
     }
 
     loop_deferred_record_stop_pending = false;
-    dprintf("dynamic macro: deferred record stop executed for macro %d (BPM forced to 120)\n", saved_macro_id);
+    dprintf("dynamic macro: deferred record stop executed for macro %d (BPM %lu.%05lu)\n",
+            saved_macro_id, current_bpm / 100000, current_bpm % 100000);
 }
 
 // Modify the existing cycle_macro_speed function to handle BPM source macro
@@ -8050,8 +8056,9 @@ static bool handle_overdub_advanced_mode(uint8_t macro_num, uint8_t macro_idx,
                 overdub_independent_timer[macro_idx] = timer_read32();
                 overdub_state->timer = overdub_independent_timer[macro_idx];
                 overdub_state->loop_length = overdub_independent_loop_length[macro_idx];
+                overdub_state->loop_length_us = (uint64_t)overdub_independent_loop_length[macro_idx] * 1000;
                 overdub_state->loop_gap_time = overdub_independent_gap_time[macro_idx];
-                
+
                 reset_bpm_timing_for_loop_start();
                 send_loop_message(overdub_start_playing_cc[macro_num - 1], 127);
                 dprintf("dynamic macro: [ADVANCED] immediately started independent overdub playback for macro %d\n", macro_num);
@@ -9223,6 +9230,7 @@ end_overdub_recording_mode_aware(macro_num, false, true);
                     if (macro_playback[macro_idx].loop_length > 0) {
                         overdub_state->loop_gap_time = macro_playback[macro_idx].loop_gap_time;
                         overdub_state->loop_length = macro_playback[macro_idx].loop_length;
+                        overdub_state->loop_length_us = macro_playback[macro_idx].loop_length_us;
                     }
                     
                     reset_bpm_timing_for_loop_start();
@@ -10349,6 +10357,7 @@ if (macro_key_held[i] && !macro_deleted[i]) {
                 // COMPLETE overdub playback state reset to match fresh macro state
                 overdub_playback[i].buffer_start = overdub_buffers[i];
                 overdub_playback[i].loop_length = macro_playback[i].loop_length;
+                overdub_playback[i].loop_length_us = macro_playback[i].loop_length_us;
                 overdub_playback[i].loop_gap_time = macro_playback[i].loop_gap_time;
                 overdub_playback[i].current = NULL;
                 overdub_playback[i].end = overdub_buffer_ends[i];
@@ -10435,8 +10444,9 @@ if (macro_key_held[i] && !macro_deleted[i]) {
             macro_playback[i].next_event_time = 0;
             macro_playback[i].loop_gap_time = 0;
             macro_playback[i].loop_length = 0;
+            macro_playback[i].loop_length_us = 0;
             macro_main_muted[i] = false;
-            
+
             // COMPLETE OVERDUB PLAYBACK STATE RESET
             overdub_playback[i].current = NULL;
             overdub_playback[i].end = NULL;
@@ -10448,8 +10458,9 @@ if (macro_key_held[i] && !macro_deleted[i]) {
             overdub_playback[i].next_event_time = 0;
             overdub_playback[i].loop_gap_time = 0;
             overdub_playback[i].loop_length = 0;
-            macro_manual_speed[i] = 1.0f;      
-            macro_speed_factor[i] = 1.0f;      
+            overdub_playback[i].loop_length_us = 0;
+            macro_manual_speed[i] = 1.0f;
+            macro_speed_factor[i] = 1.0f;
 			capture_early_overdub_events[i] = false;
 			early_overdub_count[i] = 0;
 			memset(early_overdub_buffer[i], 0, sizeof(early_overdub_buffer[i]));	
@@ -12377,6 +12388,7 @@ static void handle_clear_all_loops(void) {
         macro_playback[i].next_event_time = 0;
         macro_playback[i].loop_gap_time = 0;
         macro_playback[i].loop_length = 0;
+        macro_playback[i].loop_length_us = 0;
         macro_main_muted[i] = false;
 
         // COMPLETE OVERDUB PLAYBACK STATE RESET
@@ -12390,6 +12402,7 @@ static void handle_clear_all_loops(void) {
         overdub_playback[i].next_event_time = 0;
         overdub_playback[i].loop_gap_time = 0;
         overdub_playback[i].loop_length = 0;
+        overdub_playback[i].loop_length_us = 0;
         macro_manual_speed[i] = 1.0f;
         macro_speed_factor[i] = 1.0f;
         capture_early_overdub_events[i] = false;
@@ -13068,8 +13081,9 @@ bool deserialize_macro_data(uint8_t* buffer, uint16_t buffer_size, uint8_t expec
     offset += 4;
     
     macro_playback[macro_idx].loop_length = loop_length;
+    macro_playback[macro_idx].loop_length_us = (uint64_t)loop_length * 1000;
     macro_playback[macro_idx].loop_gap_time = loop_gap;
-    
+
     // Read BPM info
     if (offset + 5 > buffer_size) return false;
     uint8_t is_bpm_source = buffer[offset++];
@@ -13092,6 +13106,7 @@ bool deserialize_macro_data(uint8_t* buffer, uint16_t buffer_size, uint8_t expec
     if (overdub_buffers[macro_idx] != NULL) {
         overdub_playback[macro_idx].buffer_start = overdub_buffers[macro_idx];
         overdub_playback[macro_idx].loop_length = loop_length;
+        overdub_playback[macro_idx].loop_length_us = (uint64_t)loop_length * 1000;
         overdub_playback[macro_idx].loop_gap_time = loop_gap;
     }
     
@@ -13161,6 +13176,7 @@ static void clear_overdub_only(uint8_t macro_num) {
         // COMPLETE overdub playback state reset to match fresh macro state
         overdub_playback[macro_idx].buffer_start = overdub_buffers[macro_idx];
         overdub_playback[macro_idx].loop_length = macro_playback[macro_idx].loop_length;
+        overdub_playback[macro_idx].loop_length_us = macro_playback[macro_idx].loop_length_us;
         overdub_playback[macro_idx].loop_gap_time = macro_playback[macro_idx].loop_gap_time;
         overdub_playback[macro_idx].current = NULL;
         overdub_playback[macro_idx].end = overdub_buffer_ends[macro_idx];
@@ -13274,6 +13290,7 @@ bool deserialize_overdub_data(uint8_t* buffer, uint16_t buffer_size, uint8_t exp
     if (overdub_buffers[macro_idx] != NULL) {
         overdub_playback[macro_idx].buffer_start = overdub_buffers[macro_idx];
         overdub_playback[macro_idx].loop_length = macro_playback[macro_idx].loop_length;
+        overdub_playback[macro_idx].loop_length_us = macro_playback[macro_idx].loop_length_us;
         overdub_playback[macro_idx].loop_gap_time = macro_playback[macro_idx].loop_gap_time;
     }
     
