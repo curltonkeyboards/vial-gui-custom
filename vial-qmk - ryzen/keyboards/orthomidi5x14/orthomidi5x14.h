@@ -650,6 +650,10 @@ typedef enum {
     ARPMODE_COUNT
 } arp_mode_t;
 
+// Macro ID base for sequencer notes (slots 0-7 use IDs 20-27)
+// Avoids conflict with looper macro IDs 1-4
+#define SEQ_MACRO_ID_BASE 20
+
 // Arpeggiator note in the tracking array (for gate timing)
 typedef struct {
     uint8_t channel;
@@ -657,6 +661,8 @@ typedef struct {
     uint8_t velocity;
     uint32_t note_off_time;  // When to send note-off based on gate length
     bool active;
+    bool from_seq;           // true = sequencer note (sent as macro note), false = arp note
+    uint8_t seq_slot;        // Sequencer slot index (0-7) when from_seq is true
 } arp_note_t;
 
 // Individual note definition within a preset (OPTIMIZED: 3 bytes per note, was 5)
@@ -944,6 +950,8 @@ void process_arp_note_offs(void);
 void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127);
 void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity);
+void midi_send_noteon_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot);
+void midi_send_noteoff_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot);
 
 #endif // ORTHOMIDI5X14_H
 

@@ -10,6 +10,7 @@
 // Define constants for live note tracking
 #define MAX_LIVE_NOTES 32
 #define MAX_SUSTAIN_NOTES 64
+#define SEQ_MACRO_ID_BASE 20  // Sequencer slots use macro IDs 20-27
 
 
 // Array to track live (non-macro) notes that are currently held
@@ -977,6 +978,54 @@ void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity) {
     }
 
     dprintf("arp: note-off ch:%d note:%d vel:%d\n", channel, note, velocity);
+}
+
+// Send note-on for sequencer as a macro note (not recorded by looper)
+void midi_send_noteon_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot) {
+    uint8_t final_velocity = velocity;
+    if (final_velocity < 1) final_velocity = 1;
+    if (final_velocity > 127) final_velocity = 127;
+
+    uint8_t macro_id = SEQ_MACRO_ID_BASE + seq_slot;
+
+    // Send MIDI note-on
+    midi_send_noteon(&midi_device, channel, note, final_velocity);
+
+    // Display updates
+    noteondisplayupdates(note);
+
+    // Use macro lighting (not live lighting) so LED system knows this is a sequencer note
+    add_lighting_macro_note(channel, note, macro_id, final_velocity);
+
+    // Mark as macro note so looper won't record it
+    mark_note_from_macro(channel, note, macro_id);
+
+    // Do NOT record to looper (no dynamic_macro_intercept_noteon)
+    // Do NOT collect preroll events
+
+    dprintf("seq: macro note-on ch:%d note:%d vel:%d slot:%d\n", channel, note, final_velocity, seq_slot);
+}
+
+// Send note-off for sequencer macro note (not recorded by looper)
+void midi_send_noteoff_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot) {
+    uint8_t macro_id = SEQ_MACRO_ID_BASE + seq_slot;
+
+    // Send MIDI note-off
+    midi_send_noteoff(&midi_device, channel, note, velocity);
+
+    // Display updates
+    noteoffdisplayupdates(note);
+
+    // Remove macro lighting
+    remove_lighting_macro_note(channel, note, macro_id);
+
+    // Unmark from macro tracking
+    unmark_note_from_macro(channel, note, macro_id);
+
+    // Do NOT record to looper (no dynamic_macro_intercept_noteoff)
+    // Do NOT collect preroll events
+
+    dprintf("seq: macro note-off ch:%d note:%d vel:%d slot:%d\n", channel, note, velocity, seq_slot);
 }
 
 // Modified process_midi main switch cases

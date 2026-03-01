@@ -283,9 +283,35 @@ void add_arp_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note
             arp_notes[i].velocity = velocity;
             arp_notes[i].note_off_time = note_off_time;
             arp_notes[i].active = true;
+            arp_notes[i].from_seq = false;
+            arp_notes[i].seq_slot = 0;
             arp_note_count++;
             dprintf("arp: added note ch:%d note:%d vel:%d off_time:%lu (count:%d)\n",
                     channel, note, velocity, note_off_time, arp_note_count);
+            return;
+        }
+    }
+}
+
+// Add a sequencer note to the gate tracking array (marked as macro note)
+static void add_seq_note(uint8_t channel, uint8_t note, uint8_t velocity, uint32_t note_off_time, uint8_t slot) {
+    if (arp_note_count >= MAX_ARP_NOTES) {
+        dprintf("seq: note buffer full, cannot add note\n");
+        return;
+    }
+
+    for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
+        if (!arp_notes[i].active) {
+            arp_notes[i].channel = channel;
+            arp_notes[i].note = note;
+            arp_notes[i].velocity = velocity;
+            arp_notes[i].note_off_time = note_off_time;
+            arp_notes[i].active = true;
+            arp_notes[i].from_seq = true;
+            arp_notes[i].seq_slot = slot;
+            arp_note_count++;
+            dprintf("seq: added note ch:%d note:%d vel:%d slot:%d off_time:%lu (count:%d)\n",
+                    channel, note, velocity, slot, note_off_time, arp_note_count);
             return;
         }
     }
@@ -314,16 +340,25 @@ void process_arp_note_offs(void) {
     for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
         if (arp_notes[i].active && current_time >= arp_notes[i].note_off_time) {
             // Time to send note-off
-            midi_send_noteoff_arp(arp_notes[i].channel,
-                                 arp_notes[i].note,
-                                 arp_notes[i].velocity);
+            if (arp_notes[i].from_seq) {
+                // Sequencer note: use macro-style note-off (not recorded by looper)
+                midi_send_noteoff_seq_macro(arp_notes[i].channel,
+                                            arp_notes[i].note,
+                                            arp_notes[i].velocity,
+                                            arp_notes[i].seq_slot);
+            } else {
+                // Arpeggiator note: use normal arp note-off
+                midi_send_noteoff_arp(arp_notes[i].channel,
+                                     arp_notes[i].note,
+                                     arp_notes[i].velocity);
+            }
 
             // Mark as inactive
             arp_notes[i].active = false;
             arp_note_count--;
 
-            dprintf("arp: gated off note ch:%d note:%d\n",
-                    arp_notes[i].channel, arp_notes[i].note);
+            dprintf("arp: gated off note ch:%d note:%d from_seq:%d\n",
+                    arp_notes[i].channel, arp_notes[i].note, arp_notes[i].from_seq);
         }
     }
 }
@@ -730,13 +765,20 @@ void arp_stop(void) {
     // Immediately send note-offs for all active arp notes to prevent stuck notes
     for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
         if (arp_notes[i].active) {
-            midi_send_noteoff_arp(arp_notes[i].channel,
-                                 arp_notes[i].note,
-                                 arp_notes[i].velocity);
+            if (arp_notes[i].from_seq) {
+                midi_send_noteoff_seq_macro(arp_notes[i].channel,
+                                            arp_notes[i].note,
+                                            arp_notes[i].velocity,
+                                            arp_notes[i].seq_slot);
+            } else {
+                midi_send_noteoff_arp(arp_notes[i].channel,
+                                     arp_notes[i].note,
+                                     arp_notes[i].velocity);
+            }
             arp_notes[i].active = false;
             arp_note_count--;
-            dprintf("arp: force-off note ch:%d note:%d\n",
-                    arp_notes[i].channel, arp_notes[i].note);
+            dprintf("arp: force-off note ch:%d note:%d from_seq:%d\n",
+                    arp_notes[i].channel, arp_notes[i].note, arp_notes[i].from_seq);
         }
     }
     arp_note_count = 0;  // Safety reset
@@ -1154,13 +1196,20 @@ void seq_stop(uint8_t slot) {
         // (seq uses arp_notes[] for gate tracking)
         for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
             if (arp_notes[i].active) {
-                midi_send_noteoff_arp(arp_notes[i].channel,
-                                     arp_notes[i].note,
-                                     arp_notes[i].velocity);
+                if (arp_notes[i].from_seq) {
+                    midi_send_noteoff_seq_macro(arp_notes[i].channel,
+                                                arp_notes[i].note,
+                                                arp_notes[i].velocity,
+                                                arp_notes[i].seq_slot);
+                } else {
+                    midi_send_noteoff_arp(arp_notes[i].channel,
+                                         arp_notes[i].note,
+                                         arp_notes[i].velocity);
+                }
                 arp_notes[i].active = false;
                 arp_note_count--;
-                dprintf("seq: force-off note ch:%d note:%d\n",
-                        arp_notes[i].channel, arp_notes[i].note);
+                dprintf("seq: force-off note ch:%d note:%d from_seq:%d\n",
+                        arp_notes[i].channel, arp_notes[i].note, arp_notes[i].from_seq);
             }
         }
         arp_note_count = 0;  // Safety reset
@@ -1173,12 +1222,19 @@ void seq_stop_all(void) {
     // Send note-offs for all active arp notes first (seq uses arp_notes[])
     for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
         if (arp_notes[i].active) {
-            midi_send_noteoff_arp(arp_notes[i].channel,
-                                 arp_notes[i].note,
-                                 arp_notes[i].velocity);
+            if (arp_notes[i].from_seq) {
+                midi_send_noteoff_seq_macro(arp_notes[i].channel,
+                                            arp_notes[i].note,
+                                            arp_notes[i].velocity,
+                                            arp_notes[i].seq_slot);
+            } else {
+                midi_send_noteoff_arp(arp_notes[i].channel,
+                                     arp_notes[i].note,
+                                     arp_notes[i].velocity);
+            }
             arp_notes[i].active = false;
-            dprintf("seq: force-off note ch:%d note:%d\n",
-                    arp_notes[i].channel, arp_notes[i].note);
+            dprintf("seq: force-off note ch:%d note:%d from_seq:%d\n",
+                    arp_notes[i].channel, arp_notes[i].note, arp_notes[i].from_seq);
         }
     }
     arp_note_count = 0;  // Safety reset
@@ -1254,12 +1310,12 @@ void seq_update(void) {
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
-                // Send note-on using sequencer's locked-in values
+                // Send note-on using sequencer's locked-in values (as macro note, not recorded by looper)
                 midi_send_noteon_seq(slot, (uint8_t)midi_note, note->velocity);
 
-                // Add to arp_notes for gate tracking (use locked channel)
+                // Add to arp_notes for gate tracking (marked as seq note for macro-style note-off)
                 uint32_t note_off_time = current_time + gate_duration_ms;
-                add_arp_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity, note_off_time);
+                add_seq_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity, note_off_time, slot);
             }
         }
 
@@ -1299,8 +1355,8 @@ void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127) {
     // Apply velocity curve + locked per-slot vel range
     uint8_t raw_travel = apply_seq_velocity_pipeline(velocity_0_127, slot);
 
-    // Send the note
-    midi_send_noteon_arp(channel, (uint8_t)transposed_note, raw_travel, raw_travel);
+    // Send as macro note (not recorded by looper)
+    midi_send_noteon_seq_macro(channel, (uint8_t)transposed_note, raw_travel, slot);
 }
 
 // =============================================================================
