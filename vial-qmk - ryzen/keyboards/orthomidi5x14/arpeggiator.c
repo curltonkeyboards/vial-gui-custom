@@ -744,7 +744,19 @@ void arp_start(uint8_t preset_id) {
     arp_state.active = true;
     arp_state.current_note_in_chord = 0;
     arp_state.notes_released = false;
-    arp_state.next_note_time = timer_read32();  // Start immediately
+
+    // Defer start to next seq step if synced mode and a step sequencer is running
+    bool is_synced_mode = (arp_state.mode == ARPMODE_SINGLE_NOTE_SYNCED ||
+                           arp_state.mode == ARPMODE_CHORD_SYNCED ||
+                           arp_state.mode == ARPMODE_CHORD_ADVANCED);
+    if (is_synced_mode && seq_is_any_active()) {
+        arp_state.deferred_start_pending = true;
+        arp_state.next_note_time = UINT32_MAX;  // Don't play until seq step releases us
+        dprintf("arp: deferred start (synced mode + seq active)\n");
+    } else {
+        arp_state.deferred_start_pending = false;
+        arp_state.next_note_time = timer_read32();  // Start immediately
+    }
 
     // Reset chord unsynced per-note tracking on fresh start
     reset_unsynced_notes();
@@ -761,6 +773,7 @@ void arp_stop(void) {
     arp_state.latch_mode = false;
     arp_state.key_held = false;
     arp_state.notes_released = false;
+    arp_state.deferred_start_pending = false;
 
     // Immediately send note-offs for all active arp notes to prevent stuck notes
     for (uint8_t i = 0; i < MAX_ARP_NOTES; i++) {
@@ -877,6 +890,11 @@ void arp_update(void) {
             unsynced_notes[u].next_note_time = current_time + ms_per_16th;
         }
 
+        // Fire loop trigger on every arp step (when no macro loop is playing)
+        if (!dynamic_macro_is_playing()) {
+            dynamic_macro_handle_loop_trigger();
+        }
+
         return;  // Chord unsynced handles everything independently
     }
 
@@ -902,6 +920,11 @@ void arp_update(void) {
             arp_state.pattern_start_time = current_time;
         }
         arp_state.next_note_time = current_time + ms_per_16th_defer;
+
+        // Fire loop trigger on every arp step (when no macro loop is playing)
+        if (!dynamic_macro_is_playing()) {
+            dynamic_macro_handle_loop_trigger();
+        }
         return;
     }
 
@@ -1113,6 +1136,11 @@ void arp_update(void) {
                     // Next note at base rate (each note gets full step timing)
                     arp_state.next_note_time = current_time + ms_per_16th;
 
+                    // Fire loop trigger on every arp step (when no macro loop is playing)
+                    if (!dynamic_macro_is_playing()) {
+                        dynamic_macro_handle_loop_trigger();
+                    }
+
                     // Return early - chord advanced handles position advancement above
                     return;
                 }
@@ -1137,6 +1165,11 @@ void arp_update(void) {
     // Calculate next note time
     uint32_t ms_per_16th_final = get_ms_per_16th(preset);
     arp_state.next_note_time = current_time + ms_per_16th_final;
+
+    // Fire loop trigger on every arp step (when no macro loop is playing)
+    if (!dynamic_macro_is_playing()) {
+        dynamic_macro_handle_loop_trigger();
+    }
 }
 
 // =============================================================================
@@ -1322,10 +1355,22 @@ void seq_update(void) {
         // Advance position
         seq_state[slot].current_position_16ths++;
 
-        // Check for loop
+        // Check for loop (restart)
         if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
             seq_state[slot].current_position_16ths = 0;
             seq_state[slot].pattern_start_time = current_time;
+
+            // Fire loop trigger on seq restart (all slots)
+            dynamic_macro_handle_loop_trigger();
+        }
+
+        // Release deferred arp start on any seq step
+        if (arp_state.deferred_start_pending) {
+            arp_state.deferred_start_pending = false;
+            arp_state.next_note_time = current_time;
+            arp_state.pattern_start_time = current_time;
+            arp_state.current_position_16ths = 0;
+            dprintf("arp: deferred start released by seq step\n");
         }
 
         // Calculate next note time

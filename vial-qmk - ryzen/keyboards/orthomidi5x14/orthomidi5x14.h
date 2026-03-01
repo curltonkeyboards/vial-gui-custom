@@ -724,6 +724,7 @@ typedef struct {
     uint32_t last_tap_time;             // For double-tap detection
     bool key_held;                      // Is arp button physically held
     bool notes_released;                // True when all MIDI keys released while arp active (for pattern restart)
+    bool deferred_start_pending;        // Waiting for next seq step to start (synced mode + seq running)
 } arp_state_t;
 
 // Step Sequencer runtime state (per slot)
