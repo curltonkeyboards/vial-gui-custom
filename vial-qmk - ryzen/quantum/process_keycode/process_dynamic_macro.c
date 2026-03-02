@@ -2677,14 +2677,33 @@ static void execute_command_batch(void) {
                     // If it was muted and still playing, reset position to 0
                     if (was_muted && macro_playback[target_idx].is_playing) {
                         macro_playback[target_idx].current = macro_playback[target_idx].buffer_start;
-                        macro_playback[target_idx].timer = timer_read32();
-                        macro_playback[target_idx].next_event_time = macro_playback[target_idx].timer + 
+                        // Anchor to master loop phase if in synced mode
+                        bool batch_anchored = false;
+                        if (bpm_source_macro != 0 && bpm_source_macro != target &&
+                            !(unsynced_mode_active == 2 || unsynced_mode_active == 5)) {
+                            uint8_t m_idx = bpm_source_macro - 1;
+                            macro_playback_state_t *master = &macro_playback[m_idx];
+                            if (master->is_playing && master->loop_length > 0) {
+                                float m_speed = macro_speed_factor[m_idx];
+                                if (m_speed > 0.0f) {
+                                    uint32_t now = timer_read32();
+                                    uint32_t m_dur = (uint32_t)(master->loop_length / m_speed);
+                                    uint32_t m_pos = (now - master->timer) % m_dur;
+                                    macro_playback[target_idx].timer = now - m_pos;
+                                    batch_anchored = true;
+                                }
+                            }
+                        }
+                        if (!batch_anchored) {
+                            macro_playback[target_idx].timer = timer_read32();
+                        }
+                        macro_playback[target_idx].next_event_time = macro_playback[target_idx].timer +
                                                                    macro_playback[target_idx].current->timestamp;
                         macro_playback[target_idx].waiting_for_loop_gap = false;
-                        
+
                         // Clean up any hanging notes before restart
                         cleanup_notes_from_macro(target);
-                        
+
                         dprintf("dynamic macro: reset muted macro %d to position 0\n", target);
                     } else {
                         // Normal start from stopped state
@@ -5990,11 +6009,43 @@ void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int
     state->current = macro_buffer;
     state->end = macro_end;
     state->direction = direction;
-    state->timer = timer_read32();
     state->buffer_start = macro_buffer;
     state->is_playing = true;
     state->waiting_for_loop_gap = false;
     state->next_event_time = 0;
+
+    // ANCHORED SLAVE TIMING: If a master loop is playing in synced mode,
+    // align this loop's timer to the master's loop phase so boundaries
+    // coincide. Without this, the slave starts at an arbitrary wall-clock
+    // offset and its restarts never line up with the master.
+    bool anchored = false;
+    if (bpm_source_macro != 0 && bpm_source_macro != macro_num &&
+        !(unsynced_mode_active == 2 || unsynced_mode_active == 5)) {
+        uint8_t master_idx = bpm_source_macro - 1;
+        macro_playback_state_t *master = &macro_playback[master_idx];
+        if (master->is_playing && master->loop_length > 0) {
+            float master_speed = macro_speed_factor[master_idx];
+            if (master_speed > 0.0f) {
+                // The master's real-world loop duration
+                uint32_t master_real_dur = (uint32_t)(master->loop_length / master_speed);
+                // Current position in master's loop cycle (real time)
+                uint32_t now = timer_read32();
+                uint32_t master_elapsed = now - master->timer;
+                uint32_t master_pos = master_elapsed % master_real_dur;
+                // Set our timer so that position 0 of our loop aligns with the
+                // most recent master loop boundary (now - master_pos)
+                state->timer = now - master_pos;
+                anchored = true;
+                dprintf("dynamic macro: anchored slave %d timer to master %d "
+                        "(master_pos=%lu, master_dur=%lu)\n",
+                        macro_num, bpm_source_macro, master_pos, master_real_dur);
+            }
+        }
+    }
+    if (!anchored) {
+        state->timer = timer_read32();
+    }
+
 	reset_bpm_timing_for_loop_start();
 	process_pending_states_for_macro(macro_idx);
 
@@ -6411,10 +6462,52 @@ if (macro_num > 0) {
 			dprintf("dynamic macro: mode 0 - nothing playing, no quantization\n");
 		}
 	}
+
+    // ========================================================================
+    // SNAP MASTER LOOP TO INTEGER BPM GRID
+    // ========================================================================
+    // When this is the first loop (no BPM yet), wall-clock poll latency causes
+    // loop_length to be 2-3ms off (e.g., 2002ms instead of 2000ms). This
+    // produces a fractional BPM (e.g., 119.88 instead of 120.00). Fix: assume
+    // the user intended an integer BPM, find the nearest one, and recompute
+    // the exact loop_length from it. Only applies to the first loop (master).
+    if (current_bpm == 0 && state->loop_length > 500 &&
+        !(unsynced_mode_active == 2 || unsynced_mode_active == 5)) {
+        uint32_t raw_len = state->loop_length;
+
+        // Calculate BPM assuming 4 beats, then normalize to 80-200 range
+        uint32_t test_bpm = (uint32_t)(24000000000ULL / raw_len);
+        while (test_bpm > 20000000) test_bpm /= 2;  // > 200 BPM, halve
+        while (test_bpm < 8000000)  test_bpm *= 2;  // < 80 BPM, double
+
+        if (test_bpm >= 6000000 && test_bpm <= 20000000) {
+            // Snap to nearest integer BPM
+            uint32_t integer_bpm = ((test_bpm + 50000) / 100000) * 100000;
+
+            // Recompute exact loop_length from the integer BPM (same beat count)
+            // Determine beat count: raw_len / ms_per_beat, rounded
+            uint32_t ms_per_beat = (uint32_t)(6000000000ULL / integer_bpm);  // ms per quarter note
+            uint32_t beat_count = (raw_len + ms_per_beat / 2) / ms_per_beat;
+            if (beat_count < 1) beat_count = 1;
+
+            uint32_t quantized_len = beat_count * ms_per_beat;
+
+            if (quantized_len != raw_len && quantized_len > last_event_time) {
+                dprintf("dynamic macro: snapped loop_length %lu -> %lu ms "
+                        "(integer BPM %lu, %lu beats x %lu ms)\n",
+                        raw_len, quantized_len,
+                        integer_bpm / 100000, beat_count, ms_per_beat);
+                state->loop_length = quantized_len;
+                loop_gap_time = quantized_len - last_event_time;
+                state->loop_gap_time = loop_gap_time;
+            }
+        }
+    }
+
     // ========================================================================
     // BPM CALCULATION WITH MIDI CLOCK INTEGRATION
     // ========================================================================
-    
+
     bool bpm_was_zero = (current_bpm == 0);
     bool bpm_changed = false;
     
