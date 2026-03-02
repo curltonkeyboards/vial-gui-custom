@@ -17070,88 +17070,83 @@ void render_big_number(uint8_t number) {
     render_quick_build_recording();
 }
 
-// Helper: format milliseconds as "Xs" or "X.XXXs" for display
+// Helper: format milliseconds with max precision (10 decimal places in seconds)
+// e.g. 8004ms -> "8.0040000000s", 0ms -> "--"
 static void format_ms(uint32_t ms, char *buf, uint8_t buf_size) {
     if (ms == 0) {
         snprintf(buf, buf_size, "--");
-    } else if (ms >= 10000) {
-        // >= 10s: show as X.XXs
-        snprintf(buf, buf_size, "%lu.%02lus",
-                 (unsigned long)(ms / 1000),
-                 (unsigned long)((ms % 1000) / 10));
     } else {
-        // < 10s: show as X.XXXs
-        snprintf(buf, buf_size, "%lu.%03lus",
+        // Show X.YYY0000000s (3 meaningful ms digits + 7 trailing zeros = 10 decimals)
+        snprintf(buf, buf_size, "%lu.%03lu0000000",
                  (unsigned long)(ms / 1000),
                  (unsigned long)(ms % 1000));
     }
 }
 
-// Render post-build summary screen (BPM, loop length, arp/seq lengths)
+// Render post-build summary screen (BPM, loop lengths, arp/seq lengths)
 void render_quick_build_summary(void) {
     char buf[22];
+    char time_buf[18];
 
     // Line 0: Title
     oled_write_line_centered(0, "BUILD COMPLETE");
 
-    // Line 1: Separator
-    oled_write_line(1, "---------------------");
-
-    // Line 2: blank
-    oled_write_line(2, "");
-
-    // Line 3: BPM with full precision (e.g., "BPM: 137.50000")
+    // Line 1: BPM with full precision (e.g., "BPM: 120.00000")
     if (current_bpm == 0) {
-        oled_write_line_centered(3, "BPM: not set");
+        oled_write_line_centered(1, "BPM: not set");
     } else {
         uint32_t bpm_int = current_bpm / 100000;
         uint32_t bpm_frac = current_bpm % 100000;
         snprintf(buf, sizeof(buf), "BPM: %lu.%05lu",
                  (unsigned long)bpm_int, (unsigned long)bpm_frac);
-        oled_write_line_centered(3, buf);
+        oled_write_line_centered(1, buf);
     }
 
-    // Line 4: blank
-    oled_write_line(4, "");
+    // Line 2: blank
+    oled_write_line(2, "");
 
-    // Line 5: Loop 1 length
+    // Line 3: Loop 1 length
     {
         uint32_t loop_ms = dynamic_macro_get_loop_length(0);
-        char time_buf[12];
         format_ms(loop_ms, time_buf, sizeof(time_buf));
-        snprintf(buf, sizeof(buf), "Loop 1: %s", time_buf);
-        oled_write_line(5, buf);
+        snprintf(buf, sizeof(buf), "L1:%s", time_buf);
+        oled_write_line(3, buf);
     }
 
-    // Line 6: blank
-    oled_write_line(6, "");
+    // Line 4: Loop 2 length
+    {
+        uint32_t loop_ms = dynamic_macro_get_loop_length(1);
+        format_ms(loop_ms, time_buf, sizeof(time_buf));
+        snprintf(buf, sizeof(buf), "L2:%s", time_buf);
+        oled_write_line(4, buf);
+    }
 
-    // Line 7: Arp 1 length
+    // Line 5: blank
+    oled_write_line(5, "");
+
+    // Line 6: Arp 1 length
     if (quick_build_state.has_saved_arp_build[0]) {
         uint32_t arp_ms = quick_build_get_arp_pattern_ms();
-        char time_buf[12];
         format_ms(arp_ms, time_buf, sizeof(time_buf));
-        snprintf(buf, sizeof(buf), "Arp 1:  %s", time_buf);
-        oled_write_line(7, buf);
+        snprintf(buf, sizeof(buf), "Ar:%s", time_buf);
+        oled_write_line(6, buf);
     } else {
-        oled_write_line(7, "Arp 1:  --");
+        oled_write_line(6, "Ar:--");
     }
 
-    // Line 8: blank
-    oled_write_line(8, "");
-
-    // Line 9: Seq 1 length
+    // Line 7: Seq 1 length
     if (quick_build_state.has_saved_seq_build[0]) {
         uint32_t seq_ms = quick_build_get_seq_pattern_ms(0);
-        char time_buf[12];
         format_ms(seq_ms, time_buf, sizeof(time_buf));
-        snprintf(buf, sizeof(buf), "Seq 1:  %s", time_buf);
-        oled_write_line(9, buf);
+        snprintf(buf, sizeof(buf), "Sq:%s", time_buf);
+        oled_write_line(7, buf);
     } else {
-        oled_write_line(9, "Seq 1:  --");
+        oled_write_line(7, "Sq:--");
     }
 
-    // Lines 10-12: blank
+    // Lines 8-12: blank
+    oled_write_line(8, "");
+    oled_write_line(9, "");
     oled_write_line(10, "");
     oled_write_line(11, "");
     oled_write_line(12, "");
