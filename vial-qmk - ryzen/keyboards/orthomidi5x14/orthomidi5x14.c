@@ -17076,8 +17076,8 @@ static void format_ms(uint32_t ms, char *buf, uint8_t buf_size) {
     if (ms == 0) {
         snprintf(buf, buf_size, "--");
     } else {
-        // Show X.YYY0000000s (3 meaningful ms digits + 7 trailing zeros = 10 decimals)
-        snprintf(buf, buf_size, "%lu.%03lu0000000",
+        // Show X.YYYs (actual precision is milliseconds, no fake trailing zeros)
+        snprintf(buf, buf_size, "%lu.%03lus",
                  (unsigned long)(ms / 1000),
                  (unsigned long)(ms % 1000));
     }

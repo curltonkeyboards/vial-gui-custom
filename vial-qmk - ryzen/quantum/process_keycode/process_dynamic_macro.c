@@ -3008,23 +3008,30 @@ static void check_loop_trigger(void) {
         }
         
         // PHASE 2: EXECUTE RESTARTS SIMULTANEOUSLY
-        uint32_t restart_time = timer_read32();
-        
+        // Use anchored timing: advance each timer by its exact loop duration
+        // instead of resetting to wall clock, preventing per-cycle drift.
+        uint32_t restart_time = timer_read32();  // Fallback only
+
         // Restart main macros
         for (uint8_t i = 0; i < MAX_MACROS; i++) {
             if (main_macro_should_restart[i]) {
                 float speed_factor = macro_speed_factor[i];
-                
+
                 macro_playback[i].current = macro_playback[i].buffer_start;
-                macro_playback[i].timer = restart_time;
-                
+                // Anchored restart: advance by exact loop duration
+                if (speed_factor > 0.0f && macro_playback[i].loop_length > 0) {
+                    macro_playback[i].timer += (uint32_t)(macro_playback[i].loop_length / speed_factor);
+                } else {
+                    macro_playback[i].timer = restart_time;
+                }
+
                 if (speed_factor > 0.0f) {
                     uint32_t adjusted_timestamp = (uint32_t)(macro_playback[i].current->timestamp / speed_factor);
-                    macro_playback[i].next_event_time = restart_time + adjusted_timestamp;
+                    macro_playback[i].next_event_time = macro_playback[i].timer + adjusted_timestamp;
                 } else {
                     macro_playback[i].next_event_time = UINT32_MAX;
                 }
-                
+
                 macro_playback[i].waiting_for_loop_gap = false;
                 cleanup_notes_from_macro(i + 1);
                 
@@ -3063,11 +3070,16 @@ static void check_loop_trigger(void) {
 			}
                 
                 overdub_playback[i].current = overdub_buffers[i];
-                overdub_independent_timer[i] = restart_time;
-                overdub_playback[i].timer = restart_time;
-                overdub_playback[i].next_event_time = restart_time + overdub_playback[i].current->timestamp;
+                // Anchored restart: advance by exact overdub loop duration
+                if (overdub_independent_loop_length[i] > 0) {
+                    overdub_independent_timer[i] += overdub_independent_loop_length[i];
+                } else {
+                    overdub_independent_timer[i] = restart_time;
+                }
+                overdub_playback[i].timer = overdub_independent_timer[i];
+                overdub_playback[i].next_event_time = overdub_independent_timer[i] + overdub_playback[i].current->timestamp;
                 overdub_playback[i].waiting_for_loop_gap = false;
-                
+
                 dprintf("dynamic macro: restarted independent overdub %d at synchronized time\n", i + 1);
             }
         }
@@ -3141,10 +3153,14 @@ static void check_loop_trigger(void) {
                         dprintf("dynamic macro: auto-merged temp overdub for macro %d at forced restart\n", i + 1);
                     }
                     
-                    // Restart main macro
+                    // Restart main macro - anchored timing
                     macro_playback[i].current = macro_playback[i].buffer_start;
-                    macro_playback[i].timer = timer_read32();
-                    
+                    if (speed_factor > 0.0f && macro_playback[i].loop_length > 0) {
+                        macro_playback[i].timer += (uint32_t)(macro_playback[i].loop_length / speed_factor);
+                    } else {
+                        macro_playback[i].timer = timer_read32();
+                    }
+
                     if (speed_factor > 0.0f) {
                         uint32_t adjusted_timestamp = (uint32_t)(macro_playback[i].current->timestamp / speed_factor);
                         macro_playback[i].next_event_time = macro_playback[i].timer + adjusted_timestamp;
@@ -3670,9 +3686,13 @@ static void lt_isr_process_state(macro_playback_state_t *state, uint32_t now,
         // Check if we reached end of buffer
         if (state->current == state->end) {
             state->waiting_for_loop_gap = true;
-            uint32_t gap = is_independent ?
-                overdub_independent_gap_time[macro_idx] : state->loop_gap_time;
-            state->next_event_time = now + (uint32_t)(gap / speed);
+            // Anchored gap timing: compute loop end from base_time + loop_length/speed
+            // instead of now + gap/speed, to prevent drift accumulation per cycle.
+            uint32_t loop_len = is_independent ?
+                overdub_independent_loop_length[macro_idx] : state->loop_length;
+            uint32_t base_time = is_independent ?
+                overdub_independent_timer[macro_idx] : state->timer;
+            state->next_event_time = base_time + (uint32_t)(loop_len / speed);
 
             // For sample mode, signal restart immediately (main loop will stop it)
             if (sample_mode_active) {
@@ -4011,9 +4031,13 @@ if (is_independent_overdub && macro_num > 0) {
                 return false;
             }
             
-            // Restart from beginning with fresh independent timing
+            // Restart from beginning - anchored timing to prevent drift
             state->current = state->buffer_start;
-            overdub_independent_timer[macro_idx] = timer_read32();
+            if (overdub_independent_loop_length[macro_idx] > 0) {
+                overdub_independent_timer[macro_idx] += overdub_independent_loop_length[macro_idx];
+            } else {
+                overdub_independent_timer[macro_idx] = timer_read32();
+            }
             state->timer = overdub_independent_timer[macro_idx];
             
             // Apply speed to first event
@@ -4187,17 +4211,20 @@ if (is_independent_overdub && macro_num > 0) {
                 return false;
             }
             
-            // Calculate when to restart using independent gap time WITH SPEED
+            // Calculate when to restart using anchored timing (base + loop_length/speed)
             state->waiting_for_loop_gap = true;
-            if (speed_factor > 0.0f) {
+            if (speed_factor > 0.0f && overdub_independent_loop_length[macro_idx] > 0) {
+                state->next_event_time = overdub_independent_timer[macro_idx] +
+                    (uint32_t)(overdub_independent_loop_length[macro_idx] / speed_factor);
+            } else if (speed_factor > 0.0f) {
                 uint32_t adjusted_gap = (uint32_t)(independent_gap_time / speed_factor);
                 state->next_event_time = current_time + adjusted_gap;
             } else {
                 state->next_event_time = UINT32_MAX;
             }
-            
-            dprintf("independent overdub: reached end, waiting %lu ms before restarting (raw gap: %lu, speed: %.2fx)\n", 
-                    state->next_event_time - current_time, independent_gap_time, speed_factor);
+
+            dprintf("independent overdub: reached end, waiting before restarting (loop_len: %lu, speed: %.2fx)\n",
+                    overdub_independent_loop_length[macro_idx], speed_factor);
         } else {
             // Calculate time for next event using independent timing WITH SPEED
             if (speed_factor > 0.0f) {
@@ -4306,10 +4333,15 @@ if (is_independent_overdub && macro_num > 0) {
                 dprintf("dynamic macro: auto-merged temp SYNCED overdub for macro %d at natural loop restart\n", macro_num);
             }
             
-            // Restart from beginning
+            // Restart from beginning - use ANCHORED timing to prevent drift.
+            // Advance timer by exact loop duration instead of resetting to now.
             state->current = state->buffer_start;
-            state->timer = timer_read32();
-            
+            if (speed_factor > 0.0f) {
+                state->timer += (uint32_t)(state->loop_length / speed_factor);
+            } else {
+                state->timer = timer_read32();
+            }
+
 			if (sync_midi_mode && macro_num > 0) {
 				if (!is_overdub_state) {
 					// Main macro restart
@@ -4328,10 +4360,10 @@ if (is_independent_overdub && macro_num > 0) {
 						send_loop_message(overdub_restart_cc[macro_num - 1], 127);
 					}
 				}
-				
+
 				else {}
 			}
-            
+
             if (speed_factor > 0.0f) {
                 uint32_t base_delay = state->current->timestamp;
                 uint32_t adjusted_delay = (uint32_t)(base_delay / speed_factor);
@@ -4354,7 +4386,7 @@ if (is_independent_overdub && macro_num > 0) {
                 overdub_state->current = overdub_buffers[macro_idx];
                 overdub_state->end = overdub_buffer_ends[macro_idx];
                 overdub_state->direction = +1;
-                overdub_state->timer = timer_read32();
+                overdub_state->timer = state->timer;  // Sync to parent's anchored timer
                 overdub_state->buffer_start = overdub_buffers[macro_idx];
                 overdub_state->is_playing = true;
                 overdub_state->waiting_for_loop_gap = false;
@@ -4686,9 +4718,14 @@ if (is_independent_overdub && macro_num > 0) {
             }
             
             state->waiting_for_loop_gap = true;
-            state->next_event_time = current_time + adjusted_gap_time;
-            dprintf("midi macro: reached end, waiting %lu ms before looping (speed factor: %.2f)\n", 
-                    adjusted_gap_time, speed_factor);
+            // Anchored gap timing: use base + loop_length/speed to prevent drift
+            if (speed_factor > 0.0f && state->loop_length > 0) {
+                state->next_event_time = state->timer + (uint32_t)(state->loop_length / speed_factor);
+            } else {
+                state->next_event_time = current_time + adjusted_gap_time;
+            }
+            dprintf("midi macro: reached end, waiting before looping (loop_length: %lu, speed factor: %.2f)\n",
+                    state->loop_length, speed_factor);
         } else {
             // Calculate time for next event
             if (speed_factor > 0.0f) {
