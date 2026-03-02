@@ -6497,39 +6497,6 @@ void execute_deferred_record_stop(void) {
     // Override BPM to exactly 120 (user requirement for arp-synced stops)
     current_bpm = 12000000;
     bpm_source_macro = saved_macro_id;
-    macro_recording_bpm[macro_idx] = current_bpm;
-
-    // Quantize loop_length to exact BPM grid to eliminate scan cycle jitter.
-    // Recording started and stopped at arp step boundaries, so the loop should
-    // be an exact number of 16th notes at the forced 120 BPM.
-    {
-        macro_playback_state_t *state = &macro_playback[macro_idx];
-        if (state->loop_length > 0) {
-            // 16th note duration = 60000ms / BPM / 4 = 6000000000 / (4 * current_bpm)
-            // At 120 BPM: 6000000000 / 48000000 = 125ms exactly
-            uint32_t sixteenth_ms = (uint32_t)(6000000000ULL / (4ULL * (uint64_t)current_bpm));
-            if (sixteenth_ms > 0) {
-                uint32_t raw_length = state->loop_length;
-                uint32_t num_sixteenths = (raw_length + sixteenth_ms / 2) / sixteenth_ms;
-                if (num_sixteenths < 1) num_sixteenths = 1;
-                uint32_t quantized_length = num_sixteenths * sixteenth_ms;
-
-                // Adjust gap time to preserve last_event_time
-                uint32_t last_event_time = raw_length - state->loop_gap_time;
-                if (quantized_length > last_event_time) {
-                    state->loop_gap_time = quantized_length - last_event_time;
-                }
-                state->loop_length = quantized_length;
-
-                // Keep overdub buffer in sync
-                overdub_playback[macro_idx].loop_length = quantized_length;
-                overdub_playback[macro_idx].loop_gap_time = state->loop_gap_time;
-
-                dprintf("dynamic macro: deferred stop - quantized loop from %lu to %lu ms (%lu 16ths)\n",
-                        raw_length, quantized_length, num_sixteenths);
-            }
-        }
-    }
 
     // Update MIDI clock tempo to match the forced 120 BPM
     if (is_internal_clock_active()) {
