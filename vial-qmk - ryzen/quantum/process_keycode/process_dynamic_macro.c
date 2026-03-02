@@ -11463,6 +11463,13 @@ bool dynamic_macro_has_activity(void) {
     return false; // No activity found
 }
 
+// Get the loop length in milliseconds for a specific macro slot (0-based)
+uint32_t dynamic_macro_get_loop_length(uint8_t slot) {
+    if (slot >= MAX_MACROS) return 0;
+    return macro_playback[slot].loop_length;
+}
+
+// Legacy alias
 uint32_t get_total_loop_duration(uint8_t macro_idx) {
     if (macro_idx < MAX_MACROS) {
         return macro_playback[macro_idx].loop_length;

@@ -2284,9 +2284,37 @@ bool quick_build_is_recording(void) {
             quick_build_state.mode == QUICK_BUILD_SEQ_RECORD);
 }
 
+bool quick_build_is_summary(void) {
+    return (quick_build_state.mode == QUICK_BUILD_SUMMARY);
+}
+
+// Dismiss summary screen and return to normal
+void quick_build_dismiss_summary(void) {
+    if (quick_build_state.mode == QUICK_BUILD_SUMMARY) {
+        quick_build_state.mode = QUICK_BUILD_NONE;
+    }
+}
+
 // Get current step number (1-indexed for display)
 uint8_t quick_build_get_current_step(void) {
     return quick_build_state.current_step + 1;  // Return 1-indexed
+}
+
+// Get arp active preset total pattern length in milliseconds (for summary display)
+uint32_t quick_build_get_arp_pattern_ms(void) {
+    return compute_step_time_offset(
+        arp_active_preset.pattern_length_16ths,
+        arp_active_preset.note_value,
+        arp_active_preset.timing_mode);
+}
+
+// Get seq preset total pattern length in milliseconds for a specific slot (for summary display)
+uint32_t quick_build_get_seq_pattern_ms(uint8_t slot) {
+    if (slot >= MAX_SEQ_SLOTS) return 0;
+    return compute_step_time_offset(
+        seq_active_presets[slot].pattern_length_16ths,
+        seq_active_presets[slot].note_value,
+        seq_active_presets[slot].timing_mode);
 }
 
 // Start quick build for arpeggiator (slot 0-3)
@@ -2501,10 +2529,10 @@ void quick_build_finish(void) {
         last_gate_percent = quick_build_state.setup_gate_percent;
     }
 
-    // Exit build mode but keep the build in RAM
-    quick_build_state.mode = QUICK_BUILD_NONE;
+    // Show summary screen (stays on OLED until dismissed)
+    quick_build_state.mode = QUICK_BUILD_SUMMARY;
 
-    dprintf("quick_build: saved to RAM, ready to play\n");
+    dprintf("quick_build: saved to RAM, showing summary\n");
 }
 
 // Erase the saved arp quick build for a specific slot
@@ -2931,6 +2959,13 @@ void quick_build_confirm_root(void) {
 }
 
 void quick_build_handle_encoder_click(bool pressed) {
+    if (quick_build_state.mode == QUICK_BUILD_SUMMARY) {
+        // Summary screen: click dismisses
+        if (pressed) {
+            quick_build_dismiss_summary();
+        }
+        return;
+    }
     if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
         quick_build_state.mode == QUICK_BUILD_SEQ_SETUP) {
         // Setup param phase: click confirms parameter (on press only)

@@ -873,7 +873,8 @@ typedef enum {
     QUICK_BUILD_SEQ_SETUP,             // Seq parameter selection phase
     QUICK_BUILD_ARP_ROOT,              // Arp waiting for root note press
     QUICK_BUILD_ARP_RECORD,            // Arp note recording phase
-    QUICK_BUILD_SEQ_RECORD             // Seq note recording phase
+    QUICK_BUILD_SEQ_RECORD,            // Seq note recording phase
+    QUICK_BUILD_SUMMARY                // Post-build summary (BPM, lengths)
 } quick_build_mode_t;
 
 typedef struct {
@@ -920,7 +921,11 @@ void quick_build_update(void);
 bool quick_build_is_active(void);
 bool quick_build_is_setup(void);
 bool quick_build_is_recording(void);
+bool quick_build_is_summary(void);
 uint8_t quick_build_get_current_step(void);
+uint32_t quick_build_get_arp_pattern_ms(void);
+uint32_t quick_build_get_seq_pattern_ms(uint8_t slot);
+void quick_build_dismiss_summary(void);
 void quick_build_handle_encoder(bool clockwise);
 void quick_build_handle_encoder_click(bool pressed);
 void quick_build_confirm_param(void);
@@ -930,6 +935,7 @@ void quick_build_undo_step(void);
 void render_big_number(uint8_t number);
 void render_quick_build_setup(void);
 void render_quick_build_recording(void);
+void render_quick_build_summary(void);
 
 // Quick build parameter info (for OLED rendering)
 const char* quick_build_get_param_name(void);

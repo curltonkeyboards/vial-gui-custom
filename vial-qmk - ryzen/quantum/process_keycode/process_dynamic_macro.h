@@ -132,6 +132,7 @@ void get_queued_command_string(uint8_t macro_idx, char* cmd_str, bool* should_fl
 void get_overdub_status_string(uint8_t macro_idx, char* overdub_str);
 void get_loop_timer_string(uint8_t macro_idx, char* timer_str);
 bool dynamic_macro_has_activity(void);
+uint32_t dynamic_macro_get_loop_length(uint8_t slot);
 void force_clear_all_live_notes(void);
 void dynamic_macro_init(void);
 

@@ -14184,6 +14184,20 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                        quick_build_state.arp_slot == slot) {
                 // Currently recording this arp slot: finish and save
                 quick_build_finish();
+            } else if (quick_build_state.mode == QUICK_BUILD_SUMMARY) {
+                // Dismiss summary screen, then handle as if NONE
+                quick_build_dismiss_summary();
+                // If this slot has a saved build, toggle play; otherwise start new build
+                if (quick_build_state.has_saved_arp_build[slot]) {
+                    quick_build_load_arp_slot(slot);
+                    arp_toggle();
+                    qb_erase_hold_type = 1;
+                    qb_erase_hold_slot = slot;
+                    qb_erase_hold_start = timer_read32();
+                    qb_erase_triggered = false;
+                } else {
+                    quick_build_start_arp(slot);
+                }
             } else if (quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Start new arp quick build for this slot (enters setup phase)
                 quick_build_start_arp(slot);
@@ -14220,6 +14234,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                        quick_build_state.seq_slot == slot) {
                 // Currently recording this seq slot: finish and save
                 quick_build_finish();
+            } else if (quick_build_state.mode == QUICK_BUILD_SUMMARY) {
+                // Dismiss summary screen, then handle as if NONE
+                quick_build_dismiss_summary();
+                if (quick_build_state.has_saved_seq_build[slot]) {
+                    seq_start_slot(slot);
+                    qb_erase_hold_type = 2;
+                    qb_erase_hold_slot = slot;
+                    qb_erase_hold_start = timer_read32();
+                    qb_erase_triggered = false;
+                } else {
+                    quick_build_start_seq(slot);
+                }
             } else {
                 // Start new seq quick build for this slot (enters setup phase)
                 quick_build_start_seq(slot);
@@ -17044,6 +17070,100 @@ void render_big_number(uint8_t number) {
     render_quick_build_recording();
 }
 
+// Helper: format milliseconds as "Xs" or "X.XXXs" for display
+static void format_ms(uint32_t ms, char *buf, uint8_t buf_size) {
+    if (ms == 0) {
+        snprintf(buf, buf_size, "--");
+    } else if (ms >= 10000) {
+        // >= 10s: show as X.XXs
+        snprintf(buf, buf_size, "%lu.%02lus",
+                 (unsigned long)(ms / 1000),
+                 (unsigned long)((ms % 1000) / 10));
+    } else {
+        // < 10s: show as X.XXXs
+        snprintf(buf, buf_size, "%lu.%03lus",
+                 (unsigned long)(ms / 1000),
+                 (unsigned long)(ms % 1000));
+    }
+}
+
+// Render post-build summary screen (BPM, loop length, arp/seq lengths)
+void render_quick_build_summary(void) {
+    char buf[22];
+
+    // Line 0: Title
+    oled_write_line_centered(0, "BUILD COMPLETE");
+
+    // Line 1: Separator
+    oled_write_line(1, "---------------------");
+
+    // Line 2: blank
+    oled_write_line(2, "");
+
+    // Line 3: BPM with full precision (e.g., "BPM: 137.50000")
+    if (current_bpm == 0) {
+        oled_write_line_centered(3, "BPM: not set");
+    } else {
+        uint32_t bpm_int = current_bpm / 100000;
+        uint32_t bpm_frac = current_bpm % 100000;
+        snprintf(buf, sizeof(buf), "BPM: %lu.%05lu",
+                 (unsigned long)bpm_int, (unsigned long)bpm_frac);
+        oled_write_line_centered(3, buf);
+    }
+
+    // Line 4: blank
+    oled_write_line(4, "");
+
+    // Line 5: Loop 1 length
+    {
+        uint32_t loop_ms = dynamic_macro_get_loop_length(0);
+        char time_buf[12];
+        format_ms(loop_ms, time_buf, sizeof(time_buf));
+        snprintf(buf, sizeof(buf), "Loop 1: %s", time_buf);
+        oled_write_line(5, buf);
+    }
+
+    // Line 6: blank
+    oled_write_line(6, "");
+
+    // Line 7: Arp 1 length
+    if (quick_build_state.has_saved_arp_build[0]) {
+        uint32_t arp_ms = quick_build_get_arp_pattern_ms();
+        char time_buf[12];
+        format_ms(arp_ms, time_buf, sizeof(time_buf));
+        snprintf(buf, sizeof(buf), "Arp 1:  %s", time_buf);
+        oled_write_line(7, buf);
+    } else {
+        oled_write_line(7, "Arp 1:  --");
+    }
+
+    // Line 8: blank
+    oled_write_line(8, "");
+
+    // Line 9: Seq 1 length
+    if (quick_build_state.has_saved_seq_build[0]) {
+        uint32_t seq_ms = quick_build_get_seq_pattern_ms(0);
+        char time_buf[12];
+        format_ms(seq_ms, time_buf, sizeof(time_buf));
+        snprintf(buf, sizeof(buf), "Seq 1:  %s", time_buf);
+        oled_write_line(9, buf);
+    } else {
+        oled_write_line(9, "Seq 1:  --");
+    }
+
+    // Lines 10-12: blank
+    oled_write_line(10, "");
+    oled_write_line(11, "");
+    oled_write_line(12, "");
+
+    // Line 13: Dismiss instruction
+    oled_write_line_centered(13, "press any QB key");
+
+    // Lines 14-15: blank
+    oled_write_line(14, "");
+    oled_write_line(15, "");
+}
+
 bool oled_task_user(void) {
     if (quick_build_is_active()) {
         // =========================================================
@@ -17056,7 +17176,9 @@ bool oled_task_user(void) {
             quick_build_oled_active = true;
         }
 
-        if (quick_build_is_setup()) {
+        if (quick_build_is_summary()) {
+            render_quick_build_summary();
+        } else if (quick_build_is_setup()) {
             render_quick_build_setup();
         } else {
             render_quick_build_recording();
