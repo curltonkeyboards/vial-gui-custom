@@ -6464,47 +6464,6 @@ if (macro_num > 0) {
 	}
 
     // ========================================================================
-    // SNAP MASTER LOOP TO INTEGER BPM GRID
-    // ========================================================================
-    // When this is the first loop (no BPM yet), wall-clock poll latency causes
-    // loop_length to be 2-3ms off (e.g., 2002ms instead of 2000ms). This
-    // produces a fractional BPM (e.g., 119.88 instead of 120.00). Fix: assume
-    // the user intended an integer BPM, find the nearest one, and recompute
-    // the exact loop_length from it. Only applies to the first loop (master).
-    if (current_bpm == 0 && state->loop_length > 500 &&
-        !(unsynced_mode_active == 2 || unsynced_mode_active == 5)) {
-        uint32_t raw_len = state->loop_length;
-
-        // Calculate BPM assuming 4 beats, then normalize to 80-200 range
-        uint32_t test_bpm = (uint32_t)(24000000000ULL / raw_len);
-        while (test_bpm > 20000000) test_bpm /= 2;  // > 200 BPM, halve
-        while (test_bpm < 8000000)  test_bpm *= 2;  // < 80 BPM, double
-
-        if (test_bpm >= 6000000 && test_bpm <= 20000000) {
-            // Snap to nearest integer BPM
-            uint32_t integer_bpm = ((test_bpm + 50000) / 100000) * 100000;
-
-            // Recompute exact loop_length from the integer BPM (same beat count)
-            // Determine beat count: raw_len / ms_per_beat, rounded
-            uint32_t ms_per_beat = (uint32_t)(6000000000ULL / integer_bpm);  // ms per quarter note
-            uint32_t beat_count = (raw_len + ms_per_beat / 2) / ms_per_beat;
-            if (beat_count < 1) beat_count = 1;
-
-            uint32_t quantized_len = beat_count * ms_per_beat;
-
-            if (quantized_len != raw_len && quantized_len > last_event_time) {
-                dprintf("dynamic macro: snapped loop_length %lu -> %lu ms "
-                        "(integer BPM %lu, %lu beats x %lu ms)\n",
-                        raw_len, quantized_len,
-                        integer_bpm / 100000, beat_count, ms_per_beat);
-                state->loop_length = quantized_len;
-                loop_gap_time = quantized_len - last_event_time;
-                state->loop_gap_time = loop_gap_time;
-            }
-        }
-    }
-
-    // ========================================================================
     // BPM CALCULATION WITH MIDI CLOCK INTEGRATION
     // ========================================================================
 
