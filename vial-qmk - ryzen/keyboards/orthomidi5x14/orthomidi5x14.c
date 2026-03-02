@@ -17086,7 +17086,7 @@ static void format_ms(uint32_t ms, char *buf, uint8_t buf_size) {
 // Render post-build summary screen (BPM, loop lengths, arp/seq lengths)
 void render_quick_build_summary(void) {
     char buf[22];
-    char time_buf[18];
+    char time_buf[20];
 
     // Line 0: Title
     oled_write_line_centered(0, "BUILD COMPLETE");
