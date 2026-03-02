@@ -6535,6 +6535,36 @@ void execute_deferred_record_stop(void) {
     current_bpm = 12000000;
     bpm_source_macro = saved_macro_id;
 
+    // Quantize loop_length to nearest 16th note at 120 BPM (125ms).
+    // The deferred stop fires at an arp step boundary, but the wall-clock
+    // timestamps (recording_start_time and stop_time) have 1-3ms of
+    // main-loop poll latency, producing lengths like 2002ms instead of 2000ms.
+    // Snap to the nearest 125ms grid to eliminate this systematic error.
+    {
+        macro_playback_state_t *state = &macro_playback[macro_idx];
+        if (state->loop_length > 0) {
+            const uint32_t step_ms = 125;  // 16th note at 120 BPM
+            uint32_t raw_length = state->loop_length;
+            uint32_t quantized = ((raw_length + step_ms / 2) / step_ms) * step_ms;
+            if (quantized < step_ms) quantized = step_ms;  // Minimum 1 step
+
+            if (quantized != raw_length) {
+                dprintf("deferred stop: quantized loop_length %lu -> %lu ms (nearest 16th at 120 BPM)\n",
+                        raw_length, quantized);
+                state->loop_length = quantized;
+                // Recompute gap_time to match the quantized length
+                uint32_t last_event_time = 0;
+                for (midi_event_t *ev = rec_start; ev < *rec_end_ptr; ev++) {
+                    if (ev->timestamp > last_event_time)
+                        last_event_time = ev->timestamp;
+                }
+                if (quantized > last_event_time) {
+                    state->loop_gap_time = quantized - last_event_time;
+                }
+            }
+        }
+    }
+
     // Update MIDI clock tempo to match the forced 120 BPM
     if (is_internal_clock_active()) {
         internal_clock_tempo_changed();
