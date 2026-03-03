@@ -3263,9 +3263,6 @@ static void check_loop_trigger(void) {
     // SHARED LOGIC: Transformations, mute/unmute, commands
     // ===================================================================
 
-    // Release any step sequencers waiting for a loop trigger to start
-    seq_release_deferred_starts();
-
     // Execute any batched commands first
     if (command_batch_count > 0) {
         execute_command_batch();
