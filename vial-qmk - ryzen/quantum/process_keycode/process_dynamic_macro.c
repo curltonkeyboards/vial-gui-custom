@@ -10722,7 +10722,12 @@ void dynamic_macro_handle_loop_trigger(void) {
             }
         }
     }
-    
+    // If recording was primed directly (playing_count == 0 path, no batching),
+    // start actual recording now at the loop trigger boundary
+    else if (is_macro_primed && !collecting_preroll) {
+        dynamic_macro_actual_start(&recording_start_time);
+    }
+
     // Original loop trigger handling
     check_loop_trigger();
 }
