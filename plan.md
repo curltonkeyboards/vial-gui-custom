@@ -1,254 +1,371 @@
-# Quick Build Persistent Pool Storage - Implementation Plan
+# Quick Build & OLED Refactor - Implementation Plan
 
-## Overview
-
-Replace the current RAM-only quick build storage with a persistent pool allocator backed by EEPROM. Quick builds will survive power cycles. Uses Option A (compact-on-delete) with a 16KB EEPROM pool and variable-size presets.
-
----
-
-## Architecture
-
-### Pool Layout (EEPROM)
-
-```
-EEPROM Address 45000 (after per-key actuation ends ~44722)
-┌─────────────────────────────────────────────────────┐
-│ Pool Header (16 bytes)                               │
-│   magic (2B) | version (1B) | pool_used (2B)        │
-│   arp_count (1B) | seq_count (1B) | reserved (9B)   │
-├─────────────────────────────────────────────────────┤
-│ Slot Index (12 entries × 8 bytes = 96 bytes)         │
-│   [0] type(1) | flags(1) | offset(2) | size(2) |   │
-│       channel(1) | reserved(1)                       │
-│   ...                                                │
-│   [11] ...                                           │
-├─────────────────────────────────────────────────────┤
-│ Pool Data Area (~16272 bytes)                        │
-│   [preset bytes packed contiguously]                 │
-│   [free space...]                                    │
-└─────────────────────────────────────────────────────┘
-```
-
-**Total: 16 + 96 + 16272 = 16384 bytes (16KB)**
-
-### Slot Mapping
-
-- Slots 0-3: ARP quick builds (maps to arp_slot 0-3)
-- Slots 4-11: SEQ quick builds (maps to seq_slot 0-7, pool_index = seq_slot + 4)
-
-### Variable-Size Storage
-
-Only store actual notes, not full fixed-size arrays:
-- **ARP actual size:** `8 + (note_count × 3)` bytes (min 8, max 200)
-- **SEQ actual size:** `8 + (note_count × 3)` bytes (min 8, max 392)
-
-Since `magic` is at the end of the struct (after the notes array), we store presets in pool format:
-```
-[6 header bytes][magic 2B][note_count × 3 note bytes]
-```
-On load: read 8B header+magic, read notes into dest, zero the rest.
+## Summary of Changes
+1. **Fix quick build playback bug** - builds currently play factory presets instead of custom patterns
+2. **Add parameter setup phase** before note recording (encoder-driven UI on OLED)
+3. **Hijack encoder 0** during quick build to control parameters/recording instead of normal keycodes
+4. **Route arp/seq playback velocity through the main velocity curve**
+5. **New OLED screens** for parameter selection and recording mode
 
 ---
 
-## Changes by File
+## Bug Fix: Quick Build Plays Factory Presets Instead of Custom Patterns
 
-### 1. `orthomidi5x14.h` — New types and constants
+### Root Cause (confirmed by code analysis)
+When the user finishes a quick build and presses the button again to play:
 
-**Add after line 872:**
+**Arp path** (orthomidi5x14.c:13938):
+- `arp_toggle()` → `arp_start(arp_state.current_preset_id)` where `current_preset_id` is still **0** (factory default)
+- `arp_start(0)` → `arp_load_preset_into_slot(0)`
+- `loaded_preset_id` is **255** (set by quick_build_start_arp), so `255 != 0` → load factory preset 0 → **overwrites the quick-built pattern in RAM**
 
-```c
-// Pool storage constants
-#define PRESET_POOL_EEPROM_ADDR 45000
-#define PRESET_POOL_SIZE        16384
-#define PRESET_POOL_MAGIC       0x5142  // "QB"
-#define PRESET_POOL_VERSION     1
-#define POOL_HEADER_SIZE        16
-#define POOL_MAX_SLOTS          12      // 4 arp + 8 seq
-#define POOL_INDEX_ENTRY_SIZE   8
-#define POOL_INDEX_SIZE         (POOL_MAX_SLOTS * POOL_INDEX_ENTRY_SIZE)  // 96
-#define POOL_DATA_OFFSET        (POOL_HEADER_SIZE + POOL_INDEX_SIZE)      // 112
-#define POOL_DATA_SIZE          (PRESET_POOL_SIZE - POOL_DATA_OFFSET)     // 16272
+**Seq path** (orthomidi5x14.c:13969):
+- `seq_start(seq_state[slot].current_preset_id)` where `current_preset_id` is still **68** (factory default)
+- Same overwrite problem, PLUS `seq_find_available_slot()` may return a different slot than the one built into
 
-#define POOL_SLOT_EMPTY  0
-#define POOL_SLOT_ARP    1
-#define POOL_SLOT_SEQ    2
-#define POOL_SLOT_FLAG_VALID 0x01
+### Fix
+**File: arpeggiator.c**
+1. Add `PRESET_ID_QUICK_BUILD` sentinel (value 255)
+2. In `arp_load_preset_into_slot()`: if `preset_id == 255`, return true immediately (RAM already has the data)
+3. In `arp_start()`: allow `preset_id == 255` to bypass the `>= MAX_ARP_PRESETS` bounds check
+4. In `quick_build_finish()`: set `arp_state.current_preset_id = 255` (arp) or `seq_state[slot].current_preset_id = 255` (seq)
 
-typedef struct __attribute__((packed)) {
-    uint8_t  type;       // POOL_SLOT_EMPTY/ARP/SEQ
-    uint8_t  flags;      // bit 0: valid
-    uint16_t offset;     // Offset into pool data area
-    uint16_t size;       // Size of preset data in pool
-    uint8_t  channel;    // MIDI channel at build time (seq only)
-    uint8_t  reserved;
-} pool_slot_index_t;
-
-typedef struct {
-    uint16_t pool_used;                          // Bytes used in data area
-    pool_slot_index_t slots[POOL_MAX_SLOTS];     // 12 × 8 = 96 bytes
-} qb_pool_state_t;
-
-extern qb_pool_state_t qb_pool;
-
-// Pool API
-void qb_pool_init(void);
-void qb_pool_load(void);
-bool qb_pool_save_arp(uint8_t arp_slot, const arp_preset_t *preset);
-bool qb_pool_save_seq(uint8_t seq_slot, const seq_preset_t *preset, uint8_t channel);
-bool qb_pool_load_arp(uint8_t arp_slot, arp_preset_t *dest);
-bool qb_pool_load_seq(uint8_t seq_slot, seq_preset_t *dest);
-void qb_pool_erase_slot(uint8_t pool_index);
-bool qb_pool_has_build(uint8_t pool_index);
-uint8_t qb_pool_get_channel(uint8_t pool_index);
-```
-
-**Modify `quick_build_state_t` (line 884):**
-Remove these fields (now tracked in `qb_pool`):
-- `has_saved_arp_build[MAX_ARP_QB_SLOTS]`
-- `has_saved_seq_build[8]`
-- `saved_seq_channel[8]`
-
-Keep `active_arp_qb_slot` (still needed for arp swap tracking).
-
-### 2. `arpeggiator.c` — Pool implementation + updated functions
-
-**Remove:** `static arp_preset_t arp_quick_build_storage[MAX_ARP_QB_SLOTS];` (line 107) — saves 800 bytes of RAM.
-
-**Add:** `qb_pool_state_t qb_pool;` global.
-
-**New functions to add:**
-
-#### `qb_pool_init()` — Reset pool to empty
-Write magic + version + zero index to EEPROM.
-
-#### `qb_pool_load()` — Boot-time load
-Read header from EEPROM. If magic mismatch, call `qb_pool_init()`. Otherwise read `pool_used` and all 12 index entries into `qb_pool`.
-
-#### `qb_pool_write_header_and_index()` — Flush metadata to EEPROM
-Write the 16-byte header and 96-byte index (112 bytes total) to EEPROM. Called after every pool mutation.
-
-#### `qb_pool_save_arp(arp_slot, preset)` — Save arp to pool
-1. `pool_idx = arp_slot` (0-3)
-2. Calculate `data_size = 8 + preset->note_count * 3`
-3. If slot already occupied, call `qb_pool_erase_slot(pool_idx)` first
-4. Check `pool_used + data_size <= POOL_DATA_SIZE`
-5. Append: write header (6B) + magic (2B) + notes to EEPROM at `POOL_DATA_OFFSET + pool_used`
-6. Update index entry: type=ARP, flags=VALID, offset=pool_used, size=data_size
-7. `pool_used += data_size`
-8. `qb_pool_write_header_and_index()`
-
-#### `qb_pool_save_seq(seq_slot, preset, channel)` — Save seq to pool
-Same as arp but `pool_idx = seq_slot + 4`, type=SEQ, stores channel.
-
-#### `qb_pool_load_arp(arp_slot, dest)` — Load arp from pool
-1. `pool_idx = arp_slot`
-2. Check type == POOL_SLOT_ARP
-3. Zero dest, read header (8B), read notes into dest
-4. Validate with `arp_validate_preset()`
-
-#### `qb_pool_load_seq(seq_slot, dest)` — Load seq from pool
-Same pattern, `pool_idx = seq_slot + 4`.
-
-#### `qb_pool_erase_slot(pool_index)` — Erase with compaction
-1. Get slot's offset and size
-2. Calculate `after_bytes = pool_used - (offset + size)`
-3. If `after_bytes > 0`: compact EEPROM in 64-byte chunks (memmove via read/write)
-4. Update all index entries with `offset > deleted_offset`: subtract size
-5. Mark slot empty
-6. `pool_used -= size`
-7. `qb_pool_write_header_and_index()`
-
-#### Helper functions
-- `qb_pool_has_build(pool_idx)`: return `slots[pool_idx].type != POOL_SLOT_EMPTY`
-- `qb_pool_get_channel(pool_idx)`: return `slots[pool_idx].channel`
-
-**Modify existing functions:**
-
-#### `quick_build_finish()` (~line 2671)
-ARP path:
-- Replace `memcpy(&arp_quick_build_storage[arp_slot], &arp_active_preset, ...)` with `qb_pool_save_arp(arp_slot, &arp_active_preset)`
-- Remove `has_saved_arp_build[arp_slot] = true`
-
-SEQ path:
-- Add `qb_pool_save_seq(slot, &seq_active_presets[slot], channel_number)`
-- Remove `has_saved_seq_build[slot] = true` and `saved_seq_channel[slot] = channel_number`
-
-#### `quick_build_load_arp_slot()` (~line 2764)
-- Replace `memcpy(&arp_active_preset, &arp_quick_build_storage[slot], ...)` with `qb_pool_load_arp(slot, &arp_active_preset)`
-- Keep `active_arp_qb_slot` tracking
-
-#### `quick_build_erase_arp()` (~line 2752)
-- Add `qb_pool_erase_slot(slot)` (slots 0-3 for arp)
-- Remove `has_saved_arp_build[slot] = false`
-
-#### `quick_build_erase_seq()` (~line 2782)
-- Add `qb_pool_erase_slot(slot + 4)` (slots 4-11 for seq)
-- Remove `has_saved_seq_build[slot] = false`
-
-#### `seq_start_slot()` (~line 3322)
-- Before starting playback, load from pool: `qb_pool_load_seq(slot, &seq_active_presets[slot])`
-- Get channel from pool: `qb_pool_get_channel(slot + 4)` instead of `saved_seq_channel[slot]`
-
-### 3. `orthomidi5x14.c` — Init + button handler updates
-
-**Add to `keyboard_post_init_user()` or equivalent:**
-```c
-qb_pool_load();  // Load pool index from EEPROM at boot
-```
-
-**Modify ARP_QUICK_BUILD handler (~line 14150):**
-```c
-// Before: quick_build_state.has_saved_arp_build[slot]
-// After:  qb_pool_has_build(slot)
-```
-
-**Modify SEQ_QUICK_BUILD handler (~line 14220):**
-```c
-// Before: quick_build_state.has_saved_seq_build[slot]
-// After:  qb_pool_has_build(slot + 4)
-```
-
-**Update `quick_build_state` initializer (~line 83 in arpeggiator.c):**
-Remove initializers for deleted fields (`has_saved_arp_build`, `has_saved_seq_build`, `saved_seq_channel`).
-
-### 4. Validation update
-
-In both `arp_validate_preset()` and `seq_validate_preset()`: remove the `> 127` check on `pattern_length_16ths`. Since it's `uint8_t`, it naturally caps at 255 (16 bars at 16th resolution). The note timing position is still 7 bits (0-127) in the packed format, so steps 128-255 are just empty loop time.
+**File: orthomidi5x14.c**
+5. Seq play path: use the known quick build slot directly instead of calling `seq_start()` which uses `seq_find_available_slot()`. Instead, directly activate the specific slot:
+   ```c
+   // Instead of seq_start(seq_state[slot].current_preset_id):
+   seq_start_slot(slot);  // New function that starts a specific slot without reloading
+   ```
+6. Add `seq_start_slot(uint8_t slot)` in arpeggiator.c that activates a specific slot without lazy-loading (for quick build playback)
 
 ---
 
-## Performance Analysis
+## Phase 1: Quick Build State Machine Refactor
 
-**Compaction (worst case):** ~16KB EEPROM copy in 64-byte chunks = 256 iterations. Each `eeprom_read_block` + `eeprom_update_block` pair takes ~5ms for 64 bytes on I2C EEPROM at 400kHz. Total: ~1.3 seconds worst case. This only happens on delete (1.5s button hold), never during recording or playback.
+### New Quick Build States
+Currently: `QUICK_BUILD_NONE` / `QUICK_BUILD_ARP` / `QUICK_BUILD_SEQ`
 
-**Save (typical):** Write header+index (112B) + preset data (32-56B typical) = ~170B. Takes ~25ms.
+New states to add to `quick_build_mode_t` enum:
+```
+QUICK_BUILD_NONE          = 0   (idle)
+QUICK_BUILD_ARP_SETUP     = 1   (arp parameter selection phase)
+QUICK_BUILD_SEQ_SETUP     = 2   (seq parameter selection phase)
+QUICK_BUILD_ARP_RECORD    = 3   (arp note recording phase)
+QUICK_BUILD_SEQ_RECORD    = 4   (seq note recording phase)
+```
 
-**Load (typical):** Read header+index (112B) on boot. Read single preset (~50B) on button press. <10ms.
+### New Fields in `quick_build_state_t`
+```c
+uint8_t setup_param_index;       // Which parameter is being configured (0, 1, 2...)
+uint8_t setup_arp_mode;          // Selected arp mode during setup
+uint8_t setup_note_value;        // Selected speed (quarter/eighth/sixteenth)
+uint8_t setup_timing_mode;       // Selected timing (straight/triplet/dotted)
+uint8_t setup_gate_percent;      // Selected gate length
+bool encoder_chord_held;         // Encoder click held = chord mode (momentary)
+```
 
-**RAM savings:** Remove `arp_quick_build_storage[4]` (800 bytes). Add `qb_pool_state_t` (~100 bytes). Net saving: ~700 bytes.
+### Updated Flow
+
+**Button press → Setup phase → Recording phase → Finish**
+
+1. Press ARP_QUICK_BUILD / SEQ_QUICK_BUILD → enters `_SETUP` state
+2. OLED shows first parameter (arp mode or speed)
+3. Encoder 0 rotation cycles through options
+4. Encoder 0 click OR quick build button press confirms and advances to next parameter
+5. After all parameters confirmed → enters `_RECORD` state
+6. Note recording works as before, but encoder 0 is now: rotate CW = skip step, rotate CCW = undo step, click = momentary chord mode
+7. Quick build button press → finish
+
+### Parameter Screens
+
+**Arp setup has 3 parameters (shown in order):**
+
+| # | Parameter | Small text (top) | Big text (middle) | Options (encoder cycles) |
+|---|-----------|-----------------|-------------------|--------------------------|
+| 1 | Arp Mode | "How arp responds to" / "multiple midi notes" | Mode name | Single Synced, Single Unsynced, Chord Synced, Chord Unsynced, Chord Advanced |
+| 2 | Speed | "Pattern rate" | Rate name | Quarter, Eighth, Sixteenth (× Straight/Triplet/Dotted = 9 combos) |
+| 3 | Gate Length | "Note sustain length" | Percentage | 10%, 20%, 30%, ... 100% |
+
+**Seq setup has 2 parameters (shown in order):**
+
+| # | Parameter | Small text (top) | Big text (middle) | Options (encoder cycles) |
+|---|-----------|-----------------|-------------------|--------------------------|
+| 1 | Speed | "Pattern rate" | Rate name | Quarter, Eighth, Sixteenth (× Straight/Triplet/Dotted = 9 combos) |
+| 2 | Gate Length | "Note sustain length" | Percentage | 10%, 20%, 30%, ... 100% |
+
+---
+
+## Phase 2: Encoder 0 Hijacking
+
+### Where to Intercept
+
+**File: orthomidi5x14.c, in `process_record_user()` (line 13556)**
+
+Add an early intercept at the top of `process_record_user()` (after the EEPROM/velocity debug mode checks, before normal keycode processing):
+
+```c
+// Quick build encoder hijack - encoder 0 only
+if (quick_build_is_setup_or_recording()) {
+    // Check if this is encoder 0 rotation
+    if ((record->event.key.row == KEYLOC_ENCODER_CW ||
+         record->event.key.row == KEYLOC_ENCODER_CCW) &&
+        record->event.key.col == 0) {  // Encoder 0 only
+
+        if (record->event.pressed) {
+            bool clockwise = (record->event.key.row == KEYLOC_ENCODER_CW);
+            quick_build_handle_encoder(clockwise);
+        }
+        return false;  // Consume the event, don't process normally
+    }
+
+    // Check if this is encoder 0 click (row 5, col 0)
+    if (record->event.key.row == 5 && record->event.key.col == 0) {
+        if (record->event.pressed) {
+            quick_build_handle_encoder_click(true);
+        } else {
+            quick_build_handle_encoder_click(false);
+        }
+        return false;  // Consume
+    }
+}
+```
+
+Also intercept in `set_keylog()` (line 8851) to prevent encoder 0 from triggering CC/transpose/velocity/channel changes during quick build. Add early return before the CC encoder check:
+
+```c
+if (quick_build_is_setup_or_recording() &&
+    (record->event.key.row == KEYLOC_ENCODER_CW || record->event.key.row == KEYLOC_ENCODER_CCW) &&
+    record->event.key.col == 0) {
+    return;  // Don't process encoder 0 in set_keylog during quick build
+}
+```
+
+### Encoder Behavior by Phase
+
+**Setup phase** (`_ARP_SETUP` / `_SEQ_SETUP`):
+- Encoder 0 CW: next option value
+- Encoder 0 CCW: previous option value
+- Encoder 0 click: confirm current parameter, advance to next (or enter recording if last)
+- Quick build button: same as encoder click (confirm)
+
+**Recording phase** (`_ARP_RECORD` / `_SEQ_RECORD`):
+- Encoder 0 CW: skip step (advance without recording a note)
+- Encoder 0 CCW: undo last step (remove last note(s), go back one step)
+- Encoder 0 click (held): momentary chord mode - notes pile on same step while held
+- Quick build button: finish build
+
+---
+
+## Phase 3: OLED Display Changes
+
+### File: orthomidi5x14.c
+
+**Modify `oled_task_user()` (line 16597)**
+
+Update the quick build check to differentiate setup vs recording:
+
+```c
+if (quick_build_is_setup_or_recording()) {
+    if (quick_build_is_setup()) {
+        render_quick_build_setup();
+    } else {
+        render_quick_build_recording();
+    }
+    return false;
+}
+```
+
+### New function: `render_quick_build_setup()`
+
+OLED layout (128x128 = 21 chars × 16 rows):
+```
+Row 0:  "  ARP QUICK BUILD  " or "SEQ SLOT N BUILD"
+Row 1:  "---------------------"
+Row 2:  (blank)
+Row 3:  small text: description line 1
+Row 4:  small text: description line 2
+Row 5:  (blank)
+Row 6:  "  >> VALUE NAME << "   ← big centered text with selection arrows
+Row 7:  (blank)
+Row 8:  "  Turn to select    "
+Row 9:  "  Press to confirm  "
+Row 10: (blank)
+Row 11: " Param 1/3          "   ← progress indicator
+```
+
+Note: The 128x128 OLED uses standard 6x8 font (no actual "big font" hardware support). We use centering and `>>` `<<` arrows to emphasize the selected value. The current `render_big_number()` also uses standard font - it just centers text on the screen.
+
+### New function: `render_quick_build_recording()`
+
+OLED layout during recording:
+```
+Row 0:  "  ARP QUICK BUILD  " or "SEQ SLOT N BUILD"
+Row 1:  "---------------------"
+Row 2:  (blank)
+Row 3:  "      STEP NN       "
+Row 4:  "   NN NOTES TOTAL   "
+Row 5:  (blank)
+Row 6:  " ENC: << Undo  Skip >>"
+Row 7:  " ENC CLICK: Chord   "
+Row 8:  (blank)
+Row 9:  " Press btn to finish"
+```
+
+This replaces the current `render_big_number()` during recording to also show encoder controls.
+
+---
+
+## Phase 4: Velocity Curve for Arp/Seq Playback
+
+### Current Behavior
+- **Arp**: Raw preset velocity (0-127) → direct to MIDI out via `midi_send_noteon_arp()`
+- **Seq**: Raw preset velocity → linear vel_min/vel_max scaling → `midi_send_noteon_arp()`
+- **Normal notes**: raw_velocity (0-255) → `apply_curve()` → vel_min/vel_max mapping → MIDI out
+
+### New Behavior
+Route arp/seq velocities through the same pipeline as normal notes:
+1. Take preset velocity (0-127)
+2. Scale to 0-255 range: `travel_equiv = velocity * 2` (to match the 0-255 input `apply_curve` expects)
+3. Apply `apply_curve(travel_equiv, curve_index)` → 0-255
+4. Map through vel_min/vel_max: `final = min + (curved * (max - min)) / 255`
+5. Clamp to 1-127
+
+### Implementation
+
+**File: arpeggiator.c**
+
+Create a new helper function:
+```c
+// Apply velocity curve + min/max to arp/seq preset velocity
+static uint8_t apply_velocity_pipeline(uint8_t preset_velocity_0_127) {
+    // Scale 0-127 to 0-255 (matching normal note travel range)
+    uint16_t travel_equiv = (uint16_t)preset_velocity_0_127 * 2;
+    if (travel_equiv > 255) travel_equiv = 255;
+
+    // Get current velocity curve (use base zone curve for arp/seq)
+    extern uint8_t he_velocity_curve;
+    extern uint8_t he_velocity_min;
+    extern uint8_t he_velocity_max;
+
+    // Apply curve (0-255 → 0-255)
+    uint8_t curved = apply_curve((uint8_t)travel_equiv, he_velocity_curve);
+
+    // Map to velocity range
+    uint8_t range = he_velocity_max - he_velocity_min;
+    int16_t velocity = he_velocity_min + ((int16_t)curved * range) / 255;
+
+    // Clamp
+    if (velocity < 1) velocity = 1;
+    if (velocity > 127) velocity = 127;
+
+    return (uint8_t)velocity;
+}
+```
+
+**Modify all arp send sites** (lines ~771, ~860, ~904, ~938, ~977):
+Change from:
+```c
+uint8_t raw_travel = note->velocity;
+midi_send_noteon_arp(channel, final_note, raw_travel, raw_travel);
+```
+To:
+```c
+uint8_t processed_vel = apply_velocity_pipeline(note->velocity);
+midi_send_noteon_arp(channel, final_note, processed_vel, processed_vel);
+```
+
+**Modify `midi_send_noteon_seq()`** (line ~1182):
+Remove the old locked-in vel_min/vel_max scaling and replace with the pipeline:
+```c
+void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127) {
+    // ... channel and transpose as before ...
+
+    // Apply velocity curve + min/max (replaces old linear scaling)
+    uint8_t final_velocity = apply_velocity_pipeline(velocity_0_127);
+
+    midi_send_noteon_arp(channel, transposed_note, final_velocity, final_velocity);
+}
+```
+
+Remove the now-unused `locked_velocity_min` / `locked_velocity_max` fields from `seq_state_t`, and remove them from `seq_start()`.
+
+---
+
+## Phase 5: Undo/Skip Step Encoder Functions
+
+### File: arpeggiator.c
+
+**New function: `quick_build_skip_step()`**
+```c
+void quick_build_skip_step(void) {
+    // Advance to next step without recording a note (empty step)
+    quick_build_advance_step();
+}
+```
+
+**New function: `quick_build_undo_step()`**
+```c
+void quick_build_undo_step(void) {
+    if (quick_build_state.current_step == 0 && quick_build_state.note_count == 0) return;
+
+    // Remove all notes on the current step (and previous step if current is empty)
+    uint8_t target_step = quick_build_state.current_step;
+
+    // If current step has no notes yet, undo the previous step
+    bool current_has_notes = false;
+    // Count notes on current step
+    // ... (scan backward through notes to find ones matching current_step)
+
+    // Remove notes and decrement counters
+    // Decrement current_step
+    // Update pattern_length_16ths
+}
+```
+
+### Chord Mode (Encoder Click)
+
+The encoder 0 click at matrix position (5, 0) will be intercepted during recording mode. While held (`encoder_chord_held = true`), notes are grouped onto the same step. On release, the step advances (same behavior as sustain pedal release).
+
+In `quick_build_handle_note()`, check `quick_build_state.encoder_chord_held` alongside the existing `sustain_held` check:
+```c
+bool chord_mode = sustain_held || quick_build_state.encoder_chord_held;
+if (!chord_mode) {
+    should_advance = true;
+}
+```
+
+---
+
+## File Change Summary
+
+| File | Changes |
+|------|---------|
+| `orthomidi5x14.h` | Add new quick build states to enum, new fields to `quick_build_state_t`, add `PRESET_ID_QUICK_BUILD` define, function declarations |
+| `arpeggiator.c` | Fix playback bug, add setup phase logic, add encoder handlers, add `apply_velocity_pipeline()`, add undo/skip, add `seq_start_slot()` |
+| `orthomidi5x14.c` | Encoder 0 intercept in `process_record_user()` and `set_keylog()`, new OLED render functions, update quick build button handlers for new state machine |
 
 ---
 
 ## Implementation Order
 
-1. Add pool types/constants to `orthomidi5x14.h`
-2. Implement pool core functions in `arpeggiator.c`
-3. Update `quick_build_state_t` (remove old fields)
-4. Update `quick_build_finish/load/erase` functions
-5. Update `seq_start_slot()` to load from pool
-6. Update button handlers in `orthomidi5x14.c`
-7. Add `qb_pool_load()` to boot init
-8. Relax pattern_length validation (remove 127 cap)
-9. Update `quick_build_state` initializer
-10. Test compilation
+1. **Bug fix first** - Fix the quick build playback overwrite (small, critical)
+2. **State machine expansion** - Add new states and fields to structs/enums
+3. **OLED rendering** - Add `render_quick_build_setup()` and `render_quick_build_recording()`
+4. **Encoder hijacking** - Intercept encoder 0 in process_record_user and set_keylog
+5. **Setup phase logic** - Parameter cycling and confirmation flow
+6. **Recording phase encoder** - Skip/undo/chord mode
+7. **Velocity pipeline** - Route arp/seq through apply_curve + vel_min/vel_max
 
 ---
 
-## Edge Cases
+## Questions / Decisions Needed
 
-- **Pool full:** `qb_pool_save_*()` returns false. Build still works in RAM for the session but won't persist. Could show OLED "Pool Full" warning.
-- **Corrupt EEPROM:** Magic mismatch → `qb_pool_init()` resets pool to empty.
-- **Overwriting existing slot:** Erase-then-save (compact + append).
-- **Boot with saved builds:** `qb_pool_load()` reads index. `qb_pool_has_build()` returns true. First button press loads data from EEPROM into the existing playback arrays.
-- **Compaction during erase:** Only happens on long-press erase (1.5s hold), never in the hot path.
-- **Factory preset overwrites seq slot:** If user loads a factory/user preset into a seq slot that had a quick build, the pool data persists in EEPROM. Next QB button press reloads from pool.
+1. **Speed parameter display**: Should the 9 speed combinations (3 note values × 3 timing modes) be shown as a flat list like "16th", "16th Triplet", "16th Dotted", "8th", "8th Triplet", etc? Or as two separate parameters (note value + timing mode)?
+
+2. **Gate length granularity**: Steps of 10% (10 options: 10%-100%) or finer like 5% (20 options)?
+
+3. **Default values in setup**: Should parameters start at the current/previous values, or always at sensible defaults (e.g., Single Note Synced, Sixteenth, 80% gate)?
+
+4. **Undo behavior detail**: When undoing, should it undo the entire last step (removing all notes on that step), or note-by-note?
+
+5. **Seq locked_velocity_min/max removal**: The sequencer currently locks in vel_min/vel_max at start time so changing global settings doesn't affect running sequences. With the new pipeline calling apply_curve() live, running sequences will respond to live velocity curve/range changes. Is that the desired behavior? (It makes it consistent with how arp will work.)

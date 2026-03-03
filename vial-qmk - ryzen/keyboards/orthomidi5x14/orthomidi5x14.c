@@ -5659,9 +5659,6 @@ void keyboard_post_init_user(void) {
 	// Initialize arpeggiator system
 	arp_init();
 
-	// Load persistent quick build pool from EEPROM
-	qb_pool_load();
-
 	// Initialize null bind (SOCD) system
 	nullbind_load_from_eeprom();
 
@@ -7855,13 +7852,13 @@ bool rgb_matrix_indicators_kb(void) {
                         quick_build_state.arp_slot == s) {
                         // Orange: currently building this slot
                         r = 255; g = 140; b = 0;
-                    } else if (qb_pool_has_build(s) &&
+                    } else if (quick_build_state.has_saved_arp_build[s] &&
                                arp_state.active &&
                                arp_state.current_preset_id == PRESET_ID_QUICK_BUILD &&
                                quick_build_state.active_arp_qb_slot == s) {
                         // Green: this specific slot is playing
                         r = 0; g = 200; b = 0;
-                    } else if (qb_pool_has_build(s)) {
+                    } else if (quick_build_state.has_saved_arp_build[s]) {
                         // Red: has build, idle (or a different slot is playing)
                         r = 200; g = 0; b = 0;
                     } else {
@@ -7895,13 +7892,13 @@ bool rgb_matrix_indicators_kb(void) {
                     quick_build_state.seq_slot == s) {
                     // Orange: currently building this slot
                     r = 255; g = 140; b = 0;
-                } else if (qb_pool_has_build(s + 4)) {
+                } else if (quick_build_state.has_saved_seq_build[s]) {
                     if (seq_state[s].active && seq_state[s].deferred_start_pending) {
                         // Flash green: pending play (deferred, waiting for cycle point)
                         bool flash_on = (timer_read32() / 300) % 2;
                         if (flash_on) { r = 0; g = 200; b = 0; }
                         else { r = 0; g = 40; b = 0; }
-                    } else if (seq_state[s].active) {
+                    } else if (seq_state[s].active && !seq_state[s].deferred_start_pending) {
                         // Green: actively playing
                         r = 0; g = 200; b = 0;
                     } else {
@@ -14176,7 +14173,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         else slot = 3;
 
         if (record->event.pressed) {
-            if (qb_pool_has_build(slot) &&
+            if (quick_build_state.has_saved_arp_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved arp build for this slot and not currently building
                 if (arp_state.active && quick_build_state.active_arp_qb_slot == slot) {
@@ -14217,7 +14214,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 // Dismiss summary screen, then handle as if NONE
                 quick_build_dismiss_summary();
                 // If this slot has a saved build, toggle play; otherwise start new build
-                if (qb_pool_has_build(slot)) {
+                if (quick_build_state.has_saved_arp_build[slot]) {
                     quick_build_load_arp_slot(slot);
                     arp_toggle();
                     qb_erase_hold_type = 1;
@@ -14246,7 +14243,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         uint8_t slot = keycode - SEQ_QUICK_BUILD_1;  // 0-7
 
         if (record->event.pressed) {
-            if (qb_pool_has_build(slot + 4) &&
+            if (quick_build_state.has_saved_seq_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved seq build for this slot and not currently building: toggle play
                 seq_start_slot(slot);
@@ -14266,7 +14263,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else if (quick_build_state.mode == QUICK_BUILD_SUMMARY) {
                 // Dismiss summary screen, then handle as if NONE
                 quick_build_dismiss_summary();
-                if (qb_pool_has_build(slot + 4)) {
+                if (quick_build_state.has_saved_seq_build[slot]) {
                     seq_start_slot(slot);
                     qb_erase_hold_type = 2;
                     qb_erase_hold_slot = slot;
@@ -17163,7 +17160,7 @@ void render_quick_build_summary(void) {
     oled_write_line(5, "");
 
     // Line 6: Arp 1 length
-    if (qb_pool_has_build(0)) {
+    if (quick_build_state.has_saved_arp_build[0]) {
         uint32_t arp_ms = quick_build_get_arp_pattern_ms();
         format_ms(arp_ms, time_buf, sizeof(time_buf));
         snprintf(buf, sizeof(buf), "Ar:%s", time_buf);
@@ -17173,7 +17170,7 @@ void render_quick_build_summary(void) {
     }
 
     // Line 7: Seq 1 length
-    if (qb_pool_has_build(4)) {
+    if (quick_build_state.has_saved_seq_build[0]) {
         uint32_t seq_ms = quick_build_get_seq_pattern_ms(0);
         format_ms(seq_ms, time_buf, sizeof(time_buf));
         snprintf(buf, sizeof(buf), "Sq:%s", time_buf);
