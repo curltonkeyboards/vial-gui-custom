@@ -26,7 +26,8 @@ static int8_t macro_transpose_target[MAX_MACROS] = {0, 0, 0, 0};
 #define TOTAL_BUFFER_SIZE (MAX_MACROS * MACRO_BUFFER_SIZE)
 #define MACRO_DELETE_THRESHOLD 1000  // 2 seconds in milliseconds
 #define OVERDUB_BUFFER_SIZE 5120  // Size of temporary buffer for overdub recording
-#define RESTART_PROXIMITY_THRESHOLD 200  // 200ms threshold for restart eligibility
+// DISABLED: Early restart no longer needed — loops are now quantized to exact multiples
+// #define RESTART_PROXIMITY_THRESHOLD 200  // 200ms threshold for restart eligibility
 #define LOOP_SNAP_TO_START_THRESHOLD 100  // 100ms threshold for snapping to loop start
 #define MIDI_EVENT_DUMMY 0xFF
 
@@ -638,69 +639,56 @@ static uint8_t apply_channel_transformations(uint8_t original_channel, int8_t ch
     return (uint8_t)final_channel;
 }
 
+// DISABLED: Early restart proximity detection no longer needed —
+// loops are now quantized to exact multiples, so they naturally
+// reach their restart point at the correct time.
+#if 0
 static uint32_t calculate_restart_proximity_threshold(uint8_t macro_idx) {
     // If unsynced mode is active, return 0 (immediate restart)
     if ((unsynced_mode_active == 2 || unsynced_mode_active == 5)) {
         dprintf("dynamic macro: unsynced mode active - using 0ms threshold\n");
         return 0;
     }
-    
+
     // If BPM is set (from any source), use quarter note duration
     if (current_bpm > 0 && (unsynced_mode_active == 1)) {
-        // Calculate quarter note duration from BPM
-        // current_bpm is in format where 120 BPM = 12000000 (BPM * 100000)
-        // Quarter note time = 60000ms / (current_bpm / 100000)
-        // = 6000000000 / current_bpm
         uint32_t quarter_note_ms = 6000000000ULL / current_bpm;
-        
         return quarter_note_ms;
     }
-	
+
 	if (current_bpm > 0 && (unsynced_mode_active == 3)) {
-        // Calculate quarter note duration from BPM
-        // current_bpm is in format where 120 BPM = 12000000 (BPM * 100000)
-        // Quarter note time = 60000ms / (current_bpm / 100000)
-        // = 6000000000 / current_bpm
         uint32_t quarter_note_ms = (6000000000ULL / current_bpm) / 3;
-        
         return quarter_note_ms;
     }
-    
+
     // No BPM set - fall back to loop-based timing (25% of shortest loop)
     uint32_t shortest_real_loop = 0;
-    
-    // Find the shortest REAL-WORLD loop among all macros that have content
+
     for (uint8_t i = 0; i < MAX_MACROS; i++) {
         if (macro_has_content[i] && macro_playback[i].loop_length > 0) {
-            // Calculate real-world loop duration accounting for speed
             float speed_factor = macro_speed_factor[i];
             uint32_t real_loop_duration;
-            
+
             if (speed_factor > 0.0f) {
                 real_loop_duration = (uint32_t)(macro_playback[i].loop_length / speed_factor);
             } else {
-                continue; // Skip paused macros
+                continue;
             }
-            
+
             if (shortest_real_loop == 0 || real_loop_duration < shortest_real_loop) {
                 shortest_real_loop = real_loop_duration;
             }
         }
     }
-    
+
     if (shortest_real_loop > 0) {
-        uint32_t threshold = shortest_real_loop / 4;  // 25% of shortest real-world loop time
-        
-        dprintf("dynamic macro: threshold = %lu ms (25%% of shortest real-world loop %lu ms)\n", 
-                threshold, shortest_real_loop);
-        
+        uint32_t threshold = shortest_real_loop / 4;
         return threshold;
     }
-    
-    // Final fallback if nothing else works
-    dprintf("dynamic macro: using fallback threshold %d ms\n", RESTART_PROXIMITY_THRESHOLD);
+
     return RESTART_PROXIMITY_THRESHOLD;
 }
+#endif
 
 static void send_loop_message(uint8_t cc_number, uint8_t value) {
     if (loop_messaging_enabled && cc_number < 128) {  // CHANGED: < 128 instead of > 0
@@ -2955,8 +2943,13 @@ for (uint8_t i = 0; i < command_batch_count; i++) {
 
 
 static void check_loop_trigger(void) {
+    // DISABLED: Early restart proximity detection no longer needed —
+    // loops are now quantized to exact multiples, so they naturally
+    // reach their restart point at the correct time. The shared logic
+    // below (batched commands, transformations, mute/unmute) still runs.
+#if 0
     uint32_t current_time = timer_read32();
-    
+
     if (overdub_advanced_mode) {
         // ===================================================================
         // ADVANCED MODE: Independent overdubs with synchronized restarts
@@ -3264,11 +3257,12 @@ static void check_loop_trigger(void) {
             }
         }
     }
-    
+#endif  // Early restart proximity detection disabled
+
     // ===================================================================
     // SHARED LOGIC: Transformations, mute/unmute, commands
     // ===================================================================
-    
+
     // Execute any batched commands first
     if (command_batch_count > 0) {
         execute_command_batch();
