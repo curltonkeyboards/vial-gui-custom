@@ -674,10 +674,10 @@ typedef struct {
 typedef struct __attribute__((packed)) {
     // Byte 0-1: Packed timing and velocity
     uint16_t packed_timing_vel;
-      // bits 0-6:   timing_16ths (0-127 = max 8 bars)
+      // bits 0-6:   timing_16ths low 7 bits
       // bits 7-13:  velocity (0-127)
       // bit 14:     interval_sign (arpeggiator only: 0=positive, 1=negative)
-      // bit 15:     reserved
+      // bit 15:     timing_16ths bit 7 (extends range to 0-255 = max 16 bars)
 
     // Byte 2: Packed note/interval and octave
     uint8_t note_octave;
@@ -783,14 +783,16 @@ _Static_assert(sizeof(arp_preset_t) == ARP_PRESET_SIZE, "arp_preset_t size must 
 _Static_assert(sizeof(seq_preset_t) == SEQ_PRESET_SIZE, "seq_preset_t size must match SEQ_PRESET_SIZE");
 
 // Helper macros for unpacking note data
-#define NOTE_GET_TIMING(packed)      ((packed) & 0x7F)                        // bits 0-6
+// Timing uses bits 0-6 (low 7) + bit 15 (high bit) = 8 bits total (0-255 steps)
+#define NOTE_GET_TIMING(packed)      (((packed) & 0x7F) | (((packed) >> 8) & 0x80))  // bits 0-6 + bit 15
 #define NOTE_GET_VELOCITY(packed)    (((packed) >> 7) & 0x7F)                 // bits 7-13
 #define NOTE_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp only)
 #define NOTE_GET_NOTE(octave_byte)   ((octave_byte) & 0x0F)                   // bits 0-3
 #define NOTE_GET_OCTAVE(octave_byte) (((int8_t)((octave_byte) & 0xF0)) >> 4)  // bits 4-7 (signed)
 
 // Helper macros for packing note data
-#define NOTE_PACK_TIMING_VEL(timing, vel, sign) (((timing) & 0x7F) | (((vel) & 0x7F) << 7) | (((sign) & 0x01) << 14))
+// Timing: low 7 bits in bits 0-6, high bit in bit 15 (was reserved)
+#define NOTE_PACK_TIMING_VEL(timing, vel, sign) (((timing) & 0x7F) | (((vel) & 0x7F) << 7) | (((sign) & 0x01) << 14) | ((((timing) >> 7) & 0x01) << 15))
 #define NOTE_PACK_NOTE_OCTAVE(note, octave)     (((note) & 0x0F) | (((octave) & 0x0F) << 4))
 
 // Global arpeggiator state
@@ -915,7 +917,7 @@ typedef struct {
     quick_build_mode_t mode;           // Current build mode
     uint8_t arp_slot;                  // Which arp slot we're building (0-3)
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
-    uint8_t current_step;              // Current step (0-based internal)
+    uint16_t current_step;             // Current step (0-based internal, max 254 for 8-bit timing)
     uint16_t note_count;               // Total notes recorded so far (up to NOTE_POOL_SIZE)
     uint8_t root_note;                 // Confirmed root note (arp only, for interval calculation)
     bool has_root;                     // Has root been confirmed?
@@ -956,7 +958,7 @@ bool quick_build_is_active(void);
 bool quick_build_is_setup(void);
 bool quick_build_is_recording(void);
 bool quick_build_is_summary(void);
-uint8_t quick_build_get_current_step(void);
+uint16_t quick_build_get_current_step(void);
 uint32_t quick_build_get_arp_pattern_ms(void);
 uint32_t quick_build_get_seq_pattern_ms(uint8_t slot);
 void quick_build_dismiss_summary(void);

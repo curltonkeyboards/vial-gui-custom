@@ -2720,7 +2720,7 @@ void quick_build_dismiss_summary(void) {
 }
 
 // Get current step number (1-indexed for display)
-uint8_t quick_build_get_current_step(void) {
+uint16_t quick_build_get_current_step(void) {
     return quick_build_state.current_step + 1;  // Return 1-indexed
 }
 
@@ -3070,6 +3070,13 @@ void quick_build_erase_seq(uint8_t slot) {
 
 // Advance to next step
 static void quick_build_advance_step(void) {
+    // Cap at step 254 (pattern_length 255) to fit 8-bit timing in packed notes
+    if (quick_build_state.current_step >= 254) {
+        dprintf("quick_build: max step 255 reached, auto-finishing\n");
+        quick_build_finish();
+        return;
+    }
+
     quick_build_state.current_step++;
 
     // Update pattern length in pool header
@@ -3536,7 +3543,7 @@ void quick_build_undo_step(void) {
     arp_preset_note_t *notes = note_pool_get_notes(header);
 
     // Find the step to undo: if current step has notes, undo current; else undo previous
-    uint8_t target_step = quick_build_state.current_step;
+    uint16_t target_step = quick_build_state.current_step;
 
     // Check if current step has any notes
     bool current_has_notes = false;
