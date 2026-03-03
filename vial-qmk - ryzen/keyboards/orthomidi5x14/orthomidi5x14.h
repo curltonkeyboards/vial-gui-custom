@@ -650,6 +650,10 @@ typedef enum {
     ARPMODE_COUNT
 } arp_mode_t;
 
+// Macro ID base for sequencer notes (slots 0-7 use IDs 20-27)
+// Avoids conflict with looper macro IDs 1-4
+#define SEQ_MACRO_ID_BASE 20
+
 // Arpeggiator note in the tracking array (for gate timing)
 typedef struct {
     uint8_t channel;
@@ -657,6 +661,8 @@ typedef struct {
     uint8_t velocity;
     uint32_t note_off_time;  // When to send note-off based on gate length
     bool active;
+    bool from_seq;           // true = sequencer note (sent as macro note), false = arp note
+    uint8_t seq_slot;        // Sequencer slot index (0-7) when from_seq is true
 } arp_note_t;
 
 // Individual note definition within a preset (OPTIMIZED: 3 bytes per note, was 5)
@@ -715,9 +721,11 @@ typedef struct {
     uint8_t rate_override;              // 0=use preset, else override (NOTE_VALUE_* | TIMING_MODE_*)
     uint8_t master_gate_override;       // 0=use preset gate, else override (1-100%)
     uint32_t pattern_start_time;        // When current pattern loop started
+    uint16_t anchor_step;               // Total note events since pattern start (for anchored timing in chord advanced)
     uint32_t last_tap_time;             // For double-tap detection
     bool key_held;                      // Is arp button physically held
     bool notes_released;                // True when all MIDI keys released while arp active (for pattern restart)
+    bool deferred_start_pending;        // Waiting for next seq step to start (synced mode + seq running)
 } arp_state_t;
 
 // Step Sequencer runtime state (per slot)
@@ -865,7 +873,8 @@ typedef enum {
     QUICK_BUILD_SEQ_SETUP,             // Seq parameter selection phase
     QUICK_BUILD_ARP_ROOT,              // Arp waiting for root note press
     QUICK_BUILD_ARP_RECORD,            // Arp note recording phase
-    QUICK_BUILD_SEQ_RECORD             // Seq note recording phase
+    QUICK_BUILD_SEQ_RECORD,            // Seq note recording phase
+    QUICK_BUILD_SUMMARY                // Post-build summary (BPM, lengths)
 } quick_build_mode_t;
 
 typedef struct {
@@ -912,7 +921,11 @@ void quick_build_update(void);
 bool quick_build_is_active(void);
 bool quick_build_is_setup(void);
 bool quick_build_is_recording(void);
+bool quick_build_is_summary(void);
 uint8_t quick_build_get_current_step(void);
+uint32_t quick_build_get_arp_pattern_ms(void);
+uint32_t quick_build_get_seq_pattern_ms(uint8_t slot);
+void quick_build_dismiss_summary(void);
 void quick_build_handle_encoder(bool clockwise);
 void quick_build_handle_encoder_click(bool pressed);
 void quick_build_confirm_param(void);
@@ -922,6 +935,7 @@ void quick_build_undo_step(void);
 void render_big_number(uint8_t number);
 void render_quick_build_setup(void);
 void render_quick_build_recording(void);
+void render_quick_build_summary(void);
 
 // Quick build parameter info (for OLED rendering)
 const char* quick_build_get_param_name(void);
@@ -944,6 +958,8 @@ void process_arp_note_offs(void);
 void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void midi_send_noteon_seq(uint8_t slot, uint8_t note, uint8_t velocity_0_127);
 void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity);
+void midi_send_noteon_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot);
+void midi_send_noteoff_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot);
 
 #endif // ORTHOMIDI5X14_H
 
