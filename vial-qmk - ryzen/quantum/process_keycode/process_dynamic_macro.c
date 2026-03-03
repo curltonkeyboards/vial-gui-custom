@@ -6398,8 +6398,9 @@ if (macro_num > 0) {
 			if (quantized_length > last_event_time) {
 				loop_gap_time = quantized_length - last_event_time;
 				state->loop_length = quantized_length;
-				
-				dprintf("dynamic macro: mode %d - quantized loop %d to %lu quarter notes (%lu ms, was %lu ms)\n", 
+				state->loop_gap_time = loop_gap_time;
+
+				dprintf("dynamic macro: mode %d - quantized loop %d to %lu quarter notes (%lu ms, was %lu ms)\n",
 						unsynced_mode_active, macro_num, rounded_quarter_notes, quantized_length, calculated_length);
 			}
 		}
@@ -6448,8 +6449,9 @@ if (macro_num > 0) {
 						if (quantized_length > last_event_time) {
 							loop_gap_time = quantized_length - last_event_time;
 							state->loop_length = quantized_length;
-							
-							dprintf("dynamic macro: mode 0 - quantized to master loop multiple (%lu ms)\n", 
+							state->loop_gap_time = loop_gap_time;
+
+							dprintf("dynamic macro: mode 0 - quantized to master loop multiple (%lu ms)\n",
 									quantized_length);
 						}
 					}
@@ -6579,19 +6581,26 @@ void execute_deferred_record_stop(void) {
     midi_event_t *rec_start = get_macro_buffer(saved_macro_id);
     midi_event_t **rec_end_ptr = get_macro_end_ptr(saved_macro_id);
 
-    // End recording (current_bpm is still 0, so record_end will calculate BPM
-    // from loop length and auto-start internal clock)
+    // End recording. For the master loop (current_bpm == 0), record_end will
+    // calculate BPM from loop length and auto-start internal clock.
+    // For slave loops (current_bpm > 0), Mode 0/1/3 quantization runs inside.
+    bool is_master_loop = (current_bpm == 0);
     dynamic_macro_record_end(rec_start, macro_pointer, +1, rec_end_ptr, &recording_start_time);
 
-    // Override BPM to exactly 120 (user requirement for arp-synced stops)
-    current_bpm = 12000000;
-    bpm_source_macro = saved_macro_id;
+    // Only override BPM and source for the master loop (first recording).
+    // Slave loops inherit the existing BPM and source.
+    if (is_master_loop) {
+        current_bpm = 12000000;
+        bpm_source_macro = saved_macro_id;
+    }
 
     // Quantize loop_length to nearest 16th note at 120 BPM (125ms).
     // The deferred stop fires at an arp step boundary, but the wall-clock
     // timestamps (recording_start_time and stop_time) have 1-3ms of
     // main-loop poll latency, producing lengths like 2002ms instead of 2000ms.
     // Snap to the nearest 125ms grid to eliminate this systematic error.
+    // This applies to both master and slave loops — for slaves, this acts as
+    // a safety net on top of the Mode 0/1/3 quantization in record_end().
     {
         macro_playback_state_t *state = &macro_playback[macro_idx];
         if (state->loop_length > 0) {
@@ -6617,7 +6626,8 @@ void execute_deferred_record_stop(void) {
         }
     }
 
-    // Update MIDI clock tempo to match the forced 120 BPM
+    // Update MIDI clock tempo — for master, start clock at forced 120 BPM;
+    // for slave, clock is already running, just ensure tempo is in sync.
     if (is_internal_clock_active()) {
         internal_clock_tempo_changed();
     } else if (!is_external_clock_active()) {
@@ -6635,7 +6645,8 @@ void execute_deferred_record_stop(void) {
     }
 
     loop_deferred_record_stop_pending = false;
-    dprintf("dynamic macro: deferred record stop executed for macro %d (BPM forced to 120)\n", saved_macro_id);
+    dprintf("dynamic macro: deferred record stop executed for macro %d (%s)\n",
+            saved_macro_id, is_master_loop ? "master, BPM forced to 120" : "slave, BPM inherited");
 }
 
 // Modify the existing cycle_macro_speed function to handle BPM source macro
@@ -10067,9 +10078,12 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 // End overdub recording
                 end_overdub_recording_mode_aware(macro_num, false, false);
                 dprintf("dynamic macro: ended overdub recording for macro %d\n", macro_num);
-            } else if (current_bpm == 0 && (arp_is_active() || seq_is_any_active())) {
-                // Deferred stop: arp/seq is playing with no BPM set (first recording).
+            } else if (arp_is_active() || seq_is_any_active()) {
+                // Deferred stop: arp/seq is playing.
                 // Defer record stop to next arp/seq step boundary for timing alignment.
+                // This applies to ALL recordings (master and slave) so that the stop
+                // time aligns to a musical boundary and 125ms grid quantization can
+                // eliminate the 2-3ms wall-clock poll latency.
                 loop_deferred_record_stop_pending = true;
                 dprintf("dynamic macro: deferring record stop to next arp/seq step\n");
             } else {
