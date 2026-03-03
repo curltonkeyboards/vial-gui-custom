@@ -75,20 +75,6 @@ bool seq_is_any_active_and_looped(void) {
     return false;
 }
 
-// Release all deferred seq starts, aligning them to the given time
-void seq_release_deferred_starts(uint32_t align_time) {
-    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
-        if (seq_state[i].active && seq_state[i].deferred_start_pending) {
-            seq_state[i].deferred_start_pending = false;
-            seq_state[i].pattern_start_time = align_time;
-            seq_state[i].next_note_time = align_time;
-            seq_state[i].current_position_16ths = 0;
-            seq_state[i].has_looped = false;
-            dprintf("seq: released deferred start for slot %d at time %lu\n", i, align_time);
-        }
-    }
-}
-
 // =============================================================================
 // QUICK BUILD SYSTEM
 // =============================================================================
@@ -1404,6 +1390,76 @@ void seq_stop_all(void) {
         }
     }
     dprintf("seq: stopped all sequencers\n");
+}
+
+// Release all deferred seq starts, aligning them to the given time.
+// Plays catch-up notes: any notes that would have already played between
+// align_time and now are sent immediately so the seq is musically in sync.
+void seq_release_deferred_starts(uint32_t align_time) {
+    uint32_t now = timer_read32();
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (!seq_state[i].active || !seq_state[i].deferred_start_pending) continue;
+
+        seq_state[i].deferred_start_pending = false;
+        seq_state[i].pattern_start_time = align_time;
+        seq_state[i].current_position_16ths = 0;
+        seq_state[i].has_looped = false;
+
+        // Calculate how many steps have elapsed since align_time
+        // and play catch-up notes for any that were missed
+        seq_preset_t *preset = &seq_active_presets[i];
+        uint32_t ms_per_step = seq_get_ms_per_16th(preset, i);
+
+        if (ms_per_step > 0 && now > align_time) {
+            uint32_t elapsed = now - align_time;
+            uint16_t steps_elapsed = (uint16_t)(elapsed / ms_per_step);
+
+            // Clamp to pattern length
+            if (steps_elapsed > preset->pattern_length_16ths) {
+                steps_elapsed = preset->pattern_length_16ths;
+            }
+
+            // Play catch-up notes for all steps that would have already fired
+            for (uint16_t step = 0; step < steps_elapsed; step++) {
+                unpacked_note_t unpacked;
+                for (uint8_t n = 0; n < preset->note_count; n++) {
+                    unpack_note(&preset->notes[n], &unpacked, false);
+                    if (unpacked.timing == step) {
+                        int16_t midi_note = (unpacked.octave_offset * 12) + unpacked.note_index;
+                        if (midi_note < 0) midi_note = 0;
+                        if (midi_note > 127) midi_note = 127;
+
+                        // Calculate gate: remaining time from now until this note's gate-off
+                        uint32_t note_start = align_time + (step * ms_per_step);
+                        uint8_t gate_percent = (seq_state[i].master_gate_override > 0) ?
+                                               seq_state[i].master_gate_override :
+                                               preset->gate_length_percent;
+                        uint32_t gate_duration = (ms_per_step * gate_percent) / 100;
+                        uint32_t note_off_time = note_start + gate_duration;
+
+                        if (note_off_time > now) {
+                            // Note should still be sounding - play it with remaining gate
+                            midi_send_noteon_seq(i, (uint8_t)midi_note, unpacked.velocity);
+                            add_seq_note(seq_state[i].locked_channel, (uint8_t)midi_note,
+                                         unpacked.velocity, note_off_time, i);
+                            dprintf("seq: catch-up note slot %d step %d note %d\n", i, step, midi_note);
+                        }
+                        // If note_off_time <= now, note has already ended, skip it
+                    }
+                }
+            }
+
+            // Advance position to where we should be now
+            seq_state[i].current_position_16ths = steps_elapsed;
+        }
+
+        // Set next note time to the anchored time for our current position
+        seq_state[i].next_note_time = seq_anchored_next_time(preset, i,
+            seq_state[i].current_position_16ths);
+
+        dprintf("seq: released deferred start for slot %d at time %lu (pos=%d)\n",
+                i, align_time, seq_state[i].current_position_16ths);
+    }
 }
 
 void seq_update(void) {

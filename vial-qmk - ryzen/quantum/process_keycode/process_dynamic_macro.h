@@ -99,7 +99,7 @@ void dynamic_macro_handle_loop_trigger(void);
 // Group start window for simultaneous loop/seq starts
 extern uint32_t group_start_time;
 extern bool group_start_active;
-#define GROUP_START_WINDOW_MS 250
+#define GROUP_START_WINDOW_MS 100
 
 // Optional user hooks
 void dynamic_macro_record_start_user(int8_t direction);
