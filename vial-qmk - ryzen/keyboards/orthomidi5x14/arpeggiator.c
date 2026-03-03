@@ -466,7 +466,7 @@ bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot) {
 int8_t seq_find_available_slot(void) {
     // First pass: prefer slots without saved quick build data (avoid overwriting QB presets)
     for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
-        if (!seq_state[i].active && !quick_build_state.has_saved_seq_build[i]) {
+        if (!seq_state[i].active && !qb_pool_has_build(i + 4)) {
             return i;
         }
     }
@@ -1373,7 +1373,6 @@ static bool seq_apply_start_logic(uint8_t slot) {
                            (timer_elapsed32(group_start_time) < GROUP_START_WINDOW_MS);
 
     // Scan all other seq slots for state
-    bool any_looped_seq = false;
     bool any_running_seq = false;   // Any active, non-deferred seq (looped or not)
     bool any_just_started = false;  // Active, not-yet-looped, started within GROUP_START_WINDOW_MS
     uint32_t just_started_time = 0;
@@ -1382,7 +1381,7 @@ static bool seq_apply_start_logic(uint8_t slot) {
         if (seq_state[s].active && !seq_state[s].deferred_start_pending) {
             any_running_seq = true;
             if (seq_state[s].has_looped) {
-                any_looped_seq = true;
+                // Looped seq - counts as running
             } else {
                 // Not-yet-looped seq: only count as "just started" if within group window
                 uint32_t elapsed = timer_elapsed32(seq_state[s].pattern_start_time);
@@ -1425,8 +1424,8 @@ static bool seq_apply_start_logic(uint8_t slot) {
         // Something running but outside group window - defer until next cycle point
         seq_state[slot].deferred_start_pending = true;
         seq_state[slot].next_note_time = UINT32_MAX;  // Don't play until released
-        dprintf("seq: slot %d deferred (running_seq:%d looped:%d macro:%d)\n",
-                slot, any_running_seq, any_looped_seq, any_macro_playing);
+        dprintf("seq: slot %d deferred (running_seq:%d macro:%d)\n",
+                slot, any_running_seq, any_macro_playing);
         return true;
     } else {
         // Nothing playing - start now, open group window
