@@ -299,6 +299,8 @@ static void clear_command_batch(void);
 static bool add_command_to_batch(uint8_t command_type, uint8_t macro_id);
 bool sample_mode_active = false;  // Track whether sample mode is active
 bool loop_deferred_record_stop_pending = false;  // Arp-synced deferred stop
+uint32_t group_start_time = 0;                    // When the first loop/seq started from nothing-playing state
+bool group_start_active = false;                  // True during simultaneous start window
 void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int8_t direction);
 void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_pointer, int8_t direction, midi_event_t **macro_end, uint32_t *start_time);
 void dynamic_macro_actual_start(uint32_t *start_time);
@@ -10032,16 +10034,26 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 overdub_mute_pending[macro_idx] = false;
                 overdub_unmute_pending[macro_idx] = false;
                 overdub_muted[macro_idx] = false;
-                dynamic_macro_play(macro_start, *macro_end_ptr, +1);
-				
-			if (((unsynced_mode_active == 0 || unsynced_mode_active == 4)) && is_internal_clock_active()) {
-                internal_clock_tempo_changed();
-                dprintf("MIDI clock: Tempo updated when starting first loop\n");
-            }    
-                // If overdub button is held, enter overdub mode
-                if (overdub_button_held) {
-                    start_overdub_recording(macro_num);
-                    dprintf("dynamic macro: entered overdub mode for macro %d\n", macro_num);
+
+                if (seq_is_any_active_and_looped()) {
+                    // A seq is running and has looped - defer loop start to next seq loop trigger
+                    add_command_to_batch(CMD_PLAY, macro_num);
+                    dprintf("dynamic macro: deferred loop %d start to next seq loop trigger\n", macro_num);
+                } else {
+                    // No looped seq - start immediately (set group start window for simultaneous starts)
+                    group_start_time = timer_read32();
+                    group_start_active = true;
+                    dynamic_macro_play(macro_start, *macro_end_ptr, +1);
+
+                    if (((unsynced_mode_active == 0 || unsynced_mode_active == 4)) && is_internal_clock_active()) {
+                        internal_clock_tempo_changed();
+                        dprintf("MIDI clock: Tempo updated when starting first loop\n");
+                    }
+                    // If overdub button is held, enter overdub mode
+                    if (overdub_button_held) {
+                        start_overdub_recording(macro_num);
+                        dprintf("dynamic macro: entered overdub mode for macro %d\n", macro_num);
+                    }
                 }
             } else {
                 // No macro exists - prime for recording
@@ -10125,16 +10137,29 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                 
                 // FEATURE 3: First check if this command already exists
                 if (!command_exists_in_batch(CMD_PLAY, macro_num)) {
-                    add_command_to_batch(CMD_PLAY, macro_num);
-                    
-                    // If overdub button is held, set flag to enter overdub
-                    if (overdub_button_held) {
-                        macro_in_overdub_mode[macro_idx] = true;
-                        dprintf("dynamic macro: will enter overdub mode for macro %d at loop trigger\n", macro_num);
+                    // Check if we're in group start window (multiple starts from paused state)
+                    if (group_start_active && (timer_read32() - group_start_time < GROUP_START_WINDOW_MS)) {
+                        // Simultaneous start - play immediately, align timer to group start
+                        dynamic_macro_play(macro_start, *macro_end_ptr, +1);
+                        macro_playback[macro_idx].timer = group_start_time;
+                        dprintf("dynamic macro: simultaneous start for macro %d (aligned to group start)\n", macro_num);
+
+                        // If overdub button is held, enter overdub mode
+                        if (overdub_button_held) {
+                            start_overdub_recording(macro_num);
+                            dprintf("dynamic macro: entered overdub mode for macro %d\n", macro_num);
+                        }
+                    } else {
+                        add_command_to_batch(CMD_PLAY, macro_num);
+
+                        // If overdub button is held, set flag to enter overdub
+                        if (overdub_button_held) {
+                            macro_in_overdub_mode[macro_idx] = true;
+                            dprintf("dynamic macro: will enter overdub mode for macro %d at loop trigger\n", macro_num);
+                        }
+
+                        dprintf("dynamic macro: batched play command for macro %d\n", macro_num);
                     }
-                    
-                     
-                    dprintf("dynamic macro: batched play command for macro %d\n", macro_num);
                 } else {
                     // Remove the play command instead of adding it
                     remove_command_from_batch(CMD_PLAY, macro_num);
@@ -10727,6 +10752,12 @@ void dynamic_macro_handle_loop_trigger(void) {
     else if (is_macro_primed && !collecting_preroll) {
         dynamic_macro_actual_start(&recording_start_time);
     }
+
+    // A loop trigger means something completed a full cycle - close group start window
+    group_start_active = false;
+
+    // Release any deferred seq starts at this loop trigger boundary
+    seq_release_deferred_starts(timer_read32());
 
     // Original loop trigger handling
     check_loop_trigger();

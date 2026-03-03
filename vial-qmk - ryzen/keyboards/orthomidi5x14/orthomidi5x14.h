@@ -747,6 +747,7 @@ typedef struct {
     uint8_t locked_velocity_max;        // Locked velocity maximum
     int8_t locked_transpose;            // Locked transposition value
     bool has_looped;                    // True after first pattern wrap (enables loop trigger on step 0)
+    bool deferred_start_pending;        // Waiting for next loop trigger to start (synced start)
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
@@ -809,6 +810,8 @@ void arp_handle_key_press(uint8_t preset_id);
 void arp_handle_key_release(void);
 bool arp_is_active(void);
 bool seq_is_any_active(void);
+bool seq_is_any_active_and_looped(void);
+void seq_release_deferred_starts(uint32_t align_time);
 void arp_set_master_gate(uint8_t gate_percent);
 void seq_set_master_gate(uint8_t gate_percent);
 void arp_set_mode(arp_mode_t mode);

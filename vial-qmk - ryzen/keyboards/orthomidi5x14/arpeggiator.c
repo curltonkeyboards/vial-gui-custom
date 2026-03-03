@@ -67,6 +67,28 @@ bool seq_is_any_active(void) {
     return false;
 }
 
+// Helper: check if any active step sequencer has completed at least one full pattern
+bool seq_is_any_active_and_looped(void) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active && seq_state[i].has_looped) return true;
+    }
+    return false;
+}
+
+// Release all deferred seq starts, aligning them to the given time
+void seq_release_deferred_starts(uint32_t align_time) {
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active && seq_state[i].deferred_start_pending) {
+            seq_state[i].deferred_start_pending = false;
+            seq_state[i].pattern_start_time = align_time;
+            seq_state[i].next_note_time = align_time;
+            seq_state[i].current_position_16ths = 0;
+            seq_state[i].has_looped = false;
+            dprintf("seq: released deferred start for slot %d at time %lu\n", i, align_time);
+        }
+    }
+}
+
 // =============================================================================
 // QUICK BUILD SYSTEM
 // =============================================================================
@@ -1260,14 +1282,60 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
     seq_state[slot].has_looped = false;
-    seq_state[slot].pattern_start_time = timer_read32();
-    seq_state[slot].next_note_time = timer_read32();  // Start immediately
+    seq_state[slot].deferred_start_pending = false;
 
     // Lock in global values when sequencer starts
     seq_state[slot].locked_channel = channel_number;
     seq_state[slot].locked_velocity_min = he_velocity_min;
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;  // Always starts at 0, changes only with modifier
+
+    // Determine start timing: defer if another seq/loop is already running,
+    // align if another seq just started (simultaneous group start)
+    bool any_looped_seq = false;
+    bool any_just_started_seq = false;
+    uint32_t align_start_time = 0;
+
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (i == slot || !seq_state[i].active) continue;
+        if (seq_state[i].deferred_start_pending) continue;  // Skip other deferred slots
+        if (seq_state[i].has_looped) {
+            any_looped_seq = true;
+        } else {
+            any_just_started_seq = true;
+            align_start_time = seq_state[i].pattern_start_time;
+        }
+    }
+
+    // Check if a macro loop is playing but within the group start window (simultaneous start)
+    bool macro_playing = dynamic_macro_is_playing();
+    bool in_group_window = group_start_active && (timer_read32() - group_start_time < GROUP_START_WINDOW_MS);
+
+    if (any_looped_seq || (macro_playing && !in_group_window)) {
+        // Another seq has completed a loop or a macro loop is fully running - defer start
+        seq_state[slot].deferred_start_pending = true;
+        seq_state[slot].next_note_time = UINT32_MAX;
+        seq_state[slot].pattern_start_time = 0;
+        dprintf("seq: deferred start for slot %d (waiting for next loop trigger)\n", slot);
+    } else if (macro_playing && in_group_window) {
+        // Macro just started within group window - align seq to group start time
+        seq_state[slot].pattern_start_time = group_start_time;
+        seq_state[slot].next_note_time = group_start_time;
+        dprintf("seq: simultaneous start for slot %d (aligned to group start %lu)\n", slot, group_start_time);
+    } else if (any_just_started_seq) {
+        // Another seq just started but hasn't looped - align for simultaneous start
+        seq_state[slot].pattern_start_time = align_start_time;
+        seq_state[slot].next_note_time = align_start_time;
+        dprintf("seq: simultaneous start for slot %d (aligned to time %lu)\n", slot, align_start_time);
+    } else {
+        // Nothing else playing - start immediately, open group start window
+        uint32_t now = timer_read32();
+        seq_state[slot].pattern_start_time = now;
+        seq_state[slot].next_note_time = now;
+        group_start_time = now;
+        group_start_active = true;
+        dprintf("seq: immediate start for slot %d\n", slot);
+    }
 
     dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d)\n",
             preset_id, slot, seq_state[slot].locked_channel,
@@ -1280,6 +1348,7 @@ void seq_stop(uint8_t slot) {
 
     if (seq_state[slot].active) {
         seq_state[slot].active = false;
+        seq_state[slot].deferred_start_pending = false;
 
         // Immediately send note-offs for all active arp notes to prevent stuck notes
         // (seq uses arp_notes[] for gate tracking)
@@ -1354,6 +1423,7 @@ void seq_update(void) {
     // Update all active sequencer slots
     for (uint8_t slot = 0; slot < MAX_SEQ_SLOTS; slot++) {
         if (!seq_state[slot].active) continue;
+        if (seq_state[slot].deferred_start_pending) continue;  // Waiting for loop trigger
 
         // Get preset for this slot
         seq_preset_t *preset = &seq_active_presets[slot];
@@ -1367,6 +1437,8 @@ void seq_update(void) {
         // Fire loop trigger BEFORE step 0 plays (pattern restart boundary)
         if (seq_state[slot].current_position_16ths == 0 && seq_state[slot].has_looped) {
             dynamic_macro_handle_loop_trigger();
+            // Release any deferred seq starts, aligned to this slot's current time
+            seq_release_deferred_starts(current_time);
         }
 
         // Find notes to play at current position
