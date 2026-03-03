@@ -67,6 +67,19 @@ bool seq_is_any_active(void) {
     return false;
 }
 
+void seq_release_deferred_starts(void) {
+    uint32_t now = timer_read32();
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (seq_state[i].active && seq_state[i].deferred_start_pending) {
+            seq_state[i].deferred_start_pending = false;
+            seq_state[i].pattern_start_time = now;
+            seq_state[i].next_note_time = now;
+            seq_state[i].current_position_16ths = 0;
+            dprintf("seq: deferred start released for slot %d by loop trigger\n", i);
+        }
+    }
+}
+
 // =============================================================================
 // QUICK BUILD SYSTEM
 // =============================================================================
@@ -1259,8 +1272,6 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].current_preset_id = preset_id;
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
-    seq_state[slot].pattern_start_time = timer_read32();
-    seq_state[slot].next_note_time = timer_read32();  // Start immediately
 
     // Lock in global values when sequencer starts
     seq_state[slot].locked_channel = channel_number;
@@ -1268,10 +1279,34 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;  // Always starts at 0, changes only with modifier
 
-    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d)\n",
+    // Defer start to next loop trigger if anything else is playing in sync mode
+    bool anything_playing = dynamic_macro_is_playing() || arp_is_active();
+    // Check if any OTHER seq slot is active
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (i != slot && seq_state[i].active && !seq_state[i].deferred_start_pending) {
+            anything_playing = true;
+            break;
+        }
+    }
+    bool is_synced = (unsynced_mode_active != 2 && unsynced_mode_active != 5) && !sample_mode_active;
+
+    if (is_synced && anything_playing) {
+        seq_state[slot].deferred_start_pending = true;
+        seq_state[slot].next_note_time = UINT32_MAX;  // Don't play until loop trigger releases us
+        seq_state[slot].pattern_start_time = timer_read32();
+        dprintf("seq: deferred start for preset %d in slot %d (waiting for loop trigger)\n",
+                preset_id, slot);
+    } else {
+        seq_state[slot].deferred_start_pending = false;
+        seq_state[slot].pattern_start_time = timer_read32();
+        seq_state[slot].next_note_time = timer_read32();  // Start immediately
+    }
+
+    dprintf("seq: started preset %d in slot %d (ch:%d vel:%d-%d trans:%d%s)\n",
             preset_id, slot, seq_state[slot].locked_channel,
             seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max,
-            seq_state[slot].locked_transpose);
+            seq_state[slot].locked_transpose,
+            seq_state[slot].deferred_start_pending ? " DEFERRED" : "");
 }
 
 void seq_stop(uint8_t slot) {
@@ -1337,13 +1372,14 @@ void seq_stop_all(void) {
 }
 
 void seq_update(void) {
-    // Check for deferred loop record stop at first active seq step boundary
+    // Check for deferred loop record stop at pattern restart (position 0 only)
+    // Recording should stop at the loop boundary, not at any arbitrary step
     if (loop_deferred_record_stop_pending) {
         for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
             if (!seq_state[s].active) continue;
             uint32_t ct = timer_read32();
-            if (ct >= seq_state[s].next_note_time) {
-                // Step boundary reached - execute deferred stop
+            if (ct >= seq_state[s].next_note_time && seq_state[s].current_position_16ths == 0) {
+                // Pattern restart reached - execute deferred stop at loop boundary
                 execute_deferred_record_stop();
                 break;  // Only execute once
             }
@@ -3119,8 +3155,6 @@ void seq_start_slot(uint8_t slot) {
     // Start the slot directly (preset already in RAM)
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
-    seq_state[slot].pattern_start_time = timer_read32();
-    seq_state[slot].next_note_time = timer_read32();
 
     // Use the channel from when the seq was built (not the current keyboard channel)
     seq_state[slot].locked_channel = quick_build_state.saved_seq_channel[slot];
@@ -3128,9 +3162,31 @@ void seq_start_slot(uint8_t slot) {
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;
 
-    dprintf("seq: started slot %d directly (quick build, ch:%d vel:%d-%d)\n",
+    // Defer start to next loop trigger if anything else is playing in sync mode
+    bool anything_playing = dynamic_macro_is_playing() || arp_is_active();
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        if (i != slot && seq_state[i].active && !seq_state[i].deferred_start_pending) {
+            anything_playing = true;
+            break;
+        }
+    }
+    bool is_synced = (unsynced_mode_active != 2 && unsynced_mode_active != 5) && !sample_mode_active;
+
+    if (is_synced && anything_playing) {
+        seq_state[slot].deferred_start_pending = true;
+        seq_state[slot].next_note_time = UINT32_MAX;
+        seq_state[slot].pattern_start_time = timer_read32();
+        dprintf("seq: deferred start for slot %d (quick build, waiting for loop trigger)\n", slot);
+    } else {
+        seq_state[slot].deferred_start_pending = false;
+        seq_state[slot].pattern_start_time = timer_read32();
+        seq_state[slot].next_note_time = timer_read32();
+    }
+
+    dprintf("seq: started slot %d directly (quick build, ch:%d vel:%d-%d%s)\n",
             slot, seq_state[slot].locked_channel,
-            seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max);
+            seq_state[slot].locked_velocity_min, seq_state[slot].locked_velocity_max,
+            seq_state[slot].deferred_start_pending ? " DEFERRED" : "");
 }
 
 // =============================================================================
