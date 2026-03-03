@@ -1375,7 +1375,7 @@ static bool seq_apply_start_logic(uint8_t slot) {
                            (timer_elapsed32(group_start_time) < GROUP_START_WINDOW_MS);
 
     // Scan all other seq slots for state
-    bool any_looped_seq = false;
+    bool any_looped_seq = false;    // Used in debug output
     bool any_running_seq = false;   // Any active, non-deferred seq (looped or not)
     bool any_just_started = false;  // Active, not-yet-looped, started within GROUP_START_WINDOW_MS
     uint32_t just_started_time = 0;
@@ -1427,6 +1427,7 @@ static bool seq_apply_start_logic(uint8_t slot) {
         // Something running but outside group window - defer until next cycle point
         seq_state[slot].deferred_start_pending = true;
         seq_state[slot].next_note_time = UINT32_MAX;  // Don't play until released
+        (void)any_looped_seq;  // Suppress -Wunused-but-set (used in debug builds)
         dprintf("seq: slot %d deferred (running_seq:%d looped:%d macro:%d)\n",
                 slot, any_running_seq, any_looped_seq, any_macro_playing);
         return true;
