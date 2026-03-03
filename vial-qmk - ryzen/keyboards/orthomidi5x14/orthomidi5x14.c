@@ -771,8 +771,12 @@ static uint32_t tap_times[MAX_TAPS_AVERAGE];
 // Hold detection for sequencer buttons (500ms threshold)
 #define SEQ_HOLD_THRESHOLD 500
 static uint32_t seq_play_press_time = 0;
-static uint32_t seq_preset_press_time = 0;
-static uint16_t seq_preset_held_keycode = 0;
+// Track up to 8 simultaneous factory preset button holds
+#define MAX_SEQ_PRESET_TRACK 8
+static struct {
+    uint16_t keycode;
+    uint32_t press_time;
+} seq_preset_track[MAX_SEQ_PRESET_TRACK] = {{0}};
 static uint8_t active_taps = 0;
 uint32_t current_bpm = 0;  // Starting with 120 as default
 static bool tap_tempo_active = false;
@@ -7888,10 +7892,14 @@ bool rgb_matrix_indicators_kb(void) {
                     quick_build_state.seq_slot == s) {
                     // Orange: currently building this slot
                     r = 255; g = 140; b = 0;
-                } else if (quick_build_state.has_saved_seq_build[s] &&
-                           seq_state[s].current_preset_id == PRESET_ID_QUICK_BUILD) {
-                    if (seq_state[s].active) {
-                        // Green: playing
+                } else if (quick_build_state.has_saved_seq_build[s]) {
+                    if (seq_state[s].active && seq_state[s].deferred_start_pending) {
+                        // Flash green: pending play (deferred, waiting for cycle point)
+                        bool flash_on = (timer_read32() / 300) % 2;
+                        if (flash_on) { r = 0; g = 200; b = 0; }
+                        else { r = 0; g = 40; b = 0; }
+                    } else if (seq_state[s].active && !seq_state[s].deferred_start_pending) {
+                        // Green: actively playing
                         r = 0; g = 200; b = 0;
                     } else {
                         // Red: has build, idle
@@ -7923,16 +7931,22 @@ bool rgb_matrix_indicators_kb(void) {
             }
         }
 
-        // Seq play button (category 45): green when any slot active, dim white when idle
+        // Seq play button (category 45): green when playing, flash green when deferred, dim white when idle
         uint8_t seq_play_led = get_special_key_led_index(45);
         if (seq_play_led != 99 && seq_play_led < RGB_MATRIX_LED_COUNT) {
-            bool any_seq_active = false;
+            bool any_seq_playing = false;
+            bool any_seq_deferred = false;
             for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
-                if (seq_state[s].active) { any_seq_active = true; break; }
+                if (seq_state[s].active && !seq_state[s].deferred_start_pending) { any_seq_playing = true; }
+                if (seq_state[s].active && seq_state[s].deferred_start_pending) { any_seq_deferred = true; }
             }
-            if (any_seq_active) {
+            if (any_seq_playing) {
                 rgb_matrix_set_color(seq_play_led,
                     0, (uint8_t)(200 * brightness_factor), 0);
+            } else if (any_seq_deferred) {
+                bool flash_on = (timer_read32() / 300) % 2;
+                rgb_matrix_set_color(seq_play_led,
+                    0, (uint8_t)((flash_on ? 200 : 40) * brightness_factor), 0);
             } else {
                 rgb_matrix_set_color(seq_play_led,
                     (uint8_t)(80 * brightness_factor),
@@ -7956,13 +7970,25 @@ bool rgb_matrix_indicators_kb(void) {
                 } else if (led_categories[current_layer].leds[i].category == 47) {
                     uint8_t led = led_categories[current_layer].leds[i].led_index;
                     if (led < RGB_MATRIX_LED_COUNT) {
-                        bool any_seq_active = false;
+                        bool any_seq_playing = false;
+                        bool any_seq_deferred = false;
                         for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
-                            if (seq_state[s].active) { any_seq_active = true; break; }
+                            if (seq_state[s].active && !seq_state[s].deferred_start_pending) { any_seq_playing = true; }
+                            if (seq_state[s].active && seq_state[s].deferred_start_pending) { any_seq_deferred = true; }
                         }
-                        if (any_seq_active) {
+                        if (any_seq_playing) {
+                            // Green: at least one seq actively playing
                             rgb_matrix_set_color(led,
                                 0, (uint8_t)(120 * brightness_factor), 0);
+                        } else if (any_seq_deferred) {
+                            // Flash green: pending play (deferred)
+                            bool flash_on = (timer_read32() / 300) % 2;
+                            rgb_matrix_set_color(led,
+                                0, (uint8_t)((flash_on ? 120 : 25) * brightness_factor), 0);
+                        } else {
+                            // Red: factory preset idle (not playing)
+                            rgb_matrix_set_color(led,
+                                (uint8_t)(120 * brightness_factor), 0, 0);
                         }
                     }
                 }
@@ -14369,24 +14395,33 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
         uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-135)
         if (record->event.pressed) {
-            seq_preset_press_time = timer_read32();
-            seq_preset_held_keycode = keycode;
+            // Find empty tracking slot and store press info
+            for (uint8_t t = 0; t < MAX_SEQ_PRESET_TRACK; t++) {
+                if (seq_preset_track[t].keycode == 0) {
+                    seq_preset_track[t].keycode = keycode;
+                    seq_preset_track[t].press_time = timer_read32();
+                    break;
+                }
+            }
             set_keylog(keycode, record);
         } else {
-            // Release: check if held
-            if (seq_preset_held_keycode == keycode) {
-                uint32_t hold_duration = timer_read32() - seq_preset_press_time;
-                if (hold_duration >= SEQ_HOLD_THRESHOLD) {
-                    // Held: stop and clear all sequences
-                    seq_stop_all();
-                    dprintf("seq: held preset button - stopped all sequences\n");
-                } else {
-                    // Quick press: smart toggle/add to slot
-                    if (preset_id < MAX_SEQ_PRESETS) {
-                        seq_select_preset(preset_id);
+            // Release: find matching tracking slot
+            for (uint8_t t = 0; t < MAX_SEQ_PRESET_TRACK; t++) {
+                if (seq_preset_track[t].keycode == keycode) {
+                    uint32_t hold_duration = timer_read32() - seq_preset_track[t].press_time;
+                    if (hold_duration >= SEQ_HOLD_THRESHOLD) {
+                        // Held: stop and clear all sequences
+                        seq_stop_all();
+                        dprintf("seq: held preset button - stopped all sequences\n");
+                    } else {
+                        // Quick press: smart toggle/add to slot
+                        if (preset_id < MAX_SEQ_PRESETS) {
+                            seq_select_preset(preset_id);
+                        }
                     }
+                    seq_preset_track[t].keycode = 0;  // Clear tracking slot
+                    break;
                 }
-                seq_preset_held_keycode = 0;
             }
         }
         return false;
