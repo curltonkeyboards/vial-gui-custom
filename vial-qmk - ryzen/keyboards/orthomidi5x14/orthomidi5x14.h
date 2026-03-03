@@ -606,8 +606,12 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 
 // Maximum limits
 #define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated (for gate timing)
-#define MAX_ARP_PRESET_NOTES 64    // Maximum notes in an arpeggiator preset
-#define MAX_SEQ_PRESET_NOTES 128   // Maximum notes in a step sequencer preset
+#define MAX_ARP_PRESET_NOTES 64    // Maximum notes in an arpeggiator preset (EEPROM/factory format)
+#define MAX_SEQ_PRESET_NOTES 128   // Maximum notes in a step sequencer preset (EEPROM/factory format)
+
+// Shared note pool for quick build presets (RAM-only, not saved to EEPROM)
+#define NOTE_POOL_SIZE 4096        // Total shared pool capacity (4096 × 3 bytes = 12,288 bytes)
+#define MAX_NOTES_PER_STEP 16      // Max simultaneous notes per step (playback scratch buffer)
 #define NUM_FACTORY_ARP_PRESETS 48 // Factory arpeggiator presets (0-47) in PROGMEM
 #define NUM_FACTORY_SEQ_PRESETS 48 // Factory sequencer presets (0-47) in PROGMEM
 #define NUM_USER_ARP_PRESETS 20    // User arpeggiator presets (0-19) in EEPROM
@@ -750,6 +754,19 @@ typedef struct {
     bool deferred_start_pending;        // Waiting for next cycle point to start (sync with running seqs/loops)
 } seq_state_t;
 
+// Pool-based preset header for quick build presets (notes stored in shared note_pool)
+typedef struct {
+    uint8_t preset_type;            // PRESET_TYPE_ARPEGGIATOR or PRESET_TYPE_STEP_SEQUENCER
+    uint16_t note_count;            // Actual notes stored (0 to NOTE_POOL_SIZE)
+    uint8_t pattern_length_16ths;   // Total pattern length in 16th notes (1-127)
+    uint8_t gate_length_percent;    // Gate length 0-100%
+    uint8_t timing_mode;            // TIMING_MODE_STRAIGHT/TRIPLET/DOTTED
+    uint8_t note_value;             // NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH
+    uint16_t pool_offset;           // Start index into shared note_pool[]
+    uint16_t pool_capacity;         // Allocated slots in pool (>= note_count)
+    bool valid;                     // Has a completed build been stored here
+} pool_preset_t;
+
 // EEPROM storage structure (for user presets only)
 // Reorganized: 23000 and 27500 (was 56000/60000)
 #define ARP_EEPROM_ADDR 23000       // Starting address for user arp presets (20 × 200 = 4000 bytes)
@@ -782,9 +799,22 @@ extern uint8_t arp_note_count;
 extern arp_state_t arp_state;
 extern seq_state_t seq_state[MAX_SEQ_SLOTS];
 
-// Efficient RAM storage: Only active presets loaded
+// Efficient RAM storage: Only active presets loaded (staging for factory/user presets)
 extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
 extern seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
+
+// Shared note pool for quick build presets
+extern pool_preset_t arp_pool_headers[MAX_ARP_QB_SLOTS];  // Pool headers for arp QB slots
+extern pool_preset_t seq_pool_headers[MAX_SEQ_SLOTS];     // Pool headers for seq QB slots
+
+// Pool management functions
+void note_pool_reset(void);
+uint16_t note_pool_alloc(uint16_t count);            // Returns offset or UINT16_MAX on failure
+void note_pool_free(pool_preset_t *header);           // Free and compact pool
+arp_preset_note_t *note_pool_get_notes(const pool_preset_t *header);  // Get pointer to notes in pool
+uint16_t note_pool_available(void);                   // Remaining capacity
+bool note_pool_has_valid_arp(uint8_t slot);           // Check if arp QB slot has a valid build
+bool note_pool_has_valid_seq(uint8_t slot);           // Check if seq QB slot has a valid build
 
 // Step Sequencer modifier tracking
 extern bool seq_modifier_held[MAX_SEQ_SLOTS];  // Track which seq modifiers are held
@@ -886,16 +916,16 @@ typedef struct {
     uint8_t arp_slot;                  // Which arp slot we're building (0-3)
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
     uint8_t current_step;              // Current step (0-based internal)
-    uint8_t note_count;                // Total notes recorded so far
+    uint16_t note_count;               // Total notes recorded so far (up to NOTE_POOL_SIZE)
     uint8_t root_note;                 // Confirmed root note (arp only, for interval calculation)
     bool has_root;                     // Has root been confirmed?
     uint8_t candidate_root;            // Note being previewed in root selection (0=none pressed yet)
     bool candidate_ready;              // A candidate root note has been pressed and is awaiting confirm
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
-    bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (per slot)
+    bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (mirrors pool header valid)
     uint8_t active_arp_qb_slot;        // Which arp QB slot is currently loaded (0-3, 255=none)
-    bool has_saved_seq_build[8];       // Has user completed a seq build? (per slot)
+    bool has_saved_seq_build[8];       // Has user completed a seq build? (mirrors pool header valid)
     uint8_t saved_seq_channel[8];      // MIDI channel at time of seq build (per slot)
 
     // Setup phase state
