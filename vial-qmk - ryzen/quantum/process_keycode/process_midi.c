@@ -981,18 +981,17 @@ void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity) {
 }
 
 // Send note-on for sequencer as a macro note (not recorded by looper)
+// Uses macro IDs 1-4 (wrapping: slot 0→1, slot 1→2, ... slot 4→1, etc.)
+// Does NOT update OLED held-key display (seq notes shouldn't appear as held keys)
 void midi_send_noteon_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot) {
     uint8_t final_velocity = velocity;
     if (final_velocity < 1) final_velocity = 1;
     if (final_velocity > 127) final_velocity = 127;
 
-    uint8_t macro_id = SEQ_MACRO_ID_BASE + seq_slot;
+    uint8_t macro_id = (seq_slot % 4) + 1;  // Map to macro IDs 1-4, wrapping
 
     // Send MIDI note-on
     midi_send_noteon(&midi_device, channel, note, final_velocity);
-
-    // Display updates
-    noteondisplayupdates(note);
 
     // Use macro lighting (not live lighting) so LED system knows this is a sequencer note
     add_lighting_macro_note(channel, note, macro_id, final_velocity);
@@ -1000,21 +999,31 @@ void midi_send_noteon_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity,
     // Mark as macro note so looper won't record it
     mark_note_from_macro(channel, note, macro_id);
 
+    // Handle octave doubler for this seq slot
+    extern int8_t seq_octave_doubler[];
+    int8_t octave_shift = seq_octave_doubler[seq_slot];
+    if (octave_shift != 0) {
+        int16_t octave_note = note + octave_shift;
+        if (octave_note >= 0 && octave_note <= 127) {
+            midi_send_noteon(&midi_device, channel, (uint8_t)octave_note, final_velocity);
+            add_lighting_macro_note(channel, (uint8_t)octave_note, macro_id, final_velocity);
+            mark_note_from_macro(channel, (uint8_t)octave_note, macro_id);
+        }
+    }
+
     // Do NOT record to looper (no dynamic_macro_intercept_noteon)
     // Do NOT collect preroll events
+    // Do NOT update OLED display (no noteondisplayupdates)
 
-    dprintf("seq: macro note-on ch:%d note:%d vel:%d slot:%d\n", channel, note, final_velocity, seq_slot);
+    dprintf("seq: macro note-on ch:%d note:%d vel:%d slot:%d macro:%d\n", channel, note, final_velocity, seq_slot, macro_id);
 }
 
 // Send note-off for sequencer macro note (not recorded by looper)
 void midi_send_noteoff_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot) {
-    uint8_t macro_id = SEQ_MACRO_ID_BASE + seq_slot;
+    uint8_t macro_id = (seq_slot % 4) + 1;  // Map to macro IDs 1-4, wrapping
 
     // Send MIDI note-off
     midi_send_noteoff(&midi_device, channel, note, velocity);
-
-    // Display updates
-    noteoffdisplayupdates(note);
 
     // Remove macro lighting
     remove_lighting_macro_note(channel, note, macro_id);
@@ -1022,10 +1031,23 @@ void midi_send_noteoff_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity
     // Unmark from macro tracking
     unmark_note_from_macro(channel, note, macro_id);
 
+    // Handle octave doubler note-off
+    extern int8_t seq_octave_doubler[];
+    int8_t octave_shift = seq_octave_doubler[seq_slot];
+    if (octave_shift != 0) {
+        int16_t octave_note = note + octave_shift;
+        if (octave_note >= 0 && octave_note <= 127) {
+            midi_send_noteoff(&midi_device, channel, (uint8_t)octave_note, velocity);
+            remove_lighting_macro_note(channel, (uint8_t)octave_note, macro_id);
+            unmark_note_from_macro(channel, (uint8_t)octave_note, macro_id);
+        }
+    }
+
     // Do NOT record to looper (no dynamic_macro_intercept_noteoff)
     // Do NOT collect preroll events
+    // Do NOT update OLED display (no noteoffdisplayupdates)
 
-    dprintf("seq: macro note-off ch:%d note:%d vel:%d slot:%d\n", channel, note, velocity, seq_slot);
+    dprintf("seq: macro note-off ch:%d note:%d vel:%d slot:%d macro:%d\n", channel, note, velocity, seq_slot, macro_id);
 }
 
 // Modified process_midi main switch cases

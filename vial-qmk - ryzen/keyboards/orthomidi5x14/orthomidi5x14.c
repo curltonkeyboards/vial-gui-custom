@@ -9565,9 +9565,36 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     // Octave doubler button + macro key
     uint8_t macro_idx = keycode - 0xCC08;
     uint8_t macro_num = macro_idx + 1;
-    
+
     if (record->event.pressed) {
         snprintf(name, sizeof(name), "L%d - OCTAVE TOGGLE", macro_num);
+    } else {
+        snprintf(name, sizeof(name), "   ");
+    }
+
+} else if (octave_doubler_button_held && keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) {
+    // Octave doubler button + seq quick build key
+    uint8_t slot = keycode - SEQ_QUICK_BUILD_1;
+    if (record->event.pressed) {
+        int8_t oct = seq_octave_doubler[slot];
+        if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
+        else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
+    } else {
+        snprintf(name, sizeof(name), "   ");
+    }
+
+} else if (octave_doubler_button_held && keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
+    // Octave doubler button + seq preset key
+    uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);
+    int8_t slot = seq_find_slot_with_preset(preset_id);
+    if (record->event.pressed) {
+        if (slot >= 0) {
+            int8_t oct = seq_octave_doubler[slot];
+            if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
+            else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
+        } else {
+            snprintf(name, sizeof(name), "SEQ NOT PLAYING");
+        }
     } else {
         snprintf(name, sizeof(name), "   ");
     }
@@ -14243,6 +14270,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         uint8_t slot = keycode - SEQ_QUICK_BUILD_1;  // 0-7
 
         if (record->event.pressed) {
+            // Octave doubler modifier: cycle octave for this seq slot
+            if (octave_doubler_button_held) {
+                int8_t current_oct = seq_octave_doubler[slot];
+                if (current_oct == 0) seq_octave_doubler[slot] = 12;
+                else if (current_oct == 12) seq_octave_doubler[slot] = 24;
+                else if (current_oct == 24) seq_octave_doubler[slot] = -12;
+                else seq_octave_doubler[slot] = 0;
+                dprintf("seq: slot %d octave doubler = %d\n", slot, seq_octave_doubler[slot]);
+                set_keylog(keycode, record);
+                return false;
+            }
+
             if (quick_build_state.has_saved_seq_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved seq build for this slot and not currently building: toggle play
@@ -14395,6 +14434,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
         uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-135)
         if (record->event.pressed) {
+            // Octave doubler modifier: cycle octave for the slot playing this preset
+            if (octave_doubler_button_held) {
+                int8_t existing = seq_find_slot_with_preset(preset_id);
+                if (existing >= 0) {
+                    int8_t current_oct = seq_octave_doubler[existing];
+                    if (current_oct == 0) seq_octave_doubler[existing] = 12;
+                    else if (current_oct == 12) seq_octave_doubler[existing] = 24;
+                    else if (current_oct == 24) seq_octave_doubler[existing] = -12;
+                    else seq_octave_doubler[existing] = 0;
+                    dprintf("seq: preset %d slot %d octave doubler = %d\n", preset_id, existing, seq_octave_doubler[existing]);
+                }
+                set_keylog(keycode, record);
+                return false;
+            }
+
             // Find empty tracking slot and store press info
             for (uint8_t t = 0; t < MAX_SEQ_PRESET_TRACK; t++) {
                 if (seq_preset_track[t].keycode == 0) {

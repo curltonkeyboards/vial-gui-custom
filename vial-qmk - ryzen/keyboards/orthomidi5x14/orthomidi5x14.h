@@ -752,6 +752,7 @@ typedef struct {
     int8_t locked_transpose;            // Locked transposition value
     bool has_looped;                    // True after first pattern wrap (enables loop trigger on step 0)
     bool deferred_start_pending;        // Waiting for next cycle point to start (sync with running seqs/loops)
+    bool deferred_stop_pending;         // Stop at end of current pattern loop (not immediately)
 } seq_state_t;
 
 // Pool-based preset header for quick build presets (notes stored in shared note_pool)
@@ -821,6 +822,9 @@ bool note_pool_has_valid_seq(uint8_t slot);           // Check if seq QB slot ha
 
 // Step Sequencer modifier tracking
 extern bool seq_modifier_held[MAX_SEQ_SLOTS];  // Track which seq modifiers are held
+
+// Step Sequencer octave doubler (per-slot, values: 0, 12, 24, -12)
+extern int8_t seq_octave_doubler[MAX_SEQ_SLOTS];
 
 // Arpeggiator functions
 void arp_init(void);

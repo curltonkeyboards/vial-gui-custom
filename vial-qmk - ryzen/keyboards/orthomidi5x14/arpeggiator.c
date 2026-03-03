@@ -54,6 +54,9 @@ seq_state_t seq_state[MAX_SEQ_SLOTS] = {
 // Step Sequencer modifier tracking
 bool seq_modifier_held[MAX_SEQ_SLOTS] = {false, false, false, false, false, false, false, false};
 
+// Step Sequencer octave doubler (per-slot, values: 0, 12, 24, -12)
+int8_t seq_octave_doubler[MAX_SEQ_SLOTS] = {0, 0, 0, 0, 0, 0, 0, 0};
+
 // Helper: check if arpeggiator is active (used by process_midi.c to suppress direct MIDI output)
 bool arp_is_active(void) {
     return arp_state.active;
@@ -640,10 +643,14 @@ void seq_select_preset(uint8_t preset_id) {
                 seq_state[existing_slot].next_note_time = now;
                 dprintf("seq: force-started preset %d immediately (no running seq)\n", preset_id);
             }
+        } else if (seq_state[existing_slot].deferred_stop_pending) {
+            // Already pending deferred stop: cancel it (un-stop)
+            seq_state[existing_slot].deferred_stop_pending = false;
+            dprintf("seq: cancelled deferred stop for preset %d in slot %d\n", preset_id, existing_slot);
         } else {
-            // Preset is playing: toggle it off
-            seq_stop(existing_slot);
-            dprintf("seq: toggled OFF preset %d from slot %d\n", preset_id, existing_slot);
+            // Preset is playing: defer stop to end of current pattern loop
+            seq_state[existing_slot].deferred_stop_pending = true;
+            dprintf("seq: deferred stop for preset %d in slot %d\n", preset_id, existing_slot);
         }
     } else {
         // Preset not playing: start in next available slot
@@ -1665,6 +1672,7 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].current_position_16ths = 0;
     seq_state[slot].has_looped = false;
     seq_state[slot].deferred_start_pending = false;
+    seq_state[slot].deferred_stop_pending = false;
 
     // Lock in global values when sequencer starts
     seq_state[slot].locked_channel = channel_number;
@@ -1687,6 +1695,7 @@ void seq_stop(uint8_t slot) {
     if (seq_state[slot].active) {
         seq_state[slot].active = false;
         seq_state[slot].deferred_start_pending = false;
+        seq_state[slot].deferred_stop_pending = false;
 
         // Immediately send note-offs for all active arp notes to prevent stuck notes
         // (seq uses arp_notes[] for gate tracking)
@@ -1824,6 +1833,21 @@ void seq_update(void) {
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
+                // Force-off any pending note with the same pitch on this slot
+                // Prevents gate 100% overlap where previous note-off fires after new note-on
+                for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
+                    if (arp_notes[j].active && arp_notes[j].from_seq &&
+                        arp_notes[j].seq_slot == slot &&
+                        arp_notes[j].note == (uint8_t)midi_note) {
+                        midi_send_noteoff_seq_macro(arp_notes[j].channel,
+                                                    arp_notes[j].note,
+                                                    arp_notes[j].velocity,
+                                                    arp_notes[j].seq_slot);
+                        arp_notes[j].active = false;
+                        arp_note_count--;
+                    }
+                }
+
                 // Send note-on using sequencer's locked-in values (as macro note, not recorded by looper)
                 midi_send_noteon_seq(slot, (uint8_t)midi_note, note->velocity);
 
@@ -1838,6 +1862,14 @@ void seq_update(void) {
 
         // Check for loop (restart)
         if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
+            // Deferred stop: if pending, stop now at the clean loop boundary
+            if (seq_state[slot].deferred_stop_pending) {
+                seq_state[slot].deferred_stop_pending = false;
+                seq_stop(slot);
+                dprintf("seq: deferred stop executed for slot %d at pattern end\n", slot);
+                continue;
+            }
+
             // Pattern loop: advance anchor by exact pattern duration (no drift)
             uint8_t nv, tm;
             if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
@@ -3615,10 +3647,14 @@ void seq_start_slot(uint8_t slot) {
                 seq_state[slot].next_note_time = now;
                 dprintf("seq: slot %d force-started immediately (no running seq)\n", slot);
             }
+        } else if (seq_state[slot].deferred_stop_pending) {
+            // Already pending deferred stop: cancel it (un-stop)
+            seq_state[slot].deferred_stop_pending = false;
+            dprintf("seq: slot %d cancelled deferred stop\n", slot);
         } else {
-            // Already playing: toggle off
-            seq_stop(slot);
-            dprintf("seq: slot %d toggled OFF\n", slot);
+            // Already playing: defer stop to end of current pattern loop
+            seq_state[slot].deferred_stop_pending = true;
+            dprintf("seq: slot %d deferred stop\n", slot);
         }
         return;
     }
@@ -3628,6 +3664,7 @@ void seq_start_slot(uint8_t slot) {
     seq_state[slot].current_position_16ths = 0;
     seq_state[slot].has_looped = false;
     seq_state[slot].deferred_start_pending = false;
+    seq_state[slot].deferred_stop_pending = false;
 
     // Use the channel from when the seq was built (not the current keyboard channel)
     seq_state[slot].locked_channel = quick_build_state.saved_seq_channel[slot];
