@@ -17062,7 +17062,7 @@ void render_quick_build_recording(void) {
     oled_write_line(2, "");
 
     // Line 3: Step number (centered)
-    uint8_t step = quick_build_get_current_step();
+    uint16_t step = quick_build_get_current_step();
     snprintf(buf, sizeof(buf), "STEP %d", step);
     oled_write_line_centered(3, buf);
 

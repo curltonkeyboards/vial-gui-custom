@@ -103,18 +103,32 @@ quick_build_state_t quick_build_state = {
     .encoder_chord_held = false
 };
 
-// Storage for 4 arp quick build presets (each 200 bytes)
-static arp_preset_t arp_quick_build_storage[MAX_ARP_QB_SLOTS];
-
 // Remember last-used quick build settings across builds
 static uint8_t last_arp_mode = 0;
 static uint8_t last_note_value = NOTE_VALUE_SIXTEENTH;
 static uint8_t last_timing_mode = TIMING_MODE_STRAIGHT;
 static uint8_t last_gate_percent = 80;
 
-// Efficient RAM storage: Only active presets loaded
-arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
-seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
+// =============================================================================
+// NOTE POOL - Shared variable-size storage for all active preset notes
+// =============================================================================
+// 2048 notes × 3 bytes = 6144 bytes total.
+// This replaces fixed-size inline note arrays, saving ~7KB RAM vs naive approach
+// when supporting 256 arp notes / 512 seq notes.
+
+static arp_preset_note_t note_pool[NOTE_POOL_SIZE];
+
+typedef struct {
+    uint16_t offset;   // Start index in note_pool
+    uint16_t count;    // Number of notes allocated (0 = free)
+} pool_slot_t;
+
+static pool_slot_t pool_slots[POOL_NUM_SLOTS];
+
+// Pool-based RAM storage: active presets with pointer-based notes
+active_preset_t arp_active_preset;                  // Arp active slot
+active_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // Seq active slots
+active_preset_t arp_qb_presets[MAX_ARP_QB_SLOTS];   // Arp quick build storage
 
 // External references
 extern uint8_t live_notes[MAX_LIVE_NOTES][3];  // [channel, note, velocity]
@@ -125,6 +139,222 @@ extern int8_t transpose_number;  // Global transpose
 extern uint8_t he_velocity_min;  // Global HE velocity minimum
 extern uint8_t he_velocity_max;  // Global HE velocity maximum
 extern uint8_t he_velocity_curve;  // Global HE velocity curve index
+
+// =============================================================================
+// NOTE POOL MANAGEMENT
+// =============================================================================
+
+// Update all notes pointers after pool compaction
+static void pool_update_pointers(void) {
+    arp_active_preset.notes = pool_slots[POOL_SLOT_ARP].count > 0 ?
+        &note_pool[pool_slots[POOL_SLOT_ARP].offset] : NULL;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        seq_active_presets[i].notes = pool_slots[POOL_SLOT_SEQ(i)].count > 0 ?
+            &note_pool[pool_slots[POOL_SLOT_SEQ(i)].offset] : NULL;
+    }
+    for (uint8_t i = 0; i < MAX_ARP_QB_SLOTS; i++) {
+        arp_qb_presets[i].notes = pool_slots[POOL_SLOT_QB(i)].count > 0 ?
+            &note_pool[pool_slots[POOL_SLOT_QB(i)].offset] : NULL;
+    }
+}
+
+// Compact pool: pack all allocations to front, eliminate gaps
+static void pool_compact(void) {
+    uint16_t write_pos = 0;
+
+    // Process slots in order of their current offset (simple O(n²), n=13)
+    for (uint8_t pass = 0; pass < POOL_NUM_SLOTS; pass++) {
+        // Find the in-use slot with the lowest offset >= write_pos
+        int8_t best = -1;
+        uint16_t best_offset = UINT16_MAX;
+        for (uint8_t i = 0; i < POOL_NUM_SLOTS; i++) {
+            if (pool_slots[i].count > 0 && pool_slots[i].offset < best_offset) {
+                best = i;
+                best_offset = pool_slots[i].offset;
+            }
+        }
+        if (best < 0) break;  // No more allocations
+
+        // Move this allocation down if there's a gap
+        if (pool_slots[best].offset != write_pos) {
+            memmove(&note_pool[write_pos], &note_pool[pool_slots[best].offset],
+                    pool_slots[best].count * sizeof(arp_preset_note_t));
+            pool_slots[best].offset = write_pos;
+        }
+        write_pos += pool_slots[best].count;
+    }
+
+    // Update all notes pointers to reflect new positions
+    pool_update_pointers();
+}
+
+void note_pool_init(void) {
+    memset(pool_slots, 0, sizeof(pool_slots));
+    memset(note_pool, 0, sizeof(note_pool));
+    // Clear all notes pointers
+    arp_active_preset.notes = NULL;
+    for (uint8_t i = 0; i < MAX_SEQ_SLOTS; i++) {
+        seq_active_presets[i].notes = NULL;
+    }
+    for (uint8_t i = 0; i < MAX_ARP_QB_SLOTS; i++) {
+        arp_qb_presets[i].notes = NULL;
+    }
+}
+
+arp_preset_note_t *note_pool_alloc(uint8_t slot_id, uint16_t count) {
+    if (count == 0 || slot_id >= POOL_NUM_SLOTS) return NULL;
+
+    // Free existing allocation for this slot
+    pool_slots[slot_id].count = 0;
+
+    // Compact to reclaim fragmented space
+    pool_compact();
+
+    // Find end of used space
+    uint16_t used = 0;
+    for (uint8_t i = 0; i < POOL_NUM_SLOTS; i++) {
+        if (pool_slots[i].count > 0) {
+            uint16_t end = pool_slots[i].offset + pool_slots[i].count;
+            if (end > used) used = end;
+        }
+    }
+
+    if (used + count > NOTE_POOL_SIZE) {
+        dprintf("pool: alloc failed, need %d notes but only %d free\n",
+                count, NOTE_POOL_SIZE - used);
+        return NULL;
+    }
+
+    pool_slots[slot_id].offset = used;
+    pool_slots[slot_id].count = count;
+
+    arp_preset_note_t *ptr = &note_pool[used];
+    memset(ptr, 0, count * sizeof(arp_preset_note_t));
+    return ptr;
+}
+
+void note_pool_free(uint8_t slot_id) {
+    if (slot_id >= POOL_NUM_SLOTS) return;
+    pool_slots[slot_id].count = 0;
+    pool_slots[slot_id].offset = 0;
+    // Update the corresponding preset's notes pointer
+    pool_update_pointers();
+}
+
+// Load helpers: copy from EEPROM-format struct to active preset using pool
+// Converts 7-bit timing format → 8-bit timing format
+void load_arp_to_active(const arp_preset_t *src, active_preset_t *dest, uint8_t pool_slot) {
+    arp_preset_note_t *notes = note_pool_alloc(pool_slot, src->note_count);
+    if (!notes && src->note_count > 0) {
+        dprintf("pool: failed to allocate %d notes for arp\n", src->note_count);
+        return;
+    }
+
+    dest->preset_type = src->preset_type;
+    dest->note_count = src->note_count;
+    dest->pattern_length_16ths = src->pattern_length_16ths;
+    dest->gate_length_percent = src->gate_length_percent;
+    dest->timing_mode = src->timing_mode;
+    dest->note_value = src->note_value;
+    dest->magic = src->magic;
+    dest->notes = notes;
+
+    // Convert notes from 7-bit to 8-bit timing format
+    for (uint16_t i = 0; i < src->note_count; i++) {
+        dest->notes[i].packed_timing_vel = NOTE_CONVERT_7TO8(src->notes[i].packed_timing_vel);
+        dest->notes[i].note_octave = src->notes[i].note_octave;
+    }
+}
+
+void load_seq_to_active(const seq_preset_t *src, active_preset_t *dest, uint8_t pool_slot) {
+    arp_preset_note_t *notes = note_pool_alloc(pool_slot, src->note_count);
+    if (!notes && src->note_count > 0) {
+        dprintf("pool: failed to allocate %d notes for seq\n", src->note_count);
+        return;
+    }
+
+    dest->preset_type = src->preset_type;
+    dest->note_count = src->note_count;
+    dest->pattern_length_16ths = src->pattern_length_16ths;
+    dest->gate_length_percent = src->gate_length_percent;
+    dest->timing_mode = src->timing_mode;
+    dest->note_value = src->note_value;
+    dest->magic = src->magic;
+    dest->notes = notes;
+
+    // Convert notes from 7-bit to 8-bit timing format
+    for (uint16_t i = 0; i < src->note_count; i++) {
+        dest->notes[i].packed_timing_vel = NOTE_CONVERT_7TO8(src->notes[i].packed_timing_vel);
+        dest->notes[i].note_octave = src->notes[i].note_octave;
+    }
+}
+
+// Validate active preset (8-bit timing format)
+bool active_validate_arp(const active_preset_t *preset) {
+    if (!preset || !preset->notes) {
+        dprintf("arp: active validate failed - NULL\n");
+        return false;
+    }
+    if (preset->magic != ARP_PRESET_MAGIC) {
+        dprintf("arp: active validate failed - bad magic 0x%04X\n", preset->magic);
+        return false;
+    }
+    if (preset->note_count > MAX_ACTIVE_ARP_NOTES) {
+        dprintf("arp: active validate failed - note_count %d > %d\n",
+                preset->note_count, MAX_ACTIVE_ARP_NOTES);
+        return false;
+    }
+    if (preset->gate_length_percent > 100) {
+        dprintf("arp: active validate failed - gate %d > 100\n", preset->gate_length_percent);
+        return false;
+    }
+    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > MAX_ACTIVE_ARP_STEPS) {
+        dprintf("arp: active validate failed - pattern_length %d\n", preset->pattern_length_16ths);
+        return false;
+    }
+    for (uint16_t i = 0; i < preset->note_count; i++) {
+        uint8_t timing = NOTE_GET_TIMING(preset->notes[i].packed_timing_vel);
+        if (timing >= preset->pattern_length_16ths) {
+            dprintf("arp: active validate failed - note[%d] timing %d >= length %d\n",
+                    i, timing, preset->pattern_length_16ths);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool active_validate_seq(const active_preset_t *preset) {
+    if (!preset || !preset->notes) {
+        dprintf("seq: active validate failed - NULL\n");
+        return false;
+    }
+    if (preset->magic != ARP_PRESET_MAGIC) {
+        dprintf("seq: active validate failed - bad magic 0x%04X\n", preset->magic);
+        return false;
+    }
+    if (preset->note_count > MAX_ACTIVE_SEQ_NOTES) {
+        dprintf("seq: active validate failed - note_count %d > %d\n",
+                preset->note_count, MAX_ACTIVE_SEQ_NOTES);
+        return false;
+    }
+    if (preset->gate_length_percent > 100) {
+        dprintf("seq: active validate failed - gate %d > 100\n", preset->gate_length_percent);
+        return false;
+    }
+    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > MAX_ACTIVE_SEQ_STEPS) {
+        dprintf("seq: active validate failed - pattern_length %d\n", preset->pattern_length_16ths);
+        return false;
+    }
+    for (uint16_t i = 0; i < preset->note_count; i++) {
+        uint16_t timing = NOTE_GET_TIMING(preset->notes[i].packed_timing_vel);
+        if (timing >= preset->pattern_length_16ths) {
+            dprintf("seq: active validate failed - note[%d] timing %d >= length %d\n",
+                    i, timing, preset->pattern_length_16ths);
+            return false;
+        }
+    }
+    return true;
+}
 
 // =============================================================================
 // LIVE NOTE PRESS ORDER TRACKING (for arpeggiator modes)
@@ -383,7 +613,7 @@ void process_arp_note_offs(void) {
 // =============================================================================
 
 // Load arpeggiator preset into active slot (lazy-load from EEPROM or factory data)
-// Preset IDs: 0-47 (factory), 48-67 (user, 20 slots)
+// Loads into temp buffer (7-bit format), converts to active preset (8-bit format) via pool
 bool arp_load_preset_into_slot(uint8_t preset_id) {
     // Quick build sentinel: RAM already contains the custom pattern, don't reload
     if (preset_id == PRESET_ID_QUICK_BUILD) {
@@ -403,17 +633,19 @@ bool arp_load_preset_into_slot(uint8_t preset_id) {
         return true;
     }
 
-    // Load preset based on type
+    // Load into temp buffer (7-bit EEPROM format)
+    arp_preset_t temp;
     if (preset_id >= USER_ARP_PRESET_START) {
-        // User preset: load from EEPROM (48-67)
-        if (!arp_load_preset_from_eeprom(preset_id, &arp_active_preset)) {
+        if (!arp_load_preset_from_eeprom(preset_id, &temp)) {
             dprintf("arp: failed to load user preset %d from EEPROM\n", preset_id);
             return false;
         }
     } else {
-        // Factory preset: load from PROGMEM (0-47)
-        arp_load_factory_preset(preset_id, &arp_active_preset);
+        arp_load_factory_preset(preset_id, &temp);
     }
+
+    // Convert 7-bit → 8-bit and load into active preset via pool
+    load_arp_to_active(&temp, &arp_active_preset, POOL_SLOT_ARP);
 
     arp_state.loaded_preset_id = preset_id;
     dprintf("arp: loaded preset %d into active slot\n", preset_id);
@@ -421,7 +653,7 @@ bool arp_load_preset_into_slot(uint8_t preset_id) {
 }
 
 // Load sequencer preset into specified slot (lazy-load from EEPROM or factory data)
-// Preset IDs: 68-115 (factory, 48 slots), 116-135 (user, 20 slots)
+// Loads into temp buffer (7-bit format), converts to active preset (8-bit format) via pool
 bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot) {
     if (slot >= MAX_SEQ_SLOTS) {
         dprintf("seq: load_preset_into_slot - invalid slot %d\n", slot);
@@ -446,18 +678,20 @@ bool seq_load_preset_into_slot(uint8_t preset_id, uint8_t slot) {
         return true;
     }
 
-    // Load preset based on type
+    // Load into temp buffer (7-bit EEPROM format)
+    seq_preset_t temp;
     if (preset_id >= USER_SEQ_PRESET_START) {
-        // User preset: load from EEPROM (116-135)
-        if (!seq_load_preset_from_eeprom(preset_id, &seq_active_presets[slot])) {
+        if (!seq_load_preset_from_eeprom(preset_id, &temp)) {
             dprintf("seq: failed to load user preset %d from EEPROM\n", preset_id);
             return false;
         }
     } else {
-        // Factory preset: load from PROGMEM (68-115 maps to internal 0-47)
         uint8_t factory_id = preset_id - 68;
-        seq_load_factory_preset(factory_id, &seq_active_presets[slot]);
+        seq_load_factory_preset(factory_id, &temp);
     }
+
+    // Convert 7-bit → 8-bit and load into active preset via pool
+    load_seq_to_active(&temp, &seq_active_presets[slot], POOL_SLOT_SEQ(slot));
 
     seq_state[slot].loaded_preset_id = preset_id;
     dprintf("seq: loaded preset %d into slot %d\n", preset_id, slot);
@@ -552,12 +786,13 @@ static uint32_t get_effective_bpm(void) {
 
 // Unpack a note structure to extract individual fields
 typedef struct {
-    uint8_t timing;
+    uint16_t timing;         // uint16_t for 8-bit timing support (0-255)
     uint8_t velocity;
     int8_t note_index;      // For arp: interval with sign; For seq: note 0-11
     int8_t octave_offset;
 } unpacked_note_t;
 
+// Unpack from 8-bit timing format (active presets in RAM)
 static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpacked, bool is_arpeggiator) {
     unpacked->timing = NOTE_GET_TIMING(packed->packed_timing_vel);
     unpacked->velocity = NOTE_GET_VELOCITY(packed->packed_timing_vel);
@@ -566,11 +801,25 @@ static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpack
     unpacked->octave_offset = NOTE_GET_OCTAVE(packed->note_octave);
 
     if (is_arpeggiator) {
-        // For arpeggiator: apply sign bit to interval
         uint8_t sign = NOTE_GET_SIGN(packed->packed_timing_vel);
         unpacked->note_index = sign ? -(int8_t)note_val : (int8_t)note_val;
     } else {
-        // For step sequencer: note is unsigned 0-11
+        unpacked->note_index = note_val;
+    }
+}
+
+// Unpack from 7-bit timing format (EEPROM/factory presets)
+static void unpack_note_7bit(const arp_preset_note_t *packed, unpacked_note_t *unpacked, bool is_arpeggiator) {
+    unpacked->timing = NOTE7_GET_TIMING(packed->packed_timing_vel);
+    unpacked->velocity = NOTE7_GET_VELOCITY(packed->packed_timing_vel);
+
+    uint8_t note_val = NOTE_GET_NOTE(packed->note_octave);
+    unpacked->octave_offset = NOTE_GET_OCTAVE(packed->note_octave);
+
+    if (is_arpeggiator) {
+        uint8_t sign = NOTE7_GET_SIGN(packed->packed_timing_vel);
+        unpacked->note_index = sign ? -(int8_t)note_val : (int8_t)note_val;
+    } else {
         unpacked->note_index = note_val;
     }
 }
@@ -630,7 +879,7 @@ static uint32_t compute_step_time_offset(uint16_t step, uint8_t note_value, uint
 
 // Calculate milliseconds per step for arpeggiator (used for gate duration calculations).
 // Uses arp_state.rate_override if set, otherwise uses preset values.
-static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
+static uint32_t get_ms_per_16th(const active_preset_t *preset) {
     uint8_t note_value, timing_mode;
     if (arp_state.rate_override != 0) {
         note_value = arp_state.rate_override & ~TIMING_MODE_MASK;
@@ -644,7 +893,7 @@ static uint32_t get_ms_per_16th(const arp_preset_t *preset) {
 
 // Compute anchored next_note_time for arpeggiator.
 // Returns: pattern_start_time + exact offset for the given step number.
-static uint32_t arp_anchored_next_time(const arp_preset_t *preset, uint16_t step) {
+static uint32_t arp_anchored_next_time(const active_preset_t *preset, uint16_t step) {
     uint8_t note_value, timing_mode;
     if (arp_state.rate_override != 0) {
         note_value = arp_state.rate_override & ~TIMING_MODE_MASK;
@@ -658,7 +907,7 @@ static uint32_t arp_anchored_next_time(const arp_preset_t *preset, uint16_t step
 
 // Calculate milliseconds per step for sequencer (used for gate duration calculations).
 // Uses seq_state[slot].rate_override if set, otherwise uses preset values.
-static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset, uint8_t slot) {
+static uint32_t seq_get_ms_per_16th(const active_preset_t *preset, uint8_t slot) {
     uint8_t note_value, timing_mode;
     if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
         note_value = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
@@ -672,7 +921,7 @@ static uint32_t seq_get_ms_per_16th(const seq_preset_t *preset, uint8_t slot) {
 
 // Compute anchored next_note_time for sequencer slot.
 // Returns: pattern_start_time + exact offset for the given step number.
-static uint32_t seq_anchored_next_time(const seq_preset_t *preset, uint8_t slot, uint16_t step) {
+static uint32_t seq_anchored_next_time(const active_preset_t *preset, uint8_t slot, uint16_t step) {
     uint8_t note_value, timing_mode;
     if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
         note_value = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
@@ -690,9 +939,11 @@ void arp_init(void) {
     memset(arp_notes, 0, sizeof(arp_notes));
     arp_note_count = 0;
 
-    // Clear active preset slots
-    memset(&arp_active_preset, 0, sizeof(arp_preset_t));
+    // Initialize note pool and clear active preset headers
+    note_pool_init();
+    memset(&arp_active_preset, 0, sizeof(active_preset_t));
     memset(seq_active_presets, 0, sizeof(seq_active_presets));
+    memset(arp_qb_presets, 0, sizeof(arp_qb_presets));
 
     // Reset press order tracking (prevents stale sequence data)
     memset(live_note_sequence, 0, sizeof(live_note_sequence));
@@ -853,7 +1104,7 @@ void arp_update(void) {
     if (!arp_state.active) return;
 
     // Use the active preset slot (already loaded by arp_start)
-    arp_preset_t *preset = &arp_active_preset;
+    active_preset_t *preset = &arp_active_preset;
 
     // Check requirements based on preset type
     if (preset->preset_type == PRESET_TYPE_ARPEGGIATOR) {
@@ -904,7 +1155,7 @@ void arp_update(void) {
             if (current_time < unsynced_notes[u].next_note_time) continue;
 
             // Find preset notes at this note's current position
-            for (uint8_t i = 0; i < preset->note_count; i++) {
+            for (uint16_t i = 0; i < preset->note_count; i++) {
                 unpacked_note_t unpacked;
                 unpack_note(&preset->notes[i], &unpacked, true);
 
@@ -1004,7 +1255,7 @@ void arp_update(void) {
 
     // Special case: Random preset - randomize note indices
     if (arp_state.current_preset_id == 3) {  // Random 8ths preset
-        for (uint8_t i = 0; i < preset->note_count; i++) {
+        for (uint16_t i = 0; i < preset->note_count; i++) {
             // Extract current octave_offset from packed field
             int8_t current_octave = NOTE_GET_OCTAVE(preset->notes[i].note_octave);
 
@@ -1017,14 +1268,14 @@ void arp_update(void) {
     }
 
     // Find notes to play at current position
-    uint8_t notes_to_play[MAX_ARP_PRESET_NOTES];
-    uint8_t note_count_to_play = 0;
-    unpacked_note_t unpacked_notes[MAX_ARP_PRESET_NOTES];
+    uint16_t notes_to_play[MAX_ACTIVE_ARP_NOTES];
+    uint16_t note_count_to_play = 0;
+    unpacked_note_t unpacked_notes[MAX_ACTIVE_ARP_NOTES];
 
     bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
 
-    for (uint8_t i = 0; i < preset->note_count; i++) {
-        // Unpack the note to check its timing
+    for (uint16_t i = 0; i < preset->note_count; i++) {
+        // Unpack the note to check its timing (8-bit active format)
         unpack_note(&preset->notes[i], &unpacked_notes[i], is_arpeggiator);
 
         if (unpacked_notes[i].timing == arp_state.current_position_16ths) {
@@ -1046,8 +1297,8 @@ void arp_update(void) {
         // Handle Step Sequencer (absolute notes)
         if (preset->preset_type == PRESET_TYPE_STEP_SEQUENCER) {
             // Step sequencer: play absolute MIDI notes
-            for (uint8_t i = 0; i < note_count_to_play; i++) {
-                uint8_t preset_note_idx = notes_to_play[i];
+            for (uint16_t i = 0; i < note_count_to_play; i++) {
+                uint16_t preset_note_idx = notes_to_play[i];
                 unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
                 // Calculate absolute MIDI note: (octave × 12) + note_index
@@ -1089,8 +1340,8 @@ void arp_update(void) {
                     uint8_t master_note = live_notes[master_idx][1];
                     uint8_t channel = live_notes[master_idx][0];
 
-                    for (uint8_t i = 0; i < note_count_to_play; i++) {
-                        uint8_t preset_note_idx = notes_to_play[i];
+                    for (uint16_t i = 0; i < note_count_to_play; i++) {
+                        uint16_t preset_note_idx = notes_to_play[i];
                         unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
                         // Calculate note: master + semitone_offset + octave_offset
@@ -1117,8 +1368,8 @@ void arp_update(void) {
                 case ARPMODE_CHORD_SYNCED: {
                     // Chord Synced Mode: Apply semitone offset to ALL held notes simultaneously
                     // All notes share the same timing grid
-                    for (uint8_t i = 0; i < note_count_to_play; i++) {
-                        uint8_t preset_note_idx = notes_to_play[i];
+                    for (uint16_t i = 0; i < note_count_to_play; i++) {
+                        uint16_t preset_note_idx = notes_to_play[i];
                         unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
                         int16_t semitone_offset = note->note_index;
@@ -1157,7 +1408,7 @@ void arp_update(void) {
 
                     if (note_count_to_play == 0) break;
 
-                    uint8_t preset_note_idx = notes_to_play[0];  // Use first step at this position
+                    uint16_t preset_note_idx = notes_to_play[0];  // Use first step at this position
                     unpacked_note_t *note = &unpacked_notes[preset_note_idx];
 
                     int16_t semitone_offset = note->note_index;
@@ -1275,7 +1526,7 @@ static uint8_t get_note_value_multiplier(uint8_t note_value) {
 }
 
 // Get the effective note value for a slot (respects rate override)
-static uint8_t get_slot_note_value(const seq_preset_t *preset, uint8_t slot) {
+static uint8_t get_slot_note_value(const active_preset_t *preset, uint8_t slot) {
     if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
         return seq_state[slot].rate_override & ~TIMING_MODE_MASK;
     }
@@ -1305,7 +1556,7 @@ void seq_release_deferred_starts(uint32_t align_time) {
         uint32_t now = timer_read32();
         uint32_t elapsed = now - align_time;  // Will be 0 if align_time == now
 
-        seq_preset_t *preset = &seq_active_presets[slot];
+        active_preset_t *preset = &seq_active_presets[slot];
         if (elapsed > 0 && preset->note_count > 0) {
             // Calculate ms per step for this preset
             uint32_t ms_per_step = seq_get_ms_per_16th(preset, slot);
@@ -1324,7 +1575,7 @@ void seq_release_deferred_starts(uint32_t align_time) {
                                        preset->gate_length_percent;
                 uint32_t gate_ms = (ms_per_step * gate_percent) / 100;
 
-                for (uint8_t i = 0; i < preset->note_count; i++) {
+                for (uint16_t i = 0; i < preset->note_count; i++) {
                     unpacked_note_t unpacked;
                     unpack_note(&preset->notes[i], &unpacked, false);
 
@@ -1406,7 +1657,7 @@ static bool seq_apply_start_logic(uint8_t slot) {
         // Play catch-up for any missed steps
         uint32_t now = timer_read32();
         uint32_t elapsed = now - just_started_time;
-        seq_preset_t *preset = &seq_active_presets[slot];
+        active_preset_t *preset = &seq_active_presets[slot];
         uint32_t ms_per_step = seq_get_ms_per_16th(preset, slot);
         if (ms_per_step > 0 && elapsed > 0) {
             uint16_t elapsed_steps = (uint16_t)(elapsed / ms_per_step);
@@ -1579,7 +1830,7 @@ void seq_update(void) {
         if (seq_state[slot].deferred_start_pending) continue;
 
         // Get preset for this slot
-        seq_preset_t *preset = &seq_active_presets[slot];
+        active_preset_t *preset = &seq_active_presets[slot];
 
         // Check if it's time to play next note
         uint32_t current_time = timer_read32();
@@ -1601,48 +1852,33 @@ void seq_update(void) {
             }
         }
 
-        // Find notes to play at current position
-        uint8_t notes_to_play[MAX_SEQ_PRESET_NOTES];
-        uint8_t note_count_to_play = 0;
-        unpacked_note_t unpacked_notes[MAX_SEQ_PRESET_NOTES];
+        // Play notes at current position (inline processing to avoid large stack arrays)
+        // Pre-compute gate duration for any notes that match
+        uint8_t gate_percent = (seq_state[slot].master_gate_override > 0) ?
+                               seq_state[slot].master_gate_override :
+                               preset->gate_length_percent;
+        uint32_t ms_per_16th = seq_get_ms_per_16th(preset, slot);
+        uint32_t gate_duration_ms = (ms_per_16th * gate_percent) / 100;
 
-        for (uint8_t i = 0; i < preset->note_count; i++) {
-            unpack_note(&preset->notes[i], &unpacked_notes[i], false);  // false = step sequencer
+        for (uint16_t i = 0; i < preset->note_count; i++) {
+            unpacked_note_t note;
+            unpack_note(&preset->notes[i], &note, false);  // false = step sequencer
 
-            if (unpacked_notes[i].timing == seq_state[slot].current_position_16ths) {
-                notes_to_play[note_count_to_play++] = i;
-            }
-        }
+            if (note.timing != seq_state[slot].current_position_16ths) continue;
 
-        // Play notes (step sequencer uses absolute MIDI notes)
-        if (note_count_to_play > 0) {
-            // Calculate gate length
-            uint8_t gate_percent = (seq_state[slot].master_gate_override > 0) ?
-                                   seq_state[slot].master_gate_override :
-                                   preset->gate_length_percent;
+            // Calculate absolute MIDI note: (octave × 12) + note_index
+            int16_t midi_note = (note.octave_offset * 12) + note.note_index;
 
-            uint32_t ms_per_16th = seq_get_ms_per_16th(preset, slot);
-            uint32_t note_duration_ms = ms_per_16th;
-            uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
+            // Clamp to MIDI range (0-127)
+            if (midi_note < 0) midi_note = 0;
+            if (midi_note > 127) midi_note = 127;
 
-            for (uint8_t i = 0; i < note_count_to_play; i++) {
-                uint8_t preset_note_idx = notes_to_play[i];
-                unpacked_note_t *note = &unpacked_notes[preset_note_idx];
+            // Send note-on using sequencer's locked-in values (as macro note, not recorded by looper)
+            midi_send_noteon_seq(slot, (uint8_t)midi_note, note.velocity);
 
-                // Calculate absolute MIDI note: (octave × 12) + note_index
-                int16_t midi_note = (note->octave_offset * 12) + note->note_index;
-
-                // Clamp to MIDI range (0-127)
-                if (midi_note < 0) midi_note = 0;
-                if (midi_note > 127) midi_note = 127;
-
-                // Send note-on using sequencer's locked-in values (as macro note, not recorded by looper)
-                midi_send_noteon_seq(slot, (uint8_t)midi_note, note->velocity);
-
-                // Add to arp_notes for gate tracking (marked as seq note for macro-style note-off)
-                uint32_t note_off_time = current_time + gate_duration_ms;
-                add_seq_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity, note_off_time, slot);
-            }
+            // Add to arp_notes for gate tracking (marked as seq note for macro-style note-off)
+            uint32_t note_off_time = current_time + gate_duration_ms;
+            add_seq_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note.velocity, note_off_time, slot);
         }
 
         // Advance position
@@ -2126,12 +2362,12 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         return false;
     }
 
-    // Validate individual notes
+    // Validate individual notes (7-bit EEPROM format)
     bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
     for (uint8_t i = 0; i < preset->note_count; i++) {
         const arp_preset_note_t *packed_note = &preset->notes[i];
         unpacked_note_t note;
-        unpack_note(packed_note, &note, is_arpeggiator);
+        unpack_note_7bit(packed_note, &note, is_arpeggiator);
 
         // Check timing is within pattern length
         if (note.timing >= preset->pattern_length_16ths) {
@@ -2146,73 +2382,61 @@ bool arp_validate_preset(const arp_preset_t *preset) {
                     i, note.octave_offset);
             return false;
         }
-
-        // Velocity is 0-127, always valid for unpacked value
-        // Note index for arp is -11 to +11, for seq is 0-11, both within int8_t range
     }
 
     dprintf("arp: preset validation passed\n");
     return true;
 }
 
-// Validate step sequencer preset structure
+// Validate step sequencer preset structure (7-bit EEPROM format)
 bool seq_validate_preset(const seq_preset_t *preset) {
     if (preset == NULL) {
         dprintf("seq: validate failed - NULL pointer\n");
         return false;
     }
 
-    // Check magic number
     if (preset->magic != ARP_PRESET_MAGIC) {
         dprintf("seq: validate failed - bad magic: 0x%04X (expected 0x%04X)\n",
                 preset->magic, ARP_PRESET_MAGIC);
         return false;
     }
 
-    // Check note count bounds for step sequencer (max 128 notes)
     if (preset->note_count > MAX_SEQ_PRESET_NOTES) {
         dprintf("seq: validate failed - note_count %d exceeds max %d\n",
                 preset->note_count, MAX_SEQ_PRESET_NOTES);
         return false;
     }
 
-    // Check gate length bounds
     if (preset->gate_length_percent > 100) {
         dprintf("seq: validate failed - gate_length_percent %d > 100\n",
                 preset->gate_length_percent);
         return false;
     }
 
-    // Check pattern length bounds (at least 1 16th, max 127 = ~8 bars)
     if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 127) {
         dprintf("seq: validate failed - pattern_length %d not in [1,127]\n",
                 preset->pattern_length_16ths);
         return false;
     }
 
-    // Validate individual notes
+    // Validate individual notes (7-bit EEPROM format)
     bool is_arpeggiator = (preset->preset_type == PRESET_TYPE_ARPEGGIATOR);
     for (uint8_t i = 0; i < preset->note_count; i++) {
         const arp_preset_note_t *packed_note = &preset->notes[i];
         unpacked_note_t note;
-        unpack_note(packed_note, &note, is_arpeggiator);
+        unpack_note_7bit(packed_note, &note, is_arpeggiator);
 
-        // Check timing is within pattern length
         if (note.timing >= preset->pattern_length_16ths) {
             dprintf("seq: validate failed - note[%d] timing %d >= pattern_length %d\n",
                     i, note.timing, preset->pattern_length_16ths);
             return false;
         }
 
-        // Check octave offset is within new packed range (-8 to +7)
         if (note.octave_offset < -8 || note.octave_offset > 7) {
             dprintf("seq: validate failed - note[%d] octave_offset %d not in [-8,7]\n",
                     i, note.octave_offset);
             return false;
         }
-
-        // Velocity is 0-127, always valid for unpacked value
-        // Note index for seq is 0-11, within int8_t range
     }
 
     dprintf("seq: preset validation passed\n");
@@ -2532,7 +2756,7 @@ void quick_build_dismiss_summary(void) {
 }
 
 // Get current step number (1-indexed for display)
-uint8_t quick_build_get_current_step(void) {
+uint16_t quick_build_get_current_step(void) {
     return quick_build_state.current_step + 1;  // Return 1-indexed
 }
 
@@ -2595,8 +2819,16 @@ void quick_build_start_arp(uint8_t slot) {
 // Transition from setup to recording phase (called after all params confirmed)
 static void quick_build_enter_recording(void) {
     if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP) {
+        // Allocate max arp notes from pool
+        arp_preset_note_t *notes = note_pool_alloc(POOL_SLOT_ARP, MAX_ACTIVE_ARP_NOTES);
+        if (!notes) {
+            dprintf("quick_build: pool alloc failed for arp\n");
+            return;
+        }
+
         // Clear and initialize arp_active_preset with selected settings
-        memset(&arp_active_preset, 0, sizeof(arp_preset_t));
+        memset(&arp_active_preset, 0, sizeof(active_preset_t));
+        arp_active_preset.notes = notes;
         arp_active_preset.preset_type = PRESET_TYPE_ARPEGGIATOR;
         arp_active_preset.note_count = 0;
         arp_active_preset.pattern_length_16ths = 1;
@@ -2619,8 +2851,16 @@ static void quick_build_enter_recording(void) {
     } else if (quick_build_state.mode == QUICK_BUILD_SEQ_SETUP) {
         uint8_t slot = quick_build_state.seq_slot;
 
+        // Allocate max seq notes from pool
+        arp_preset_note_t *notes = note_pool_alloc(POOL_SLOT_SEQ(slot), MAX_ACTIVE_SEQ_NOTES);
+        if (!notes) {
+            dprintf("quick_build: pool alloc failed for seq slot %d\n", slot);
+            return;
+        }
+
         // Clear and initialize seq preset with selected settings
-        memset(&seq_active_presets[slot], 0, sizeof(seq_preset_t));
+        memset(&seq_active_presets[slot], 0, sizeof(active_preset_t));
+        seq_active_presets[slot].notes = notes;
         seq_active_presets[slot].preset_type = PRESET_TYPE_STEP_SEQUENCER;
         seq_active_presets[slot].note_count = 0;
         seq_active_presets[slot].pattern_length_16ths = 1;
@@ -2697,18 +2937,16 @@ void quick_build_finish(void) {
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
         uint8_t arp_slot = quick_build_state.arp_slot;
 
-        // Fix pattern length: current_step points to the NEXT empty step,
-        // so the actual last step with notes is current_step - 1.
-        // Find the actual highest step that has notes recorded.
-        uint8_t max_step = 0;
-        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
-            uint8_t step = NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel);
+        // Fix pattern length: find actual highest step that has notes recorded
+        uint16_t max_step = 0;
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            uint16_t step = NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel);
             if (step > max_step) max_step = step;
         }
         arp_active_preset.pattern_length_16ths = max_step + 1;
 
-        // Validate arpeggiator preset
-        if (!arp_validate_preset(&arp_active_preset)) {
+        // Validate active arp preset (8-bit format)
+        if (!active_validate_arp(&arp_active_preset)) {
             dprintf("quick_build: arp validation failed, canceling\n");
             quick_build_cancel();
             return;
@@ -2717,8 +2955,15 @@ void quick_build_finish(void) {
         dprintf("quick_build: arp slot %d finished with %d notes, %d steps\n",
                 arp_slot, quick_build_state.note_count, arp_active_preset.pattern_length_16ths);
 
-        // Save to storage slot and mark as saved
-        memcpy(&arp_quick_build_storage[arp_slot], &arp_active_preset, sizeof(arp_preset_t));
+        // Save to QB storage: allocate pool space and copy notes
+        uint16_t count = arp_active_preset.note_count;
+        arp_preset_note_t *qb_notes = note_pool_alloc(POOL_SLOT_QB(arp_slot), count);
+        if (qb_notes && count > 0) {
+            memcpy(qb_notes, arp_active_preset.notes, count * sizeof(arp_preset_note_t));
+        }
+        arp_qb_presets[arp_slot] = arp_active_preset;  // Copy header
+        arp_qb_presets[arp_slot].notes = qb_notes;     // Point to QB pool allocation
+
         quick_build_state.has_saved_arp_build[arp_slot] = true;
         quick_build_state.active_arp_qb_slot = arp_slot;
 
@@ -2736,15 +2981,15 @@ void quick_build_finish(void) {
         uint8_t slot = quick_build_state.seq_slot;
 
         // Fix pattern length: find actual highest step with notes
-        uint8_t max_step = 0;
-        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
-            uint8_t step = NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel);
+        uint16_t max_step = 0;
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            uint16_t step = NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel);
             if (step > max_step) max_step = step;
         }
         seq_active_presets[slot].pattern_length_16ths = max_step + 1;
 
-        // Validate sequencer preset
-        if (!seq_validate_preset(&seq_active_presets[slot])) {
+        // Validate active seq preset (8-bit format)
+        if (!active_validate_seq(&seq_active_presets[slot])) {
             dprintf("quick_build: seq validation failed, canceling\n");
             quick_build_cancel();
             return;
@@ -2775,6 +3020,8 @@ void quick_build_finish(void) {
 void quick_build_erase_arp(uint8_t slot) {
     if (slot >= MAX_ARP_QB_SLOTS) return;
     dprintf("quick_build: erasing saved arp build slot %d\n", slot);
+    note_pool_free(POOL_SLOT_QB(slot));
+    memset(&arp_qb_presets[slot], 0, sizeof(active_preset_t));
     quick_build_state.has_saved_arp_build[slot] = false;
     quick_build_state.mode = QUICK_BUILD_NONE;
     quick_build_state.current_step = 0;
@@ -2788,8 +3035,20 @@ void quick_build_load_arp_slot(uint8_t slot) {
     if (slot >= MAX_ARP_QB_SLOTS) return;
     if (!quick_build_state.has_saved_arp_build[slot]) return;
 
-    // Copy from storage to the active preset
-    memcpy(&arp_active_preset, &arp_quick_build_storage[slot], sizeof(arp_preset_t));
+    // Allocate pool space for active arp and copy notes from QB storage
+    uint16_t count = arp_qb_presets[slot].note_count;
+    arp_preset_note_t *notes = note_pool_alloc(POOL_SLOT_ARP, count);
+    if (!notes && count > 0) {
+        dprintf("quick_build: pool alloc failed for arp load from QB slot %d\n", slot);
+        return;
+    }
+    // Copy header fields
+    arp_active_preset = arp_qb_presets[slot];
+    arp_active_preset.notes = notes;
+    // Copy note data
+    if (count > 0) {
+        memcpy(notes, arp_qb_presets[slot].notes, count * sizeof(arp_preset_note_t));
+    }
 
     // Track which slot is active
     quick_build_state.active_arp_qb_slot = slot;
@@ -2805,6 +3064,8 @@ void quick_build_load_arp_slot(uint8_t slot) {
 void quick_build_erase_seq(uint8_t slot) {
     if (slot >= MAX_SEQ_SLOTS) return;
     dprintf("quick_build: erasing saved seq build slot %d\n", slot);
+    note_pool_free(POOL_SLOT_SEQ(slot));
+    memset(&seq_active_presets[slot], 0, sizeof(active_preset_t));
     quick_build_state.has_saved_seq_build[slot] = false;
     quick_build_state.mode = QUICK_BUILD_NONE;
     quick_build_state.current_step = 0;
@@ -2812,15 +3073,25 @@ void quick_build_erase_seq(uint8_t slot) {
     dprintf("quick_build: seq slot %d erased\n", slot);
 }
 
-// Advance to next step
+// Advance to next step (with max step limit checks)
 static void quick_build_advance_step(void) {
     quick_build_state.current_step++;
 
-    // Update pattern length in active preset
+    // Check max step limits and auto-finish if reached
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+        if (quick_build_state.current_step >= MAX_ACTIVE_ARP_STEPS) {
+            dprintf("quick_build: arp max steps reached (%d), finishing\n", MAX_ACTIVE_ARP_STEPS);
+            quick_build_finish();
+            return;
+        }
         arp_active_preset.pattern_length_16ths = quick_build_state.current_step + 1;
         dprintf("quick_build: arp advanced to step %d\n", quick_build_state.current_step + 1);
     } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+        if (quick_build_state.current_step >= MAX_ACTIVE_SEQ_STEPS) {
+            dprintf("quick_build: seq max steps reached (%d), finishing\n", MAX_ACTIVE_SEQ_STEPS);
+            quick_build_finish();
+            return;
+        }
         uint8_t slot = quick_build_state.seq_slot;
         seq_active_presets[slot].pattern_length_16ths = quick_build_state.current_step + 1;
         dprintf("quick_build: seq slot %d advanced to step %d\n", slot, quick_build_state.current_step + 1);
@@ -2853,8 +3124,8 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
 
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
         // Check if we've hit max notes
-        if (quick_build_state.note_count >= MAX_ARP_PRESET_NOTES) {
-            dprintf("quick_build: arp max notes reached, finishing\n");
+        if (quick_build_state.note_count >= MAX_ACTIVE_ARP_NOTES) {
+            dprintf("quick_build: arp max notes reached (%d), finishing\n", MAX_ACTIVE_ARP_NOTES);
             quick_build_finish();
             return;
         }
@@ -2886,8 +3157,8 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
         uint8_t slot = quick_build_state.seq_slot;
 
         // Check max notes
-        if (quick_build_state.note_count >= MAX_SEQ_PRESET_NOTES) {
-            dprintf("quick_build: seq max notes reached, finishing\n");
+        if (quick_build_state.note_count >= MAX_ACTIVE_SEQ_NOTES) {
+            dprintf("quick_build: seq max notes reached (%d), finishing\n", MAX_ACTIVE_SEQ_NOTES);
             quick_build_finish();
             return;
         }
@@ -3223,7 +3494,7 @@ void quick_build_handle_encoder_click(bool pressed) {
             // Check if current step has any notes
             bool has_notes_on_step = false;
             if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-                for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+                for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
                     if (NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel)
                         == quick_build_state.current_step) {
                         has_notes_on_step = true;
@@ -3232,7 +3503,7 @@ void quick_build_handle_encoder_click(bool pressed) {
                 }
             } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
                 uint8_t slot = quick_build_state.seq_slot;
-                for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+                for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
                     if (NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel)
                         == quick_build_state.current_step) {
                         has_notes_on_step = true;
@@ -3265,12 +3536,12 @@ void quick_build_undo_step(void) {
     if (quick_build_state.current_step == 0 && quick_build_state.note_count == 0) return;
 
     // Find the step to undo: if current step has notes, undo current; else undo previous
-    uint8_t target_step = quick_build_state.current_step;
+    uint16_t target_step = quick_build_state.current_step;
 
     // Check if current step has any notes
     bool current_has_notes = false;
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
             if (NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel) == target_step) {
                 current_has_notes = true;
                 break;
@@ -3278,7 +3549,7 @@ void quick_build_undo_step(void) {
         }
     } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
         uint8_t slot = quick_build_state.seq_slot;
-        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
             if (NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel) == target_step) {
                 current_has_notes = true;
                 break;
@@ -3294,8 +3565,8 @@ void quick_build_undo_step(void) {
     // Remove all notes on the target step
     uint8_t removed = 0;
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-        uint8_t write_idx = 0;
-        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+        uint16_t write_idx = 0;
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
             if (NOTE_GET_TIMING(arp_active_preset.notes[i].packed_timing_vel) != target_step) {
                 if (write_idx != i) {
                     arp_active_preset.notes[write_idx] = arp_active_preset.notes[i];
@@ -3309,8 +3580,8 @@ void quick_build_undo_step(void) {
         arp_active_preset.note_count = write_idx;
     } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
         uint8_t slot = quick_build_state.seq_slot;
-        uint8_t write_idx = 0;
-        for (uint8_t i = 0; i < quick_build_state.note_count; i++) {
+        uint16_t write_idx = 0;
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
             if (NOTE_GET_TIMING(seq_active_presets[slot].notes[i].packed_timing_vel) != target_step) {
                 if (write_idx != i) {
                     seq_active_presets[slot].notes[write_idx] = seq_active_presets[slot].notes[i];

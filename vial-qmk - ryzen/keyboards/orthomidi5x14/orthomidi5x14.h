@@ -606,8 +606,12 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 
 // Maximum limits
 #define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated (for gate timing)
-#define MAX_ARP_PRESET_NOTES 64    // Maximum notes in an arpeggiator preset
-#define MAX_SEQ_PRESET_NOTES 128   // Maximum notes in a step sequencer preset
+#define MAX_ARP_PRESET_NOTES 64    // Maximum notes in an arpeggiator EEPROM preset
+#define MAX_SEQ_PRESET_NOTES 128   // Maximum notes in a step sequencer EEPROM preset
+#define MAX_ACTIVE_ARP_NOTES 256   // Maximum notes in an active arp preset (quick builds)
+#define MAX_ACTIVE_SEQ_NOTES 512   // Maximum notes in an active seq preset (quick builds)
+#define MAX_ACTIVE_ARP_STEPS 128   // Maximum step positions for arp (0-127)
+#define MAX_ACTIVE_SEQ_STEPS 256   // Maximum step positions for seq (0-255)
 #define NUM_FACTORY_ARP_PRESETS 48 // Factory arpeggiator presets (0-47) in PROGMEM
 #define NUM_FACTORY_SEQ_PRESETS 48 // Factory sequencer presets (0-47) in PROGMEM
 #define NUM_USER_ARP_PRESETS 20    // User arpeggiator presets (0-19) in EEPROM
@@ -667,13 +671,14 @@ typedef struct {
 
 // Individual note definition within a preset (OPTIMIZED: 3 bytes per note, was 5)
 // PACKED to prevent ARM alignment padding (uint16_t would pad to 4 bytes otherwise)
+//
+// Two packing formats for packed_timing_vel:
+//   7-bit (EEPROM/factory/HID): bits 0-6 timing, bits 7-13 velocity, bit 14 sign, bit 15 reserved
+//   8-bit (active RAM presets):  bits 0-7 timing, bits 8-14 velocity, bit 15 sign
+// Notes are converted 7-bit → 8-bit when loaded from factory/EEPROM into active presets.
 typedef struct __attribute__((packed)) {
-    // Byte 0-1: Packed timing and velocity
+    // Byte 0-1: Packed timing and velocity (format depends on context, see above)
     uint16_t packed_timing_vel;
-      // bits 0-6:   timing_16ths (0-127 = max 8 bars)
-      // bits 7-13:  velocity (0-127)
-      // bit 14:     interval_sign (arpeggiator only: 0=positive, 1=negative)
-      // bit 15:     reserved
 
     // Byte 2: Packed note/interval and octave
     uint8_t note_octave;
@@ -750,6 +755,45 @@ typedef struct {
     bool deferred_start_pending;        // Waiting for next cycle point to start (sync with running seqs/loops)
 } seq_state_t;
 
+// Active preset definition (RAM-only, pointer-based notes from shared pool)
+// Used for arp_active_preset, seq_active_presets[], and arp QB storage.
+// Notes are stored in 8-bit timing format and allocated from a shared pool.
+typedef struct {
+    uint8_t preset_type;                // PRESET_TYPE_ARPEGGIATOR or PRESET_TYPE_STEP_SEQUENCER
+    uint16_t note_count;                // Number of notes (up to 256 arp / 512 seq)
+    uint16_t pattern_length_16ths;      // Total pattern length in 16th notes (up to 256 for seq)
+    uint8_t gate_length_percent;        // Gate length 0-100%
+    uint8_t timing_mode;                // TIMING_MODE_STRAIGHT/TRIPLET/DOTTED
+    uint8_t note_value;                 // NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH
+    uint16_t magic;                     // ARP_PRESET_MAGIC for validation
+    arp_preset_note_t *notes;           // Points into note_pool (8-bit timing format)
+} active_preset_t;
+
+// Shared note pool for all active presets (1 arp + 8 seq + 4 arp QB = 13 slots)
+// 2048 notes × 3 bytes = 6144 bytes. Enough for all practical use cases.
+#define NOTE_POOL_SIZE 2048
+
+// Pool slot identifiers
+#define POOL_SLOT_ARP        0          // Active arp preset
+#define POOL_SLOT_SEQ_BASE   1          // Active seq presets (slots 1-8)
+#define POOL_SLOT_SEQ(n)     (1 + (n))  // Seq slot 0-7 → pool slot 1-8
+#define POOL_SLOT_QB_BASE    9          // Arp quick build storage (slots 9-12)
+#define POOL_SLOT_QB(n)      (9 + (n))  // QB slot 0-3 → pool slot 9-12
+#define POOL_NUM_SLOTS       13
+
+// Pool management functions
+void note_pool_init(void);
+arp_preset_note_t *note_pool_alloc(uint8_t slot_id, uint16_t count);
+void note_pool_free(uint8_t slot_id);
+
+// Load helpers: copy from EEPROM-format struct to active preset using pool
+void load_arp_to_active(const arp_preset_t *src, active_preset_t *dest, uint8_t pool_slot);
+void load_seq_to_active(const seq_preset_t *src, active_preset_t *dest, uint8_t pool_slot);
+
+// Validate an active preset (8-bit timing format)
+bool active_validate_arp(const active_preset_t *preset);
+bool active_validate_seq(const active_preset_t *preset);
+
 // EEPROM storage structure (for user presets only)
 // Reorganized: 23000 and 27500 (was 56000/60000)
 #define ARP_EEPROM_ADDR 23000       // Starting address for user arp presets (20 × 200 = 4000 bytes)
@@ -765,16 +809,25 @@ _Static_assert(sizeof(arp_preset_note_t) == 3, "arp_preset_note_t must be 3 byte
 _Static_assert(sizeof(arp_preset_t) == ARP_PRESET_SIZE, "arp_preset_t size must match ARP_PRESET_SIZE");
 _Static_assert(sizeof(seq_preset_t) == SEQ_PRESET_SIZE, "seq_preset_t size must match SEQ_PRESET_SIZE");
 
-// Helper macros for unpacking note data
-#define NOTE_GET_TIMING(packed)      ((packed) & 0x7F)                        // bits 0-6
-#define NOTE_GET_VELOCITY(packed)    (((packed) >> 7) & 0x7F)                 // bits 7-13
-#define NOTE_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp only)
+// Helper macros for unpacking note data - 7-bit timing format (EEPROM/factory/HID)
+#define NOTE7_GET_TIMING(packed)      ((packed) & 0x7F)                        // bits 0-6
+#define NOTE7_GET_VELOCITY(packed)    (((packed) >> 7) & 0x7F)                 // bits 7-13
+#define NOTE7_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp only)
+#define NOTE7_PACK(timing, vel, sign) (((timing) & 0x7F) | (((vel) & 0x7F) << 7) | (((sign) & 0x01) << 14))
+
+// Helper macros for unpacking note data - 8-bit timing format (active RAM presets)
+#define NOTE_GET_TIMING(packed)      ((packed) & 0xFF)                         // bits 0-7
+#define NOTE_GET_VELOCITY(packed)    (((packed) >> 8) & 0x7F)                  // bits 8-14
+#define NOTE_GET_SIGN(packed)        (((packed) >> 15) & 0x01)                 // bit 15 (arp only)
+#define NOTE_PACK_TIMING_VEL(timing, vel, sign) (((timing) & 0xFF) | (((vel) & 0x7F) << 8) | (((sign) & 0x01) << 15))
+
+// Shared macros (same in both formats)
 #define NOTE_GET_NOTE(octave_byte)   ((octave_byte) & 0x0F)                   // bits 0-3
 #define NOTE_GET_OCTAVE(octave_byte) (((int8_t)((octave_byte) & 0xF0)) >> 4)  // bits 4-7 (signed)
-
-// Helper macros for packing note data
-#define NOTE_PACK_TIMING_VEL(timing, vel, sign) (((timing) & 0x7F) | (((vel) & 0x7F) << 7) | (((sign) & 0x01) << 14))
 #define NOTE_PACK_NOTE_OCTAVE(note, octave)     (((note) & 0x0F) | (((octave) & 0x0F) << 4))
+
+// Convert a single note from 7-bit EEPROM format to 8-bit active format
+#define NOTE_CONVERT_7TO8(packed7) NOTE_PACK_TIMING_VEL(NOTE7_GET_TIMING(packed7), NOTE7_GET_VELOCITY(packed7), NOTE7_GET_SIGN(packed7))
 
 // Global arpeggiator state
 extern arp_note_t arp_notes[MAX_ARP_NOTES];
@@ -782,9 +835,11 @@ extern uint8_t arp_note_count;
 extern arp_state_t arp_state;
 extern seq_state_t seq_state[MAX_SEQ_SLOTS];
 
-// Efficient RAM storage: Only active presets loaded
-extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
-extern seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
+// Pool-based RAM storage: active presets use shared note pool
+#define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
+extern active_preset_t arp_active_preset;                  // Arp active slot (header + pool pointer)
+extern active_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // Seq active slots (header + pool pointers)
+extern active_preset_t arp_qb_presets[MAX_ARP_QB_SLOTS];   // Arp quick build storage (header + pool pointers)
 
 // Step Sequencer modifier tracking
 extern bool seq_modifier_held[MAX_SEQ_SLOTS];  // Track which seq modifiers are held
@@ -869,7 +924,6 @@ void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
 
 // NEW: Quick Build System Types
 #define PRESET_ID_QUICK_BUILD 255      // Sentinel: preset lives in RAM from quick build
-#define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
 
 typedef enum {
     QUICK_BUILD_NONE = 0,
@@ -885,8 +939,8 @@ typedef struct {
     quick_build_mode_t mode;           // Current build mode
     uint8_t arp_slot;                  // Which arp slot we're building (0-3)
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
-    uint8_t current_step;              // Current step (0-based internal)
-    uint8_t note_count;                // Total notes recorded so far
+    uint16_t current_step;             // Current step (0-based internal, up to 255 for seq)
+    uint16_t note_count;               // Total notes recorded so far (up to 512 for seq)
     uint8_t root_note;                 // Confirmed root note (arp only, for interval calculation)
     bool has_root;                     // Has root been confirmed?
     uint8_t candidate_root;            // Note being previewed in root selection (0=none pressed yet)
@@ -926,7 +980,7 @@ bool quick_build_is_active(void);
 bool quick_build_is_setup(void);
 bool quick_build_is_recording(void);
 bool quick_build_is_summary(void);
-uint8_t quick_build_get_current_step(void);
+uint16_t quick_build_get_current_step(void);
 uint32_t quick_build_get_arp_pattern_ms(void);
 uint32_t quick_build_get_seq_pattern_ms(uint8_t slot);
 void quick_build_dismiss_summary(void);

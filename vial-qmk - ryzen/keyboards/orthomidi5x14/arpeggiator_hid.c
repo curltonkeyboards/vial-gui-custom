@@ -428,8 +428,8 @@ void arp_hid_receive(uint8_t *data, uint8_t length) {
             params[0] = 0;  // Success
             dprintf("ARP HID: SET_NOTE preset=%d idx=%d timing=%d vel=%d\n",
                     preset_id, note_index,
-                    NOTE_GET_TIMING(packed_timing_vel),
-                    NOTE_GET_VELOCITY(packed_timing_vel));
+                    NOTE7_GET_TIMING(packed_timing_vel),
+                    NOTE7_GET_VELOCITY(packed_timing_vel));
             break;
         }
 
