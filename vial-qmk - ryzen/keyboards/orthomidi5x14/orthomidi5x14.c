@@ -13815,7 +13815,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // QUICK BUILD ENCODER HIJACK
     // During quick build (setup or recording), encoder rotation and click are
     // consumed here and routed to the quick build system instead of normal processing.
-    // Rotation: encoder 0 (col 0), Click: encoder 1 (col 1)
+    // Rotation: encoder 0 (col 0), Top click: encoder 1 (col 1), Bottom click: encoder 0 (col 0)
+    // Top knob (encoder 1 click): chord hold / skip step / finish
+    // Bottom knob (encoder 0 click): skip step with hold (defer note-offs)
     // =============================================================================
     if (quick_build_is_active()) {
         // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = 0)
@@ -13826,10 +13828,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             quick_build_handle_encoder(clockwise);
             return false;  // Consume
         }
-        // Encoder 1 click (matrix position 5,1)
+        // Encoder 1 click / top knob (matrix position 5,1) - chord hold + finish
         if (record->event.key.row == 5 && record->event.key.col == 1) {
             quick_build_handle_encoder_click(record->event.pressed);
             return false;  // Consume
+        }
+        // Encoder 0 click / bottom knob (matrix position 5,0) - skip step with hold
+        if (record->event.key.row == 5 && record->event.key.col == 0) {
+            if (record->event.pressed && quick_build_is_recording()) {
+                quick_build_skip_step_with_hold();
+            }
+            return false;  // Consume (both press and release)
         }
     }
 
@@ -17115,7 +17124,7 @@ void render_quick_build_recording(void) {
     // Line 2: blank
     oled_write_line(2, "");
 
-    // Line 3: Step number (centered)
+    // Line 3: Step number (centered, large)
     uint16_t step = quick_build_get_current_step();
     snprintf(buf, sizeof(buf), "STEP %d", step);
     oled_write_line_centered(3, buf);
@@ -17123,32 +17132,31 @@ void render_quick_build_recording(void) {
     // Line 4: blank
     oled_write_line(4, "");
 
-    // Line 5: Note count (centered)
-    snprintf(buf, sizeof(buf), "%d notes total", quick_build_state.note_count);
-    oled_write_line_centered(5, buf);
+    // Line 5: Skip step instruction
+    oled_write_line_centered(5, "Skip: turn top knob");
 
-    // Line 6: blank
-    oled_write_line(6, "");
-
-    // Line 7-8: Top knob skip/undo
-    oled_write_line_centered(7, "<< Undo   Skip >>");
-    oled_write_line_centered(8, "(turn top knob)");
-
-    // Line 9: Chord mode status
+    // Line 6: Chord mode / multiple notes
     if (quick_build_state.encoder_chord_held) {
-        oled_write_line_centered(9, "Top knob: CHORD ON");
+        oled_write_line_centered(6, "CHORD MODE ON");
     } else {
-        oled_write_line_centered(9, "Hold knob: Chord");
+        oled_write_line_centered(6, "Chord: hold top knob");
     }
 
-    // Line 10: blank
-    oled_write_line(10, "");
+    // Line 7: blank
+    oled_write_line(7, "");
 
-    // Lines 11-12: Finish instruction (split across 2 lines)
-    oled_write_line_centered(11, "Press knob or Quick");
-    oled_write_line_centered(12, "Build btn to finish");
+    // Line 8: Hold note instruction (bottom knob)
+    oled_write_line_centered(8, "Hold: press bot knob");
 
-    // Lines 13-15: blank
+    // Line 9: blank
+    oled_write_line(9, "");
+
+    // Lines 10-11: Finish instruction
+    oled_write_line_centered(10, "Finish: press QB btn");
+
+    // Lines 11-15: blank
+    oled_write_line(11, "");
+    oled_write_line(12, "");
     oled_write_line(13, "");
     oled_write_line(14, "");
     oled_write_line(15, "");

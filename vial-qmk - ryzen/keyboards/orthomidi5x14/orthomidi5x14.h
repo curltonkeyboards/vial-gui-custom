@@ -971,6 +971,7 @@ void quick_build_handle_encoder_click(bool pressed);
 void quick_build_confirm_param(void);
 void quick_build_confirm_root(void);
 void quick_build_skip_step(void);
+void quick_build_skip_step_with_hold(void);
 void quick_build_undo_step(void);
 void render_big_number(uint8_t number);
 void render_quick_build_setup(void);

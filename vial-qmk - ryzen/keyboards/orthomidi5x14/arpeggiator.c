@@ -3560,6 +3560,70 @@ void quick_build_skip_step(void) {
     dprintf("quick_build: skipped to step %d\n", quick_build_state.current_step + 1);
 }
 
+void quick_build_skip_step_with_hold(void) {
+    if (!quick_build_is_recording()) return;
+
+    // Find the most recent step that has notes (searching backwards from current step)
+    pool_preset_t *header = NULL;
+    if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+        header = &arp_pool_headers[quick_build_state.arp_slot];
+    } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+        header = &seq_pool_headers[quick_build_state.seq_slot];
+    }
+    if (!header) return;
+    arp_preset_note_t *notes = note_pool_get_notes(header);
+
+    // Search backwards for the most recent step with notes
+    int16_t source_step = -1;
+    for (int16_t s = (int16_t)quick_build_state.current_step; s >= 0; s--) {
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == (uint16_t)s) {
+                source_step = s;
+                break;
+            }
+        }
+        if (source_step >= 0) break;
+    }
+
+    if (source_step < 0) {
+        // No notes recorded yet, just do a normal skip
+        quick_build_advance_step();
+        dprintf("quick_build: hold-skip (no notes to hold), now at step %d\n",
+                quick_build_state.current_step + 1);
+        return;
+    }
+
+    // Duplicate all notes from source_step onto current_step
+    uint16_t duplicated = 0;
+    uint16_t orig_count = quick_build_state.note_count;
+    for (uint16_t i = 0; i < orig_count; i++) {
+        if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == (uint16_t)source_step) {
+            // Check pool capacity
+            if (quick_build_state.note_count >= header->pool_capacity) {
+                dprintf("quick_build: pool full during hold-skip, finishing\n");
+                quick_build_finish();
+                return;
+            }
+            // Copy note with updated timing to current step
+            uint8_t vel = NOTE_GET_VELOCITY(notes[i].packed_timing_vel);
+            uint8_t sign = (notes[i].packed_timing_vel >> 14) & 0x01;
+            notes[quick_build_state.note_count].packed_timing_vel =
+                NOTE_PACK_TIMING_VEL(quick_build_state.current_step, vel, sign);
+            notes[quick_build_state.note_count].note_octave = notes[i].note_octave;
+            quick_build_state.note_count++;
+            duplicated++;
+        }
+    }
+    header->note_count = quick_build_state.note_count;
+
+    dprintf("quick_build: hold-skip duplicated %d notes from step %d to step %d\n",
+            duplicated, source_step + 1, quick_build_state.current_step + 1);
+
+    // Advance to next step
+    quick_build_advance_step();
+    dprintf("quick_build: hold-skip now at step %d\n", quick_build_state.current_step + 1);
+}
+
 void quick_build_undo_step(void) {
     if (!quick_build_is_recording()) return;
     if (quick_build_state.current_step == 0 && quick_build_state.note_count == 0) return;

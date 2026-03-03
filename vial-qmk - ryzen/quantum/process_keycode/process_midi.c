@@ -777,6 +777,36 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note, final_velocity);
 
+    // When arp is active with smart chord, inject chord tones into live_notes
+    // so the arp sees them as individually held notes
+    if (arp_suppressed && !ignore_smartchord) {
+        extern int chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7;
+        int chord_offsets[] = {chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7};
+        uint8_t injected = 0;
+        for (uint8_t i = 0; i < 6; i++) {
+            if (chord_offsets[i] != 0) {
+                uint8_t chord_note = note + chord_offsets[i];
+                if (chord_note <= 127) {
+                    // Check not already in live_notes
+                    bool already_present = false;
+                    for (uint8_t j = 0; j < live_note_count; j++) {
+                        if (live_notes[j][0] == channel && live_notes[j][1] == chord_note) {
+                            already_present = true;
+                            break;
+                        }
+                    }
+                    if (!already_present && live_note_count < MAX_LIVE_NOTES) {
+                        add_live_note(channel, chord_note, final_velocity);
+                        injected++;
+                    }
+                }
+            }
+        }
+        if (injected > 0) {
+            dprintf("midi: injected %d smart chord notes into live_notes (arp active)\n", injected);
+        }
+    }
+
     // Store final velocity scaled to 0-255 for loop recording
     // This allows loops to apply their own velocity curve on playback
     uint8_t velocity_for_recording = velocity_to_storage(final_velocity);
@@ -846,8 +876,22 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
     noteoffdisplayupdates(note);
 
     // Arp active (no sustain): suppress MIDI output, arp handles its own notes
+    // Also remove any smart chord tones that were injected into live_notes
     if (arp_active) {
         remove_lighting_live_note(channel, note);
+
+        // Remove injected smart chord notes for this root note
+        extern int chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7;
+        int chord_offsets[] = {chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7};
+        for (uint8_t i = 0; i < 6; i++) {
+            if (chord_offsets[i] != 0) {
+                uint8_t chord_note = note + chord_offsets[i];
+                if (chord_note <= 127) {
+                    remove_live_note(channel, chord_note);
+                }
+            }
+        }
+
         return;
     }
 
@@ -898,7 +942,25 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
 // Flush function: send note-offs for all currently held notes when arp activates.
 // Notes pressed before arp was active had their note-on sent via MIDI.
 // Without this, those notes would be stuck because arp suppresses note-offs.
+//
+// Smart chord integration: If a smart chord is active when the arp starts,
+// the chord tones are injected into live_notes[] so the arp treats them
+// as individually held notes (arpeggiate through the full chord).
 void flush_live_notes_for_arp(void) {
+    // Access smart chord state (defined in orthomidi5x14.c)
+    extern int smartchordkey2, smartchordkey3, smartchordkey4;
+    extern int smartchordkey5, smartchordkey6, smartchordkey7;
+
+    // Collect smart chord notes BEFORE flushing (smartchordremovenotes clears them)
+    uint8_t sc_notes[6];
+    uint8_t sc_count = 0;
+    if (smartchordkey2 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey2;
+    if (smartchordkey3 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey3;
+    if (smartchordkey4 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey4;
+    if (smartchordkey5 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey5;
+    if (smartchordkey6 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey6;
+    if (smartchordkey7 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey7;
+
     for (uint8_t i = 0; i < live_note_count; i++) {
         uint8_t channel = live_notes[i][0];
         uint8_t note = live_notes[i][1];
@@ -909,6 +971,33 @@ void flush_live_notes_for_arp(void) {
     dprintf("midi: flushed %d live notes for arp activation\n", live_note_count);
     // Don't remove from live_notes[] - arp needs them as base notes
     // Don't remove lighting - keys are still physically held
+
+    // Inject smart chord tones into live_notes so arp sees them as held keys
+    if (sc_count > 0 && live_note_count > 0) {
+        // Use the channel and velocity of the first live note (the root)
+        uint8_t sc_channel = live_notes[0][0];
+        uint8_t sc_velocity = live_notes[0][2];
+
+        for (uint8_t i = 0; i < sc_count; i++) {
+            // Check we're not duplicating a note already in live_notes
+            bool already_present = false;
+            for (uint8_t j = 0; j < live_note_count; j++) {
+                if (live_notes[j][0] == sc_channel && live_notes[j][1] == sc_notes[i]) {
+                    already_present = true;
+                    break;
+                }
+            }
+            if (!already_present && live_note_count < MAX_LIVE_NOTES) {
+                uint8_t idx = live_note_count;
+                live_notes[idx][0] = sc_channel;
+                live_notes[idx][1] = sc_notes[i];
+                live_notes[idx][2] = sc_velocity;
+                live_note_count++;
+                arp_track_note_pressed(idx);
+            }
+        }
+        dprintf("midi: injected %d smart chord notes into live_notes for arp\n", sc_count);
+    }
 }
 
 // These functions are similar to midi_send_noteon/off_with_recording, but:
