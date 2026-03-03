@@ -804,6 +804,7 @@ extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 
 extern seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
 
 // Shared note pool for quick build presets
+#define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
 extern pool_preset_t arp_pool_headers[MAX_ARP_QB_SLOTS];  // Pool headers for arp QB slots
 extern pool_preset_t seq_pool_headers[MAX_SEQ_SLOTS];     // Pool headers for seq QB slots
 
@@ -899,7 +900,6 @@ void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
 
 // NEW: Quick Build System Types
 #define PRESET_ID_QUICK_BUILD 255      // Sentinel: preset lives in RAM from quick build
-#define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
 
 typedef enum {
     QUICK_BUILD_NONE = 0,

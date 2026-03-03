@@ -117,9 +117,6 @@ static uint16_t note_pool_used = 0;                   // High-water mark
 pool_preset_t arp_pool_headers[MAX_ARP_QB_SLOTS];
 pool_preset_t seq_pool_headers[MAX_SEQ_SLOTS];
 
-// Static scratch buffer for playback (replaces stack VLAs)
-static unpacked_note_t step_scratch[MAX_NOTES_PER_STEP];
-
 // Reset entire pool (called at init)
 void note_pool_reset(void) {
     note_pool_used = 0;
@@ -674,6 +671,9 @@ typedef struct {
     int8_t note_index;      // For arp: interval with sign; For seq: note 0-11
     int8_t octave_offset;
 } unpacked_note_t;
+
+// Static scratch buffer for playback (replaces stack VLAs)
+static unpacked_note_t step_scratch[MAX_NOTES_PER_STEP];
 
 static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpacked, bool is_arpeggiator) {
     unpacked->timing = NOTE_GET_TIMING(packed->packed_timing_vel);
