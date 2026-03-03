@@ -299,8 +299,8 @@ static void clear_command_batch(void);
 static bool add_command_to_batch(uint8_t command_type, uint8_t macro_id);
 bool sample_mode_active = false;  // Track whether sample mode is active
 bool loop_deferred_record_stop_pending = false;  // Arp-synced deferred stop
-uint32_t group_start_time = 0;                    // When the first loop/seq started from nothing-playing state
-bool group_start_active = false;                  // True during simultaneous start window
+uint32_t group_start_time = 0;      // Time when first seq/loop in a group started
+bool group_start_active = false;    // Group start window is open
 void dynamic_macro_play(midi_event_t *macro_buffer, midi_event_t *macro_end, int8_t direction);
 void dynamic_macro_record_end(midi_event_t *macro_buffer, midi_event_t *macro_pointer, int8_t direction, midi_event_t **macro_end, uint32_t *start_time);
 void dynamic_macro_actual_start(uint32_t *start_time);
@@ -4065,7 +4065,8 @@ if (is_independent_overdub && macro_num > 0) {
             
             state->waiting_for_loop_gap = false;
             check_loop_trigger();
-            
+            seq_release_deferred_starts(timer_read32());
+
 			if (sync_midi_mode && overdub_advanced_mode) {
 				if (alternate_restart_mode) {
 					send_loop_message(overdub_stop_playing_cc[macro_idx], 127);
@@ -4414,6 +4415,7 @@ if (is_independent_overdub && macro_num > 0) {
             if (is_overdub_state) {
                 if ((current_bpm == 0 || bpm_source_macro != 0) && macro_num > 0 && !macro_playback[macro_num - 1].is_playing) {
                     check_loop_trigger();
+                    seq_release_deferred_starts(timer_read32());
                 } else if (current_bpm > 0 && bpm_source_macro == 0) {
                     dprintf("midi macro: overdub %d skipped loop trigger (manual bpm sync active)\n", macro_num);
                 } else {
@@ -4422,6 +4424,7 @@ if (is_independent_overdub && macro_num > 0) {
             } else {
                 if (current_bpm == 0 || bpm_source_macro != 0) {
                     check_loop_trigger();
+                    seq_release_deferred_starts(timer_read32());
                 } else {
                     dprintf("midi macro: skipped loop trigger (manual bpm sync active) from macro %d\n", macro_num);
                 }
@@ -10030,20 +10033,26 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
         if (macro_id == 0 && !is_macro_primed) {
             // Check if macro already exists
             if (macro_start != *macro_end_ptr) {
-                // Macro exists - play it
-                overdub_mute_pending[macro_idx] = false;
-                overdub_unmute_pending[macro_idx] = false;
-                overdub_muted[macro_idx] = false;
-
+                // Macro exists - check if we should defer to a running seq's cycle point
                 if (seq_is_any_active_and_looped()) {
-                    // A seq is running and has looped - defer loop start to next seq loop trigger
-                    add_command_to_batch(CMD_PLAY, macro_num);
-                    dprintf("dynamic macro: deferred loop %d start to next seq loop trigger\n", macro_num);
+                    // A seq is running - batch the play for next cycle point
+                    if (!command_exists_in_batch(CMD_PLAY, macro_num)) {
+                        add_command_to_batch(CMD_PLAY, macro_num);
+                        dprintf("dynamic macro: deferred loop %d play to next seq cycle point\n", macro_num);
+                    } else {
+                        remove_command_from_batch(CMD_PLAY, macro_num);
+                        dprintf("dynamic macro: cancelled deferred loop %d play\n", macro_num);
+                    }
                 } else {
-                    // No looped seq - start immediately (set group start window for simultaneous starts)
+                    // No seq running - play immediately
+                    overdub_mute_pending[macro_idx] = false;
+                    overdub_unmute_pending[macro_idx] = false;
+                    overdub_muted[macro_idx] = false;
+                    dynamic_macro_play(macro_start, *macro_end_ptr, +1);
+
+                    // Open group start window so other loops/seqs can align
                     group_start_time = timer_read32();
                     group_start_active = true;
-                    dynamic_macro_play(macro_start, *macro_end_ptr, +1);
 
                     if (((unsynced_mode_active == 0 || unsynced_mode_active == 4)) && is_internal_clock_active()) {
                         internal_clock_tempo_changed();
@@ -10753,13 +10762,13 @@ void dynamic_macro_handle_loop_trigger(void) {
         dynamic_macro_actual_start(&recording_start_time);
     }
 
-    // A loop trigger means something completed a full cycle - close group start window
+    // Close group start window
     group_start_active = false;
 
-    // Release any deferred seq starts at this loop trigger boundary
+    // Release deferred step sequencer starts at this cycle point
     seq_release_deferred_starts(timer_read32());
 
-    // Original loop trigger handling
+    // Original loop trigger handling (processes batched commands including deferred loop plays)
     check_loop_trigger();
 }
 

@@ -96,7 +96,7 @@ void execute_deferred_record_stop(void);
 // Handle loop trigger from process_midi.c
 void dynamic_macro_handle_loop_trigger(void);
 
-// Group start window for simultaneous loop/seq starts
+// Group start window for simultaneous seq/loop starts
 extern uint32_t group_start_time;
 extern bool group_start_active;
 #define GROUP_START_WINDOW_MS 100
