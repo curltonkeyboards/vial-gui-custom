@@ -1259,6 +1259,7 @@ void seq_start(uint8_t preset_id) {
     seq_state[slot].current_preset_id = preset_id;
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
+    seq_state[slot].has_looped = false;
     seq_state[slot].pattern_start_time = timer_read32();
     seq_state[slot].next_note_time = timer_read32();  // Start immediately
 
@@ -1337,13 +1338,13 @@ void seq_stop_all(void) {
 }
 
 void seq_update(void) {
-    // Check for deferred loop record stop at first active seq step boundary
+    // Check for deferred loop record stop at pattern restart (position 0 only)
     if (loop_deferred_record_stop_pending) {
         for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
             if (!seq_state[s].active) continue;
             uint32_t ct = timer_read32();
-            if (ct >= seq_state[s].next_note_time) {
-                // Step boundary reached - execute deferred stop
+            if (seq_state[s].current_position_16ths == 0 && seq_state[s].has_looped && ct >= seq_state[s].next_note_time) {
+                // Pattern restart boundary reached - execute deferred stop
                 execute_deferred_record_stop();
                 break;  // Only execute once
             }
@@ -1361,6 +1362,11 @@ void seq_update(void) {
         uint32_t current_time = timer_read32();
         if (current_time < seq_state[slot].next_note_time) {
             continue;  // Not yet time
+        }
+
+        // Fire loop trigger BEFORE step 0 plays (pattern restart boundary)
+        if (seq_state[slot].current_position_16ths == 0 && seq_state[slot].has_looped) {
+            dynamic_macro_handle_loop_trigger();
         }
 
         // Find notes to play at current position
@@ -1424,9 +1430,7 @@ void seq_update(void) {
             seq_state[slot].pattern_start_time += compute_step_time_offset(
                 preset->pattern_length_16ths, nv, tm);
             seq_state[slot].current_position_16ths = 0;
-
-            // Fire loop trigger on seq restart (all slots)
-            dynamic_macro_handle_loop_trigger();
+            seq_state[slot].has_looped = true;
         }
 
         // Release deferred arp start on any seq step

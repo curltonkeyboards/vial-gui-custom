@@ -746,6 +746,7 @@ typedef struct {
     uint8_t locked_velocity_min;        // Locked velocity minimum
     uint8_t locked_velocity_max;        // Locked velocity maximum
     int8_t locked_transpose;            // Locked transposition value
+    bool has_looped;                    // True after first pattern wrap (enables loop trigger on step 0)
 } seq_state_t;
 
 // EEPROM storage structure (for user presets only)
