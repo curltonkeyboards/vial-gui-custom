@@ -92,9 +92,7 @@ quick_build_state_t quick_build_state = {
     .candidate_ready = false,
     .sustain_held_last_check = false,
     .button_press_time = 0,
-    .has_saved_arp_build = {false},
     .active_arp_qb_slot = 255,
-    .has_saved_seq_build = {false},
     .setup_param_index = 0,
     .setup_arp_mode = 0,
     .setup_note_value = NOTE_VALUE_SIXTEENTH,
@@ -103,8 +101,8 @@ quick_build_state_t quick_build_state = {
     .encoder_chord_held = false
 };
 
-// Storage for 4 arp quick build presets (each 200 bytes)
-static arp_preset_t arp_quick_build_storage[MAX_ARP_QB_SLOTS];
+// Persistent pool state (index in RAM, data in EEPROM)
+qb_pool_state_t qb_pool;
 
 // Remember last-used quick build settings across builds
 static uint8_t last_arp_mode = 0;
@@ -2119,9 +2117,9 @@ bool arp_validate_preset(const arp_preset_t *preset) {
         return false;
     }
 
-    // Check pattern length bounds (at least 1 16th, max 127 = ~8 bars)
-    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 127) {
-        dprintf("arp: validate failed - pattern_length %d not in [1,127]\n",
+    // Check pattern length bounds (at least 1 16th, uint8_t max 255 = ~16 bars)
+    if (preset->pattern_length_16ths < 1) {
+        dprintf("arp: validate failed - pattern_length %d < 1\n",
                 preset->pattern_length_16ths);
         return false;
     }
@@ -2183,9 +2181,9 @@ bool seq_validate_preset(const seq_preset_t *preset) {
         return false;
     }
 
-    // Check pattern length bounds (at least 1 16th, max 127 = ~8 bars)
-    if (preset->pattern_length_16ths < 1 || preset->pattern_length_16ths > 127) {
-        dprintf("seq: validate failed - pattern_length %d not in [1,127]\n",
+    // Check pattern length bounds (at least 1 16th, uint8_t max 255 = ~16 bars)
+    if (preset->pattern_length_16ths < 1) {
+        dprintf("seq: validate failed - pattern_length %d < 1\n",
                 preset->pattern_length_16ths);
         return false;
     }
@@ -2553,6 +2551,342 @@ uint32_t quick_build_get_seq_pattern_ms(uint8_t slot) {
         seq_active_presets[slot].timing_mode);
 }
 
+// =============================================================================
+// PERSISTENT POOL STORAGE (EEPROM-backed quick build presets)
+// =============================================================================
+//
+// Pool layout in EEPROM (16KB at PRESET_POOL_EEPROM_ADDR):
+//   [16B header][96B index (12 × 8B)][data area (~16272B)]
+//
+// Header: magic(2) | version(1) | pool_used(2) | reserved(11)
+// Each index entry: type(1) | flags(1) | offset(2) | size(2) | channel(1) | reserved(1)
+// Data area: variable-size presets packed contiguously, compacted on delete.
+//
+// Pool format for each preset (different from full struct - stores only used notes):
+//   [6B header fields][2B magic][note_count × 3B notes]
+//   Total = 8 + note_count × 3
+
+// Write pool header + index to EEPROM (112 bytes)
+static void qb_pool_write_header_and_index(void) {
+    uint32_t addr = PRESET_POOL_EEPROM_ADDR;
+
+    // Write 16-byte header
+    uint8_t header[POOL_HEADER_SIZE];
+    memset(header, 0, sizeof(header));
+    header[0] = PRESET_POOL_MAGIC & 0xFF;
+    header[1] = (PRESET_POOL_MAGIC >> 8) & 0xFF;
+    header[2] = PRESET_POOL_VERSION;
+    header[3] = qb_pool.pool_used & 0xFF;
+    header[4] = (qb_pool.pool_used >> 8) & 0xFF;
+    // bytes 5-15: reserved (zeroed)
+    eeprom_update_block(header, (void*)addr, POOL_HEADER_SIZE);
+
+    // Write 96-byte index
+    eeprom_update_block(qb_pool.slots, (void*)(addr + POOL_HEADER_SIZE), POOL_INDEX_SIZE);
+}
+
+// Initialize pool to empty state and write to EEPROM
+void qb_pool_init(void) {
+    memset(&qb_pool, 0, sizeof(qb_pool));
+    qb_pool_write_header_and_index();
+    dprintf("qb_pool: initialized (empty)\n");
+}
+
+// Load pool header + index from EEPROM into RAM
+void qb_pool_load(void) {
+    uint32_t addr = PRESET_POOL_EEPROM_ADDR;
+
+    // Read header
+    uint8_t header[POOL_HEADER_SIZE];
+    eeprom_read_block(header, (void*)addr, POOL_HEADER_SIZE);
+
+    uint16_t magic = header[0] | (header[1] << 8);
+    if (magic != PRESET_POOL_MAGIC) {
+        dprintf("qb_pool: bad magic 0x%04X, initializing\n", magic);
+        qb_pool_init();
+        return;
+    }
+
+    uint8_t version = header[2];
+    if (version != PRESET_POOL_VERSION) {
+        dprintf("qb_pool: unknown version %d, initializing\n", version);
+        qb_pool_init();
+        return;
+    }
+
+    qb_pool.pool_used = header[3] | (header[4] << 8);
+
+    // Sanity check pool_used
+    if (qb_pool.pool_used > POOL_DATA_SIZE) {
+        dprintf("qb_pool: pool_used %d exceeds max %d, initializing\n",
+                qb_pool.pool_used, POOL_DATA_SIZE);
+        qb_pool_init();
+        return;
+    }
+
+    // Read index
+    eeprom_read_block(qb_pool.slots, (void*)(addr + POOL_HEADER_SIZE), POOL_INDEX_SIZE);
+
+    // Validate index entries
+    for (uint8_t i = 0; i < POOL_MAX_SLOTS; i++) {
+        if (qb_pool.slots[i].type != POOL_SLOT_EMPTY) {
+            if (qb_pool.slots[i].offset + qb_pool.slots[i].size > qb_pool.pool_used) {
+                dprintf("qb_pool: slot %d out of bounds (offset=%d size=%d used=%d), clearing\n",
+                        i, qb_pool.slots[i].offset, qb_pool.slots[i].size, qb_pool.pool_used);
+                qb_pool.slots[i].type = POOL_SLOT_EMPTY;
+                qb_pool.slots[i].flags = 0;
+            }
+        }
+    }
+
+    dprintf("qb_pool: loaded (%d bytes used in pool)\n", qb_pool.pool_used);
+}
+
+// Check if a pool slot has a saved build
+bool qb_pool_has_build(uint8_t pool_index) {
+    if (pool_index >= POOL_MAX_SLOTS) return false;
+    return qb_pool.slots[pool_index].type != POOL_SLOT_EMPTY;
+}
+
+// Get MIDI channel for a pool slot (seq only)
+uint8_t qb_pool_get_channel(uint8_t pool_index) {
+    if (pool_index >= POOL_MAX_SLOTS) return 0;
+    return qb_pool.slots[pool_index].channel;
+}
+
+// Erase a pool slot and compact the data area
+void qb_pool_erase_slot(uint8_t pool_index) {
+    if (pool_index >= POOL_MAX_SLOTS) return;
+    if (qb_pool.slots[pool_index].type == POOL_SLOT_EMPTY) return;
+
+    uint16_t offset = qb_pool.slots[pool_index].offset;
+    uint16_t size = qb_pool.slots[pool_index].size;
+    uint16_t end = offset + size;
+    uint16_t after_bytes = qb_pool.pool_used - end;
+
+    dprintf("qb_pool: erasing slot %d (offset=%d size=%d after=%d)\n",
+            pool_index, offset, size, after_bytes);
+
+    // Compact: shift data after the gap downward
+    if (after_bytes > 0) {
+        uint8_t buf[64];
+        uint32_t base = PRESET_POOL_EEPROM_ADDR + POOL_DATA_OFFSET;
+        uint32_t src = base + end;
+        uint32_t dst = base + offset;
+        uint16_t remaining = after_bytes;
+
+        while (remaining > 0) {
+            uint16_t chunk = (remaining > sizeof(buf)) ? sizeof(buf) : remaining;
+            eeprom_read_block(buf, (void*)src, chunk);
+            eeprom_update_block(buf, (void*)dst, chunk);
+            src += chunk;
+            dst += chunk;
+            remaining -= chunk;
+        }
+    }
+
+    // Update offsets for slots that were after the deleted one
+    for (uint8_t i = 0; i < POOL_MAX_SLOTS; i++) {
+        if (i != pool_index && qb_pool.slots[i].type != POOL_SLOT_EMPTY &&
+            qb_pool.slots[i].offset > offset) {
+            qb_pool.slots[i].offset -= size;
+        }
+    }
+
+    // Mark slot empty
+    qb_pool.slots[pool_index].type = POOL_SLOT_EMPTY;
+    qb_pool.slots[pool_index].flags = 0;
+    qb_pool.slots[pool_index].offset = 0;
+    qb_pool.slots[pool_index].size = 0;
+    qb_pool.slots[pool_index].channel = 0;
+
+    qb_pool.pool_used -= size;
+
+    qb_pool_write_header_and_index();
+    dprintf("qb_pool: slot %d erased, %d bytes now used\n", pool_index, qb_pool.pool_used);
+}
+
+// Write preset data to EEPROM pool in compact format:
+// [6B header fields][2B magic][note_count × 3B notes]
+static bool qb_pool_write_preset(uint16_t offset, const void *preset_ptr,
+                                  uint8_t note_count, uint16_t max_notes_size) {
+    uint32_t base = PRESET_POOL_EEPROM_ADDR + POOL_DATA_OFFSET + offset;
+
+    // The preset structs are packed with layout:
+    //   [type(1)][count(1)][pattern_len(1)][gate(1)][timing(1)][note_val(1)][notes...][magic(2)]
+    // We write: header(6) + magic(2) + actual notes
+    // This reorders magic to be right after header for compact storage.
+
+    const uint8_t *raw = (const uint8_t *)preset_ptr;
+
+    // Write 6 header bytes (type through note_value)
+    eeprom_update_block(raw, (void*)base, 6);
+
+    // Write 2 magic bytes (from end of struct)
+    // For arp: magic at offset 6 + MAX_ARP_PRESET_NOTES*3 = 198
+    // For seq: magic at offset 6 + MAX_SEQ_PRESET_NOTES*3 = 390
+    uint16_t magic_offset = 6 + max_notes_size;
+    eeprom_update_block(raw + magic_offset, (void*)(base + 6), 2);
+
+    // Write actual note data (note_count × 3 bytes, from offset 6 in struct)
+    if (note_count > 0) {
+        eeprom_update_block(raw + 6, (void*)(base + 8), note_count * 3);
+    }
+
+    return true;
+}
+
+// Read preset data from EEPROM pool compact format back into full struct
+static bool qb_pool_read_preset(uint16_t offset, void *preset_ptr,
+                                 uint16_t stored_size, uint16_t full_struct_size,
+                                 uint16_t max_notes_size) {
+    uint32_t base = PRESET_POOL_EEPROM_ADDR + POOL_DATA_OFFSET + offset;
+
+    // Zero the full struct first (unused notes will be 0)
+    memset(preset_ptr, 0, full_struct_size);
+
+    uint8_t *raw = (uint8_t *)preset_ptr;
+
+    // Read 6 header bytes
+    eeprom_read_block(raw, (void*)base, 6);
+
+    // Read 2 magic bytes → place at correct offset in struct
+    uint16_t magic_offset = 6 + max_notes_size;
+    eeprom_read_block(raw + magic_offset, (void*)(base + 6), 2);
+
+    // Read note data (stored_size - 8 bytes of header+magic)
+    uint16_t note_bytes = stored_size - 8;
+    if (note_bytes > 0 && note_bytes <= max_notes_size) {
+        eeprom_read_block(raw + 6, (void*)(base + 8), note_bytes);
+    }
+
+    return true;
+}
+
+// Save arp preset to pool (slot 0-3)
+bool qb_pool_save_arp(uint8_t arp_slot, const arp_preset_t *preset) {
+    if (arp_slot >= MAX_ARP_QB_SLOTS || preset == NULL) return false;
+
+    uint8_t pool_idx = arp_slot;  // Slots 0-3 for arp
+    uint16_t data_size = 8 + (preset->note_count * sizeof(arp_preset_note_t));
+
+    // If slot already occupied, erase first (compacts pool)
+    if (qb_pool.slots[pool_idx].type != POOL_SLOT_EMPTY) {
+        qb_pool_erase_slot(pool_idx);
+    }
+
+    // Check available space
+    if (qb_pool.pool_used + data_size > POOL_DATA_SIZE) {
+        dprintf("qb_pool: no space for arp slot %d (%d bytes needed, %d available)\n",
+                arp_slot, data_size, POOL_DATA_SIZE - qb_pool.pool_used);
+        return false;
+    }
+
+    // Append at end of used area
+    uint16_t offset = qb_pool.pool_used;
+
+    qb_pool_write_preset(offset, preset, preset->note_count,
+                          MAX_ARP_PRESET_NOTES * sizeof(arp_preset_note_t));
+
+    // Update index
+    qb_pool.slots[pool_idx].type = POOL_SLOT_ARP;
+    qb_pool.slots[pool_idx].flags = POOL_SLOT_FLAG_VALID;
+    qb_pool.slots[pool_idx].offset = offset;
+    qb_pool.slots[pool_idx].size = data_size;
+    qb_pool.slots[pool_idx].channel = 0;
+
+    qb_pool.pool_used += data_size;
+
+    qb_pool_write_header_and_index();
+    dprintf("qb_pool: saved arp slot %d (%d notes, %d bytes at offset %d)\n",
+            arp_slot, preset->note_count, data_size, offset);
+    return true;
+}
+
+// Save seq preset to pool (slot 0-7 → pool index 4-11)
+bool qb_pool_save_seq(uint8_t seq_slot, const seq_preset_t *preset, uint8_t channel) {
+    if (seq_slot >= MAX_SEQ_SLOTS || preset == NULL) return false;
+
+    uint8_t pool_idx = seq_slot + 4;  // Slots 4-11 for seq
+    uint16_t data_size = 8 + (preset->note_count * sizeof(arp_preset_note_t));
+
+    // If slot already occupied, erase first
+    if (qb_pool.slots[pool_idx].type != POOL_SLOT_EMPTY) {
+        qb_pool_erase_slot(pool_idx);
+    }
+
+    // Check available space
+    if (qb_pool.pool_used + data_size > POOL_DATA_SIZE) {
+        dprintf("qb_pool: no space for seq slot %d (%d bytes needed, %d available)\n",
+                seq_slot, data_size, POOL_DATA_SIZE - qb_pool.pool_used);
+        return false;
+    }
+
+    // Append at end
+    uint16_t offset = qb_pool.pool_used;
+
+    qb_pool_write_preset(offset, preset, preset->note_count,
+                          MAX_SEQ_PRESET_NOTES * sizeof(arp_preset_note_t));
+
+    // Update index
+    qb_pool.slots[pool_idx].type = POOL_SLOT_SEQ;
+    qb_pool.slots[pool_idx].flags = POOL_SLOT_FLAG_VALID;
+    qb_pool.slots[pool_idx].offset = offset;
+    qb_pool.slots[pool_idx].size = data_size;
+    qb_pool.slots[pool_idx].channel = channel;
+
+    qb_pool.pool_used += data_size;
+
+    qb_pool_write_header_and_index();
+    dprintf("qb_pool: saved seq slot %d (%d notes, %d bytes at offset %d, ch:%d)\n",
+            seq_slot, preset->note_count, data_size, offset, channel);
+    return true;
+}
+
+// Load arp preset from pool into dest (slot 0-3)
+bool qb_pool_load_arp(uint8_t arp_slot, arp_preset_t *dest) {
+    if (arp_slot >= MAX_ARP_QB_SLOTS || dest == NULL) return false;
+
+    uint8_t pool_idx = arp_slot;
+    if (qb_pool.slots[pool_idx].type != POOL_SLOT_ARP) return false;
+
+    qb_pool_read_preset(qb_pool.slots[pool_idx].offset, dest,
+                         qb_pool.slots[pool_idx].size,
+                         sizeof(arp_preset_t),
+                         MAX_ARP_PRESET_NOTES * sizeof(arp_preset_note_t));
+
+    if (!arp_validate_preset(dest)) {
+        dprintf("qb_pool: arp slot %d validation failed after load\n", arp_slot);
+        memset(dest, 0, sizeof(arp_preset_t));
+        return false;
+    }
+
+    dprintf("qb_pool: loaded arp slot %d (%d notes)\n", arp_slot, dest->note_count);
+    return true;
+}
+
+// Load seq preset from pool into dest (slot 0-7)
+bool qb_pool_load_seq(uint8_t seq_slot, seq_preset_t *dest) {
+    if (seq_slot >= MAX_SEQ_SLOTS || dest == NULL) return false;
+
+    uint8_t pool_idx = seq_slot + 4;
+    if (qb_pool.slots[pool_idx].type != POOL_SLOT_SEQ) return false;
+
+    qb_pool_read_preset(qb_pool.slots[pool_idx].offset, dest,
+                         qb_pool.slots[pool_idx].size,
+                         sizeof(seq_preset_t),
+                         MAX_SEQ_PRESET_NOTES * sizeof(arp_preset_note_t));
+
+    if (!seq_validate_preset(dest)) {
+        dprintf("qb_pool: seq slot %d validation failed after load\n", seq_slot);
+        memset(dest, 0, sizeof(seq_preset_t));
+        return false;
+    }
+
+    dprintf("qb_pool: loaded seq slot %d (%d notes)\n", seq_slot, dest->note_count);
+    return true;
+}
+
 // Start quick build for arpeggiator (slot 0-3)
 void quick_build_start_arp(uint8_t slot) {
     if (slot >= MAX_ARP_QB_SLOTS) return;
@@ -2578,7 +2912,6 @@ void quick_build_start_arp(uint8_t slot) {
     quick_build_state.has_root = false;
     quick_build_state.candidate_root = 0;
     quick_build_state.candidate_ready = false;
-    quick_build_state.has_saved_arp_build[slot] = false;
     quick_build_state.sustain_held_last_check = false;
     quick_build_state.encoder_chord_held = false;
 
@@ -2661,7 +2994,6 @@ void quick_build_start_seq(uint8_t slot) {
     quick_build_state.seq_slot = slot;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
-    quick_build_state.has_saved_seq_build[slot] = false;
     quick_build_state.sustain_held_last_check = false;
     quick_build_state.encoder_chord_held = false;
 
@@ -2717,9 +3049,10 @@ void quick_build_finish(void) {
         dprintf("quick_build: arp slot %d finished with %d notes, %d steps\n",
                 arp_slot, quick_build_state.note_count, arp_active_preset.pattern_length_16ths);
 
-        // Save to storage slot and mark as saved
-        memcpy(&arp_quick_build_storage[arp_slot], &arp_active_preset, sizeof(arp_preset_t));
-        quick_build_state.has_saved_arp_build[arp_slot] = true;
+        // Save to persistent pool and mark as saved
+        if (!qb_pool_save_arp(arp_slot, &arp_active_preset)) {
+            dprintf("quick_build: pool save failed for arp slot %d (pool full?)\n", arp_slot);
+        }
         quick_build_state.active_arp_qb_slot = arp_slot;
 
         // Mark arp to play this quick build pattern (not a factory/user preset)
@@ -2752,8 +3085,10 @@ void quick_build_finish(void) {
 
         dprintf("quick_build: seq slot %d finished with %d notes, %d steps\n",
                 slot, quick_build_state.note_count, seq_active_presets[slot].pattern_length_16ths);
-        quick_build_state.has_saved_seq_build[slot] = true;
-        quick_build_state.saved_seq_channel[slot] = channel_number;  // Remember channel at build time
+        // Save to persistent pool
+        if (!qb_pool_save_seq(slot, &seq_active_presets[slot], channel_number)) {
+            dprintf("quick_build: pool save failed for seq slot %d (pool full?)\n", slot);
+        }
 
         // Mark seq slot to play this quick build pattern
         seq_state[slot].current_preset_id = PRESET_ID_QUICK_BUILD;
@@ -2768,14 +3103,14 @@ void quick_build_finish(void) {
     // Show summary screen (stays on OLED until dismissed)
     quick_build_state.mode = QUICK_BUILD_SUMMARY;
 
-    dprintf("quick_build: saved to RAM, showing summary\n");
+    dprintf("quick_build: saved to pool, showing summary\n");
 }
 
 // Erase the saved arp quick build for a specific slot
 void quick_build_erase_arp(uint8_t slot) {
     if (slot >= MAX_ARP_QB_SLOTS) return;
     dprintf("quick_build: erasing saved arp build slot %d\n", slot);
-    quick_build_state.has_saved_arp_build[slot] = false;
+    qb_pool_erase_slot(slot);  // Slots 0-3 for arp
     quick_build_state.mode = QUICK_BUILD_NONE;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
@@ -2786,10 +3121,13 @@ void quick_build_erase_arp(uint8_t slot) {
 // Load an arp quick build slot into the active preset for playback
 void quick_build_load_arp_slot(uint8_t slot) {
     if (slot >= MAX_ARP_QB_SLOTS) return;
-    if (!quick_build_state.has_saved_arp_build[slot]) return;
+    if (!qb_pool_has_build(slot)) return;
 
-    // Copy from storage to the active preset
-    memcpy(&arp_active_preset, &arp_quick_build_storage[slot], sizeof(arp_preset_t));
+    // Load from persistent pool into active preset
+    if (!qb_pool_load_arp(slot, &arp_active_preset)) {
+        dprintf("quick_build: failed to load arp slot %d from pool\n", slot);
+        return;
+    }
 
     // Track which slot is active
     quick_build_state.active_arp_qb_slot = slot;
@@ -2798,14 +3136,14 @@ void quick_build_load_arp_slot(uint8_t slot) {
     arp_state.current_preset_id = PRESET_ID_QUICK_BUILD;
     arp_state.loaded_preset_id = PRESET_ID_QUICK_BUILD;
 
-    dprintf("quick_build: loaded arp slot %d into active preset\n", slot);
+    dprintf("quick_build: loaded arp slot %d from pool into active preset\n", slot);
 }
 
 // Erase the saved seq quick build for a specific slot
 void quick_build_erase_seq(uint8_t slot) {
     if (slot >= MAX_SEQ_SLOTS) return;
     dprintf("quick_build: erasing saved seq build slot %d\n", slot);
-    quick_build_state.has_saved_seq_build[slot] = false;
+    qb_pool_erase_slot(slot + 4);  // Slots 4-11 for seq
     quick_build_state.mode = QUICK_BUILD_NONE;
     quick_build_state.current_step = 0;
     quick_build_state.note_count = 0;
@@ -3378,14 +3716,25 @@ void seq_start_slot(uint8_t slot) {
         return;
     }
 
-    // Start the slot directly (preset already in RAM)
+    // Load preset from persistent pool into RAM (if not already loaded)
+    if (seq_state[slot].loaded_preset_id != PRESET_ID_QUICK_BUILD ||
+        seq_active_presets[slot].magic != ARP_PRESET_MAGIC) {
+        if (!qb_pool_load_seq(slot, &seq_active_presets[slot])) {
+            dprintf("seq: failed to load slot %d from pool\n", slot);
+            return;
+        }
+        seq_state[slot].loaded_preset_id = PRESET_ID_QUICK_BUILD;
+        seq_state[slot].current_preset_id = PRESET_ID_QUICK_BUILD;
+    }
+
+    // Start the slot directly
     seq_state[slot].active = true;
     seq_state[slot].current_position_16ths = 0;
     seq_state[slot].has_looped = false;
     seq_state[slot].deferred_start_pending = false;
 
-    // Use the channel from when the seq was built (not the current keyboard channel)
-    seq_state[slot].locked_channel = quick_build_state.saved_seq_channel[slot];
+    // Use the channel from when the seq was built (stored in pool)
+    seq_state[slot].locked_channel = qb_pool_get_channel(slot + 4);
     seq_state[slot].locked_velocity_min = he_velocity_min;
     seq_state[slot].locked_velocity_max = he_velocity_max;
     seq_state[slot].locked_transpose = 0;

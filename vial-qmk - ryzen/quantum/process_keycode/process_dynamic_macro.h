@@ -316,7 +316,7 @@ bool layer_use_fixed_velocity(uint8_t layer);
 // Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 42000 (orthomidi5x14.h)
 // Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 43000 (per_key_rgb.h)
 // Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 45000
-// Available:           52000-65535                   (~13KB for future use)
+// QB Preset Pool:      PRESET_POOL_EEPROM_ADDR       = 52000 (orthomidi5x14.h, ~13.2KB)
 // =============================================================================
 
 // Function declarations for layer settings

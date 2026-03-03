@@ -871,6 +871,47 @@ void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
 #define PRESET_ID_QUICK_BUILD 255      // Sentinel: preset lives in RAM from quick build
 #define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
 
+// Persistent pool storage for quick build presets (EEPROM-backed)
+#define PRESET_POOL_EEPROM_ADDR 52000  // After per-key actuation (45000 + 6720 = 51720)
+#define PRESET_POOL_SIZE        13536  // 65536 - 52000 = remaining EEPROM space
+#define PRESET_POOL_MAGIC       0x5142  // "QB"
+#define PRESET_POOL_VERSION     1
+#define POOL_HEADER_SIZE        16
+#define POOL_MAX_SLOTS          12      // 4 arp + 8 seq
+#define POOL_INDEX_ENTRY_SIZE   8
+#define POOL_INDEX_SIZE         (POOL_MAX_SLOTS * POOL_INDEX_ENTRY_SIZE)  // 96
+#define POOL_DATA_OFFSET        (POOL_HEADER_SIZE + POOL_INDEX_SIZE)      // 112
+#define POOL_DATA_SIZE          (PRESET_POOL_SIZE - POOL_DATA_OFFSET)     // 13424
+
+// Pool slot types
+#define POOL_SLOT_EMPTY  0
+#define POOL_SLOT_ARP    1
+#define POOL_SLOT_SEQ    2
+#define POOL_SLOT_FLAG_VALID 0x01
+
+// Pool slot index entry (8 bytes, packed)
+typedef struct __attribute__((packed)) {
+    uint8_t  type;       // POOL_SLOT_EMPTY/ARP/SEQ
+    uint8_t  flags;      // bit 0: valid
+    uint16_t offset;     // Offset into pool data area
+    uint16_t size;       // Size of preset data in pool
+    uint8_t  channel;    // MIDI channel at build time (seq only)
+    uint8_t  reserved;
+} pool_slot_index_t;
+
+_Static_assert(sizeof(pool_slot_index_t) == POOL_INDEX_ENTRY_SIZE, "pool_slot_index_t must be 8 bytes");
+
+// Pool RAM state (mirrors EEPROM header + index)
+typedef struct {
+    uint16_t pool_used;                          // Bytes used in data area
+    pool_slot_index_t slots[POOL_MAX_SLOTS];     // 12 × 8 = 96 bytes
+} qb_pool_state_t;
+
+extern qb_pool_state_t qb_pool;
+
+_Static_assert(PRESET_POOL_EEPROM_ADDR + PRESET_POOL_SIZE <= 65536,
+               "Preset pool exceeds 64KB EEPROM boundary");
+
 typedef enum {
     QUICK_BUILD_NONE = 0,
     QUICK_BUILD_ARP_SETUP,             // Arp parameter selection phase
@@ -893,10 +934,8 @@ typedef struct {
     bool candidate_ready;              // A candidate root note has been pressed and is awaiting confirm
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
-    bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (per slot)
     uint8_t active_arp_qb_slot;        // Which arp QB slot is currently loaded (0-3, 255=none)
-    bool has_saved_seq_build[8];       // Has user completed a seq build? (per slot)
-    uint8_t saved_seq_channel[8];      // MIDI channel at time of seq build (per slot)
+    // has_saved_arp_build, has_saved_seq_build, saved_seq_channel moved to qb_pool
 
     // Setup phase state
     uint8_t setup_param_index;         // Which parameter is being configured (0, 1, 2...)
@@ -950,6 +989,17 @@ const char* quick_build_get_param_value_big(void);  // Short name for 2x font (N
 
 // Seq slot-level start for quick build playback (avoids preset reload)
 void seq_start_slot(uint8_t slot);
+
+// Pool storage API (persistent quick build presets in EEPROM)
+void qb_pool_init(void);
+void qb_pool_load(void);
+bool qb_pool_save_arp(uint8_t arp_slot, const arp_preset_t *preset);
+bool qb_pool_save_seq(uint8_t seq_slot, const seq_preset_t *preset, uint8_t channel);
+bool qb_pool_load_arp(uint8_t arp_slot, arp_preset_t *dest);
+bool qb_pool_load_seq(uint8_t seq_slot, seq_preset_t *dest);
+void qb_pool_erase_slot(uint8_t pool_index);
+bool qb_pool_has_build(uint8_t pool_index);
+uint8_t qb_pool_get_channel(uint8_t pool_index);
 
 // Velocity pipeline for arp/seq (apply curve + vel range)
 uint8_t apply_arp_velocity_pipeline(uint8_t preset_velocity_0_127);
