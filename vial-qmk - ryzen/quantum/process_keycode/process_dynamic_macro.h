@@ -238,14 +238,14 @@ void set_custom_animations_eeprom_initialized(void);
 //   52,000-65,535: Available for future use (~13KB)
 // =============================================================================
 
-#define EECONFIG_CUSTOM_ANIMATIONS 36000  // Custom animations (700 bytes)
+#define EECONFIG_CUSTOM_ANIMATIONS 36000  // Custom animations (750 bytes: 15 bytes * 50 slots)
 #define EECONFIG_CUSTOM_ANIMATIONS_SIZE (sizeof(custom_animation_config_t) * NUM_CUSTOM_SLOTS)
 
 #define LOOP_SETTINGS_SIZE sizeof(loop_settings_t)
 #define LOOP_SETTINGS_EEPROM_ADDR 37000  // Loop settings (200 bytes)
 
 #define RGB_DEFAULTS_MAGIC_ADDR 38500  // EEPROM address for magic number for the rgb custom layers
-#define RGB_DEFAULTS_MAGIC_NUMBER 0xC0DE
+#define RGB_DEFAULTS_MAGIC_NUMBER 0xC0DF  // Bumped: struct grew by background_speed field
 
 #define LAYER_SETTINGS_EEPROM_ADDR 39000  // Layer RGB settings (108 bytes)
 
