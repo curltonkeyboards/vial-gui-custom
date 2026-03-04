@@ -1823,6 +1823,12 @@ void seq_update(void) {
             uint32_t note_duration_ms = ms_per_16th;
             uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
 
+            // Pre-scan next step to detect held notes (same pitch on consecutive steps)
+            uint16_t next_pos = seq_state[slot].current_position_16ths + 1;
+            if (next_pos >= preset->pattern_length_16ths) {
+                next_pos = 0;  // Wrap for loop
+            }
+
             for (uint8_t i = 0; i < note_count_to_play; i++) {
                 unpacked_note_t *note = &step_scratch[i];
 
@@ -1833,27 +1839,60 @@ void seq_update(void) {
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
-                // Force-off any pending note with the same pitch on this slot
-                // Prevents gate 100% overlap where previous note-off fires after new note-on
-                for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
-                    if (arp_notes[j].active && arp_notes[j].from_seq &&
-                        arp_notes[j].seq_slot == slot &&
-                        arp_notes[j].note == (uint8_t)midi_note) {
-                        midi_send_noteoff_seq_macro(arp_notes[j].channel,
-                                                    arp_notes[j].note,
-                                                    arp_notes[j].velocity,
-                                                    arp_notes[j].seq_slot);
-                        arp_notes[j].active = false;
-                        arp_note_count--;
+                // Check if this exact note also appears on the next step (hold detection)
+                bool held_to_next = false;
+                for (uint16_t n = 0; n < seq_total_note_count; n++) {
+                    unpacked_note_t next_unpacked;
+                    unpack_note(&seq_notes[n], &next_unpacked, false);
+                    if (next_unpacked.timing == next_pos) {
+                        int16_t next_midi = (next_unpacked.octave_offset * 12) + next_unpacked.note_index;
+                        if (next_midi == midi_note) {
+                            held_to_next = true;
+                            break;
+                        }
                     }
                 }
 
-                // Send note-on using sequencer's locked-in values (as macro note, not recorded by looper)
-                midi_send_noteon_seq(slot, (uint8_t)midi_note, note->velocity);
+                // Check if this note is already sounding from the previous step (tie/hold)
+                bool already_sounding = false;
+                if (held_to_next) {
+                    for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
+                        if (arp_notes[j].active && arp_notes[j].from_seq &&
+                            arp_notes[j].seq_slot == slot &&
+                            arp_notes[j].note == (uint8_t)midi_note) {
+                            // Note is already playing - just extend its gate to cover the full step
+                            // (will be extended again at next step if still held)
+                            arp_notes[j].note_off_time = current_time + note_duration_ms;
+                            already_sounding = true;
+                            break;
+                        }
+                    }
+                }
 
-                // Add to arp_notes for gate tracking (marked as seq note for macro-style note-off)
-                uint32_t note_off_time = current_time + gate_duration_ms;
-                add_seq_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity, note_off_time, slot);
+                if (!already_sounding) {
+                    // Force-off any pending note with the same pitch on this slot
+                    // Prevents gate 100% overlap where previous note-off fires after new note-on
+                    for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
+                        if (arp_notes[j].active && arp_notes[j].from_seq &&
+                            arp_notes[j].seq_slot == slot &&
+                            arp_notes[j].note == (uint8_t)midi_note) {
+                            midi_send_noteoff_seq_macro(arp_notes[j].channel,
+                                                        arp_notes[j].note,
+                                                        arp_notes[j].velocity,
+                                                        arp_notes[j].seq_slot);
+                            arp_notes[j].active = false;
+                            arp_note_count--;
+                        }
+                    }
+
+                    // Send note-on using sequencer's locked-in values (as macro note, not recorded by looper)
+                    midi_send_noteon_seq(slot, (uint8_t)midi_note, note->velocity);
+
+                    // Add to arp_notes for gate tracking (marked as seq note for macro-style note-off)
+                    // If held to next step, use full step duration so the note sustains until next step's extension
+                    uint32_t note_off_time = current_time + (held_to_next ? note_duration_ms : gate_duration_ms);
+                    add_seq_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity, note_off_time, slot);
+                }
             }
         }
 
@@ -3220,6 +3259,15 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
     if (should_advance) {
         quick_build_advance_step();
     }
+}
+
+// Record a smartchord harmony tone into quick build (forced chord mode, never advances step).
+// Smartchord tones are generated alongside the root note and should all land on the same step.
+void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
+    bool was_chord_held = quick_build_state.encoder_chord_held;
+    quick_build_state.encoder_chord_held = true;  // Force chord mode so step doesn't advance
+    quick_build_handle_note(channel, note, velocity, raw_travel);
+    quick_build_state.encoder_chord_held = was_chord_held;  // Restore previous state
 }
 
 // Called when sustain pedal is released

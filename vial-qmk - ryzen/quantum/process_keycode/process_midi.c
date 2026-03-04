@@ -509,14 +509,25 @@ void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity
     if (final_velocity < 1) final_velocity = 1;
     if (final_velocity > 127) final_velocity = 127;
 
+    // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
+    // The playback velocity transform expects 0-255 raw_travel input
+    uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
+
+    // QUICK BUILD HOOK: Record smartchord tones into step sequencer/arp builds
+    // Without this, only the root note (which goes through midi_send_noteon_with_recording)
+    // gets recorded - the harmony tones from smartchord would be silently dropped.
+    // Uses quick_build_handle_chord_note which forces chord mode (same step, no advance).
+    extern bool quick_build_is_active(void);
+    extern bool quick_build_is_recording(void);
+    extern void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+    if (quick_build_is_active() && quick_build_is_recording()) {
+        quick_build_handle_chord_note(channel, note, final_velocity, raw_travel_scaled);
+    }
+
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note, final_velocity);
-
-    // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
-    // The playback velocity transform expects 0-255 raw_travel input
-    uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
 
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, raw_travel_scaled);

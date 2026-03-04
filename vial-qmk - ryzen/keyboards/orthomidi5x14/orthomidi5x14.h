@@ -956,6 +956,7 @@ void quick_build_erase_arp(uint8_t slot);
 void quick_build_load_arp_slot(uint8_t slot);
 void quick_build_erase_seq(uint8_t slot);
 void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void quick_build_handle_sustain_release(void);
 void quick_build_update(void);
 bool quick_build_is_active(void);

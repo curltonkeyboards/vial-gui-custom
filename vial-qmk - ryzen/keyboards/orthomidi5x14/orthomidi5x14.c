@@ -17108,6 +17108,7 @@ void render_quick_build_setup(void) {
 // Render the recording phase OLED screen (note input)
 void render_quick_build_recording(void) {
     char buf[22];
+    char note_buf[8];
 
     // Line 0: Title (centered)
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
@@ -17124,40 +17125,92 @@ void render_quick_build_recording(void) {
     // Line 2: blank
     oled_write_line(2, "");
 
-    // Line 3: Step number (centered, large)
+    // Line 3: Step number and note count (centered)
     uint16_t step = quick_build_get_current_step();
-    snprintf(buf, sizeof(buf), "STEP %d", step);
+    snprintf(buf, sizeof(buf), "STEP %d  (%d notes)", step, quick_build_state.note_count);
     oled_write_line_centered(3, buf);
 
-    // Line 4: blank
-    oled_write_line(4, "");
-
-    // Line 5: Skip step instruction
-    oled_write_line_centered(5, "Skip: turn top knob");
-
-    // Line 6: Chord mode / multiple notes
-    if (quick_build_state.encoder_chord_held) {
-        oled_write_line_centered(6, "CHORD MODE ON");
-    } else {
-        oled_write_line_centered(6, "Chord: hold top knob");
+    // Line 4: Show last recorded note(s) on current or previous step
+    {
+        pool_preset_t *header = NULL;
+        if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+            header = &arp_pool_headers[quick_build_state.arp_slot];
+        } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+            header = &seq_pool_headers[quick_build_state.seq_slot];
+        }
+        if (header && quick_build_state.note_count > 0) {
+            arp_preset_note_t *notes = note_pool_get_notes(header);
+            // Find notes on the most recent step that has notes
+            uint16_t display_step = (quick_build_state.current_step > 0) ?
+                quick_build_state.current_step - 1 : 0;
+            // Search backwards for a step with notes
+            bool found = false;
+            for (int16_t s = (int16_t)display_step; s >= 0 && !found; s--) {
+                char note_str[22] = "";
+                uint8_t notes_on_step = 0;
+                for (uint16_t i = 0; i < quick_build_state.note_count && notes_on_step < 4; i++) {
+                    if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == (uint16_t)s) {
+                        uint8_t ni = NOTE_GET_NOTE(notes[i].note_octave);
+                        int8_t oct = NOTE_GET_OCTAVE(notes[i].note_octave);
+                        if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+                            uint8_t midi = (uint8_t)(oct * 12 + ni);
+                            midi_note_name(midi, note_buf, sizeof(note_buf));
+                        } else {
+                            // Arp: show interval
+                            uint8_t sign = NOTE_GET_SIGN(notes[i].packed_timing_vel);
+                            int8_t interval = sign ? -(int8_t)ni : (int8_t)ni;
+                            snprintf(note_buf, sizeof(note_buf), "%+d", interval + oct * 12);
+                        }
+                        if (notes_on_step > 0) {
+                            size_t len = strlen(note_str);
+                            snprintf(note_str + len, sizeof(note_str) - len, " %s", note_buf);
+                        } else {
+                            snprintf(note_str, sizeof(note_str), "%s", note_buf);
+                        }
+                        notes_on_step++;
+                        found = true;
+                    }
+                }
+                if (found) {
+                    oled_write_line_centered(4, note_str);
+                }
+            }
+            if (!found) {
+                oled_write_line(4, "");
+            }
+        } else {
+            oled_write_line(4, "");
+        }
     }
 
-    // Line 7: blank
-    oled_write_line(7, "");
+    // Line 5: blank
+    oled_write_line(5, "");
 
-    // Line 8: Hold note instruction (bottom knob)
-    oled_write_line_centered(8, "Hold: press bot knob");
+    // Line 6-7: Top knob skip/undo with arrows
+    oled_write_line_centered(6, "<< Undo   Skip >>");
+    oled_write_line_centered(7, "(turn top knob)");
+
+    // Line 8: Chord mode status
+    if (quick_build_state.encoder_chord_held) {
+        oled_write_line_centered(8, "Top knob: CHORD ON");
+    } else {
+        oled_write_line_centered(8, "Hold knob: Chord");
+    }
 
     // Line 9: blank
     oled_write_line(9, "");
 
-    // Lines 10-11: Finish instruction
-    oled_write_line_centered(10, "Finish: press QB btn");
+    // Line 10: Hold note instruction (bottom knob)
+    oled_write_line_centered(10, "Hold: press bot knob");
 
-    // Lines 11-15: blank
+    // Line 11: blank
     oled_write_line(11, "");
-    oled_write_line(12, "");
-    oled_write_line(13, "");
+
+    // Lines 12-13: Finish instruction (split across 2 lines)
+    oled_write_line_centered(12, "Press knob or Quick");
+    oled_write_line_centered(13, "Build btn to finish");
+
+    // Lines 14-15: blank
     oled_write_line(14, "");
     oled_write_line(15, "");
 }
