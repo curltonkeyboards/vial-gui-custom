@@ -1853,19 +1853,24 @@ void seq_update(void) {
                     }
                 }
 
-                // Check if this note is already sounding from the previous step (tie/hold)
+                // Check if this note is already sounding from a previous step (tie/hold)
+                // Must check REGARDLESS of held_to_next so the last step of a hold
+                // chain doesn't re-trigger (it just needs to set the final gate time)
                 bool already_sounding = false;
-                if (held_to_next) {
-                    for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
-                        if (arp_notes[j].active && arp_notes[j].from_seq &&
-                            arp_notes[j].seq_slot == slot &&
-                            arp_notes[j].note == (uint8_t)midi_note) {
-                            // Note is already playing - just extend its gate to cover the full step
-                            // (will be extended again at next step if still held)
-                            arp_notes[j].note_off_time = current_time + note_duration_ms;
-                            already_sounding = true;
-                            break;
+                for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
+                    if (arp_notes[j].active && arp_notes[j].from_seq &&
+                        arp_notes[j].seq_slot == slot &&
+                        arp_notes[j].note == (uint8_t)midi_note) {
+                        already_sounding = true;
+                        if (held_to_next) {
+                            // Middle of hold chain: extend well past next step so the note
+                            // survives process_arp_note_offs() before next seq_update()
+                            arp_notes[j].note_off_time = current_time + note_duration_ms * 2;
+                        } else {
+                            // Last step of hold chain: set proper gate ending
+                            arp_notes[j].note_off_time = current_time + gate_duration_ms;
                         }
+                        break;
                     }
                 }
 
@@ -1889,8 +1894,9 @@ void seq_update(void) {
                     midi_send_noteon_seq(slot, (uint8_t)midi_note, note->velocity);
 
                     // Add to arp_notes for gate tracking (marked as seq note for macro-style note-off)
-                    // If held to next step, use full step duration so the note sustains until next step's extension
-                    uint32_t note_off_time = current_time + (held_to_next ? note_duration_ms : gate_duration_ms);
+                    // If held to next step, use 2x step duration so note survives past the
+                    // next step boundary (process_arp_note_offs runs before seq_update)
+                    uint32_t note_off_time = current_time + (held_to_next ? (note_duration_ms * 2) : gate_duration_ms);
                     add_seq_note(seq_state[slot].locked_channel, (uint8_t)midi_note, note->velocity, note_off_time, slot);
                 }
             }
