@@ -9580,7 +9580,7 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     if (record->event.pressed) {
         snprintf(name, sizeof(name), "L%d - OCTAVE TOGGLE", macro_num);
     } else {
-        snprintf(name, sizeof(name), "   ");
+        return;  // On release: preserve OLED message
     }
 
 } else if (octave_doubler_button_held && keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) {
@@ -9591,7 +9591,7 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
         if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
         else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
     } else {
-        snprintf(name, sizeof(name), "   ");
+        return;  // On release: preserve OLED message
     }
 
 } else if (octave_doubler_button_held && keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
@@ -9607,7 +9607,7 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
             snprintf(name, sizeof(name), "SEQ NOT PLAYING");
         }
     } else {
-        snprintf(name, sizeof(name), "   ");
+        return;  // On release: preserve OLED message
     }
 
 } else if (sample_mode_active && keycode >= 0xCC08 && keycode <= 0xCC0B) {

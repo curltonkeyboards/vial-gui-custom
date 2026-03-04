@@ -236,6 +236,7 @@ class GridCell(QFrame):
 
     leftClicked = pyqtSignal(int, int)  # row, col
     rightClicked = pyqtSignal(int, int)  # row, col
+    dragEntered = pyqtSignal(int, int)  # row, col - emitted when mouse drags into this cell
 
     def __init__(self, row, col, parent=None):
         super().__init__(parent)
@@ -380,13 +381,53 @@ class GridCell(QFrame):
         elif event.button() == Qt.RightButton:
             self.rightClicked.emit(self.row, self.col)
 
-    def mouseMoveEvent(self, event):
-        """Handle mouse drag - propagate to parent grid"""
-        parent = self.parent()
-        if parent and hasattr(parent, 'on_cell_drag'):
-            # Map the event position to the parent's coordinate space
-            parent_pos = self.mapToParent(event.pos())
-            parent.on_cell_drag(parent_pos)
+    def enterEvent(self, event):
+        """Handle mouse entering cell during drag"""
+        if QApplication.mouseButtons() & Qt.LeftButton:
+            self.dragEntered.emit(self.row, self.col)
+        super().enterEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Clear drag state in parent grid on mouse release"""
+        if event.button() == Qt.LeftButton:
+            # Walk up to find the grid widget and clear its drag state
+            p = self.parent()
+            while p is not None:
+                if hasattr(p, '_drag_mode'):
+                    p._drag_mode = None
+                    break
+                p = p.parent()
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, event):
+        """Draw connecting line through sustained cells"""
+        super().paintEvent(event)
+        if not self.active or not self.is_tie:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Use a contrasting color for the sustain line
+        palette = QApplication.palette()
+        line_color = palette.color(QPalette.HighlightedText)
+        pen = QPen(line_color, 2, Qt.DashLine)
+        painter.setPen(pen)
+
+        is_arp = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator
+        w = self.width()
+        h = self.height()
+
+        if is_arp:
+            # Arpeggiator: steps are rows, draw vertical line from top edge to center
+            mid_x = w // 2
+            painter.drawLine(mid_x, 0, mid_x, h // 2)
+        else:
+            # Step sequencer: steps are columns, draw horizontal line from left edge to center
+            mid_y = h // 2
+            painter.drawLine(0, mid_y, w // 2, mid_y)
+
+        painter.end()
 
 
 class VelocityOctavePopup(QDialog):
@@ -583,6 +624,7 @@ class BasicStepSequencerGrid(QWidget):
                     cell = GridCell(row_idx, step, self)
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
+                    cell.dragEntered.connect(self.on_cell_drag_entered)
                     row_data['cells'].append(cell)
                     self.grid_layout.addWidget(cell, row_idx + 2, step + 2)
         elif new_steps < old_steps:
@@ -657,6 +699,7 @@ class BasicStepSequencerGrid(QWidget):
             cell = GridCell(row_idx, step, self)
             cell.leftClicked.connect(self.on_cell_left_click)
             cell.rightClicked.connect(self.on_cell_right_click)
+            cell.dragEntered.connect(self.on_cell_drag_entered)
             row_data['cells'].append(cell)
             self.grid_layout.addWidget(cell, row_idx + 2, step + 2)  # Row offset +2, col offset +2
 
@@ -870,51 +913,38 @@ class BasicStepSequencerGrid(QWidget):
         # Track drag start for sustain painting
         # Step sequencer: steps are on X axis (columns), so drag along columns
         self._drag_row = row
-        self._drag_start_col = col
-        self._drag_last_col = col
         self.dataChanged.emit()
 
-    def on_cell_drag(self, parent_pos):
-        """Handle drag painting - sustain notes across steps (columns) for step sequencer"""
+    def on_cell_drag_entered(self, row, col):
+        """Handle drag entering a cell - sustain notes across steps (columns) for step sequencer"""
         if not hasattr(self, '_drag_mode') or self._drag_mode is None:
             return
         if not hasattr(self, '_drag_row') or self._drag_row is None:
             return
 
-        row = self._drag_row
+        # Only drag within the same row (same note)
+        if row != self._drag_row:
+            return
         if row >= len(self.rows):
             return
 
         row_data = self.rows[row]
+        if col >= len(row_data['cells']):
+            return
+        cell = row_data['cells'][col]
 
-        # Find which cell the mouse is over
-        for col, cell in enumerate(row_data['cells']):
-            if cell.geometry().contains(parent_pos):
-                if col == self._drag_last_col:
-                    return  # Still on the same cell
-                self._drag_last_col = col
-
-                if self._drag_mode == 'paint':
-                    if not cell.active:
-                        # Subsequent cells in a drag are sustained
-                        cell.set_active(True, self.default_velocity, 0)
-                        cell.is_tie = True
-                        cell.update_style()
-                        self.dataChanged.emit()
-                elif self._drag_mode == 'erase':
-                    if cell.active:
-                        cell.set_active(False, self.default_velocity, 0)
-                        cell.is_tie = False
-                        self.dataChanged.emit()
-                return
-
-    def mouseReleaseEvent(self, event):
-        """Clear drag state on mouse release"""
-        self._drag_mode = None
-        self._drag_row = None
-        self._drag_start_col = None
-        self._drag_last_col = None
-        super().mouseReleaseEvent(event)
+        if self._drag_mode == 'paint':
+            if not cell.active:
+                # Subsequent cells in a drag are sustained
+                cell.set_active(True, self.default_velocity, 0)
+                cell.is_tie = True
+                cell.update_style()
+                self.dataChanged.emit()
+        elif self._drag_mode == 'erase':
+            if cell.active:
+                cell.set_active(False, self.default_velocity, 0)
+                cell.is_tie = False
+                self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
         """Handle right click - activate and configure with current or default values"""
@@ -1087,6 +1117,7 @@ class BasicStepSequencerGrid(QWidget):
                 cell = GridCell(row_idx, step, self)
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
+                cell.dragEntered.connect(self.on_cell_drag_entered)
 
                 # Check if this step has a note - use actual rate
                 timing_16ths = step * rate_16ths
@@ -1249,6 +1280,7 @@ class BasicArpeggiatorGrid(QWidget):
                 cell = GridCell(row, col, self)
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
+                cell.dragEntered.connect(self.on_cell_drag_entered)
                 row_cells.append(cell)
                 self.grid_layout.addWidget(cell, row + 2, col + 2)
 
@@ -1288,6 +1320,7 @@ class BasicArpeggiatorGrid(QWidget):
                     cell = GridCell(step, col, self)
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
+                    cell.dragEntered.connect(self.on_cell_drag_entered)
                     row_cells.append(cell)
                     self.grid_layout.addWidget(cell, step + 2, col + 2)
 
@@ -1346,49 +1379,34 @@ class BasicArpeggiatorGrid(QWidget):
         # Track drag start for sustain painting
         # Arpeggiator: steps are on Y axis (rows), so drag along rows
         self._drag_col = col
-        self._drag_start_row = row
-        self._drag_last_row = row
         self.dataChanged.emit()
 
-    def on_cell_drag(self, parent_pos):
-        """Handle drag painting - sustain notes across steps (rows) for arpeggiator"""
+    def on_cell_drag_entered(self, row, col):
+        """Handle drag entering a cell - sustain notes across steps (rows) for arpeggiator"""
         if not hasattr(self, '_drag_mode') or self._drag_mode is None:
             return
         if not hasattr(self, '_drag_col') or self._drag_col is None:
             return
 
-        col = self._drag_col
+        # Only drag within the same column (same interval)
+        if col != self._drag_col:
+            return
+        if row >= len(self.cells) or col >= len(self.cells[row]):
+            return
 
-        # Find which cell the mouse is over (check rows for this column)
-        for row_idx, row_cells in enumerate(self.cells):
-            if col >= len(row_cells):
-                continue
-            cell = row_cells[col]
-            if cell.geometry().contains(parent_pos):
-                if row_idx == self._drag_last_row:
-                    return  # Still on the same cell
-                self._drag_last_row = row_idx
+        cell = self.cells[row][col]
 
-                if self._drag_mode == 'paint':
-                    if not cell.active:
-                        cell.set_active(True, self.default_velocity, 0)
-                        cell.is_tie = True
-                        cell.update_style()
-                        self.dataChanged.emit()
-                elif self._drag_mode == 'erase':
-                    if cell.active:
-                        cell.set_active(False, self.default_velocity, 0)
-                        cell.is_tie = False
-                        self.dataChanged.emit()
-                return
-
-    def mouseReleaseEvent(self, event):
-        """Clear drag state on mouse release"""
-        self._drag_mode = None
-        self._drag_col = None
-        self._drag_start_row = None
-        self._drag_last_row = None
-        super().mouseReleaseEvent(event)
+        if self._drag_mode == 'paint':
+            if not cell.active:
+                cell.set_active(True, self.default_velocity, 0)
+                cell.is_tie = True
+                cell.update_style()
+                self.dataChanged.emit()
+        elif self._drag_mode == 'erase':
+            if cell.active:
+                cell.set_active(False, self.default_velocity, 0)
+                cell.is_tie = False
+                self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
         """Handle right click - activate and configure
