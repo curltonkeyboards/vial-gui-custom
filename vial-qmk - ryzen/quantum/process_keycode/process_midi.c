@@ -345,26 +345,6 @@ void process_midi_basic_noteoff(uint8_t note) {
     }
 }
 
-// Send note-offs for all octave-doubled live notes at the OLD offset
-// Call BEFORE changing octave_doubler_mode so the correct doubled notes get turned off
-void send_noteoffs_for_live_octave_doubled(int8_t old_mode) {
-    if (old_mode == 0) return;  // Nothing to turn off
-
-    dprintf("midi: sending note-offs for live octave-doubled notes (old_mode=%d)\n", old_mode);
-
-    // Iterate through current live notes and send note-off for their doubled counterparts
-    for (uint8_t i = 0; i < live_note_count; i++) {
-        uint8_t channel = live_notes[i][0];
-        uint8_t note = live_notes[i][1];
-        int16_t doubled_note = (int16_t)note + old_mode;
-        if (doubled_note >= 0 && doubled_note <= 127) {
-            midi_send_noteoff(&midi_device, channel, (uint8_t)doubled_note, 0);
-            remove_lighting_live_note(channel, (uint8_t)doubled_note);
-            dprintf("midi: sent octave-doubled note-off ch:%d note:%d\n", channel, (uint8_t)doubled_note);
-        }
-    }
-}
-
 void process_midi_all_notes_off(void) {
     // Turn off all live notes
     for (uint8_t i = 0; i < live_note_count; i++) {

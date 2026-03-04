@@ -5,7 +5,6 @@
 #include "orthomidi5x14.h"
 #include "process_midi.h"
 #include "process_dynamic_macro.h"
-#include "qmk_midi.h"
 #include "timer.h"
 #include "eeprom.h"
 #include <string.h>
@@ -57,32 +56,6 @@ bool seq_modifier_held[MAX_SEQ_SLOTS] = {false, false, false, false, false, fals
 
 // Step Sequencer octave doubler (per-slot, values: 0, 12, 24, -12)
 int8_t seq_octave_doubler[MAX_SEQ_SLOTS] = {0, 0, 0, 0, 0, 0, 0, 0};
-// Pending octave doubler changes - applied at loop restart
-static bool seq_octave_doubler_pending[MAX_SEQ_SLOTS] = {false, false, false, false, false, false, false, false};
-static int8_t seq_octave_doubler_pending_value[MAX_SEQ_SLOTS] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-// Set seq octave doubler - defers to loop restart if slot is actively playing
-void set_seq_octave_doubler(uint8_t slot, int8_t value) {
-    if (slot >= MAX_SEQ_SLOTS) return;
-    if (seq_state[slot].active && !seq_state[slot].deferred_start_pending) {
-        // Slot is actively playing - defer to loop restart
-        seq_octave_doubler_pending[slot] = true;
-        seq_octave_doubler_pending_value[slot] = value;
-        dprintf("seq: slot %d octave doubler queued = %d (waiting for loop restart)\n", slot, value);
-    } else {
-        // Not playing - apply immediately
-        seq_octave_doubler[slot] = value;
-        seq_octave_doubler_pending[slot] = false;
-        dprintf("seq: slot %d octave doubler = %d (immediate)\n", slot, value);
-    }
-}
-
-// Get the effective (or pending) seq octave doubler value for display
-int8_t get_seq_octave_doubler_display(uint8_t slot) {
-    if (slot >= MAX_SEQ_SLOTS) return 0;
-    if (seq_octave_doubler_pending[slot]) return seq_octave_doubler_pending_value[slot];
-    return seq_octave_doubler[slot];
-}
 
 // Helper: check if arpeggiator is active (used by process_midi.c to suppress direct MIDI output)
 bool arp_is_active(void) {
@@ -1961,40 +1934,6 @@ void seq_update(void) {
                 preset->pattern_length_16ths, nv, tm);
             seq_state[slot].current_position_16ths = 0;
             seq_state[slot].has_looped = true;
-
-            // Apply pending octave doubler change at loop restart
-            if (seq_octave_doubler_pending[slot]) {
-                int8_t old_od = seq_octave_doubler[slot];
-                int8_t new_od = seq_octave_doubler_pending_value[slot];
-                // Send note-offs for any hanging octave-doubled seq notes at the OLD offset
-                if (old_od != 0 && old_od != new_od) {
-                    extern uint8_t macro_notes[][3];
-                    extern uint8_t macro_note_count;
-                    extern void unmark_note_from_macro(uint8_t channel, uint8_t note, uint8_t macro_id);
-                    uint8_t macro_id = (slot % 4) + 1;  // Seq slots map to macro IDs 1-4
-                    // Collect first to avoid modifying array during iteration
-                    uint8_t oct_offs[32][2];
-                    uint8_t oct_count = 0;
-                    for (uint8_t n = 0; n < macro_note_count && oct_count < 32; n++) {
-                        if (macro_notes[n][2] == macro_id) {
-                            int16_t oct_note_i = (int16_t)macro_notes[n][1] + old_od;
-                            if (oct_note_i >= 0 && oct_note_i <= 127) {
-                                oct_offs[oct_count][0] = macro_notes[n][0];
-                                oct_offs[oct_count][1] = (uint8_t)oct_note_i;
-                                oct_count++;
-                            }
-                        }
-                    }
-                    for (uint8_t n = 0; n < oct_count; n++) {
-                        midi_send_noteoff(&midi_device, oct_offs[n][0], oct_offs[n][1], 0);
-                        remove_lighting_macro_note(oct_offs[n][0], oct_offs[n][1], macro_id);
-                        unmark_note_from_macro(oct_offs[n][0], oct_offs[n][1], macro_id);
-                    }
-                }
-                seq_octave_doubler[slot] = new_od;
-                seq_octave_doubler_pending[slot] = false;
-                dprintf("seq: applied pending octave doubler for slot %d = %d\n", slot, new_od);
-            }
         }
 
         // Release deferred arp start on any seq step
