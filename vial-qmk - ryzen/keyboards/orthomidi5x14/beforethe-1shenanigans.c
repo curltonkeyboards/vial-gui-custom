@@ -1136,19 +1136,7 @@ void set_keylog(uint16_t keycode, keyrecord_t *record) {
 
 void oled_render_keylog(void) {
 	char name[100];
-	{
-		extern int8_t octave_doubler_mode;
-		extern int8_t temp_transpose_offset;
-		int total_trans = transpose_number + octave_number + temp_transpose_offset;
-		if (octave_doubler_mode == 12)
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+d*", total_trans);
-		else if (octave_doubler_mode == 24)
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+d**", total_trans);
-		else if (octave_doubler_mode == -12)
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION *%+d", total_trans);
-		else
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", total_trans);
-	}
+	snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", velocity_number);
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n\n", channel_number);
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "     %s%s%s\n\n", getRootName(), getChordName(), getBassName());

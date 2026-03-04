@@ -451,12 +451,6 @@ extern bool channeloverride;
 extern bool velocityoverride;
 extern bool transposeoverride;
 
-// Octave Doubler for normal notes (plays note + octave-shifted duplicate)
-// octave_doubler_mode: 0=Off, 12=+1oct, 24=+2oct, -12=-1oct
-extern int8_t octave_doubler_mode;
-// Temporary transposition offset (added while hold key is pressed)
-extern int8_t temp_transpose_offset;
-
 // Keyboard settings instance
 extern keyboard_settings_t keyboard_settings;
 

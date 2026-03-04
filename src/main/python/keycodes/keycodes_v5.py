@@ -2569,16 +2569,6 @@ class keycodes_v5:
         "SEQ_QUICK_BUILD_7": 0xEF7B,  # Quick build step sequencer slot 7
         "SEQ_QUICK_BUILD_8": 0xEF7C,  # Quick build step sequencer slot 8
 
-        # Octave Doubler & Temporary Transposition (0xEF80-0xEF87)
-        "OCT_DBL_TOGGLE": 0xEF80,   # Octave doubler modifier/toggle (hold=modifier, release=cycle mode)
-        "OCT_DBL_PLUS1": 0xEF81,    # Set octave doubler to +1 octave
-        "OCT_DBL_PLUS2": 0xEF82,    # Set octave doubler to +2 octaves
-        "OCT_DBL_MINUS1": 0xEF83,   # Set octave doubler to -1 octave
-        "OCT_DBL_OFF": 0xEF84,      # Turn off octave doubler
-        "TEMP_TRANS_PLUS12": 0xEF85, # Hold: temporarily add +12 to transposition
-        "TEMP_TRANS_PLUS24": 0xEF86, # Hold: temporarily add +24 to transposition
-        "TEMP_TRANS_MINUS12": 0xEF87, # Hold: temporarily add -12 to transposition
-
         # DKS (Dynamic Keystroke) Slots (0xED00-0xED31) - 50 slots
         "DKS_00": 0xED00,  # Base for DKS slot selection
 

@@ -164,17 +164,6 @@ int8_t transpose_number2 = 0;  // Variable to store the special number
 int8_t octave_number2 = 0;
 int8_t transpose_number3 = 0;  // Variable to store the special number
 int8_t octave_number3 = 0;
-
-// Octave Doubler for normal notes - plays note + octave-shifted duplicate
-// 0=Off, 12=+1 octave, 24=+2 octaves, -12=-1 octave
-int8_t octave_doubler_mode = 0;
-
-// Tracks whether the OCT_DBL_TOGGLE modifier was used in combination with another key
-// If true on release, the toggle won't cycle the mode
-bool oct_dbl_toggle_used = false;
-
-// Temporary transposition offset (added while hold key is pressed, removed on release)
-int8_t temp_transpose_offset = 0;
 uint8_t velocity_number = 127;
 uint8_t velocityplaceholder = 127;
 int cc_up_value1[128] = {0};   // (value 1) for CC UP for each CC#
@@ -3112,10 +3101,7 @@ void scan_keycode_categories(void) {
 					else if (keycode >= SEQ_PRESET_BASE && keycode < (SEQ_PRESET_BASE + 68)) { // Seq direct presets
 					category = 47;
 					}
-					else if (keycode == OCT_DBL_TOGGLE) { // Octave doubler toggle button
-					category = 51;
-					}
-
+					
 					//else { // REST OF EVERYTHING
                     //    category = 28;  // THE REST
                     //}
@@ -8010,31 +7996,6 @@ bool rgb_matrix_indicators_kb(void) {
         }
     }
 
-    // Octave Doubler toggle button LED - color based on current mode
-    {
-        uint8_t oct_led = get_special_key_led_index(51);
-        if (oct_led != 99 && oct_led < RGB_MATRIX_LED_COUNT) {
-            uint8_t r = 0, g = 0, b = 0;
-            if (octave_doubler_mode == 12) {
-                // +1 octave: Green
-                r = 0; g = 200; b = 0;
-            } else if (octave_doubler_mode == 24) {
-                // +2 octaves: Blue
-                r = 0; g = 0; b = 200;
-            } else if (octave_doubler_mode == -12) {
-                // -1 octave: Red
-                r = 200; g = 0; b = 0;
-            } else {
-                // Off: dim white
-                r = 80; g = 80; b = 80;
-            }
-            rgb_matrix_set_color(oct_led,
-                                (uint8_t)(r * brightness_factor),
-                                (uint8_t)(g * brightness_factor),
-                                (uint8_t)(b * brightness_factor));
-        }
-    }
-
 	if (smartchordlight != 3) {
     // SmartChord lighting functionality
     // Define the color mappings for each chord key index
@@ -9608,19 +9569,18 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     if (record->event.pressed) {
         snprintf(name, sizeof(name), "L%d - OCTAVE TOGGLE", macro_num);
     } else {
-        return;  // On release: preserve OLED message
+        snprintf(name, sizeof(name), "   ");
     }
 
 } else if (octave_doubler_button_held && keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) {
     // Octave doubler button + seq quick build key
     uint8_t slot = keycode - SEQ_QUICK_BUILD_1;
     if (record->event.pressed) {
-        // Show the target value (may be pending if slot is playing)
-        int8_t oct = get_seq_octave_doubler_display(slot);
+        int8_t oct = seq_octave_doubler[slot];
         if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
         else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
     } else {
-        return;  // On release: preserve OLED message
+        snprintf(name, sizeof(name), "   ");
     }
 
 } else if (octave_doubler_button_held && keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
@@ -9629,14 +9589,14 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     int8_t slot = seq_find_slot_with_preset(preset_id);
     if (record->event.pressed) {
         if (slot >= 0) {
-            int8_t oct = get_seq_octave_doubler_display(slot);
+            int8_t oct = seq_octave_doubler[slot];
             if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
             else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
         } else {
             snprintf(name, sizeof(name), "SEQ NOT PLAYING");
         }
     } else {
-        return;  // On release: preserve OLED message
+        snprintf(name, sizeof(name), "   ");
     }
 
 } else if (sample_mode_active && keycode >= 0xCC08 && keycode <= 0xCC0B) {
@@ -12184,20 +12144,6 @@ break;
     snprintf(name, sizeof(name), "CC%-3d  %d", cc_number, cc_down_value1[cc_number] + cc_updown_value[cc_number]);
 }
 
-    // Octave Doubler display
-    if (keycode == OCT_DBL_TOGGLE || keycode == OCT_DBL_PLUS1 || keycode == OCT_DBL_PLUS2 ||
-        keycode == OCT_DBL_MINUS1 || keycode == OCT_DBL_OFF) {
-        if (octave_doubler_mode == 0) snprintf(name, sizeof(name), "Oct Dbl: OFF");
-        else if (octave_doubler_mode == 12) snprintf(name, sizeof(name), "Oct Dbl: +1");
-        else if (octave_doubler_mode == 24) snprintf(name, sizeof(name), "Oct Dbl: +2");
-        else snprintf(name, sizeof(name), "Oct Dbl: -1");
-    }
-
-    // Temporary Transposition display
-    if (keycode == TEMP_TRANS_PLUS12 || keycode == TEMP_TRANS_PLUS24 || keycode == TEMP_TRANS_MINUS12) {
-        snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
-    }
-
     // Update keylog
     //snprintf(keylog_str, sizeof(keylog_str), "%-21s", name);
 	
@@ -12230,15 +12176,7 @@ void oled_render_keylog(void) {
 	} else if (keysplittransposestatus == 3) {
 		snprintf(name, sizeof(name), "\nT%+3d/T%+3d/T%+3d", transpose_number + octave_number, transpose_number2 + octave_number2, transpose_number3 + octave_number3);
 	} else {
-		int total_trans = transpose_number + octave_number + temp_transpose_offset;
-		if (octave_doubler_mode == 12)
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+d*", total_trans);
-		else if (octave_doubler_mode == 24)
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION%+d**", total_trans);
-		else if (octave_doubler_mode == -12)
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION *%+d", total_trans);
-		else
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", total_trans);
+		snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
 	}
 
 	// Line 2: Velocity curve name (factory or user preset name)
@@ -14342,15 +14280,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             // Octave doubler modifier: cycle octave for this seq slot
             if (octave_doubler_button_held) {
-                oct_dbl_toggle_used = true;
-                int8_t current_oct = get_seq_octave_doubler_display(slot);  // Use pending if exists
-                int8_t next_oct;
-                if (current_oct == 0) next_oct = 12;
-                else if (current_oct == 12) next_oct = 24;
-                else if (current_oct == 24) next_oct = -12;
-                else next_oct = 0;
-                set_seq_octave_doubler(slot, next_oct);
-                dprintf("seq: slot %d octave doubler -> %d\n", slot, next_oct);
+                int8_t current_oct = seq_octave_doubler[slot];
+                if (current_oct == 0) seq_octave_doubler[slot] = 12;
+                else if (current_oct == 12) seq_octave_doubler[slot] = 24;
+                else if (current_oct == 24) seq_octave_doubler[slot] = -12;
+                else seq_octave_doubler[slot] = 0;
+                dprintf("seq: slot %d octave doubler = %d\n", slot, seq_octave_doubler[slot]);
                 set_keylog(keycode, record);
                 return false;
             }
@@ -14509,17 +14444,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             // Octave doubler modifier: cycle octave for the slot playing this preset
             if (octave_doubler_button_held) {
-                oct_dbl_toggle_used = true;
                 int8_t existing = seq_find_slot_with_preset(preset_id);
                 if (existing >= 0) {
-                    int8_t current_oct = get_seq_octave_doubler_display(existing);  // Use pending if exists
-                    int8_t next_oct;
-                    if (current_oct == 0) next_oct = 12;
-                    else if (current_oct == 12) next_oct = 24;
-                    else if (current_oct == 24) next_oct = -12;
-                    else next_oct = 0;
-                    set_seq_octave_doubler(existing, next_oct);
-                    dprintf("seq: preset %d slot %d octave doubler -> %d\n", preset_id, existing, next_oct);
+                    int8_t current_oct = seq_octave_doubler[existing];
+                    if (current_oct == 0) seq_octave_doubler[existing] = 12;
+                    else if (current_oct == 12) seq_octave_doubler[existing] = 24;
+                    else if (current_oct == 24) seq_octave_doubler[existing] = -12;
+                    else seq_octave_doubler[existing] = 0;
+                    dprintf("seq: preset %d slot %d octave doubler = %d\n", preset_id, existing, seq_octave_doubler[existing]);
                 }
                 set_keylog(keycode, record);
                 return false;
@@ -15035,116 +14967,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;  // Suppress normal keyboard processing
     }
 #endif
-
-    // =============================================================================
-    // OCTAVE DOUBLER & TEMPORARY TRANSPOSITION (0xEF80-0xEF87)
-    // =============================================================================
-
-    // Octave Doubler Toggle/Modifier (0xEF80)
-    // Hold: acts as modifier for other keys (like existing octave_doubler_button_held)
-    // Release without modification: cycles mode (Off→+1→+2→-1→Off)
-    if (keycode == OCT_DBL_TOGGLE) {
-        if (record->event.pressed) {
-            octave_doubler_button_held = true;
-            oct_dbl_toggle_used = false;
-            dprintf("octave doubler: toggle modifier PRESSED\n");
-        } else {
-            octave_doubler_button_held = false;
-            if (!oct_dbl_toggle_used) {
-                // Send note-offs for live doubled notes at the OLD mode before cycling
-                int8_t old_mode = octave_doubler_mode;
-                // Released without modifying anything - cycle mode
-                if (octave_doubler_mode == 0) octave_doubler_mode = 12;
-                else if (octave_doubler_mode == 12) octave_doubler_mode = 24;
-                else if (octave_doubler_mode == 24) octave_doubler_mode = -12;
-                else octave_doubler_mode = 0;
-                // Send note-offs for the old doubled notes
-                send_noteoffs_for_live_octave_doubled(old_mode);
-                dprintf("octave doubler: mode cycled to %d\n", octave_doubler_mode);
-            }
-            dprintf("octave doubler: toggle modifier RELEASED\n");
-        }
-        set_keylog(keycode, record);
-        return false;
-    }
-
-    // Direct Octave Doubler Mode Set (0xEF81-0xEF84)
-    if (keycode == OCT_DBL_PLUS1) {
-        if (record->event.pressed) {
-            int8_t old_mode = octave_doubler_mode;
-            octave_doubler_mode = 12;
-            send_noteoffs_for_live_octave_doubled(old_mode);
-            dprintf("octave doubler: set +1 octave\n");
-            set_keylog(keycode, record);
-        }
-        return false;
-    }
-    if (keycode == OCT_DBL_PLUS2) {
-        if (record->event.pressed) {
-            int8_t old_mode = octave_doubler_mode;
-            octave_doubler_mode = 24;
-            send_noteoffs_for_live_octave_doubled(old_mode);
-            dprintf("octave doubler: set +2 octaves\n");
-            set_keylog(keycode, record);
-        }
-        return false;
-    }
-    if (keycode == OCT_DBL_MINUS1) {
-        if (record->event.pressed) {
-            int8_t old_mode = octave_doubler_mode;
-            octave_doubler_mode = -12;
-            send_noteoffs_for_live_octave_doubled(old_mode);
-            dprintf("octave doubler: set -1 octave\n");
-            set_keylog(keycode, record);
-        }
-        return false;
-    }
-    if (keycode == OCT_DBL_OFF) {
-        if (record->event.pressed) {
-            int8_t old_mode = octave_doubler_mode;
-            octave_doubler_mode = 0;
-            send_noteoffs_for_live_octave_doubled(old_mode);
-            dprintf("octave doubler: turned off\n");
-            set_keylog(keycode, record);
-        }
-        return false;
-    }
-
-    // Temporary Transposition Hold (0xEF85-0xEF87)
-    // Adds offset while held, removes on release
-    if (keycode == TEMP_TRANS_PLUS12) {
-        if (record->event.pressed) {
-            temp_transpose_offset += 12;
-            dprintf("temp transpose: +12 applied, total offset = %d\n", temp_transpose_offset);
-        } else {
-            temp_transpose_offset -= 12;
-            dprintf("temp transpose: +12 removed, total offset = %d\n", temp_transpose_offset);
-        }
-        set_keylog(keycode, record);
-        return false;
-    }
-    if (keycode == TEMP_TRANS_PLUS24) {
-        if (record->event.pressed) {
-            temp_transpose_offset += 24;
-            dprintf("temp transpose: +24 applied, total offset = %d\n", temp_transpose_offset);
-        } else {
-            temp_transpose_offset -= 24;
-            dprintf("temp transpose: +24 removed, total offset = %d\n", temp_transpose_offset);
-        }
-        set_keylog(keycode, record);
-        return false;
-    }
-    if (keycode == TEMP_TRANS_MINUS12) {
-        if (record->event.pressed) {
-            temp_transpose_offset -= 12;
-            dprintf("temp transpose: -12 applied, total offset = %d\n", temp_transpose_offset);
-        } else {
-            temp_transpose_offset += 12;
-            dprintf("temp transpose: -12 removed, total offset = %d\n", temp_transpose_offset);
-        }
-        set_keylog(keycode, record);
-        return false;
-    }
 
     if (keycode == 0xC929) {
         if (record->event.pressed) {
