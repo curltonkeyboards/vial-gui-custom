@@ -12234,7 +12234,7 @@ void oled_render_keylog(void) {
 		if (octave_doubler_mode == 12)
 			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+d*", total_trans);
 		else if (octave_doubler_mode == 24)
-			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+d**", total_trans);
+			snprintf(name, sizeof(name), "\n  TRANSPOSITION%+d**", total_trans);
 		else if (octave_doubler_mode == -12)
 			snprintf(name, sizeof(name), "\n  TRANSPOSITION *%+d", total_trans);
 		else
