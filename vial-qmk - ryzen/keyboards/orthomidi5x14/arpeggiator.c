@@ -3274,8 +3274,35 @@ void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t veloci
 void quick_build_handle_sustain_release(void) {
     if (!quick_build_is_active()) return;
 
-    // Advance to next step when sustain is released
-    quick_build_advance_step();
+    // Check if current step has any notes recorded
+    bool has_notes_on_step = false;
+    {
+        pool_preset_t *header = NULL;
+        if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+            header = &arp_pool_headers[quick_build_state.arp_slot];
+        } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+            header = &seq_pool_headers[quick_build_state.seq_slot];
+        }
+        if (header) {
+            arp_preset_note_t *notes = note_pool_get_notes(header);
+            for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+                if (NOTE_GET_TIMING(notes[i].packed_timing_vel)
+                    == quick_build_state.current_step) {
+                    has_notes_on_step = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (has_notes_on_step) {
+        // Notes were recorded during this chord hold - just advance to next step
+        quick_build_advance_step();
+    } else {
+        // No notes on this step - sustain tap means hold-skip
+        // (duplicate previous step's notes onto current step, then advance)
+        quick_build_skip_step_with_hold();
+    }
 }
 
 // Update function - call this from matrix_scan or similar periodic location

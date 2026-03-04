@@ -13817,7 +13817,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // consumed here and routed to the quick build system instead of normal processing.
     // Rotation: encoder 0 (col 0), Top click: encoder 1 (col 1), Bottom click: encoder 0 (col 0)
     // Top knob (encoder 1 click): chord hold / skip step / finish
-    // Bottom knob (encoder 0 click): skip step with hold (defer note-offs)
+    // Bottom knob (encoder 0 click): consumed but no action
+    // Sustain pedal tap (no notes): skip step with hold (duplicate previous notes)
     // =============================================================================
     if (quick_build_is_active()) {
         // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = 0)
@@ -13833,12 +13834,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             quick_build_handle_encoder_click(record->event.pressed);
             return false;  // Consume
         }
-        // Encoder 0 click / bottom knob (matrix position 5,0) - skip step with hold
+        // Encoder 0 click / bottom knob (matrix position 5,0) - no action during quick build
         if (record->event.key.row == 5 && record->event.key.col == 0) {
-            if (record->event.pressed && quick_build_is_recording()) {
-                quick_build_skip_step_with_hold();
-            }
-            return false;  // Consume (both press and release)
+            return false;  // Consume (both press and release) but do nothing
         }
     }
 
@@ -17200,8 +17198,8 @@ void render_quick_build_recording(void) {
     // Line 9: blank
     oled_write_line(9, "");
 
-    // Line 10: Hold note instruction (bottom knob)
-    oled_write_line_centered(10, "Hold: press bot knob");
+    // Line 10: Hold note instruction (sustain tap)
+    oled_write_line_centered(10, "Hold: tap sustain");
 
     // Line 11: blank
     oled_write_line(11, "");
