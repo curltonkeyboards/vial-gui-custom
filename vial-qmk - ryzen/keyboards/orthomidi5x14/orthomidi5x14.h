@@ -676,7 +676,7 @@ typedef struct __attribute__((packed)) {
     uint16_t packed_timing_vel;
       // bits 0-6:   timing_16ths low 7 bits
       // bits 7-13:  velocity (0-127)
-      // bit 14:     interval_sign (arpeggiator only: 0=positive, 1=negative)
+      // bit 14:     interval_sign (arp) / tie_flag (seq: 1=sustain tie, 0=retrigger)
       // bit 15:     timing_16ths bit 7 (extends range to 0-255 = max 16 bars)
 
     // Byte 2: Packed note/interval and octave
@@ -787,7 +787,8 @@ _Static_assert(sizeof(seq_preset_t) == SEQ_PRESET_SIZE, "seq_preset_t size must 
 // Timing uses bits 0-6 (low 7) + bit 15 (high bit) = 8 bits total (0-255 steps)
 #define NOTE_GET_TIMING(packed)      (((packed) & 0x7F) | (((packed) >> 8) & 0x80))  // bits 0-6 + bit 15
 #define NOTE_GET_VELOCITY(packed)    (((packed) >> 7) & 0x7F)                 // bits 7-13
-#define NOTE_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp only)
+#define NOTE_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp: interval sign)
+#define NOTE_GET_TIE(packed)         (((packed) >> 14) & 0x01)                // bit 14 (seq: tie/sustain flag)
 #define NOTE_GET_NOTE(octave_byte)   ((octave_byte) & 0x0F)                   // bits 0-3
 #define NOTE_GET_OCTAVE(octave_byte) (((int8_t)((octave_byte) & 0xF0)) >> 4)  // bits 4-7 (signed)
 

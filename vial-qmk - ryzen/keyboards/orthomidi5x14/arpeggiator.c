@@ -677,6 +677,7 @@ typedef struct {
     uint8_t velocity;
     int8_t note_index;      // For arp: interval with sign; For seq: note 0-11
     int8_t octave_offset;
+    bool is_tie;            // For seq: true = sustain tie (extend prev note), false = retrigger
 } unpacked_note_t;
 
 // Static scratch buffer for playback (replaces stack VLAs)
@@ -693,9 +694,11 @@ static void unpack_note(const arp_preset_note_t *packed, unpacked_note_t *unpack
         // For arpeggiator: apply sign bit to interval
         uint8_t sign = NOTE_GET_SIGN(packed->packed_timing_vel);
         unpacked->note_index = sign ? -(int8_t)note_val : (int8_t)note_val;
+        unpacked->is_tie = false;
     } else {
-        // For step sequencer: note is unsigned 0-11
+        // For step sequencer: note is unsigned 0-11, bit 14 = tie flag
         unpacked->note_index = note_val;
+        unpacked->is_tie = NOTE_GET_TIE(packed->packed_timing_vel) ? true : false;
     }
 }
 
@@ -1823,7 +1826,7 @@ void seq_update(void) {
             uint32_t note_duration_ms = ms_per_16th;
             uint32_t gate_duration_ms = (note_duration_ms * gate_percent) / 100;
 
-            // Pre-scan next step to detect held notes (same pitch on consecutive steps)
+            // Pre-scan next step to detect tied notes (same pitch + tie flag on next step)
             uint16_t next_pos = seq_state[slot].current_position_16ths + 1;
             if (next_pos >= preset->pattern_length_16ths) {
                 next_pos = 0;  // Wrap for loop
@@ -1839,12 +1842,13 @@ void seq_update(void) {
                 if (midi_note < 0) midi_note = 0;
                 if (midi_note > 127) midi_note = 127;
 
-                // Check if this exact note also appears on the next step (hold detection)
+                // Check if next step has a TIED note with the same pitch
+                // Only extend (hold) when the next note explicitly has the tie flag set
                 bool held_to_next = false;
                 for (uint16_t n = 0; n < seq_total_note_count; n++) {
                     unpacked_note_t next_unpacked;
                     unpack_note(&seq_notes[n], &next_unpacked, false);
-                    if (next_unpacked.timing == next_pos) {
+                    if (next_unpacked.timing == next_pos && next_unpacked.is_tie) {
                         int16_t next_midi = (next_unpacked.octave_offset * 12) + next_unpacked.note_index;
                         if (next_midi == midi_note) {
                             held_to_next = true;
@@ -1853,24 +1857,26 @@ void seq_update(void) {
                     }
                 }
 
-                // Check if this note is already sounding from a previous step (tie/hold)
-                // Must check REGARDLESS of held_to_next so the last step of a hold
-                // chain doesn't re-trigger (it just needs to set the final gate time)
+                // If this note has the tie flag, it's a sustain continuation from the previous step.
+                // Check if the note is already sounding - if so, extend it instead of retriggering.
+                // If not a tie note (regular note), always retrigger even if same pitch is sounding.
                 bool already_sounding = false;
-                for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
-                    if (arp_notes[j].active && arp_notes[j].from_seq &&
-                        arp_notes[j].seq_slot == slot &&
-                        arp_notes[j].note == (uint8_t)midi_note) {
-                        already_sounding = true;
-                        if (held_to_next) {
-                            // Middle of hold chain: extend well past next step so the note
-                            // survives process_arp_note_offs() before next seq_update()
-                            arp_notes[j].note_off_time = current_time + note_duration_ms * 2;
-                        } else {
-                            // Last step of hold chain: set proper gate ending
-                            arp_notes[j].note_off_time = current_time + gate_duration_ms;
+                if (note->is_tie) {
+                    for (uint8_t j = 0; j < MAX_ARP_NOTES; j++) {
+                        if (arp_notes[j].active && arp_notes[j].from_seq &&
+                            arp_notes[j].seq_slot == slot &&
+                            arp_notes[j].note == (uint8_t)midi_note) {
+                            already_sounding = true;
+                            if (held_to_next) {
+                                // Middle of hold chain: extend well past next step so the note
+                                // survives process_arp_note_offs() before next seq_update()
+                                arp_notes[j].note_off_time = current_time + note_duration_ms * 2;
+                            } else {
+                                // Last step of hold chain: set proper gate ending
+                                arp_notes[j].note_off_time = current_time + gate_duration_ms;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
 
@@ -3659,11 +3665,13 @@ void quick_build_skip_step_with_hold(void) {
                 quick_build_finish();
                 return;
             }
-            // Copy note with updated timing to current step
+            // Copy note with updated timing to current step, with tie flag set
+            // Tie flag (bit 14) = 1 indicates this note is a sustain continuation,
+            // so the sequencer will extend the previous note instead of retriggering
             uint8_t vel = NOTE_GET_VELOCITY(notes[i].packed_timing_vel);
-            uint8_t sign = (notes[i].packed_timing_vel >> 14) & 0x01;
+            uint8_t tie_flag = 1;  // Always set tie flag for hold-skip notes
             notes[quick_build_state.note_count].packed_timing_vel =
-                NOTE_PACK_TIMING_VEL(quick_build_state.current_step, vel, sign);
+                NOTE_PACK_TIMING_VEL(quick_build_state.current_step, vel, tie_flag);
             notes[quick_build_state.note_count].note_octave = notes[i].note_octave;
             quick_build_state.note_count++;
             duplicated++;
