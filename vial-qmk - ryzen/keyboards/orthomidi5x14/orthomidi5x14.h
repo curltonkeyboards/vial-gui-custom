@@ -843,6 +843,8 @@ extern bool seq_modifier_held[MAX_SEQ_SLOTS];  // Track which seq modifiers are 
 
 // Step Sequencer octave doubler (per-slot, values: 0, 12, 24, -12)
 extern int8_t seq_octave_doubler[MAX_SEQ_SLOTS];
+void set_seq_octave_doubler(uint8_t slot, int8_t value);
+int8_t get_seq_octave_doubler_display(uint8_t slot);
 
 // Arpeggiator functions
 void arp_init(void);

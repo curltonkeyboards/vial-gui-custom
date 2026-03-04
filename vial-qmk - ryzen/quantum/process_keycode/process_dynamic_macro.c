@@ -3351,10 +3351,35 @@ static void check_loop_trigger(void) {
         }
 
         if (macro_octave_doubler_pending[i]) {
-            macro_octave_doubler[i] = macro_octave_doubler_pending_value[i];
+            int8_t old_od = macro_octave_doubler[i];
+            int8_t new_od = macro_octave_doubler_pending_value[i];
+            // Send note-offs for hanging octave-doubled notes at the OLD offset
+            if (old_od != 0 && old_od != new_od) {
+                extern uint8_t macro_notes[][3];
+                extern uint8_t macro_note_count;
+                uint8_t track_id = i + 1;
+                // Collect octave-doubled notes first (unmark modifies the array)
+                uint8_t oct_offs[32][2]; // [channel, oct_note]
+                uint8_t oct_count = 0;
+                for (uint8_t n = 0; n < macro_note_count && oct_count < 32; n++) {
+                    if (macro_notes[n][2] == track_id) {
+                        uint8_t oct_note = apply_transpose(macro_notes[n][1], old_od);
+                        // Only if this is a base note (not itself an octave-doubled note)
+                        oct_offs[oct_count][0] = macro_notes[n][0];
+                        oct_offs[oct_count][1] = oct_note;
+                        oct_count++;
+                    }
+                }
+                for (uint8_t n = 0; n < oct_count; n++) {
+                    midi_send_noteoff(&midi_device, oct_offs[n][0], oct_offs[n][1], 0);
+                    remove_lighting_macro_note(oct_offs[n][0], oct_offs[n][1], track_id);
+                    unmark_note_from_macro(oct_offs[n][0], oct_offs[n][1], track_id);
+                }
+            }
+            macro_octave_doubler[i] = new_od;
             macro_octave_doubler_pending[i] = false;
         }
-        
+
         // Overdub transformations (only processed in advanced mode)
         if (overdub_advanced_mode) {
             if (overdub_transpose_pending[i]) {
@@ -3426,7 +3451,30 @@ static void check_loop_trigger(void) {
             }
 
             if (overdub_octave_doubler_pending[i]) {
-                overdub_octave_doubler[i] = overdub_octave_doubler_pending_value[i];
+                int8_t old_od = overdub_octave_doubler[i];
+                int8_t new_od = overdub_octave_doubler_pending_value[i];
+                // Send note-offs for hanging overdub octave-doubled notes at the OLD offset
+                if (old_od != 0 && old_od != new_od) {
+                    extern uint8_t macro_notes[][3];
+                    extern uint8_t macro_note_count;
+                    uint8_t track_id = (i + 1) + MAX_MACROS;
+                    // Collect first to avoid modifying array during iteration
+                    uint8_t oct_offs[32][2];
+                    uint8_t oct_count = 0;
+                    for (uint8_t n = 0; n < macro_note_count && oct_count < 32; n++) {
+                        if (macro_notes[n][2] == track_id) {
+                            oct_offs[oct_count][0] = macro_notes[n][0];
+                            oct_offs[oct_count][1] = apply_transpose(macro_notes[n][1], old_od);
+                            oct_count++;
+                        }
+                    }
+                    for (uint8_t n = 0; n < oct_count; n++) {
+                        midi_send_noteoff(&midi_device, oct_offs[n][0], oct_offs[n][1], 0);
+                        remove_lighting_macro_note(oct_offs[n][0], oct_offs[n][1], track_id);
+                        unmark_note_from_macro(oct_offs[n][0], oct_offs[n][1], track_id);
+                    }
+                }
+                overdub_octave_doubler[i] = new_od;
                 overdub_octave_doubler_pending[i] = false;
                 dprintf("dynamic macro: applied pending overdub octave doubler change for macro %d\n", i + 1);
             }
@@ -5898,7 +5946,30 @@ static void process_pending_states_for_macro(uint8_t macro_idx) {
     }
 
     if (macro_octave_doubler_pending[macro_idx]) {
-        macro_octave_doubler[macro_idx] = macro_octave_doubler_pending_value[macro_idx];
+        int8_t old_od = macro_octave_doubler[macro_idx];
+        int8_t new_od = macro_octave_doubler_pending_value[macro_idx];
+        // Send note-offs for hanging octave-doubled notes at the OLD offset
+        if (old_od != 0 && old_od != new_od) {
+            extern uint8_t macro_notes[][3];
+            extern uint8_t macro_note_count;
+            uint8_t track_id = macro_num;
+            // Collect first to avoid modifying array during iteration
+            uint8_t oct_offs[32][2];
+            uint8_t oct_count = 0;
+            for (uint8_t n = 0; n < macro_note_count && oct_count < 32; n++) {
+                if (macro_notes[n][2] == track_id) {
+                    oct_offs[oct_count][0] = macro_notes[n][0];
+                    oct_offs[oct_count][1] = apply_transpose(macro_notes[n][1], old_od);
+                    oct_count++;
+                }
+            }
+            for (uint8_t n = 0; n < oct_count; n++) {
+                midi_send_noteoff(&midi_device, oct_offs[n][0], oct_offs[n][1], 0);
+                remove_lighting_macro_note(oct_offs[n][0], oct_offs[n][1], track_id);
+                unmark_note_from_macro(oct_offs[n][0], oct_offs[n][1], track_id);
+            }
+        }
+        macro_octave_doubler[macro_idx] = new_od;
         macro_octave_doubler_pending[macro_idx] = false;
         dprintf("dynamic macro: applied pending octave doubler change for macro %d\n", macro_num);
     }

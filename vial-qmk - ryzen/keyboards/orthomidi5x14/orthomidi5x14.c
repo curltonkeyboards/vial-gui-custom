@@ -3112,7 +3112,10 @@ void scan_keycode_categories(void) {
 					else if (keycode >= SEQ_PRESET_BASE && keycode < (SEQ_PRESET_BASE + 68)) { // Seq direct presets
 					category = 47;
 					}
-					
+					else if (keycode == OCT_DBL_TOGGLE) { // Octave doubler toggle button
+					category = 51;
+					}
+
 					//else { // REST OF EVERYTHING
                     //    category = 28;  // THE REST
                     //}
@@ -8007,6 +8010,31 @@ bool rgb_matrix_indicators_kb(void) {
         }
     }
 
+    // Octave Doubler toggle button LED - color based on current mode
+    {
+        uint8_t oct_led = get_special_key_led_index(51);
+        if (oct_led != 99 && oct_led < RGB_MATRIX_LED_COUNT) {
+            uint8_t r = 0, g = 0, b = 0;
+            if (octave_doubler_mode == 12) {
+                // +1 octave: Green
+                r = 0; g = 200; b = 0;
+            } else if (octave_doubler_mode == 24) {
+                // +2 octaves: Blue
+                r = 0; g = 0; b = 200;
+            } else if (octave_doubler_mode == -12) {
+                // -1 octave: Red
+                r = 200; g = 0; b = 0;
+            } else {
+                // Off: dim white
+                r = 80; g = 80; b = 80;
+            }
+            rgb_matrix_set_color(oct_led,
+                                (uint8_t)(r * brightness_factor),
+                                (uint8_t)(g * brightness_factor),
+                                (uint8_t)(b * brightness_factor));
+        }
+    }
+
 	if (smartchordlight != 3) {
     // SmartChord lighting functionality
     // Define the color mappings for each chord key index
@@ -9587,7 +9615,8 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     // Octave doubler button + seq quick build key
     uint8_t slot = keycode - SEQ_QUICK_BUILD_1;
     if (record->event.pressed) {
-        int8_t oct = seq_octave_doubler[slot];
+        // Show the target value (may be pending if slot is playing)
+        int8_t oct = get_seq_octave_doubler_display(slot);
         if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
         else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
     } else {
@@ -9600,7 +9629,7 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     int8_t slot = seq_find_slot_with_preset(preset_id);
     if (record->event.pressed) {
         if (slot >= 0) {
-            int8_t oct = seq_octave_doubler[slot];
+            int8_t oct = get_seq_octave_doubler_display(slot);
             if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
             else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
         } else {
@@ -14314,12 +14343,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             // Octave doubler modifier: cycle octave for this seq slot
             if (octave_doubler_button_held) {
                 oct_dbl_toggle_used = true;
-                int8_t current_oct = seq_octave_doubler[slot];
-                if (current_oct == 0) seq_octave_doubler[slot] = 12;
-                else if (current_oct == 12) seq_octave_doubler[slot] = 24;
-                else if (current_oct == 24) seq_octave_doubler[slot] = -12;
-                else seq_octave_doubler[slot] = 0;
-                dprintf("seq: slot %d octave doubler = %d\n", slot, seq_octave_doubler[slot]);
+                int8_t current_oct = get_seq_octave_doubler_display(slot);  // Use pending if exists
+                int8_t next_oct;
+                if (current_oct == 0) next_oct = 12;
+                else if (current_oct == 12) next_oct = 24;
+                else if (current_oct == 24) next_oct = -12;
+                else next_oct = 0;
+                set_seq_octave_doubler(slot, next_oct);
+                dprintf("seq: slot %d octave doubler -> %d\n", slot, next_oct);
                 set_keylog(keycode, record);
                 return false;
             }
@@ -14481,12 +14512,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 oct_dbl_toggle_used = true;
                 int8_t existing = seq_find_slot_with_preset(preset_id);
                 if (existing >= 0) {
-                    int8_t current_oct = seq_octave_doubler[existing];
-                    if (current_oct == 0) seq_octave_doubler[existing] = 12;
-                    else if (current_oct == 12) seq_octave_doubler[existing] = 24;
-                    else if (current_oct == 24) seq_octave_doubler[existing] = -12;
-                    else seq_octave_doubler[existing] = 0;
-                    dprintf("seq: preset %d slot %d octave doubler = %d\n", preset_id, existing, seq_octave_doubler[existing]);
+                    int8_t current_oct = get_seq_octave_doubler_display(existing);  // Use pending if exists
+                    int8_t next_oct;
+                    if (current_oct == 0) next_oct = 12;
+                    else if (current_oct == 12) next_oct = 24;
+                    else if (current_oct == 24) next_oct = -12;
+                    else next_oct = 0;
+                    set_seq_octave_doubler(existing, next_oct);
+                    dprintf("seq: preset %d slot %d octave doubler -> %d\n", preset_id, existing, next_oct);
                 }
                 set_keylog(keycode, record);
                 return false;
@@ -15018,11 +15051,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         } else {
             octave_doubler_button_held = false;
             if (!oct_dbl_toggle_used) {
+                // Send note-offs for live doubled notes at the OLD mode before cycling
+                int8_t old_mode = octave_doubler_mode;
                 // Released without modifying anything - cycle mode
                 if (octave_doubler_mode == 0) octave_doubler_mode = 12;
                 else if (octave_doubler_mode == 12) octave_doubler_mode = 24;
                 else if (octave_doubler_mode == 24) octave_doubler_mode = -12;
                 else octave_doubler_mode = 0;
+                // Send note-offs for the old doubled notes
+                send_noteoffs_for_live_octave_doubled(old_mode);
                 dprintf("octave doubler: mode cycled to %d\n", octave_doubler_mode);
             }
             dprintf("octave doubler: toggle modifier RELEASED\n");
@@ -15034,7 +15071,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // Direct Octave Doubler Mode Set (0xEF81-0xEF84)
     if (keycode == OCT_DBL_PLUS1) {
         if (record->event.pressed) {
+            int8_t old_mode = octave_doubler_mode;
             octave_doubler_mode = 12;
+            send_noteoffs_for_live_octave_doubled(old_mode);
             dprintf("octave doubler: set +1 octave\n");
             set_keylog(keycode, record);
         }
@@ -15042,7 +15081,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
     if (keycode == OCT_DBL_PLUS2) {
         if (record->event.pressed) {
+            int8_t old_mode = octave_doubler_mode;
             octave_doubler_mode = 24;
+            send_noteoffs_for_live_octave_doubled(old_mode);
             dprintf("octave doubler: set +2 octaves\n");
             set_keylog(keycode, record);
         }
@@ -15050,7 +15091,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
     if (keycode == OCT_DBL_MINUS1) {
         if (record->event.pressed) {
+            int8_t old_mode = octave_doubler_mode;
             octave_doubler_mode = -12;
+            send_noteoffs_for_live_octave_doubled(old_mode);
             dprintf("octave doubler: set -1 octave\n");
             set_keylog(keycode, record);
         }
@@ -15058,7 +15101,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
     if (keycode == OCT_DBL_OFF) {
         if (record->event.pressed) {
+            int8_t old_mode = octave_doubler_mode;
             octave_doubler_mode = 0;
+            send_noteoffs_for_live_octave_doubled(old_mode);
             dprintf("octave doubler: turned off\n");
             set_keylog(keycode, record);
         }
