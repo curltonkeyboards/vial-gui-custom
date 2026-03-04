@@ -3589,36 +3589,10 @@ void quick_build_handle_encoder_click(bool pressed) {
             quick_build_confirm_root();
         }
     } else if (quick_build_is_recording()) {
-        // Recording phase: momentary chord mode
-        quick_build_state.encoder_chord_held = pressed;
-
-        // On release, advance step (same as sustain release behavior)
-        if (!pressed && quick_build_state.note_count > 0) {
-            // Only advance if notes were recorded during the chord hold
-            // Check if current step has any notes (using pool)
-            bool has_notes_on_step = false;
-            {
-                pool_preset_t *enc_header = NULL;
-                if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
-                    enc_header = &arp_pool_headers[quick_build_state.arp_slot];
-                } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
-                    enc_header = &seq_pool_headers[quick_build_state.seq_slot];
-                }
-                if (enc_header) {
-                    arp_preset_note_t *enc_notes = note_pool_get_notes(enc_header);
-                    for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
-                        if (NOTE_GET_TIMING(enc_notes[i].packed_timing_vel)
-                            == quick_build_state.current_step) {
-                            has_notes_on_step = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (has_notes_on_step) {
-                quick_build_advance_step();
-            }
+        // Recording phase: click = skip step (empty step with silence/note-off)
+        // Chord mode is handled by sustain hold instead
+        if (pressed) {
+            quick_build_skip_step();
         }
     }
 }

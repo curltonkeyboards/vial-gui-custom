@@ -13816,9 +13816,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // During quick build (setup or recording), encoder rotation and click are
     // consumed here and routed to the quick build system instead of normal processing.
     // Rotation: encoder 0 (col 0), Top click: encoder 1 (col 1), Bottom click: encoder 0 (col 0)
-    // Top knob (encoder 1 click): chord hold / skip step / finish
+    // Top knob (encoder 1 click): skip step (empty/silence) / confirm param / finish
     // Bottom knob (encoder 0 click): consumed but no action
-    // Sustain pedal tap (no notes): skip step with hold (duplicate previous notes)
+    // Sustain hold: chord mode (notes land on same step)
+    // Sustain tap (no notes): skip step with hold (duplicate previous notes)
     // =============================================================================
     if (quick_build_is_active()) {
         // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = 0)
@@ -17188,18 +17189,14 @@ void render_quick_build_recording(void) {
     oled_write_line_centered(6, "<< Undo   Skip >>");
     oled_write_line_centered(7, "(turn top knob)");
 
-    // Line 8: Chord mode status
-    if (quick_build_state.encoder_chord_held) {
-        oled_write_line_centered(8, "Top knob: CHORD ON");
-    } else {
-        oled_write_line_centered(8, "Hold knob: Chord");
-    }
+    // Line 8: Skip (silence) instruction
+    oled_write_line_centered(8, "Skip: press top knob");
 
-    // Line 9: blank
-    oled_write_line(9, "");
+    // Line 9: Sustain pedal instructions
+    oled_write_line_centered(9, "Sustain hold: Chord");
 
-    // Line 10: Hold note instruction (sustain tap)
-    oled_write_line_centered(10, "Hold: tap sustain");
+    // Line 10: Sustain tap = hold note
+    oled_write_line_centered(10, "Sustain tap: Hold");
 
     // Line 11: blank
     oled_write_line(11, "");
