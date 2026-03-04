@@ -3029,13 +3029,9 @@ void quick_build_finish(void) {
             return;
         }
 
-        // Fix pattern length: find actual highest step with notes
-        uint8_t max_step = 0;
-        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
-            uint8_t step = NOTE_GET_TIMING(notes[i].packed_timing_vel);
-            if (step > max_step) max_step = step;
-        }
-        header->pattern_length_16ths = max_step + 1;
+        // Use current_step + 1 as pattern length to preserve trailing empty steps
+        // (current_step is 0-based and includes any steps the user explicitly skipped)
+        header->pattern_length_16ths = quick_build_state.current_step + 1;
         header->note_count = quick_build_state.note_count;
         header->valid = true;
 
@@ -3070,13 +3066,9 @@ void quick_build_finish(void) {
             return;
         }
 
-        // Fix pattern length: find actual highest step with notes
-        uint8_t max_step = 0;
-        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
-            uint8_t step = NOTE_GET_TIMING(notes[i].packed_timing_vel);
-            if (step > max_step) max_step = step;
-        }
-        header->pattern_length_16ths = max_step + 1;
+        // Use current_step + 1 as pattern length to preserve trailing empty steps
+        // (current_step is 0-based and includes any steps the user explicitly skipped)
+        header->pattern_length_16ths = quick_build_state.current_step + 1;
         header->note_count = quick_build_state.note_count;
         header->valid = true;
 

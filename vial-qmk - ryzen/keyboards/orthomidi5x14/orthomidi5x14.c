@@ -17125,8 +17125,22 @@ void render_quick_build_recording(void) {
     oled_write_line(2, "");
 
     // Line 3: Step number and note count (centered)
+    // For seq mode, exclude tied notes (sustain continuations) from displayed count
+    // to avoid confusing users - e.g. a 4-note chord held across 4 steps should show "4 notes" not "16 notes"
     uint16_t step = quick_build_get_current_step();
-    snprintf(buf, sizeof(buf), "STEP %d  (%d notes)", step, quick_build_state.note_count);
+    uint16_t display_notes = quick_build_state.note_count;
+    if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+        // Count only non-tied notes (bit 14 = 0 means original note, not sustain copy)
+        pool_preset_t *hdr = &seq_pool_headers[quick_build_state.seq_slot];
+        arp_preset_note_t *pool_notes = note_pool_get_notes(hdr);
+        display_notes = 0;
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            if (!NOTE_GET_SIGN(pool_notes[i].packed_timing_vel)) {
+                display_notes++;
+            }
+        }
+    }
+    snprintf(buf, sizeof(buf), "STEP %d  (%d notes)", step, display_notes);
     oled_write_line_centered(3, buf);
 
     // Line 4: Show last recorded note(s) on current or previous step
