@@ -6934,7 +6934,19 @@ void oled_render_keylog(void) {
 	int total_padding = 22 - total_length;
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
-	snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", transpose_number + octave_number);
+	{
+		extern int8_t octave_doubler_mode;
+		extern int8_t temp_transpose_offset;
+		int total_trans = transpose_number + octave_number + temp_transpose_offset;
+		if (octave_doubler_mode == 12)
+			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+d*", total_trans);
+		else if (octave_doubler_mode == 24)
+			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+d**", total_trans);
+		else if (octave_doubler_mode == -12)
+			snprintf(name, sizeof(name), "\n  TRANSPOSITION *%+d", total_trans);
+		else
+			snprintf(name, sizeof(name), "\n  TRANSPOSITION %+3d", total_trans);
+	}
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n     VELOCITY %3d", velocity_number);
 	if (keysplitstatus == 1) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n CH %2d // CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1));
 	}else if (keysplitstatus == 2) {snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   CH %2d//CH %2d//CH %2d\n---------------------", (channel_number + 1), (keysplitchannel + 1), (keysplit2channel + 1));

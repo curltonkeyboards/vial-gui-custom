@@ -380,6 +380,23 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define ARP_QUICK_BUILD_4       0xEF7F  // Quick build arpeggiator slot 4
 
 // =============================================================================
+// OCTAVE DOUBLER & TEMPORARY TRANSPOSITION KEYCODES (0xEF80-0xEF8F)
+// =============================================================================
+
+// Octave Doubler for normal notes (plays original note + octave-shifted duplicate)
+// Modes: Off, +1 oct (+12), +2 oct (+24), -1 oct (-12)
+#define OCT_DBL_TOGGLE          0xEF80  // Modifier: hold to combine, release-without-action cycles mode (Off→+1→+2→-1→Off)
+#define OCT_DBL_PLUS1           0xEF81  // Set octave doubler to +1 octave (+12 semitones)
+#define OCT_DBL_PLUS2           0xEF82  // Set octave doubler to +2 octaves (+24 semitones)
+#define OCT_DBL_MINUS1          0xEF83  // Set octave doubler to -1 octave (-12 semitones)
+#define OCT_DBL_OFF             0xEF84  // Turn off octave doubler
+
+// Temporary Transposition Hold (adds transposition while held, removes on release)
+#define TEMP_TRANS_PLUS12       0xEF85  // Hold: temporarily add +12 to transposition
+#define TEMP_TRANS_PLUS24       0xEF86  // Hold: temporarily add +24 to transposition
+#define TEMP_TRANS_MINUS12      0xEF87  // Hold: temporarily add -12 to transposition
+
+// =============================================================================
 // GAMING / JOYSTICK SYSTEM
 // =============================================================================
 
@@ -826,6 +843,8 @@ extern bool seq_modifier_held[MAX_SEQ_SLOTS];  // Track which seq modifiers are 
 
 // Step Sequencer octave doubler (per-slot, values: 0, 12, 24, -12)
 extern int8_t seq_octave_doubler[MAX_SEQ_SLOTS];
+void set_seq_octave_doubler(uint8_t slot, int8_t value);
+int8_t get_seq_octave_doubler_display(uint8_t slot);
 
 // Arpeggiator functions
 void arp_init(void);
