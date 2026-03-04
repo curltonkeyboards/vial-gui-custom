@@ -68,7 +68,6 @@ uint8_t get_midi_led_position(uint8_t layer, uint8_t note_index, uint8_t positio
 void process_midi_basic_noteon(uint8_t note);
 void process_midi_basic_noteoff(uint8_t note);
 void process_midi_all_notes_off(void);
-void send_noteoffs_for_live_octave_doubled(int8_t old_mode);
 
 
 void midi_task(void);
