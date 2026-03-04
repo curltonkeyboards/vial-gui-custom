@@ -12224,6 +12224,7 @@ snprintf(keylog_str + strlen(keylog_str), sizeof(keylog_str) - strlen(keylog_str
 void oled_render_keylog(void) {
 	char name[124];
 	int total_length = strlen(getRootName()) + strlen(getChordName()) + strlen(getBassName());
+	if (smartchordstatus > 0) total_length += 2;  // Account for [ ] brackets
 	int total_padding = 22 - total_length;
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
@@ -12279,9 +12280,13 @@ void oled_render_keylog(void) {
 		snprintf(name + strlen(name), sizeof(name) - strlen(name), "\n   MIDI CHANNEL %2d\n---------------------", (channel_number + 1));
 	}
 
-	// Chord name display
+	// Chord name display (wrap in [ ] when smart chord is active)
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");
-	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
+	if (smartchordstatus > 0) {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "[%s%s%s]", getRootName(), getChordName(), getBassName());
+	} else {
+		snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
+	}
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", right_padding, "");
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "- - - - - - - - - -\n");
 
@@ -17570,8 +17575,13 @@ static void oled_render_condensed(void) {
     oled_write_line(5, "---------------------");
 
     // Rows 6-7: Double-size chord name (single-size fallback if > 10 chars)
+    // Wrap in [ ] when smart chord is active
     char chord[32];
-    snprintf(chord, sizeof(chord), "%s%s%s", getRootName(), getChordName(), getBassName());
+    if (smartchordstatus > 0) {
+        snprintf(chord, sizeof(chord), "[%s%s%s]", getRootName(), getChordName(), getBassName());
+    } else {
+        snprintf(chord, sizeof(chord), "%s%s%s", getRootName(), getChordName(), getBassName());
+    }
     uint8_t chord_len = strlen(chord);
 
     // Trim trailing spaces
