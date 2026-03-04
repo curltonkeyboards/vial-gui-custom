@@ -12155,6 +12155,20 @@ break;
     snprintf(name, sizeof(name), "CC%-3d  %d", cc_number, cc_down_value1[cc_number] + cc_updown_value[cc_number]);
 }
 
+    // Octave Doubler display
+    if (keycode == OCT_DBL_TOGGLE || keycode == OCT_DBL_PLUS1 || keycode == OCT_DBL_PLUS2 ||
+        keycode == OCT_DBL_MINUS1 || keycode == OCT_DBL_OFF) {
+        if (octave_doubler_mode == 0) snprintf(name, sizeof(name), "Oct Dbl: OFF");
+        else if (octave_doubler_mode == 12) snprintf(name, sizeof(name), "Oct Dbl: +1");
+        else if (octave_doubler_mode == 24) snprintf(name, sizeof(name), "Oct Dbl: +2");
+        else snprintf(name, sizeof(name), "Oct Dbl: -1");
+    }
+
+    // Temporary Transposition display
+    if (keycode == TEMP_TRANS_PLUS12 || keycode == TEMP_TRANS_PLUS24 || keycode == TEMP_TRANS_MINUS12) {
+        snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
+    }
+
     // Update keylog
     //snprintf(keylog_str, sizeof(keylog_str), "%-21s", name);
 	
@@ -15010,10 +15024,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 else if (octave_doubler_mode == 24) octave_doubler_mode = -12;
                 else octave_doubler_mode = 0;
                 dprintf("octave doubler: mode cycled to %d\n", octave_doubler_mode);
-                if (octave_doubler_mode == 0) snprintf(name, sizeof(name), "Oct Dbl: OFF");
-                else if (octave_doubler_mode == 12) snprintf(name, sizeof(name), "Oct Dbl: +1");
-                else if (octave_doubler_mode == 24) snprintf(name, sizeof(name), "Oct Dbl: +2");
-                else snprintf(name, sizeof(name), "Oct Dbl: -1");
             }
             dprintf("octave doubler: toggle modifier RELEASED\n");
         }
@@ -15025,7 +15035,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == OCT_DBL_PLUS1) {
         if (record->event.pressed) {
             octave_doubler_mode = 12;
-            snprintf(name, sizeof(name), "Oct Dbl: +1");
             dprintf("octave doubler: set +1 octave\n");
             set_keylog(keycode, record);
         }
@@ -15034,7 +15043,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == OCT_DBL_PLUS2) {
         if (record->event.pressed) {
             octave_doubler_mode = 24;
-            snprintf(name, sizeof(name), "Oct Dbl: +2");
             dprintf("octave doubler: set +2 octaves\n");
             set_keylog(keycode, record);
         }
@@ -15043,7 +15051,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == OCT_DBL_MINUS1) {
         if (record->event.pressed) {
             octave_doubler_mode = -12;
-            snprintf(name, sizeof(name), "Oct Dbl: -1");
             dprintf("octave doubler: set -1 octave\n");
             set_keylog(keycode, record);
         }
@@ -15052,7 +15059,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == OCT_DBL_OFF) {
         if (record->event.pressed) {
             octave_doubler_mode = 0;
-            snprintf(name, sizeof(name), "Oct Dbl: OFF");
             dprintf("octave doubler: turned off\n");
             set_keylog(keycode, record);
         }
@@ -15064,11 +15070,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == TEMP_TRANS_PLUS12) {
         if (record->event.pressed) {
             temp_transpose_offset += 12;
-            snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
             dprintf("temp transpose: +12 applied, total offset = %d\n", temp_transpose_offset);
         } else {
             temp_transpose_offset -= 12;
-            snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
             dprintf("temp transpose: +12 removed, total offset = %d\n", temp_transpose_offset);
         }
         set_keylog(keycode, record);
@@ -15077,11 +15081,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == TEMP_TRANS_PLUS24) {
         if (record->event.pressed) {
             temp_transpose_offset += 24;
-            snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
             dprintf("temp transpose: +24 applied, total offset = %d\n", temp_transpose_offset);
         } else {
             temp_transpose_offset -= 24;
-            snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
             dprintf("temp transpose: +24 removed, total offset = %d\n", temp_transpose_offset);
         }
         set_keylog(keycode, record);
@@ -15090,11 +15092,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode == TEMP_TRANS_MINUS12) {
         if (record->event.pressed) {
             temp_transpose_offset -= 12;
-            snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
             dprintf("temp transpose: -12 applied, total offset = %d\n", temp_transpose_offset);
         } else {
             temp_transpose_offset += 12;
-            snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
             dprintf("temp transpose: -12 removed, total offset = %d\n", temp_transpose_offset);
         }
         set_keylog(keycode, record);
