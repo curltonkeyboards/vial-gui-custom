@@ -416,7 +416,7 @@ void midi_init(void) {
 }
 
 uint8_t midi_compute_note(uint16_t keycode) {
-    return (keycode - MIDI_TONE_MIN) + (transpose_number + octave_number + 24);
+    return (keycode - MIDI_TONE_MIN) + (transpose_number + octave_number + temp_transpose_offset + 24);
 }
 
 uint8_t midi_compute_note2(uint16_t keycode) {
@@ -424,7 +424,7 @@ uint8_t midi_compute_note2(uint16_t keycode) {
     int transpose_value2 = (keysplittransposestatus == 1 || keysplittransposestatus == 3) ?
                            (transpose_number2 + octave_number2) : (transpose_number + octave_number);
 
-    return (keycode - 50688) + transpose_value2 + 24;
+    return (keycode - 50688) + transpose_value2 + temp_transpose_offset + 24;
 }
 
 uint8_t midi_compute_note3(uint16_t keycode) {
@@ -432,7 +432,7 @@ uint8_t midi_compute_note3(uint16_t keycode) {
     int transpose_value3 = (keysplittransposestatus == 2 || keysplittransposestatus == 3) ?
                            (transpose_number3 + octave_number3) : (transpose_number + octave_number);
 
-    return (keycode - 50800) + transpose_value3 + 24;
+    return (keycode - 50800) + transpose_value3 + temp_transpose_offset + 24;
 }
 
 // Add this helper function at the top of process_midi.c
