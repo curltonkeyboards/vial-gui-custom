@@ -701,6 +701,10 @@ static char mode_display_msg[64] = "";
 static bool mode_display_active = false;
 #define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
 
+// Compact OLED layout mode (non-keysplit: double-size top bar + chord)
+static bool luna_compact_mode = false;
+static uint8_t oled_layout_mode = 255;  // Track for screen clear on mode switch
+
 // Quick build erase-on-hold tracking (declared early for use in rgb_matrix_indicators_kb and process_record_user)
 static uint8_t qb_erase_hold_type = 0;     // 0=none, 1=arp, 2=seq
 static uint8_t qb_erase_hold_slot = 0;     // seq slot (only for type==2)
@@ -8269,9 +8273,11 @@ static const char PROGMEM Keyboardbottom[128] = {
     /* animation */
 void animate_luna(void) {
     static uint8_t yield_counter = 0;
-    
-    oled_set_cursor(0, 8);
-    oled_write_raw_P(Keyboardtop, 128);
+
+    if (!luna_compact_mode) {
+        oled_set_cursor(0, 8);
+        oled_write_raw_P(Keyboardtop, 128);
+    }
     
     // ROW 1
     oled_set_cursor(0, 9);
@@ -17496,6 +17502,104 @@ void render_quick_build_summary(void) {
     oled_write_line(15, "");
 }
 
+// Condensed OLED layout for non-keysplit mode:
+// Rows 0-1: Double-size Layer + BPM
+// Row 2: Transposition
+// Row 3: Velocity curve
+// Row 4: MIDI channel
+// Row 5: Separator
+// Rows 6-7: Double-size chord name
+// Row 8: Separator
+// Rows 9-15: Luna keyboard (no top border)
+static void oled_render_condensed(void) {
+    char buf[22];
+
+    // Rows 0-1: Double-size Layer + BPM
+    uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+    uint16_t display_bpm = current_bpm / 100000;
+
+    if (current_bpm == 0) {
+        snprintf(buf, sizeof(buf), "L%-2d    BPM", layer);
+    } else {
+        snprintf(buf, sizeof(buf), "L%-2d    %3d", layer, (int)display_bpm);
+    }
+    oled_write_big_centered(0, buf);
+
+    // Row 2: Transposition (or temporary mode message)
+    if (mode_display_active && timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
+        const char *msg = mode_display_msg;
+        while (*msg == '\n') msg++;  // Trim leading newlines
+        oled_write_line_centered(2, msg);
+    } else {
+        mode_display_active = false;
+        int total_trans = transpose_number + octave_number + temp_transpose_offset;
+        if (octave_doubler_mode == 12)
+            snprintf(buf, sizeof(buf), "TRANSPOSITION %+d*", total_trans);
+        else if (octave_doubler_mode == 24)
+            snprintf(buf, sizeof(buf), "TRANSPOSITION%+d**", total_trans);
+        else if (octave_doubler_mode == -12)
+            snprintf(buf, sizeof(buf), "TRANSPOSITION *%+d", total_trans);
+        else
+            snprintf(buf, sizeof(buf), "TRANSPOSITION %+3d", total_trans);
+        oled_write_line_centered(2, buf);
+    }
+
+    // Row 3: Velocity curve name
+    uint8_t curve = keyboard_settings.he_velocity_curve;
+    const char* curve_names[] = {"Softest", "Soft", "Linear", "Hard", "Hardest", "Aggro", "Digital"};
+    if (curve <= 6) {
+        oled_write_line_centered(3, curve_names[curve]);
+    } else {
+        uint8_t slot = curve - CURVE_USER_START;
+        if (slot < 10 && user_curves.presets[slot].name[0] != '\0') {
+            char preset_name[16];
+            strncpy(preset_name, user_curves.presets[slot].name, 15);
+            preset_name[15] = '\0';
+            oled_write_line_centered(3, preset_name);
+        } else {
+            snprintf(buf, sizeof(buf), "User %d", slot + 1);
+            oled_write_line_centered(3, buf);
+        }
+    }
+
+    // Row 4: MIDI channel
+    snprintf(buf, sizeof(buf), "MIDI CHANNEL %2d", (channel_number + 1));
+    oled_write_line_centered(4, buf);
+
+    // Row 5: Separator
+    oled_write_line(5, "---------------------");
+
+    // Rows 6-7: Double-size chord name (single-size fallback if > 10 chars)
+    char chord[32];
+    snprintf(chord, sizeof(chord), "%s%s%s", getRootName(), getChordName(), getBassName());
+    uint8_t chord_len = strlen(chord);
+
+    // Trim trailing spaces
+    while (chord_len > 0 && chord[chord_len - 1] == ' ') {
+        chord[--chord_len] = '\0';
+    }
+
+    if (chord_len > 0 && chord_len <= 10) {
+        // Fits in double-size (oled_write_big_centered clears both rows internally)
+        oled_write_big_centered(6, chord);
+    } else {
+        // Clear rows 6-7 with raw zeros for clean transition from double-size
+        uint8_t zeros[128];
+        memset(zeros, 0, 128);
+        oled_set_cursor(0, 6);
+        oled_write_raw((char*)zeros, 128);
+        oled_set_cursor(0, 7);
+        oled_write_raw((char*)zeros, 128);
+        if (chord_len > 10) {
+            // Too long for double-size: single-size on row 6, row 7 stays blank
+            oled_write_line_centered(6, chord);
+        }
+    }
+
+    // Row 8: Separator (between chord and Luna keyboard)
+    oled_write_line(8, "- - - - - - - - - -");
+}
+
 bool oled_task_user(void) {
     if (quick_build_is_active()) {
         // =========================================================
@@ -17526,39 +17630,48 @@ bool oled_task_user(void) {
             quick_build_oled_active = false;
         }
 
-        // Buffer to store the formatted string
-        char str[22] = "";
-        char name[124] = "";  // Define `name` buffer to be used later
-        // Get the current layer and format it into `str`
-        uint8_t layer = get_highest_layer(layer_state | default_layer_state);
-        uint16_t display_bpm = current_bpm / 100000;  // Convert back to normal BPM
+        // Determine layout mode: 0 = condensed (non-keysplit), 1 = original (keysplit)
+        uint8_t current_mode = (keysplitstatus >= 1) ? 1 : 0;
 
-        if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
-        else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
-        // Write the layer information to the OLED
-        oled_write(str, false);
-
-        // Display temporary mode message if active
-        if (mode_display_active) {
-            if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
-                oled_write(mode_display_msg, false);
-            } else {
-                mode_display_active = false;
-            }
+        // Clear screen on layout mode transition
+        if (current_mode != oled_layout_mode) {
+            oled_clear();
+            oled_layout_mode = current_mode;
         }
 
-        // Render keylog information
-        oled_render_keylog();
-        // Add separator line to `name` and write to OLED
-        //snprintf(name + strlen(name), sizeof(name) - strlen(name), "---------------------");
-        // You only need to add the separator once, not three times.
-        oled_write(name, false);
+        if (current_mode == 0) {
+            // ---- CONDENSED LAYOUT (double-size top bar + chord) ----
+            luna_compact_mode = true;
+            oled_render_condensed();
+        } else {
+            // ---- ORIGINAL LAYOUT (keysplit/triplesplit channels) ----
+            luna_compact_mode = false;
+
+            char str[22] = "";
+            char name[124] = "";
+            uint8_t layer = get_highest_layer(layer_state | default_layer_state);
+            uint16_t display_bpm = current_bpm / 100000;
+
+            if (current_bpm == 0) { snprintf(str, sizeof(str), "       LAYER %-3d", layer);}
+            else {snprintf(str, sizeof(str), "  LYR %-3d   BPM %3d", layer, (int)display_bpm);}
+            oled_write(str, false);
+
+            if (mode_display_active) {
+                if (timer_elapsed32(mode_display_timer) < MODE_DISPLAY_DURATION) {
+                    oled_write(mode_display_msg, false);
+                } else {
+                    mode_display_active = false;
+                }
+            }
+
+            oled_render_keylog();
+            oled_write(name, false);
+        }
 
         if (!dynamic_macro_has_activity()) {
             led_usb_state = host_keyboard_led_state();
             render_luna(0, 1);
         } else {
-            // Show Luna keyboard when no macros have data
             led_usb_state = host_keyboard_led_state();
             render_interface(0, 8);
         }
