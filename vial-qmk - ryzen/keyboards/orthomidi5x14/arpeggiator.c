@@ -3020,7 +3020,6 @@ void quick_build_finish(void) {
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
         uint8_t arp_slot = quick_build_state.arp_slot;
         pool_preset_t *header = &arp_pool_headers[arp_slot];
-        arp_preset_note_t *notes = note_pool_get_notes(header);
 
         // Sanity check: must have at least 1 note
         if (quick_build_state.note_count == 0) {
@@ -3057,7 +3056,6 @@ void quick_build_finish(void) {
     } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
         uint8_t slot = quick_build_state.seq_slot;
         pool_preset_t *header = &seq_pool_headers[slot];
-        arp_preset_note_t *notes = note_pool_get_notes(header);
 
         // Sanity check: must have at least 1 note
         if (quick_build_state.note_count == 0) {

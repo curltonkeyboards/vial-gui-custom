@@ -236,6 +236,7 @@ class GridCell(QFrame):
 
     leftClicked = pyqtSignal(int, int)  # row, col
     rightClicked = pyqtSignal(int, int)  # row, col
+    dragEntered = pyqtSignal(int, int)  # row, col - emitted when mouse drags into this cell
 
     def __init__(self, row, col, parent=None):
         super().__init__(parent)
@@ -244,7 +245,7 @@ class GridCell(QFrame):
         self.active = False
         self.velocity = 255  # Default velocity (max)
         self.octave = 0  # For arpeggiator only
-        self.is_tie = False  # For step sequencer: True = sustain tie, False = retrigger
+        self.is_tie = False  # True = sustained from previous step, False = retrigger
         self.in_scale = True  # Default to in scale (for scale filtering)
 
         # Set size based on whether this is step sequencer or arpeggiator
@@ -351,11 +352,19 @@ class GridCell(QFrame):
 
             # Use opacity for scale filtering instead of darkening
             opacity = 0.3 if not self.in_scale else 1.0
-            # Tie cells get a dashed left border to show sustain continuation
+            # Sustained cells get a dotted border on the step-axis side to show continuation
             if self.is_tie:
-                self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); "
-                                   f"border: {border_width}px solid {border_color}; "
-                                   f"border-left: 3px dashed {border_color}; border-radius: 3px;")
+                is_arp = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator
+                if is_arp:
+                    # Arpeggiator: steps are rows (Y axis), so dotted top border
+                    self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); "
+                                       f"border: {border_width}px solid {border_color}; "
+                                       f"border-top: 3px dotted {border_color}; border-radius: 3px;")
+                else:
+                    # Step sequencer: steps are columns (X axis), so dotted left border
+                    self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); "
+                                       f"border: {border_width}px solid {border_color}; "
+                                       f"border-left: 3px dotted {border_color}; border-radius: 3px;")
             else:
                 self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
         else:
@@ -371,6 +380,54 @@ class GridCell(QFrame):
             self.leftClicked.emit(self.row, self.col)
         elif event.button() == Qt.RightButton:
             self.rightClicked.emit(self.row, self.col)
+
+    def enterEvent(self, event):
+        """Handle mouse entering cell during drag"""
+        if QApplication.mouseButtons() & Qt.LeftButton:
+            self.dragEntered.emit(self.row, self.col)
+        super().enterEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Clear drag state in parent grid on mouse release"""
+        if event.button() == Qt.LeftButton:
+            # Walk up to find the grid widget and clear its drag state
+            p = self.parent()
+            while p is not None:
+                if hasattr(p, '_drag_mode'):
+                    p._drag_mode = None
+                    break
+                p = p.parent()
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, event):
+        """Draw connecting line through sustained cells"""
+        super().paintEvent(event)
+        if not self.active or not self.is_tie:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Use a contrasting color for the sustain line
+        palette = QApplication.palette()
+        line_color = palette.color(QPalette.HighlightedText)
+        pen = QPen(line_color, 2, Qt.DashLine)
+        painter.setPen(pen)
+
+        is_arp = hasattr(self.parent(), 'is_arpeggiator') and self.parent().is_arpeggiator
+        w = self.width()
+        h = self.height()
+
+        if is_arp:
+            # Arpeggiator: steps are rows, draw vertical line from top edge to center
+            mid_x = w // 2
+            painter.drawLine(mid_x, 0, mid_x, h // 2)
+        else:
+            # Step sequencer: steps are columns, draw horizontal line from left edge to center
+            mid_y = h // 2
+            painter.drawLine(0, mid_y, w // 2, mid_y)
+
+        painter.end()
 
 
 class VelocityOctavePopup(QDialog):
@@ -567,6 +624,7 @@ class BasicStepSequencerGrid(QWidget):
                     cell = GridCell(row_idx, step, self)
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
+                    cell.dragEntered.connect(self.on_cell_drag_entered)
                     row_data['cells'].append(cell)
                     self.grid_layout.addWidget(cell, row_idx + 2, step + 2)
         elif new_steps < old_steps:
@@ -641,6 +699,7 @@ class BasicStepSequencerGrid(QWidget):
             cell = GridCell(row_idx, step, self)
             cell.leftClicked.connect(self.on_cell_left_click)
             cell.rightClicked.connect(self.on_cell_right_click)
+            cell.dragEntered.connect(self.on_cell_drag_entered)
             row_data['cells'].append(cell)
             self.grid_layout.addWidget(cell, row_idx + 2, step + 2)  # Row offset +2, col offset +2
 
@@ -832,7 +891,7 @@ class BasicStepSequencerGrid(QWidget):
         self._update_note_label_position()
 
     def on_cell_left_click(self, row, col):
-        """Handle left click - toggle cell"""
+        """Handle left click - toggle cell and start drag tracking"""
         if row >= len(self.rows):
             return
 
@@ -844,11 +903,48 @@ class BasicStepSequencerGrid(QWidget):
             # Deactivate - clear data
             cell.set_active(False, self.default_velocity, 0)
             cell.is_tie = False
+            self._drag_mode = 'erase'
         else:
-            # Activate - use default values (not a tie - individual note)
+            # Activate - use default values (not sustained - individual note)
             cell.set_active(True, self.default_velocity, 0)
             cell.is_tie = False
+            self._drag_mode = 'paint'
+
+        # Track drag start for sustain painting
+        # Step sequencer: steps are on X axis (columns), so drag along columns
+        self._drag_row = row
         self.dataChanged.emit()
+
+    def on_cell_drag_entered(self, row, col):
+        """Handle drag entering a cell - sustain notes across steps (columns) for step sequencer"""
+        if not hasattr(self, '_drag_mode') or self._drag_mode is None:
+            return
+        if not hasattr(self, '_drag_row') or self._drag_row is None:
+            return
+
+        # Only drag within the same row (same note)
+        if row != self._drag_row:
+            return
+        if row >= len(self.rows):
+            return
+
+        row_data = self.rows[row]
+        if col >= len(row_data['cells']):
+            return
+        cell = row_data['cells'][col]
+
+        if self._drag_mode == 'paint':
+            if not cell.active:
+                # Subsequent cells in a drag are sustained
+                cell.set_active(True, self.default_velocity, 0)
+                cell.is_tie = True
+                cell.update_style()
+                self.dataChanged.emit()
+        elif self._drag_mode == 'erase':
+            if cell.active:
+                cell.set_active(False, self.default_velocity, 0)
+                cell.is_tie = False
+                self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
         """Handle right click - activate and configure with current or default values"""
@@ -1021,6 +1117,7 @@ class BasicStepSequencerGrid(QWidget):
                 cell = GridCell(row_idx, step, self)
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
+                cell.dragEntered.connect(self.on_cell_drag_entered)
 
                 # Check if this step has a note - use actual rate
                 timing_16ths = step * rate_16ths
@@ -1183,6 +1280,7 @@ class BasicArpeggiatorGrid(QWidget):
                 cell = GridCell(row, col, self)
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
+                cell.dragEntered.connect(self.on_cell_drag_entered)
                 row_cells.append(cell)
                 self.grid_layout.addWidget(cell, row + 2, col + 2)
 
@@ -1222,6 +1320,7 @@ class BasicArpeggiatorGrid(QWidget):
                     cell = GridCell(step, col, self)
                     cell.leftClicked.connect(self.on_cell_left_click)
                     cell.rightClicked.connect(self.on_cell_right_click)
+                    cell.dragEntered.connect(self.on_cell_drag_entered)
                     row_cells.append(cell)
                     self.grid_layout.addWidget(cell, step + 2, col + 2)
 
@@ -1257,7 +1356,7 @@ class BasicArpeggiatorGrid(QWidget):
         self.default_velocity = value * 2  # Store as 0-255 internally
 
     def on_cell_left_click(self, row, col):
-        """Handle left click - toggle cell
+        """Handle left click - toggle cell and start drag tracking
         Note: With swapped axes, row is the step, col is the interval
         """
         if row >= len(self.cells) or col >= len(self.cells[row]):
@@ -1269,10 +1368,45 @@ class BasicArpeggiatorGrid(QWidget):
         if cell.active:
             # Deactivate - clear data
             cell.set_active(False, self.default_velocity, 0)
+            cell.is_tie = False
+            self._drag_mode = 'erase'
         else:
             # Activate - use default values
             cell.set_active(True, self.default_velocity, 0)
+            cell.is_tie = False
+            self._drag_mode = 'paint'
+
+        # Track drag start for sustain painting
+        # Arpeggiator: steps are on Y axis (rows), so drag along rows
+        self._drag_col = col
         self.dataChanged.emit()
+
+    def on_cell_drag_entered(self, row, col):
+        """Handle drag entering a cell - sustain notes across steps (rows) for arpeggiator"""
+        if not hasattr(self, '_drag_mode') or self._drag_mode is None:
+            return
+        if not hasattr(self, '_drag_col') or self._drag_col is None:
+            return
+
+        # Only drag within the same column (same interval)
+        if col != self._drag_col:
+            return
+        if row >= len(self.cells) or col >= len(self.cells[row]):
+            return
+
+        cell = self.cells[row][col]
+
+        if self._drag_mode == 'paint':
+            if not cell.active:
+                cell.set_active(True, self.default_velocity, 0)
+                cell.is_tie = True
+                cell.update_style()
+                self.dataChanged.emit()
+        elif self._drag_mode == 'erase':
+            if cell.active:
+                cell.set_active(False, self.default_velocity, 0)
+                cell.is_tie = False
+                self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
         """Handle right click - activate and configure
@@ -1327,7 +1461,8 @@ class BasicArpeggiatorGrid(QWidget):
                         'semitone_offset': interval,  # Also store as semitone_offset
                         'octave_offset': cell.octave,
                         'velocity': cell.velocity,
-                        'raw_travel': cell.velocity
+                        'raw_travel': cell.velocity,
+                        'is_tie': getattr(cell, 'is_tie', False)
                     })
 
         return notes
@@ -1360,6 +1495,7 @@ class BasicArpeggiatorGrid(QWidget):
 
             if 0 <= step < self.num_steps and 0 <= col < 23:
                 cell = self.cells[step][col]
+                cell.is_tie = note.get('is_tie', False)
                 cell.set_active(True, velocity, octave)
 
     def filter_rows_by_scale(self, allowed_intervals):
@@ -1814,7 +1950,8 @@ class CompactNoteLabel(QPushButton):
             'velocity': 200,
             'octave_offset': 4 if is_step_sequencer else 0,
             'note_index': 0 if is_step_sequencer else None,
-            'semitone_offset': 0 if not is_step_sequencer else None
+            'semitone_offset': 0 if not is_step_sequencer else None,
+            'is_tie': False
         }
         self.is_selected = False
 
@@ -1873,6 +2010,9 @@ class CompactNoteLabel(QPushButton):
             oct_str = f"+{octave}" if octave > 0 else str(octave)
             note_str = f"Int {int_str}, Oct {oct_str}"
 
+        if self.note_data.get('is_tie', False):
+            note_str += " (Sustained)"
+
         self.setText(note_str)
 
     def get_note_data(self):
@@ -1914,6 +2054,12 @@ class StepWidget(QFrame):
         self.btn_add_note_empty.setStyleSheet("QPushButton { min-height: 30px; max-height: 30px; }")
         self.btn_add_note_empty.clicked.connect(self.add_note)
         empty_layout.addWidget(self.btn_add_note_empty)
+        # Sustain Previous Step button (empty state)
+        self.btn_sustain_empty = QPushButton("Sustain\nPrevious Step")
+        self.btn_sustain_empty.setStyleSheet("QPushButton { min-height: 40px; max-height: 40px; font-size: 8pt; }")
+        self.btn_sustain_empty.setToolTip("Copy all notes from the previous step as sustained notes")
+        self.btn_sustain_empty.clicked.connect(self.sustain_previous_step)
+        empty_layout.addWidget(self.btn_sustain_empty)
         empty_layout.addStretch()
         self.empty_container.setLayout(empty_layout)
         self.main_layout.addWidget(self.empty_container, 1)
@@ -2010,6 +2156,13 @@ class StepWidget(QFrame):
         self.btn_remove.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; }")
         self.btn_remove.clicked.connect(self.remove_selected_note)
         filled_layout.addWidget(self.btn_remove)
+
+        # Sustain Previous Step button (filled state)
+        self.btn_sustain_filled = QPushButton("Sustain Previous Step")
+        self.btn_sustain_filled.setStyleSheet("QPushButton { min-height: 25px; max-height: 25px; font-size: 8pt; }")
+        self.btn_sustain_filled.setToolTip("Copy all notes from the previous step as sustained notes")
+        self.btn_sustain_filled.clicked.connect(self.sustain_previous_step)
+        filled_layout.addWidget(self.btn_sustain_filled)
 
         self.filled_container.setLayout(filled_layout)
         self.main_layout.addWidget(self.filled_container, 1)
@@ -2141,6 +2294,50 @@ class StepWidget(QFrame):
             # If there are still notes, select the first one
             if len(self.note_labels) > 0:
                 self.select_note(self.note_labels[0])
+
+    def sustain_previous_step(self):
+        """Copy all notes from the previous step as sustained notes"""
+        if self.step_num == 0:
+            return  # No previous step for step 0
+
+        # Use the sibling_steps reference set by rebuild_steps
+        if not hasattr(self, 'sibling_steps') or self.sibling_steps is None:
+            return
+
+        if self.step_num >= len(self.sibling_steps) or self.step_num == 0:
+            return
+
+        prev_step = self.sibling_steps[self.step_num - 1]
+        prev_notes = prev_step.get_step_data()
+
+        if not prev_notes:
+            return
+
+        # Clear current notes
+        for label in self.note_labels[:]:
+            self.notes_layout.removeWidget(label)
+            label.deleteLater()
+        self.note_labels.clear()
+        self.selected_note_index = None
+
+        # Add sustained copies of previous step's notes
+        for note_data in prev_notes:
+            sustained_data = note_data.copy()
+            sustained_data['is_tie'] = True
+
+            note_label = CompactNoteLabel(len(self.note_labels), self.is_step_sequencer)
+            note_label.selected.connect(lambda nl=note_label: self.select_note(nl))
+            note_label.set_note_data(sustained_data)
+            self.note_labels.append(note_label)
+            self.notes_layout.insertWidget(self.notes_layout.count() - 1, note_label)
+
+        # Update button state
+        self.btn_add_note.setEnabled(len(self.note_labels) < 8)
+        self.update_empty_state()
+
+        # Select first note if any
+        if len(self.note_labels) > 0:
+            self.select_note(self.note_labels[0])
 
     def get_step_data(self):
         """Return step data as list of note dicts"""
@@ -2548,6 +2745,10 @@ class Arpeggiator(BasicEditor):
 
             self.step_widgets.append(step_widget)
             self.step_layout.addWidget(step_widget, 0, Qt.AlignLeft)  # Explicitly align left
+
+        # Set sibling references so steps can access each other (for sustain previous step)
+        for step_widget in self.step_widgets:
+            step_widget.sibling_steps = self.step_widgets
 
         self.step_layout.addStretch()  # Add stretch at the end to push steps to the left
         self.update_pattern_length_display()
@@ -3002,7 +3203,7 @@ class Arpeggiator(BasicEditor):
         Note structure:
         - timing: 0-127 (7 bits)
         - velocity: 0-127 (7 bits)
-        - sign: 0 or 1 (1 bit) - arp: interval sign / seq: tie flag (sustain continuation)
+        - sign: 0 or 1 (1 bit) - arp: interval sign / seq: sustained flag
         - note_index: 0-11 (4 bits)
         - octave_offset: -8 to +7 (4 bits signed)
         """
@@ -3011,7 +3212,7 @@ class Arpeggiator(BasicEditor):
         velocity = max(0, min(127, velocity))
 
         # For arpeggiator: note_index can be negative (interval with sign)
-        # For step sequencer: note_index is always positive (0-11), bit 14 = tie flag
+        # For step sequencer: note_index is always positive (0-11), bit 14 = sustained flag
         note_index = note.get('note_index', 0)
         sign_bit = 0
 
@@ -3020,7 +3221,7 @@ class Arpeggiator(BasicEditor):
             sign_bit = 1
             note_index = abs(note_index)
         elif note.get('is_tie', False):
-            # Step sequencer: tie flag indicates sustain continuation (not retrigger)
+            # Step sequencer: sustained flag (note continues from previous step)
             sign_bit = 1
 
         note_index = note_index & 0x0F  # 4 bits
@@ -3029,7 +3230,7 @@ class Arpeggiator(BasicEditor):
         # Clamp octave to -8..+7 range
         octave_offset = max(-8, min(7, octave_offset))
 
-        # Pack timing_vel: bits 0-6=timing, 7-13=velocity, 14=sign/tie, 15=timing high bit
+        # Pack timing_vel: bits 0-6=timing, 7-13=velocity, 14=sign/sustained, 15=timing high bit
         packed_timing_vel = timing | (velocity << 7) | (sign_bit << 14)
 
         # Pack note_octave: bits 0-3=note, 4-7=octave (as 4-bit signed)
