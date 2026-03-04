@@ -17106,7 +17106,7 @@ void render_quick_build_setup(void) {
 
 // Render the recording phase OLED screen (note input)
 void render_quick_build_recording(void) {
-    char buf[22];
+    char buf[32];
     char note_buf[8];
 
     // Line 0: Title (centered)
