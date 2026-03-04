@@ -8429,6 +8429,8 @@ static bool handle_macro_key_press(uint8_t macro_num, uint8_t macro_idx) {
     }
 
     if (octave_doubler_button_held) {
+        extern bool oct_dbl_toggle_used;
+        oct_dbl_toggle_used = true;
         if (overdub_button_held && overdub_advanced_mode) {
             // ADVANCED MODE + OVERDUB BUTTON: Apply to overdub octave doubler
             int8_t current_mode = get_overdub_octave_doubler_target(macro_num);

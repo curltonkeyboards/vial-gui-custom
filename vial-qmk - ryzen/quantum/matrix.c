@@ -1766,17 +1766,17 @@ static void process_midi_key_analog(uint32_t key_idx, uint8_t current_layer) {
             // Triplesplit note - use zone-specific transpose if enabled
             int t_val = (keysplittransposestatus == 2 || keysplittransposestatus == 3) ?
                         (transpose_number3 + octave_number3) : (transpose_number + octave_number);
-            state->midi_note = (keycode - 0xC670) + t_val + 24;
+            state->midi_note = (keycode - 0xC670) + t_val + temp_transpose_offset + 24;
             state->zone_type = ZONE_TYPE_TRIPLESPLIT;
         } else if (keycode >= 0xC600 && keycode <= 0xC647) {
             // Keysplit note - use zone-specific transpose if enabled
             int t_val = (keysplittransposestatus == 1 || keysplittransposestatus == 3) ?
                         (transpose_number2 + octave_number2) : (transpose_number + octave_number);
-            state->midi_note = (keycode - 0xC600) + t_val + 24;
+            state->midi_note = (keycode - 0xC600) + t_val + temp_transpose_offset + 24;
             state->zone_type = ZONE_TYPE_KEYSPLIT;
         } else {
             // Base note (MI_* keycodes 0x7103-0x714A)
-            state->midi_note = (keycode - 0x7103) + transpose_number + octave_number + 24;
+            state->midi_note = (keycode - 0x7103) + transpose_number + octave_number + temp_transpose_offset + 24;
             state->zone_type = ZONE_TYPE_BASE;
         }
 

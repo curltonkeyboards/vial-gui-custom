@@ -781,12 +781,37 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
             smartchordaddnotes(channel, note, final_velocity);
             smartchorddisplayupdates(note);
         }
+        // Octave doubler for normal notes - send duplicate note at octave offset
+        extern int8_t octave_doubler_mode;
+        if (octave_doubler_mode != 0) {
+            int16_t doubled_note = (int16_t)note + octave_doubler_mode;
+            if (doubled_note >= 0 && doubled_note <= 127) {
+                midi_send_noteon_smartchord(channel, (uint8_t)doubled_note, final_velocity);
+            }
+        }
     }
 
     // Always update display and live note tracking (arp reads live_notes[])
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note, final_velocity);
+
+    // When arp is active, inject octave doubler note into live_notes
+    if (arp_suppressed && octave_doubler_mode != 0) {
+        int16_t doubled_note = (int16_t)note + octave_doubler_mode;
+        if (doubled_note >= 0 && doubled_note <= 127) {
+            bool already = false;
+            for (uint8_t j = 0; j < live_note_count; j++) {
+                if (live_notes[j][0] == channel && live_notes[j][1] == (uint8_t)doubled_note) {
+                    already = true;
+                    break;
+                }
+            }
+            if (!already && live_note_count < MAX_LIVE_NOTES) {
+                add_live_note(channel, (uint8_t)doubled_note, final_velocity);
+            }
+        }
+    }
 
     // When arp is active with smart chord, inject chord tones into live_notes
     // so the arp sees them as individually held notes
@@ -891,6 +916,15 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
     if (arp_active) {
         remove_lighting_live_note(channel, note);
 
+        // Remove injected octave doubler note from live_notes
+        extern int8_t octave_doubler_mode;
+        if (octave_doubler_mode != 0) {
+            int16_t doubled_note = (int16_t)note + octave_doubler_mode;
+            if (doubled_note >= 0 && doubled_note <= 127) {
+                remove_live_note(channel, (uint8_t)doubled_note);
+            }
+        }
+
         // Remove injected smart chord notes for this root note
         extern int chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7;
         int chord_offsets[] = {chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7};
@@ -904,6 +938,15 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
         }
 
         return;
+    }
+
+    // Octave doubler note-off for normal notes
+    extern int8_t octave_doubler_mode;
+    if (octave_doubler_mode != 0) {
+        int16_t doubled_note = (int16_t)note + octave_doubler_mode;
+        if (doubled_note >= 0 && doubled_note <= 127) {
+            midi_send_noteoff_smartchord(channel, (uint8_t)doubled_note, velocity);
+        }
     }
 
     // Check if this note type should ignore smartchord for note-off
