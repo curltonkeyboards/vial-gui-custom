@@ -516,7 +516,7 @@ void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity
     // QUICK BUILD HOOK: Record smartchord tones into step sequencer/arp builds
     // Without this, only the root note (which goes through midi_send_noteon_with_recording)
     // gets recorded - the harmony tones from smartchord would be silently dropped.
-    // Uses quick_build_handle_chord_note which forces chord mode (same step, no advance).
+    // Each smartchord note goes to its own step unless sustain pedal is held (chord mode).
     extern bool quick_build_is_active(void);
     extern bool quick_build_is_recording(void);
     extern void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);

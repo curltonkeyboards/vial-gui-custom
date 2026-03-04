@@ -3265,13 +3265,11 @@ void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, ui
     }
 }
 
-// Record a smartchord harmony tone into quick build (forced chord mode, never advances step).
-// Smartchord tones are generated alongside the root note and should all land on the same step.
+// Record a smartchord harmony tone into quick build.
+// By default, each smartchord note goes to its own step (advances after each note).
+// If the sustain pedal is held, all notes land on the same step (chord mode via sustain_held).
 void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel) {
-    bool was_chord_held = quick_build_state.encoder_chord_held;
-    quick_build_state.encoder_chord_held = true;  // Force chord mode so step doesn't advance
     quick_build_handle_note(channel, note, velocity, raw_travel);
-    quick_build_state.encoder_chord_held = was_chord_held;  // Restore previous state
 }
 
 // Called when sustain pedal is released
