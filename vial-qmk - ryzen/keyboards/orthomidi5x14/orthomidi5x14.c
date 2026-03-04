@@ -771,8 +771,12 @@ static uint32_t tap_times[MAX_TAPS_AVERAGE];
 // Hold detection for sequencer buttons (500ms threshold)
 #define SEQ_HOLD_THRESHOLD 500
 static uint32_t seq_play_press_time = 0;
-static uint32_t seq_preset_press_time = 0;
-static uint16_t seq_preset_held_keycode = 0;
+// Track up to 8 simultaneous factory preset button holds
+#define MAX_SEQ_PRESET_TRACK 8
+static struct {
+    uint16_t keycode;
+    uint32_t press_time;
+} seq_preset_track[MAX_SEQ_PRESET_TRACK] = {{0}};
 static uint8_t active_taps = 0;
 uint32_t current_bpm = 0;  // Starting with 120 as default
 static bool tap_tempo_active = false;
@@ -7888,10 +7892,14 @@ bool rgb_matrix_indicators_kb(void) {
                     quick_build_state.seq_slot == s) {
                     // Orange: currently building this slot
                     r = 255; g = 140; b = 0;
-                } else if (quick_build_state.has_saved_seq_build[s] &&
-                           seq_state[s].current_preset_id == PRESET_ID_QUICK_BUILD) {
-                    if (seq_state[s].active) {
-                        // Green: playing
+                } else if (quick_build_state.has_saved_seq_build[s]) {
+                    if (seq_state[s].active && seq_state[s].deferred_start_pending) {
+                        // Flash green: pending play (deferred, waiting for cycle point)
+                        bool flash_on = (timer_read32() / 300) % 2;
+                        if (flash_on) { r = 0; g = 200; b = 0; }
+                        else { r = 0; g = 40; b = 0; }
+                    } else if (seq_state[s].active && !seq_state[s].deferred_start_pending) {
+                        // Green: actively playing
                         r = 0; g = 200; b = 0;
                     } else {
                         // Red: has build, idle
@@ -7923,16 +7931,22 @@ bool rgb_matrix_indicators_kb(void) {
             }
         }
 
-        // Seq play button (category 45): green when any slot active, dim white when idle
+        // Seq play button (category 45): green when playing, flash green when deferred, dim white when idle
         uint8_t seq_play_led = get_special_key_led_index(45);
         if (seq_play_led != 99 && seq_play_led < RGB_MATRIX_LED_COUNT) {
-            bool any_seq_active = false;
+            bool any_seq_playing = false;
+            bool any_seq_deferred = false;
             for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
-                if (seq_state[s].active) { any_seq_active = true; break; }
+                if (seq_state[s].active && !seq_state[s].deferred_start_pending) { any_seq_playing = true; }
+                if (seq_state[s].active && seq_state[s].deferred_start_pending) { any_seq_deferred = true; }
             }
-            if (any_seq_active) {
+            if (any_seq_playing) {
                 rgb_matrix_set_color(seq_play_led,
                     0, (uint8_t)(200 * brightness_factor), 0);
+            } else if (any_seq_deferred) {
+                bool flash_on = (timer_read32() / 300) % 2;
+                rgb_matrix_set_color(seq_play_led,
+                    0, (uint8_t)((flash_on ? 200 : 40) * brightness_factor), 0);
             } else {
                 rgb_matrix_set_color(seq_play_led,
                     (uint8_t)(80 * brightness_factor),
@@ -7956,13 +7970,25 @@ bool rgb_matrix_indicators_kb(void) {
                 } else if (led_categories[current_layer].leds[i].category == 47) {
                     uint8_t led = led_categories[current_layer].leds[i].led_index;
                     if (led < RGB_MATRIX_LED_COUNT) {
-                        bool any_seq_active = false;
+                        bool any_seq_playing = false;
+                        bool any_seq_deferred = false;
                         for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
-                            if (seq_state[s].active) { any_seq_active = true; break; }
+                            if (seq_state[s].active && !seq_state[s].deferred_start_pending) { any_seq_playing = true; }
+                            if (seq_state[s].active && seq_state[s].deferred_start_pending) { any_seq_deferred = true; }
                         }
-                        if (any_seq_active) {
+                        if (any_seq_playing) {
+                            // Green: at least one seq actively playing
                             rgb_matrix_set_color(led,
                                 0, (uint8_t)(120 * brightness_factor), 0);
+                        } else if (any_seq_deferred) {
+                            // Flash green: pending play (deferred)
+                            bool flash_on = (timer_read32() / 300) % 2;
+                            rgb_matrix_set_color(led,
+                                0, (uint8_t)((flash_on ? 120 : 25) * brightness_factor), 0);
+                        } else {
+                            // Red: factory preset idle (not playing)
+                            rgb_matrix_set_color(led,
+                                (uint8_t)(120 * brightness_factor), 0, 0);
                         }
                     }
                 }
@@ -9539,9 +9565,36 @@ if (record->event.key.row == KEYLOC_ENCODER_CW && channelencoder != 130) { // En
     // Octave doubler button + macro key
     uint8_t macro_idx = keycode - 0xCC08;
     uint8_t macro_num = macro_idx + 1;
-    
+
     if (record->event.pressed) {
         snprintf(name, sizeof(name), "L%d - OCTAVE TOGGLE", macro_num);
+    } else {
+        snprintf(name, sizeof(name), "   ");
+    }
+
+} else if (octave_doubler_button_held && keycode >= SEQ_QUICK_BUILD_1 && keycode <= SEQ_QUICK_BUILD_8) {
+    // Octave doubler button + seq quick build key
+    uint8_t slot = keycode - SEQ_QUICK_BUILD_1;
+    if (record->event.pressed) {
+        int8_t oct = seq_octave_doubler[slot];
+        if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
+        else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
+    } else {
+        snprintf(name, sizeof(name), "   ");
+    }
+
+} else if (octave_doubler_button_held && keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
+    // Octave doubler button + seq preset key
+    uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);
+    int8_t slot = seq_find_slot_with_preset(preset_id);
+    if (record->event.pressed) {
+        if (slot >= 0) {
+            int8_t oct = seq_octave_doubler[slot];
+            if (oct == 0) snprintf(name, sizeof(name), "S%d OCT OFF", slot + 1);
+            else snprintf(name, sizeof(name), "S%d OCT %+d", slot + 1, oct);
+        } else {
+            snprintf(name, sizeof(name), "SEQ NOT PLAYING");
+        }
     } else {
         snprintf(name, sizeof(name), "   ");
     }
@@ -13762,7 +13815,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     // QUICK BUILD ENCODER HIJACK
     // During quick build (setup or recording), encoder rotation and click are
     // consumed here and routed to the quick build system instead of normal processing.
-    // Rotation: encoder 0 (col 0), Click: encoder 1 (col 1)
+    // Rotation: encoder 0 (col 0), Top click: encoder 1 (col 1), Bottom click: encoder 0 (col 0)
+    // Top knob (encoder 1 click): skip step (empty/silence) / confirm param / finish
+    // Bottom knob (encoder 0 click): consumed but no action
+    // Sustain hold: chord mode (notes land on same step)
+    // Sustain tap (no notes): skip step with hold (duplicate previous notes)
     // =============================================================================
     if (quick_build_is_active()) {
         // Encoder 0 rotation (row = KEYLOC_ENCODER_CW/CCW, col = 0)
@@ -13773,10 +13830,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             quick_build_handle_encoder(clockwise);
             return false;  // Consume
         }
-        // Encoder 1 click (matrix position 5,1)
+        // Encoder 1 click / top knob (matrix position 5,1) - chord hold + finish
         if (record->event.key.row == 5 && record->event.key.col == 1) {
             quick_build_handle_encoder_click(record->event.pressed);
             return false;  // Consume
+        }
+        // Encoder 0 click / bottom knob (matrix position 5,0) - no action during quick build
+        if (record->event.key.row == 5 && record->event.key.col == 0) {
+            return false;  // Consume (both press and release) but do nothing
         }
     }
 
@@ -14217,6 +14278,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         uint8_t slot = keycode - SEQ_QUICK_BUILD_1;  // 0-7
 
         if (record->event.pressed) {
+            // Octave doubler modifier: cycle octave for this seq slot
+            if (octave_doubler_button_held) {
+                int8_t current_oct = seq_octave_doubler[slot];
+                if (current_oct == 0) seq_octave_doubler[slot] = 12;
+                else if (current_oct == 12) seq_octave_doubler[slot] = 24;
+                else if (current_oct == 24) seq_octave_doubler[slot] = -12;
+                else seq_octave_doubler[slot] = 0;
+                dprintf("seq: slot %d octave doubler = %d\n", slot, seq_octave_doubler[slot]);
+                set_keylog(keycode, record);
+                return false;
+            }
+
             if (quick_build_state.has_saved_seq_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved seq build for this slot and not currently building: toggle play
@@ -14369,24 +14442,48 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode >= SEQ_PRESET_BASE && keycode < SEQ_PRESET_BASE + 68) {
         uint8_t preset_id = 68 + (keycode - SEQ_PRESET_BASE);  // Map keycode offset to seq preset range (68-135)
         if (record->event.pressed) {
-            seq_preset_press_time = timer_read32();
-            seq_preset_held_keycode = keycode;
+            // Octave doubler modifier: cycle octave for the slot playing this preset
+            if (octave_doubler_button_held) {
+                int8_t existing = seq_find_slot_with_preset(preset_id);
+                if (existing >= 0) {
+                    int8_t current_oct = seq_octave_doubler[existing];
+                    if (current_oct == 0) seq_octave_doubler[existing] = 12;
+                    else if (current_oct == 12) seq_octave_doubler[existing] = 24;
+                    else if (current_oct == 24) seq_octave_doubler[existing] = -12;
+                    else seq_octave_doubler[existing] = 0;
+                    dprintf("seq: preset %d slot %d octave doubler = %d\n", preset_id, existing, seq_octave_doubler[existing]);
+                }
+                set_keylog(keycode, record);
+                return false;
+            }
+
+            // Find empty tracking slot and store press info
+            for (uint8_t t = 0; t < MAX_SEQ_PRESET_TRACK; t++) {
+                if (seq_preset_track[t].keycode == 0) {
+                    seq_preset_track[t].keycode = keycode;
+                    seq_preset_track[t].press_time = timer_read32();
+                    break;
+                }
+            }
             set_keylog(keycode, record);
         } else {
-            // Release: check if held
-            if (seq_preset_held_keycode == keycode) {
-                uint32_t hold_duration = timer_read32() - seq_preset_press_time;
-                if (hold_duration >= SEQ_HOLD_THRESHOLD) {
-                    // Held: stop and clear all sequences
-                    seq_stop_all();
-                    dprintf("seq: held preset button - stopped all sequences\n");
-                } else {
-                    // Quick press: smart toggle/add to slot
-                    if (preset_id < MAX_SEQ_PRESETS) {
-                        seq_select_preset(preset_id);
+            // Release: find matching tracking slot
+            for (uint8_t t = 0; t < MAX_SEQ_PRESET_TRACK; t++) {
+                if (seq_preset_track[t].keycode == keycode) {
+                    uint32_t hold_duration = timer_read32() - seq_preset_track[t].press_time;
+                    if (hold_duration >= SEQ_HOLD_THRESHOLD) {
+                        // Held: stop and clear all sequences
+                        seq_stop_all();
+                        dprintf("seq: held preset button - stopped all sequences\n");
+                    } else {
+                        // Quick press: smart toggle/add to slot
+                        if (preset_id < MAX_SEQ_PRESETS) {
+                            seq_select_preset(preset_id);
+                        }
                     }
+                    seq_preset_track[t].keycode = 0;  // Clear tracking slot
+                    break;
                 }
-                seq_preset_held_keycode = 0;
             }
         }
         return false;
@@ -17009,7 +17106,8 @@ void render_quick_build_setup(void) {
 
 // Render the recording phase OLED screen (note input)
 void render_quick_build_recording(void) {
-    char buf[22];
+    char buf[32];
+    char note_buf[8];
 
     // Line 0: Title (centered)
     if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
@@ -17026,41 +17124,102 @@ void render_quick_build_recording(void) {
     // Line 2: blank
     oled_write_line(2, "");
 
-    // Line 3: Step number (centered)
-    uint8_t step = quick_build_get_current_step();
-    snprintf(buf, sizeof(buf), "STEP %d", step);
+    // Line 3: Step number and note count (centered)
+    // For seq mode, exclude tied notes (sustain continuations) from displayed count
+    // to avoid confusing users - e.g. a 4-note chord held across 4 steps should show "4 notes" not "16 notes"
+    uint16_t step = quick_build_get_current_step();
+    uint16_t display_notes = quick_build_state.note_count;
+    if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+        // Count only non-tied notes (bit 14 = 0 means original note, not sustain copy)
+        pool_preset_t *hdr = &seq_pool_headers[quick_build_state.seq_slot];
+        arp_preset_note_t *pool_notes = note_pool_get_notes(hdr);
+        display_notes = 0;
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            if (!NOTE_GET_SIGN(pool_notes[i].packed_timing_vel)) {
+                display_notes++;
+            }
+        }
+    }
+    snprintf(buf, sizeof(buf), "STEP %d  (%d notes)", step, display_notes);
     oled_write_line_centered(3, buf);
 
-    // Line 4: blank
-    oled_write_line(4, "");
-
-    // Line 5: Note count (centered)
-    snprintf(buf, sizeof(buf), "%d notes total", quick_build_state.note_count);
-    oled_write_line_centered(5, buf);
-
-    // Line 6: blank
-    oled_write_line(6, "");
-
-    // Line 7-8: Top knob skip/undo
-    oled_write_line_centered(7, "<< Undo   Skip >>");
-    oled_write_line_centered(8, "(turn top knob)");
-
-    // Line 9: Chord mode status
-    if (quick_build_state.encoder_chord_held) {
-        oled_write_line_centered(9, "Top knob: CHORD ON");
-    } else {
-        oled_write_line_centered(9, "Hold knob: Chord");
+    // Line 4: Show last recorded note(s) on current or previous step
+    {
+        pool_preset_t *header = NULL;
+        if (quick_build_state.mode == QUICK_BUILD_ARP_RECORD) {
+            header = &arp_pool_headers[quick_build_state.arp_slot];
+        } else if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+            header = &seq_pool_headers[quick_build_state.seq_slot];
+        }
+        if (header && quick_build_state.note_count > 0) {
+            arp_preset_note_t *notes = note_pool_get_notes(header);
+            // Find notes on the most recent step that has notes
+            uint16_t display_step = (quick_build_state.current_step > 0) ?
+                quick_build_state.current_step - 1 : 0;
+            // Search backwards for a step with notes
+            bool found = false;
+            for (int16_t s = (int16_t)display_step; s >= 0 && !found; s--) {
+                char note_str[22] = "";
+                uint8_t notes_on_step = 0;
+                for (uint16_t i = 0; i < quick_build_state.note_count && notes_on_step < 4; i++) {
+                    if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == (uint16_t)s) {
+                        uint8_t ni = NOTE_GET_NOTE(notes[i].note_octave);
+                        int8_t oct = NOTE_GET_OCTAVE(notes[i].note_octave);
+                        if (quick_build_state.mode == QUICK_BUILD_SEQ_RECORD) {
+                            uint8_t midi = (uint8_t)(oct * 12 + ni);
+                            midi_note_name(midi, note_buf, sizeof(note_buf));
+                        } else {
+                            // Arp: show interval
+                            uint8_t sign = NOTE_GET_SIGN(notes[i].packed_timing_vel);
+                            int8_t interval = sign ? -(int8_t)ni : (int8_t)ni;
+                            snprintf(note_buf, sizeof(note_buf), "%+d", interval + oct * 12);
+                        }
+                        if (notes_on_step > 0) {
+                            size_t len = strlen(note_str);
+                            snprintf(note_str + len, sizeof(note_str) - len, " %s", note_buf);
+                        } else {
+                            snprintf(note_str, sizeof(note_str), "%s", note_buf);
+                        }
+                        notes_on_step++;
+                        found = true;
+                    }
+                }
+                if (found) {
+                    oled_write_line_centered(4, note_str);
+                }
+            }
+            if (!found) {
+                oled_write_line(4, "");
+            }
+        } else {
+            oled_write_line(4, "");
+        }
     }
 
-    // Line 10: blank
-    oled_write_line(10, "");
+    // Line 5: blank
+    oled_write_line(5, "");
 
-    // Lines 11-12: Finish instruction (split across 2 lines)
-    oled_write_line_centered(11, "Press knob or Quick");
-    oled_write_line_centered(12, "Build btn to finish");
+    // Line 6-7: Top knob skip/undo with arrows
+    oled_write_line_centered(6, "<< Undo   Skip >>");
+    oled_write_line_centered(7, "(turn top knob)");
 
-    // Lines 13-15: blank
-    oled_write_line(13, "");
+    // Line 8: Skip (silence) instruction
+    oled_write_line_centered(8, "Skip: press top knob");
+
+    // Line 9: Sustain pedal instructions
+    oled_write_line_centered(9, "Sustain hold: Chord");
+
+    // Line 10: Sustain tap = hold note
+    oled_write_line_centered(10, "Sustain tap: Hold");
+
+    // Line 11: blank
+    oled_write_line(11, "");
+
+    // Lines 12-13: Finish instruction (split across 2 lines)
+    oled_write_line_centered(12, "Press knob or Quick");
+    oled_write_line_centered(13, "Build btn to finish");
+
+    // Lines 14-15: blank
     oled_write_line(14, "");
     oled_write_line(15, "");
 }

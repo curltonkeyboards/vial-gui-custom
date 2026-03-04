@@ -509,14 +509,25 @@ void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity
     if (final_velocity < 1) final_velocity = 1;
     if (final_velocity > 127) final_velocity = 127;
 
+    // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
+    // The playback velocity transform expects 0-255 raw_travel input
+    uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
+
+    // QUICK BUILD HOOK: Record smartchord tones into step sequencer/arp builds
+    // Without this, only the root note (which goes through midi_send_noteon_with_recording)
+    // gets recorded - the harmony tones from smartchord would be silently dropped.
+    // Each smartchord note goes to its own step unless sustain pedal is held (chord mode).
+    extern bool quick_build_is_active(void);
+    extern bool quick_build_is_recording(void);
+    extern void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+    if (quick_build_is_active() && quick_build_is_recording()) {
+        quick_build_handle_chord_note(channel, note, final_velocity, raw_travel_scaled);
+    }
+
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     noteondisplayupdates(note);
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note, final_velocity);
-
-    // Scale MIDI velocity (1-127) to raw_travel range (0-255) for recording
-    // The playback velocity transform expects 0-255 raw_travel input
-    uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
 
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, raw_travel_scaled);
@@ -777,6 +788,36 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note, final_velocity);
 
+    // When arp is active with smart chord, inject chord tones into live_notes
+    // so the arp sees them as individually held notes
+    if (arp_suppressed && !ignore_smartchord) {
+        extern int chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7;
+        int chord_offsets[] = {chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7};
+        uint8_t injected = 0;
+        for (uint8_t i = 0; i < 6; i++) {
+            if (chord_offsets[i] != 0) {
+                uint8_t chord_note = note + chord_offsets[i];
+                if (chord_note <= 127) {
+                    // Check not already in live_notes
+                    bool already_present = false;
+                    for (uint8_t j = 0; j < live_note_count; j++) {
+                        if (live_notes[j][0] == channel && live_notes[j][1] == chord_note) {
+                            already_present = true;
+                            break;
+                        }
+                    }
+                    if (!already_present && live_note_count < MAX_LIVE_NOTES) {
+                        add_live_note(channel, chord_note, final_velocity);
+                        injected++;
+                    }
+                }
+            }
+        }
+        if (injected > 0) {
+            dprintf("midi: injected %d smart chord notes into live_notes (arp active)\n", injected);
+        }
+    }
+
     // Store final velocity scaled to 0-255 for loop recording
     // This allows loops to apply their own velocity curve on playback
     uint8_t velocity_for_recording = velocity_to_storage(final_velocity);
@@ -846,8 +887,22 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
     noteoffdisplayupdates(note);
 
     // Arp active (no sustain): suppress MIDI output, arp handles its own notes
+    // Also remove any smart chord tones that were injected into live_notes
     if (arp_active) {
         remove_lighting_live_note(channel, note);
+
+        // Remove injected smart chord notes for this root note
+        extern int chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7;
+        int chord_offsets[] = {chordkey2, chordkey3, chordkey4, chordkey5, chordkey6, chordkey7};
+        for (uint8_t i = 0; i < 6; i++) {
+            if (chord_offsets[i] != 0) {
+                uint8_t chord_note = note + chord_offsets[i];
+                if (chord_note <= 127) {
+                    remove_live_note(channel, chord_note);
+                }
+            }
+        }
+
         return;
     }
 
@@ -898,7 +953,25 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
 // Flush function: send note-offs for all currently held notes when arp activates.
 // Notes pressed before arp was active had their note-on sent via MIDI.
 // Without this, those notes would be stuck because arp suppresses note-offs.
+//
+// Smart chord integration: If a smart chord is active when the arp starts,
+// the chord tones are injected into live_notes[] so the arp treats them
+// as individually held notes (arpeggiate through the full chord).
 void flush_live_notes_for_arp(void) {
+    // Access smart chord state (defined in orthomidi5x14.c)
+    extern int smartchordkey2, smartchordkey3, smartchordkey4;
+    extern int smartchordkey5, smartchordkey6, smartchordkey7;
+
+    // Collect smart chord notes BEFORE flushing (smartchordremovenotes clears them)
+    uint8_t sc_notes[6];
+    uint8_t sc_count = 0;
+    if (smartchordkey2 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey2;
+    if (smartchordkey3 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey3;
+    if (smartchordkey4 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey4;
+    if (smartchordkey5 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey5;
+    if (smartchordkey6 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey6;
+    if (smartchordkey7 != 0) sc_notes[sc_count++] = (uint8_t)smartchordkey7;
+
     for (uint8_t i = 0; i < live_note_count; i++) {
         uint8_t channel = live_notes[i][0];
         uint8_t note = live_notes[i][1];
@@ -909,6 +982,33 @@ void flush_live_notes_for_arp(void) {
     dprintf("midi: flushed %d live notes for arp activation\n", live_note_count);
     // Don't remove from live_notes[] - arp needs them as base notes
     // Don't remove lighting - keys are still physically held
+
+    // Inject smart chord tones into live_notes so arp sees them as held keys
+    if (sc_count > 0 && live_note_count > 0) {
+        // Use the channel and velocity of the first live note (the root)
+        uint8_t sc_channel = live_notes[0][0];
+        uint8_t sc_velocity = live_notes[0][2];
+
+        for (uint8_t i = 0; i < sc_count; i++) {
+            // Check we're not duplicating a note already in live_notes
+            bool already_present = false;
+            for (uint8_t j = 0; j < live_note_count; j++) {
+                if (live_notes[j][0] == sc_channel && live_notes[j][1] == sc_notes[i]) {
+                    already_present = true;
+                    break;
+                }
+            }
+            if (!already_present && live_note_count < MAX_LIVE_NOTES) {
+                uint8_t idx = live_note_count;
+                live_notes[idx][0] = sc_channel;
+                live_notes[idx][1] = sc_notes[i];
+                live_notes[idx][2] = sc_velocity;
+                live_note_count++;
+                arp_track_note_pressed(idx);
+            }
+        }
+        dprintf("midi: injected %d smart chord notes into live_notes for arp\n", sc_count);
+    }
 }
 
 // These functions are similar to midi_send_noteon/off_with_recording, but:
@@ -981,18 +1081,17 @@ void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity) {
 }
 
 // Send note-on for sequencer as a macro note (not recorded by looper)
+// Uses macro IDs 1-4 (wrapping: slot 0→1, slot 1→2, ... slot 4→1, etc.)
+// Does NOT update OLED held-key display (seq notes shouldn't appear as held keys)
 void midi_send_noteon_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot) {
     uint8_t final_velocity = velocity;
     if (final_velocity < 1) final_velocity = 1;
     if (final_velocity > 127) final_velocity = 127;
 
-    uint8_t macro_id = SEQ_MACRO_ID_BASE + seq_slot;
+    uint8_t macro_id = (seq_slot % 4) + 1;  // Map to macro IDs 1-4, wrapping
 
     // Send MIDI note-on
     midi_send_noteon(&midi_device, channel, note, final_velocity);
-
-    // Display updates
-    noteondisplayupdates(note);
 
     // Use macro lighting (not live lighting) so LED system knows this is a sequencer note
     add_lighting_macro_note(channel, note, macro_id, final_velocity);
@@ -1000,21 +1099,31 @@ void midi_send_noteon_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity,
     // Mark as macro note so looper won't record it
     mark_note_from_macro(channel, note, macro_id);
 
+    // Handle octave doubler for this seq slot
+    extern int8_t seq_octave_doubler[];
+    int8_t octave_shift = seq_octave_doubler[seq_slot];
+    if (octave_shift != 0) {
+        int16_t octave_note = note + octave_shift;
+        if (octave_note >= 0 && octave_note <= 127) {
+            midi_send_noteon(&midi_device, channel, (uint8_t)octave_note, final_velocity);
+            add_lighting_macro_note(channel, (uint8_t)octave_note, macro_id, final_velocity);
+            mark_note_from_macro(channel, (uint8_t)octave_note, macro_id);
+        }
+    }
+
     // Do NOT record to looper (no dynamic_macro_intercept_noteon)
     // Do NOT collect preroll events
+    // Do NOT update OLED display (no noteondisplayupdates)
 
-    dprintf("seq: macro note-on ch:%d note:%d vel:%d slot:%d\n", channel, note, final_velocity, seq_slot);
+    dprintf("seq: macro note-on ch:%d note:%d vel:%d slot:%d macro:%d\n", channel, note, final_velocity, seq_slot, macro_id);
 }
 
 // Send note-off for sequencer macro note (not recorded by looper)
 void midi_send_noteoff_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t seq_slot) {
-    uint8_t macro_id = SEQ_MACRO_ID_BASE + seq_slot;
+    uint8_t macro_id = (seq_slot % 4) + 1;  // Map to macro IDs 1-4, wrapping
 
     // Send MIDI note-off
     midi_send_noteoff(&midi_device, channel, note, velocity);
-
-    // Display updates
-    noteoffdisplayupdates(note);
 
     // Remove macro lighting
     remove_lighting_macro_note(channel, note, macro_id);
@@ -1022,10 +1131,23 @@ void midi_send_noteoff_seq_macro(uint8_t channel, uint8_t note, uint8_t velocity
     // Unmark from macro tracking
     unmark_note_from_macro(channel, note, macro_id);
 
+    // Handle octave doubler note-off
+    extern int8_t seq_octave_doubler[];
+    int8_t octave_shift = seq_octave_doubler[seq_slot];
+    if (octave_shift != 0) {
+        int16_t octave_note = note + octave_shift;
+        if (octave_note >= 0 && octave_note <= 127) {
+            midi_send_noteoff(&midi_device, channel, (uint8_t)octave_note, velocity);
+            remove_lighting_macro_note(channel, (uint8_t)octave_note, macro_id);
+            unmark_note_from_macro(channel, (uint8_t)octave_note, macro_id);
+        }
+    }
+
     // Do NOT record to looper (no dynamic_macro_intercept_noteoff)
     // Do NOT collect preroll events
+    // Do NOT update OLED display (no noteoffdisplayupdates)
 
-    dprintf("seq: macro note-off ch:%d note:%d vel:%d slot:%d\n", channel, note, velocity, seq_slot);
+    dprintf("seq: macro note-off ch:%d note:%d vel:%d slot:%d macro:%d\n", channel, note, velocity, seq_slot, macro_id);
 }
 
 // Modified process_midi main switch cases

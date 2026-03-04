@@ -244,6 +244,7 @@ class GridCell(QFrame):
         self.active = False
         self.velocity = 255  # Default velocity (max)
         self.octave = 0  # For arpeggiator only
+        self.is_tie = False  # For step sequencer: True = sustain tie, False = retrigger
         self.in_scale = True  # Default to in scale (for scale filtering)
 
         # Set size based on whether this is step sequencer or arpeggiator
@@ -350,7 +351,13 @@ class GridCell(QFrame):
 
             # Use opacity for scale filtering instead of darkening
             opacity = 0.3 if not self.in_scale else 1.0
-            self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
+            # Tie cells get a dashed left border to show sustain continuation
+            if self.is_tie:
+                self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); "
+                                   f"border: {border_width}px solid {border_color}; "
+                                   f"border-left: 3px dashed {border_color}; border-radius: 3px;")
+            else:
+                self.setStyleSheet(f"background-color: rgba({color.red()}, {color.green()}, {color.blue()}, {opacity}); border: {border_width}px solid {border_color}; border-radius: 3px;")
         else:
             # Inactive state - use white for light themes, black for dark themes
             inactive_color = QColor(255, 255, 255) if is_light_theme else QColor(0, 0, 0)
@@ -812,6 +819,7 @@ class BasicStepSequencerGrid(QWidget):
                 # Restore state if available
                 if row_idx < len(cell_states) and step < len(cell_states[row_idx]):
                     state = cell_states[row_idx][step]
+                    cell.is_tie = state.get('is_tie', False)
                     cell.set_active(state['active'], state['velocity'], state['octave'])
 
                 new_cells.append(cell)
@@ -835,9 +843,11 @@ class BasicStepSequencerGrid(QWidget):
         if cell.active:
             # Deactivate - clear data
             cell.set_active(False, self.default_velocity, 0)
+            cell.is_tie = False
         else:
-            # Activate - use default values
+            # Activate - use default values (not a tie - individual note)
             cell.set_active(True, self.default_velocity, 0)
+            cell.is_tie = False
         self.dataChanged.emit()
 
     def on_cell_right_click(self, row, col):
@@ -876,7 +886,8 @@ class BasicStepSequencerGrid(QWidget):
                         'note_index': row_data['note'],  # Absolute note (0-11)
                         'octave_offset': row_data['octave'],  # Absolute octave (0-7)
                         'velocity': cell.velocity,
-                        'raw_travel': cell.velocity
+                        'raw_travel': cell.velocity,
+                        'is_tie': getattr(cell, 'is_tie', False)
                     })
 
         return notes
@@ -901,7 +912,8 @@ class BasicStepSequencerGrid(QWidget):
                 row_config['cells_state'].append({
                     'active': cell.active,
                     'velocity': cell.velocity,
-                    'octave': cell.octave
+                    'octave': cell.octave,
+                    'is_tie': getattr(cell, 'is_tie', False)
                 })
             existing_rows_config.append(row_config)
 
@@ -1015,6 +1027,7 @@ class BasicStepSequencerGrid(QWidget):
                 matching_note = next((n for n in notes if abs(n['timing_16ths'] - timing_16ths) <= (rate_16ths // 2)), None)
 
                 if matching_note:
+                    cell.is_tie = matching_note.get('is_tie', False)
                     cell.set_active(True, matching_note.get('velocity', 127), 0)
 
                 row_data['cells'].append(cell)
@@ -2989,7 +3002,7 @@ class Arpeggiator(BasicEditor):
         Note structure:
         - timing: 0-127 (7 bits)
         - velocity: 0-127 (7 bits)
-        - sign: 0 or 1 (1 bit) - for arpeggiator intervals only
+        - sign: 0 or 1 (1 bit) - arp: interval sign / seq: tie flag (sustain continuation)
         - note_index: 0-11 (4 bits)
         - octave_offset: -8 to +7 (4 bits signed)
         """
@@ -2998,7 +3011,7 @@ class Arpeggiator(BasicEditor):
         velocity = max(0, min(127, velocity))
 
         # For arpeggiator: note_index can be negative (interval with sign)
-        # For step sequencer: note_index is always positive (0-11)
+        # For step sequencer: note_index is always positive (0-11), bit 14 = tie flag
         note_index = note.get('note_index', 0)
         sign_bit = 0
 
@@ -3006,6 +3019,9 @@ class Arpeggiator(BasicEditor):
             # Arpeggiator interval: extract sign and magnitude
             sign_bit = 1
             note_index = abs(note_index)
+        elif note.get('is_tie', False):
+            # Step sequencer: tie flag indicates sustain continuation (not retrigger)
+            sign_bit = 1
 
         note_index = note_index & 0x0F  # 4 bits
         octave_offset = note.get('octave_offset', 0)
@@ -3013,7 +3029,7 @@ class Arpeggiator(BasicEditor):
         # Clamp octave to -8..+7 range
         octave_offset = max(-8, min(7, octave_offset))
 
-        # Pack timing_vel: bits 0-6=timing, 7-13=velocity, 14=sign, 15=reserved
+        # Pack timing_vel: bits 0-6=timing, 7-13=velocity, 14=sign/tie, 15=timing high bit
         packed_timing_vel = timing | (velocity << 7) | (sign_bit << 14)
 
         # Pack note_octave: bits 0-3=note, 4-7=octave (as 4-bit signed)

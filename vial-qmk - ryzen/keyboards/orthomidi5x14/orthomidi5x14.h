@@ -606,8 +606,12 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value);
 
 // Maximum limits
 #define MAX_ARP_NOTES 32           // Maximum simultaneous arp notes being gated (for gate timing)
-#define MAX_ARP_PRESET_NOTES 64    // Maximum notes in an arpeggiator preset
-#define MAX_SEQ_PRESET_NOTES 128   // Maximum notes in a step sequencer preset
+#define MAX_ARP_PRESET_NOTES 64    // Maximum notes in an arpeggiator preset (EEPROM/factory format)
+#define MAX_SEQ_PRESET_NOTES 128   // Maximum notes in a step sequencer preset (EEPROM/factory format)
+
+// Shared note pool for quick build presets (RAM-only, not saved to EEPROM)
+#define NOTE_POOL_SIZE 4096        // Total shared pool capacity (4096 × 3 bytes = 12,288 bytes)
+#define MAX_NOTES_PER_STEP 16      // Max simultaneous notes per step (playback scratch buffer)
 #define NUM_FACTORY_ARP_PRESETS 48 // Factory arpeggiator presets (0-47) in PROGMEM
 #define NUM_FACTORY_SEQ_PRESETS 48 // Factory sequencer presets (0-47) in PROGMEM
 #define NUM_USER_ARP_PRESETS 20    // User arpeggiator presets (0-19) in EEPROM
@@ -670,10 +674,10 @@ typedef struct {
 typedef struct __attribute__((packed)) {
     // Byte 0-1: Packed timing and velocity
     uint16_t packed_timing_vel;
-      // bits 0-6:   timing_16ths (0-127 = max 8 bars)
+      // bits 0-6:   timing_16ths low 7 bits
       // bits 7-13:  velocity (0-127)
-      // bit 14:     interval_sign (arpeggiator only: 0=positive, 1=negative)
-      // bit 15:     reserved
+      // bit 14:     interval_sign (arp) / tie_flag (seq: 1=sustain tie, 0=retrigger)
+      // bit 15:     timing_16ths bit 7 (extends range to 0-255 = max 16 bars)
 
     // Byte 2: Packed note/interval and octave
     uint8_t note_octave;
@@ -747,7 +751,22 @@ typedef struct {
     uint8_t locked_velocity_max;        // Locked velocity maximum
     int8_t locked_transpose;            // Locked transposition value
     bool has_looped;                    // True after first pattern wrap (enables loop trigger on step 0)
+    bool deferred_start_pending;        // Waiting for next cycle point to start (sync with running seqs/loops)
+    bool deferred_stop_pending;         // Stop at end of current pattern loop (not immediately)
 } seq_state_t;
+
+// Pool-based preset header for quick build presets (notes stored in shared note_pool)
+typedef struct {
+    uint8_t preset_type;            // PRESET_TYPE_ARPEGGIATOR or PRESET_TYPE_STEP_SEQUENCER
+    uint16_t note_count;            // Actual notes stored (0 to NOTE_POOL_SIZE)
+    uint8_t pattern_length_16ths;   // Total pattern length in 16th notes (1-127)
+    uint8_t gate_length_percent;    // Gate length 0-100%
+    uint8_t timing_mode;            // TIMING_MODE_STRAIGHT/TRIPLET/DOTTED
+    uint8_t note_value;             // NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH
+    uint16_t pool_offset;           // Start index into shared note_pool[]
+    uint16_t pool_capacity;         // Allocated slots in pool (>= note_count)
+    bool valid;                     // Has a completed build been stored here
+} pool_preset_t;
 
 // EEPROM storage structure (for user presets only)
 // Reorganized: 23000 and 27500 (was 56000/60000)
@@ -765,14 +784,17 @@ _Static_assert(sizeof(arp_preset_t) == ARP_PRESET_SIZE, "arp_preset_t size must 
 _Static_assert(sizeof(seq_preset_t) == SEQ_PRESET_SIZE, "seq_preset_t size must match SEQ_PRESET_SIZE");
 
 // Helper macros for unpacking note data
-#define NOTE_GET_TIMING(packed)      ((packed) & 0x7F)                        // bits 0-6
+// Timing uses bits 0-6 (low 7) + bit 15 (high bit) = 8 bits total (0-255 steps)
+#define NOTE_GET_TIMING(packed)      (((packed) & 0x7F) | (((packed) >> 8) & 0x80))  // bits 0-6 + bit 15
 #define NOTE_GET_VELOCITY(packed)    (((packed) >> 7) & 0x7F)                 // bits 7-13
-#define NOTE_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp only)
+#define NOTE_GET_SIGN(packed)        (((packed) >> 14) & 0x01)                // bit 14 (arp: interval sign)
+#define NOTE_GET_TIE(packed)         (((packed) >> 14) & 0x01)                // bit 14 (seq: tie/sustain flag)
 #define NOTE_GET_NOTE(octave_byte)   ((octave_byte) & 0x0F)                   // bits 0-3
 #define NOTE_GET_OCTAVE(octave_byte) (((int8_t)((octave_byte) & 0xF0)) >> 4)  // bits 4-7 (signed)
 
 // Helper macros for packing note data
-#define NOTE_PACK_TIMING_VEL(timing, vel, sign) (((timing) & 0x7F) | (((vel) & 0x7F) << 7) | (((sign) & 0x01) << 14))
+// Timing: low 7 bits in bits 0-6, high bit in bit 15 (was reserved)
+#define NOTE_PACK_TIMING_VEL(timing, vel, sign) (((timing) & 0x7F) | (((vel) & 0x7F) << 7) | (((sign) & 0x01) << 14) | ((((timing) >> 7) & 0x01) << 15))
 #define NOTE_PACK_NOTE_OCTAVE(note, octave)     (((note) & 0x0F) | (((octave) & 0x0F) << 4))
 
 // Global arpeggiator state
@@ -781,12 +803,29 @@ extern uint8_t arp_note_count;
 extern arp_state_t arp_state;
 extern seq_state_t seq_state[MAX_SEQ_SLOTS];
 
-// Efficient RAM storage: Only active presets loaded
+// Efficient RAM storage: Only active presets loaded (staging for factory/user presets)
 extern arp_preset_t arp_active_preset;           // 1 slot for arpeggiator (200 bytes)
 extern seq_preset_t seq_active_presets[MAX_SEQ_SLOTS];  // 8 slots for sequencers (8 × 392 = 3136 bytes)
 
+// Shared note pool for quick build presets
+#define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
+extern pool_preset_t arp_pool_headers[MAX_ARP_QB_SLOTS];  // Pool headers for arp QB slots
+extern pool_preset_t seq_pool_headers[MAX_SEQ_SLOTS];     // Pool headers for seq QB slots
+
+// Pool management functions
+void note_pool_reset(void);
+uint16_t note_pool_alloc(uint16_t count);            // Returns offset or UINT16_MAX on failure
+void note_pool_free(pool_preset_t *header);           // Free and compact pool
+arp_preset_note_t *note_pool_get_notes(const pool_preset_t *header);  // Get pointer to notes in pool
+uint16_t note_pool_available(void);                   // Remaining capacity
+bool note_pool_has_valid_arp(uint8_t slot);           // Check if arp QB slot has a valid build
+bool note_pool_has_valid_seq(uint8_t slot);           // Check if seq QB slot has a valid build
+
 // Step Sequencer modifier tracking
 extern bool seq_modifier_held[MAX_SEQ_SLOTS];  // Track which seq modifiers are held
+
+// Step Sequencer octave doubler (per-slot, values: 0, 12, 24, -12)
+extern int8_t seq_octave_doubler[MAX_SEQ_SLOTS];
 
 // Arpeggiator functions
 void arp_init(void);
@@ -809,6 +848,8 @@ void arp_handle_key_press(uint8_t preset_id);
 void arp_handle_key_release(void);
 bool arp_is_active(void);
 bool seq_is_any_active(void);
+bool seq_is_any_active_and_looped(void);
+void seq_release_deferred_starts(uint32_t align_time);
 void arp_set_master_gate(uint8_t gate_percent);
 void seq_set_master_gate(uint8_t gate_percent);
 void arp_set_mode(arp_mode_t mode);
@@ -866,7 +907,6 @@ void seq_set_gate_for_slot(uint8_t slot, uint8_t gate_percent);
 
 // NEW: Quick Build System Types
 #define PRESET_ID_QUICK_BUILD 255      // Sentinel: preset lives in RAM from quick build
-#define MAX_ARP_QB_SLOTS 4             // Number of arp quick build slots
 
 typedef enum {
     QUICK_BUILD_NONE = 0,
@@ -882,17 +922,17 @@ typedef struct {
     quick_build_mode_t mode;           // Current build mode
     uint8_t arp_slot;                  // Which arp slot we're building (0-3)
     uint8_t seq_slot;                  // Which seq slot we're building (0-7)
-    uint8_t current_step;              // Current step (0-based internal)
-    uint8_t note_count;                // Total notes recorded so far
+    uint16_t current_step;             // Current step (0-based internal, max 254 for 8-bit timing)
+    uint16_t note_count;               // Total notes recorded so far (up to NOTE_POOL_SIZE)
     uint8_t root_note;                 // Confirmed root note (arp only, for interval calculation)
     bool has_root;                     // Has root been confirmed?
     uint8_t candidate_root;            // Note being previewed in root selection (0=none pressed yet)
     bool candidate_ready;              // A candidate root note has been pressed and is awaiting confirm
     bool sustain_held_last_check;      // Track sustain state for release detection
     uint32_t button_press_time;        // For 3-second hold detection
-    bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (per slot)
+    bool has_saved_arp_build[MAX_ARP_QB_SLOTS];  // Has user completed an arp build? (mirrors pool header valid)
     uint8_t active_arp_qb_slot;        // Which arp QB slot is currently loaded (0-3, 255=none)
-    bool has_saved_seq_build[8];       // Has user completed a seq build? (per slot)
+    bool has_saved_seq_build[8];       // Has user completed a seq build? (mirrors pool header valid)
     uint8_t saved_seq_channel[8];      // MIDI channel at time of seq build (per slot)
 
     // Setup phase state
@@ -917,13 +957,14 @@ void quick_build_erase_arp(uint8_t slot);
 void quick_build_load_arp_slot(uint8_t slot);
 void quick_build_erase_seq(uint8_t slot);
 void quick_build_handle_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
 void quick_build_handle_sustain_release(void);
 void quick_build_update(void);
 bool quick_build_is_active(void);
 bool quick_build_is_setup(void);
 bool quick_build_is_recording(void);
 bool quick_build_is_summary(void);
-uint8_t quick_build_get_current_step(void);
+uint16_t quick_build_get_current_step(void);
 uint32_t quick_build_get_arp_pattern_ms(void);
 uint32_t quick_build_get_seq_pattern_ms(uint8_t slot);
 void quick_build_dismiss_summary(void);
@@ -932,6 +973,7 @@ void quick_build_handle_encoder_click(bool pressed);
 void quick_build_confirm_param(void);
 void quick_build_confirm_root(void);
 void quick_build_skip_step(void);
+void quick_build_skip_step_with_hold(void);
 void quick_build_undo_step(void);
 void render_big_number(uint8_t number);
 void render_quick_build_setup(void);
