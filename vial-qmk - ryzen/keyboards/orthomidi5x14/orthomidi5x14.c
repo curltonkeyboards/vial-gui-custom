@@ -233,6 +233,7 @@ int smartchordkey5 = 0;
 int smartchordkey6 = 0;
 int smartchordkey7 = 0;
 int smartchordstatus = 0;
+bool smartchord_display_brackets = false;  // Show [ ] on OLED when smart chord is active
 int inversionposition = 0;
 int rootnote = 13;
 int bassnote = 13;
@@ -12224,7 +12225,7 @@ snprintf(keylog_str + strlen(keylog_str), sizeof(keylog_str) - strlen(keylog_str
 void oled_render_keylog(void) {
 	char name[124];
 	int total_length = strlen(getRootName()) + strlen(getChordName()) + strlen(getBassName());
-	if (smartchordstatus > 0) total_length += 2;  // Account for [ ] brackets
+	if (smartchord_display_brackets) total_length += 2;  // Account for [ ] brackets
 	int total_padding = 22 - total_length;
 	int left_padding = total_padding / 2;
 	int right_padding = total_padding - left_padding;
@@ -12282,7 +12283,7 @@ void oled_render_keylog(void) {
 
 	// Chord name display (wrap in [ ] when smart chord is active)
 	snprintf(name + strlen(name), sizeof(name) - strlen(name), "%*s", left_padding, "");
-	if (smartchordstatus > 0) {
+	if (smartchord_display_brackets) {
 		snprintf(name + strlen(name), sizeof(name) - strlen(name), "[%s%s%s]", getRootName(), getChordName(), getBassName());
 	} else {
 		snprintf(name + strlen(name), sizeof(name) - strlen(name), "%s%s%s", getRootName(), getChordName(), getBassName());
@@ -12728,6 +12729,9 @@ void smartchordaddnotes(uint8_t channel, uint8_t note, uint8_t velocity) {
             }
         }
     }
+
+    // Re-enable bracket display after smart chord note-on calls cleared it
+    smartchord_display_brackets = true;
 }
 
 void smartchordremovenotes(uint8_t channel, uint8_t note, uint8_t velocity) {
@@ -12821,6 +12825,7 @@ void smartchordremovenotes(uint8_t channel, uint8_t note, uint8_t velocity) {
 
             // Clear the active note tracker
             active_smartchord_note = 0;
+            smartchord_display_brackets = false;
         }
         // If this note is NOT the active smart chord note, do nothing
         // (it was interrupted, so its smart chord notes were already cleaned up)
@@ -12919,7 +12924,9 @@ void smartchorddisplayupdates(uint8_t note) {
 }
 
 void noteondisplayupdates(uint8_t note) {
-	
+	// Clear smart chord bracket indicator (smartchordaddnotes re-sets it after its note-on calls)
+	smartchord_display_brackets = false;
+
 	uint16_t displaykeycode = note + 28931; // Convert MIDI note to your displaykeycode format
 		    if (sustain_pedal_held) {
         add_to_pressed_list(displaykeycode);
@@ -17577,7 +17584,7 @@ static void oled_render_condensed(void) {
     // Rows 6-7: Double-size chord name (single-size fallback if > 10 chars)
     // Wrap in [ ] when smart chord is active
     char chord[32];
-    if (smartchordstatus > 0) {
+    if (smartchord_display_brackets) {
         snprintf(chord, sizeof(chord), "[%s%s%s]", getRootName(), getChordName(), getBassName());
     } else {
         snprintf(chord, sizeof(chord), "%s%s%s", getRootName(), getChordName(), getBassName());
