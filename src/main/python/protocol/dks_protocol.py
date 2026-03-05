@@ -13,7 +13,7 @@ from typing import Optional, Dict, List, Tuple
 # DKS HID Command Codes (0xAA-0xAF)
 # NOTE: Moved from 0xE5-0xEA to avoid conflict with arpeggiator_hid.c handlers
 # (0xE5-0xE6 used for per-key actuation, 0xE7-0xE9 for distance/calibration/EQ)
-HID_CMD_DKS_GET_SLOT = 0xAA        # Get DKS slot configuration (32 bytes)
+HID_CMD_DKS_GET_SLOT = 0xAA        # Get DKS slot configuration (26 bytes payload)
 HID_CMD_DKS_SET_ACTION = 0xAB      # Set a single DKS action
 HID_CMD_DKS_SAVE_EEPROM = 0xAC     # Save all DKS configs to EEPROM
 HID_CMD_DKS_LOAD_EEPROM = 0xAD     # Load all DKS configs from EEPROM
@@ -23,7 +23,19 @@ HID_CMD_DKS_RESET_ALL = 0xAF       # Reset all slots to defaults
 # DKS Constants
 DKS_NUM_SLOTS = 50                  # Number of DKS slots (DKS_00 - DKS_49)
 DKS_ACTIONS_PER_STAGE = 4           # 4 press + 4 release
-DKS_SLOT_SIZE = 32                  # Bytes per slot
+
+# Firmware slot is 32 bytes (includes 6 bytes reserved padding), but HID can
+# only carry 26 bytes of data (32 byte packet - 6 byte header).  The first 26
+# bytes of the slot struct contain all meaningful fields:
+#   press_keycode[4]      8 bytes
+#   press_actuation[4]    4 bytes
+#   release_keycode[4]    8 bytes
+#   release_actuation[4]  4 bytes
+#   behaviors             2 bytes  = 26 bytes total
+# The trailing 6 bytes (reserved[6]) are padding/unused.
+DKS_SLOT_SIZE = 32                  # Full firmware struct size
+DKS_SLOT_WIRE_SIZE = 26             # Bytes actually transmitted over HID
+HID_HEADER_SIZE = 6                 # Header bytes in HID packet
 
 # Behavior Types
 DKS_BEHAVIOR_TAP = 0                # Press + immediate release
@@ -106,9 +118,14 @@ class DKSSlot:
 
     @staticmethod
     def from_bytes(data):
-        """Unpack slot from 32-byte firmware format"""
-        if len(data) < DKS_SLOT_SIZE:
-            raise ValueError(f"DKS slot data must be {DKS_SLOT_SIZE} bytes, got {len(data)}")
+        """Unpack slot from firmware format (accepts 26 or 32 bytes).
+
+        The HID response only carries 26 bytes (the meaningful fields).
+        The full 32-byte struct has 6 bytes of reserved padding at the end
+        which are not transmitted.
+        """
+        if len(data) < DKS_SLOT_WIRE_SIZE:
+            raise ValueError(f"DKS slot data must be at least {DKS_SLOT_WIRE_SIZE} bytes, got {len(data)}")
 
         slot = DKSSlot()
         offset = 0
@@ -180,7 +197,11 @@ class ProtocolDKS:
             self._debug_log(message, level)
 
     def get_slot(self, slot_num: int) -> Optional[DKSSlot]:
-        """Get DKS slot configuration from keyboard
+        """Get DKS slot configuration from keyboard.
+
+        The firmware sends 26 bytes of slot data (the meaningful fields) in a
+        single 32-byte HID packet (6 header + 26 data).  The trailing 6 bytes
+        of reserved padding in the firmware struct are NOT transmitted.
 
         Args:
             slot_num: Slot number (0-49)
@@ -198,11 +219,11 @@ class ProtocolDKS:
             self._log(f"GET slot {slot_num}: TX cmd=0xAA data=[{slot_num}] packet_len={len(packet)}", "HID_TX")
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            if not response or len(response) < (6 + DKS_SLOT_SIZE):
+            if not response or len(response) < (HID_HEADER_SIZE + DKS_SLOT_WIRE_SIZE):
                 resp_len = len(response) if response else 0
-                self._log(f"GET slot {slot_num}: RX FAILED - response_len={resp_len} (need {6 + DKS_SLOT_SIZE})", "ERROR")
+                self._log(f"GET slot {slot_num}: RX FAILED - response_len={resp_len} (need {HID_HEADER_SIZE + DKS_SLOT_WIRE_SIZE})", "ERROR")
                 if response:
-                    self._log(f"  Raw response: [{' '.join(f'0x{b:02X}' for b in response[:min(len(response), 20)])}...]", "DATA")
+                    self._log(f"  Raw response: [{' '.join(f'0x{b:02X}' for b in response[:min(len(response), 32)])}]", "DATA")
                 return None
 
             # Check status byte (response[5])
@@ -210,8 +231,8 @@ class ProtocolDKS:
                 self._log(f"GET slot {slot_num}: RX status=0x{response[5]:02X} (expected 0x00)", "ERROR")
                 return None
 
-            # Extract 32-byte slot data (starts at response[6])
-            slot_data = response[6:6 + DKS_SLOT_SIZE]
+            # Extract slot data (starts at response[6], 26 meaningful bytes)
+            slot_data = response[HID_HEADER_SIZE:HID_HEADER_SIZE + DKS_SLOT_WIRE_SIZE]
             slot = DKSSlot.from_bytes(slot_data)
 
             self._log(f"GET slot {slot_num}: OK - raw=[{' '.join(f'0x{b:02X}' for b in slot_data)}]", "HID_RX")

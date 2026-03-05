@@ -142,7 +142,26 @@ void dks_reset_all_slots(void) {
 }
 
 /**
+ * Validate a DKS slot has sane values.
+ * Returns true if the slot looks valid, false if it appears corrupted.
+ */
+static bool dks_validate_slot(const dks_slot_t* slot) {
+    // Check actuation points are in valid range (0-100)
+    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
+        if (slot->press_actuation[i] > 100) return false;
+        if (slot->release_actuation[i] > 100) return false;
+    }
+    // Check behaviors are valid (only 2 bits per action, packed in 16 bits)
+    // Each 2-bit field should be 0-3 which is always true for uint16_t,
+    // but check that reserved bits above bit 15 are not set (they can't be
+    // for uint16_t, so this is just a sanity check on the overall value)
+    return true;
+}
+
+/**
  * Load DKS configurations from EEPROM
+ * Reads slot-by-slot (32 bytes each) to avoid large stack allocations
+ * and validates each slot individually.
  */
 bool dks_load_from_eeprom(void) {
     // Read header
@@ -154,12 +173,33 @@ bool dks_load_from_eeprom(void) {
         return false;  // Not initialized or wrong version
     }
 
-    // Read all slots
-    eeprom_read_block(
-        dks_slots,
-        (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET),
-        sizeof(dks_slots)
-    );
+    // Read slots one at a time (32 bytes each - safe for stack)
+    // and validate each to prevent corrupted EEPROM data from crashing
+    for (uint8_t i = 0; i < DKS_NUM_SLOTS; i++) {
+        dks_slot_t temp_slot;
+        eeprom_read_block(
+            &temp_slot,
+            (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET + (i * sizeof(dks_slot_t))),
+            sizeof(dks_slot_t)
+        );
+
+        if (dks_validate_slot(&temp_slot)) {
+            memcpy(&dks_slots[i], &temp_slot, sizeof(dks_slot_t));
+        } else {
+            // Slot is corrupted - reset to defaults instead of loading garbage
+            memset(dks_slots[i].press_keycode, 0, sizeof(dks_slots[i].press_keycode));
+            memset(dks_slots[i].release_keycode, 0, sizeof(dks_slots[i].release_keycode));
+            dks_slots[i].press_actuation[0] = 24;
+            dks_slots[i].press_actuation[1] = 48;
+            dks_slots[i].press_actuation[2] = 72;
+            dks_slots[i].press_actuation[3] = 96;
+            dks_slots[i].release_actuation[0] = 96;
+            dks_slots[i].release_actuation[1] = 72;
+            dks_slots[i].release_actuation[2] = 48;
+            dks_slots[i].release_actuation[3] = 24;
+            dks_slots[i].behaviors = 0x0000;
+        }
+    }
 
     return true;
 }
