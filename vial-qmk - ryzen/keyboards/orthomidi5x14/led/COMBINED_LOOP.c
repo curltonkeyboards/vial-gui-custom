@@ -5873,7 +5873,8 @@ static bool run_efficient_effect(effect_params_t* params,
         render_math_background_by_index(background_mode, background_brightness_pct);
     } else if (background_mode >= BACKGROUND_DIAGONAL_WAVE_HUE_CYCLE_DESAT && background_mode <= BACKGROUND_DIAGONAL_WAVE_REVERSE_DUAL_COLOR_HUE_CYCLE_DESAT) {
         render_math_background_desaturated(background_mode, background_brightness_pct);
-    } else if (background_mode == BACKGROUND_NONE) {
+    } else {
+        // BACKGROUND_NONE or any unrecognized/invalid mode: clear to black
         for (uint8_t row = 0; row < 5; row++) {
             for (uint8_t col = 0; col < 14; col++) {
                 uint8_t led[LED_HITS_TO_REMEMBER];
@@ -7283,6 +7284,9 @@ static void randomize_pattern_with_color(uint8_t current_slot) {
     // Copy configuration from the random pattern slot to current slot
     custom_slots[current_slot] = custom_slots[random_pattern_slot];
 
+    // Ensure slot is enabled (guards against corrupted EEPROM data in source slot)
+    custom_slots[current_slot].enabled = true;
+
     // Randomize RGB color (hue)
     uint8_t new_hue = rand() & 0xFF;
     rgb_matrix_sethsv_noeeprom(new_hue, rgb_matrix_get_sat(), rgb_matrix_get_val());
@@ -7313,6 +7317,10 @@ static void randomize_with_criteria(uint8_t slot) {
     uint8_t live_anim = (live_effects_count > 0) ? get_random_from_array(live_effects, live_effects_count) : 0;
     uint8_t macro_anim = (macro_effects_count > 0) ? get_random_from_array(macro_effects, macro_effects_count) : 0;
 
+    // Ensure slot is enabled and has valid pulse_mode
+    set_custom_slot_enabled(slot, true);
+    set_custom_slot_pulse_mode(slot, 3);
+
     // Apply randomization
     set_custom_slot_live_positioning(slot, live_pos);
     set_custom_slot_macro_positioning(slot, macro_pos);
@@ -7341,6 +7349,10 @@ static void randomize_no_restrictions(uint8_t slot) {
     // Randomize everything without restrictions (except exclude HEAT/SUSTAIN)
     uint8_t live_anim = get_random_value(170);
     uint8_t macro_anim = get_random_value(170);
+
+    // Ensure slot is enabled and has valid pulse_mode
+    set_custom_slot_enabled(slot, true);
+    set_custom_slot_pulse_mode(slot, 3);
 
     set_custom_slot_live_animation(slot, live_anim);
     set_custom_slot_macro_animation(slot, macro_anim);
