@@ -6472,6 +6472,118 @@ const char* binary_search_interval(int8_t interval) {
     return "     ";
 }
 
+// Returns the smartchord name for OLED display based on toggled_smartchord_keycode
+const char* getSmartChordDisplayName(void) {
+    switch (toggled_smartchord_keycode) {
+        case 0xC38B: return "Minor Second";
+        case 0xC38C: return "Major Second";
+        case 0xC38D: return "Minor Third";
+        case 0xC38E: return "Major Third";
+        case 0xC38F: return "Tritone";
+        case 0xC390: return "Perfect Fourth";
+        case 0xC391: return "Perfect Fifth";
+        case 0xC392: return "Minor Sixth";
+        case 0xC393: return "Major Sixth";
+        case 0xC394: return "Minor Seventh";
+        case 0xC395: return "Major Seventh";
+        case 0xC396: return "Major";
+        case 0xC397: return "Minor";
+        case 0xC398: return "Diminished";
+        case 0xC399: return "Augmented";
+        case 0xC39A: return "b5";
+        case 0xC39B: return "sus2";
+        case 0xC39C: return "sus4";
+        case 0xC39D: return "7no3";
+        case 0xC39E: return "maj7no3";
+        case 0xC39F: return "7no5";
+        case 0xC3A0: return "m7no5";
+        case 0xC3A1: return "maj7no5";
+        case 0xC3A2: return "6";
+        case 0xC3A3: return "m6";
+        case 0xC3A4: return "add2";
+        case 0xC3A5: return "m(add2)";
+        case 0xC3A6: return "add4";
+        case 0xC3A7: return "m(add4)";
+        case 0xC3A8: return "7";
+        case 0xC3A9: return "Maj7";
+        case 0xC3AA: return "m7";
+        case 0xC3AB: return "m7b5";
+        case 0xC3AC: return "dim7";
+        case 0xC3AD: return "minMaj7";
+        case 0xC3AE: return "7sus4";
+        case 0xC3AF: return "add9";
+        case 0xC3B0: return "m(add9)";
+        case 0xC3B1: return "add11";
+        case 0xC3B2: return "m(add11)";
+        case 0xC3B3: return "9";
+        case 0xC3B4: return "m9";
+        case 0xC3B5: return "Maj9";
+        case 0xC3B6: return "6/9";
+        case 0xC3B7: return "m6/9";
+        case 0xC3B8: return "7b9";
+        case 0xC3B9: return "7(11)";
+        case 0xC3BA: return "7(#11)";
+        case 0xC3BB: return "m7(11)";
+        case 0xC3BC: return "maj7(11)";
+        case 0xC3BD: return "Maj7(#11)";
+        case 0xC3BE: return "7(13)";
+        case 0xC3BF: return "m7(13)";
+        case 0xC3C0: return "Maj7(13)";
+        case 0xC3C1: return "11";
+        case 0xC3C2: return "m11";
+        case 0xC3C3: return "Maj11";
+        case 0xC3C4: return "7(11)(13)";
+        case 0xC3C5: return "m7(11)(13)";
+        case 0xC3C6: return "maj7(11)(13)";
+        case 0xC3C7: return "9(13)";
+        case 0xC3C8: return "m9(13)";
+        case 0xC3C9: return "maj9(13)";
+        case 0xC3CA: return "13";
+        case 0xC3CB: return "m13";
+        case 0xC3CC: return "Maj13";
+        case 0xC3CD: return "7b9(11)";
+        case 0xC3CE: return "7sus2";
+        case 0xC3CF: return "7#5";
+        case 0xC3D0: return "7b5";
+        case 0xC3D1: return "7#9";
+        case 0xC3D2: return "7b5b9";
+        case 0xC3D3: return "7b5#9";
+        case 0xC3D4: return "7b9(13)";
+        case 0xC3D5: return "7#9(13)";
+        case 0xC3D6: return "7#5b9";
+        case 0xC3D7: return "7#5#9";
+        case 0xC3D8: return "7b5(11)";
+        case 0xC3D9: return "maj7sus4";
+        case 0xC3DA: return "maj7#5";
+        case 0xC3DB: return "maj7b5";
+        case 0xC3DC: return "minMaj7(11)";
+        case 0xC3DD: return "(addb5)";
+        case 0xC3DE: return "9#11";
+        case 0xC3DF: return "9b5";
+        case 0xC3E0: return "9#5";
+        case 0xC3E1: return "m9b5";
+        case 0xC3E2: return "m9#11";
+        case 0xC3E3: return "9sus4";
+        case 0xC3FB: return "Major(Ionian)";
+        case 0xC3FC: return "Dorian";
+        case 0xC3FD: return "Phrygian";
+        case 0xC3FE: return "Lydian";
+        case 0xC3FF: return "Mixolydian";
+        case 0xC400: return "Minor(Aeolian)";
+        case 0xC401: return "Locrian";
+        case 0xC402: return "Melodic Minor";
+        case 0xC403: return "Lydian Dominant";
+        case 0xC404: return "Altered Scale";
+        case 0xC405: return "Harmonic Minor";
+        case 0xC406: return "Major Pentatonic";
+        case 0xC407: return "Minor Pentatonic";
+        case 0xC408: return "Whole Tone";
+        case 0xC409: return "Diminished";
+        case 0xC40A: return "Blues";
+        default: return "";
+    }
+}
+
 bool has_interval_between_keys_optimized(uint8_t target) {
     int held_keys[] = {
         heldkey1 ? trueheldkey1 : 0,
@@ -6534,10 +6646,27 @@ bool all_intervals_within_scale(uint16_t scale_mask) {
 
 // Main chord recognition function
 const char* getChordName(void) {
-    // Handle single note
+    // Handle single note or no notes
     if (!heldkey2) {
         rootnote = 13;
         bassnote = 13;
+
+        // Show octave interval when only octave duplicate is held
+        if (heldkey1 && octaveheldkey1) {
+            int8_t signed_interval = get_signed_interval(trueheldkey1, trueoctaveheldkey1);
+            return binary_search_interval(signed_interval);
+        }
+
+        // Show smartchord name in brackets when no keys held but smartchord is active
+        if (!heldkey1 && smartchordstatus > 0 && toggled_smartchord_keycode != 0) {
+            static char sc_bracket_name[24];
+            const char* sc_name = getSmartChordDisplayName();
+            if (sc_name[0] != '\0') {
+                snprintf(sc_bracket_name, sizeof(sc_bracket_name), "[%s]", sc_name);
+                return sc_bracket_name;
+            }
+        }
+
         return "     ";
     }
     
