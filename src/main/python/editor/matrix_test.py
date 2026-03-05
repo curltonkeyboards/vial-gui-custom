@@ -5386,30 +5386,30 @@ class GamingConfigurator(BasicEditor):
             layout.addWidget(section_label)
 
             # Min slider
-            min_label = QLabel(f"Min: {default_min/100:.2f}mm")
+            min_label = QLabel(f"Min: {default_min/10:.1f}mm")
             min_label.setStyleSheet("font-size: 8pt;")
             layout.addWidget(min_label)
 
             min_slider = QSlider(Qt.Horizontal)
             min_slider.setMinimum(0)
-            min_slider.setMaximum(250)  # 0.00 to 2.50mm in 0.01mm increments
+            min_slider.setMaximum(40)  # 0.0 to 4.0mm in 0.1mm increments (matches firmware units)
             min_slider.setValue(default_min)
             min_slider.valueChanged.connect(
-                lambda val, lbl=min_label: lbl.setText(f"Min: {val/100:.2f}mm")
+                lambda val, lbl=min_label: lbl.setText(f"Min: {val/10:.1f}mm")
             )
             layout.addWidget(min_slider)
 
             # Max slider
-            max_label = QLabel(f"Max: {default_max/100:.2f}mm")
+            max_label = QLabel(f"Max: {default_max/10:.1f}mm")
             max_label.setStyleSheet("font-size: 8pt;")
             layout.addWidget(max_label)
 
             max_slider = QSlider(Qt.Horizontal)
             max_slider.setMinimum(0)
-            max_slider.setMaximum(250)  # 0.00 to 2.50mm in 0.01mm increments
+            max_slider.setMaximum(40)  # 0.0 to 4.0mm in 0.1mm increments (matches firmware units)
             max_slider.setValue(default_max)
             max_slider.valueChanged.connect(
-                lambda val, lbl=max_label: lbl.setText(f"Max: {val/100:.2f}mm")
+                lambda val, lbl=max_label: lbl.setText(f"Max: {val/10:.1f}mm")
             )
             layout.addWidget(max_slider)
 
@@ -5417,19 +5417,19 @@ class GamingConfigurator(BasicEditor):
 
         # LS (Left Stick) Calibration
         ls_widget, self.ls_min_travel_slider, self.ls_max_travel_slider, self.ls_min_travel_label, self.ls_max_travel_label = create_minmax_slider_row(
-            tr("GamingConfigurator", "Left Stick"), 100, 200
+            tr("GamingConfigurator", "Left Stick"), 10, 20
         )
         calibration_layout.addWidget(ls_widget)
 
         # RS (Right Stick) Calibration
         rs_widget, self.rs_min_travel_slider, self.rs_max_travel_slider, self.rs_min_travel_label, self.rs_max_travel_label = create_minmax_slider_row(
-            tr("GamingConfigurator", "Right Stick"), 100, 200
+            tr("GamingConfigurator", "Right Stick"), 10, 20
         )
         calibration_layout.addWidget(rs_widget)
 
         # Triggers Calibration
         trigger_widget, self.trigger_min_travel_slider, self.trigger_max_travel_slider, self.trigger_min_travel_label, self.trigger_max_travel_label = create_minmax_slider_row(
-            tr("GamingConfigurator", "Triggers"), 100, 200
+            tr("GamingConfigurator", "Triggers"), 10, 20
         )
         calibration_layout.addWidget(trigger_widget)
 
@@ -5807,13 +5807,13 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_slider.blockSignals(False)
                 self.trigger_max_travel_slider.blockSignals(False)
 
-                # Update labels (with inline format)
-                self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                # Update labels to match slider callback format (val/10 in 0.1mm units)
+                self.ls_min_travel_label.setText(f"Min: {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}mm")
+                self.ls_max_travel_label.setText(f"Max: {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}mm")
+                self.rs_min_travel_label.setText(f"Min: {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}mm")
+                self.rs_max_travel_label.setText(f"Max: {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}mm")
+                self.trigger_min_travel_label.setText(f"Min: {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}mm")
+                self.trigger_max_travel_label.setText(f"Max: {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}mm")
 
                 # Load user curve names first (so dropdown is populated)
                 user_curve_names = self.keyboard.get_all_user_curve_names()
@@ -6009,13 +6009,13 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_slider.blockSignals(False)
                 self.trigger_max_travel_slider.blockSignals(False)
 
-                # Update labels (with inline format)
-                self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                # Update labels to match slider callback format (val/10 in 0.1mm units)
+                self.ls_min_travel_label.setText(f"Min: {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}mm")
+                self.ls_max_travel_label.setText(f"Max: {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}mm")
+                self.rs_min_travel_label.setText(f"Min: {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}mm")
+                self.rs_max_travel_label.setText(f"Max: {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}mm")
+                self.trigger_min_travel_label.setText(f"Min: {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}mm")
+                self.trigger_max_travel_label.setText(f"Max: {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}mm")
 
             # Load user curve names (so dropdown is populated)
             user_curve_names = self.keyboard.get_all_user_curve_names()
