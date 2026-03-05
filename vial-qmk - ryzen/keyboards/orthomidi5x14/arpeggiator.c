@@ -3095,9 +3095,21 @@ void quick_build_finish(void) {
             return;
         }
 
-        // Use current_step + 1 as pattern length to preserve trailing empty steps
-        // (current_step is 0-based and includes any steps the user explicitly skipped)
-        header->pattern_length_16ths = quick_build_state.current_step + 1;
+        // Determine pattern length: if current_step has notes on it (user finished
+        // mid-chord or before auto-advance), include it. Otherwise current_step
+        // already points past the last recorded step after auto-advance.
+        bool has_notes_on_current = false;
+        arp_preset_note_t *notes = note_pool_get_notes(header);
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == quick_build_state.current_step) {
+                has_notes_on_current = true;
+                break;
+            }
+        }
+        header->pattern_length_16ths = has_notes_on_current ?
+            (quick_build_state.current_step + 1) : quick_build_state.current_step;
+        // Ensure at least 1 step
+        if (header->pattern_length_16ths == 0) header->pattern_length_16ths = 1;
         header->note_count = quick_build_state.note_count;
         header->valid = true;
 
@@ -3131,9 +3143,21 @@ void quick_build_finish(void) {
             return;
         }
 
-        // Use current_step + 1 as pattern length to preserve trailing empty steps
-        // (current_step is 0-based and includes any steps the user explicitly skipped)
-        header->pattern_length_16ths = quick_build_state.current_step + 1;
+        // Determine pattern length: if current_step has notes on it (user finished
+        // mid-chord or before auto-advance), include it. Otherwise current_step
+        // already points past the last recorded step after auto-advance.
+        bool has_notes_on_current = false;
+        arp_preset_note_t *notes = note_pool_get_notes(header);
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == quick_build_state.current_step) {
+                has_notes_on_current = true;
+                break;
+            }
+        }
+        header->pattern_length_16ths = has_notes_on_current ?
+            (quick_build_state.current_step + 1) : quick_build_state.current_step;
+        // Ensure at least 1 step
+        if (header->pattern_length_16ths == 0) header->pattern_length_16ths = 1;
         header->note_count = quick_build_state.note_count;
         header->valid = true;
 
