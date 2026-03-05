@@ -2047,7 +2047,13 @@ void play_chord(uint16_t chord_type, uint8_t note_offset, bool is_minor_progress
     
     // Release any currently pressed chord
     release_current_chord();
-    
+
+    // Reset smartchord toggle state so the new chord type press isn't
+    // mistaken for a "toggle off" when consecutive chords share the same
+    // chord type (e.g., G major followed by F major — both CHORD_MAJOR).
+    toggled_smartchord_keycode = 0;
+    smartchordstatus = 0;
+
     // Calculate offsets for the chord progression
     int16_t chord_offset = note_offset + progression_key_offset  + progression_octave_offset;
     
