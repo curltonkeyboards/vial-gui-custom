@@ -921,16 +921,79 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
     }
 
     // =========================================================================
-    // USER CURVE COMMANDS (0xD9-0xDC)
-    // Save/load custom velocity curves (10 user slots, 4 points each)
+    // GAMING RESPONSE COMMANDS (0xD6-0xD7)
+    // Set/get gamepad response transformation settings (curve, angle, etc.)
+    // These are stored in gaming_settings_t alongside the analog config
     // =========================================================================
 
-    // Check if this is a user curve command (0xD9-0xDC)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] >= 0xD9 && data[3] <= 0xDC) {
+        (data[3] == 0xD6 || data[3] == 0xD7)) {
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xD6: {  // HID_CMD_GAMING_SET_RESPONSE
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), angle_adj_enabled, diagonal_angle, square_output, snappy_joystick, curve_index]
+                gaming_settings.angle_adjustment_enabled = data[6] != 0;
+                gaming_settings.diagonal_angle = data[7];
+                gaming_settings.use_square_output = data[8] != 0;
+                gaming_settings.snappy_joystick_enabled = data[9] != 0;
+                gaming_settings.analog_curve_index = data[10];
+                gaming_save_settings();
+                response[5] = 0x00;  // Success
+                dprintf("Gaming response set: angle=%d, diag=%d, square=%d, snappy=%d, curve=%d\n",
+                        gaming_settings.angle_adjustment_enabled,
+                        gaming_settings.diagonal_angle,
+                        gaming_settings.use_square_output,
+                        gaming_settings.snappy_joystick_enabled,
+                        gaming_settings.analog_curve_index);
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xD7: {  // HID_CMD_GAMING_GET_RESPONSE
+                #ifdef JOYSTICK_ENABLE
+                response[5] = 0x00;  // Success
+                response[6] = gaming_settings.angle_adjustment_enabled ? 1 : 0;
+                response[7] = gaming_settings.diagonal_angle;
+                response[8] = gaming_settings.use_square_output ? 1 : 0;
+                response[9] = gaming_settings.snappy_joystick_enabled ? 1 : 0;
+                response[10] = gaming_settings.analog_curve_index;
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+        }
+
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // =========================================================================
+    // USER CURVE COMMANDS (0xD9-0xDC)
+    // Save/load custom velocity curves (10 user slots, 4 points each)
+    // =========================================================================
+
+    // Check if this is a user curve command (0xD9-0xDD)
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xD9 && data[3] <= 0xDD) {
 
         uint8_t cmd = data[3];
         uint8_t response[32] = {0};

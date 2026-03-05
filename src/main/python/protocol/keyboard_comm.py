@@ -115,12 +115,14 @@ PARAM_KEYSPLIT_SMARTCHORD_IGNORE = 48 # 0=Allow, 1=Ignore smartchord for keyspli
 PARAM_TRIPLESPLIT_SMARTCHORD_IGNORE = 49  # 0=Allow, 1=Ignore smartchord for triplesplit zone
 PARAM_VELOCITY_AS_AT = 50                # bool: pre-load aftertouch from velocity on note-on
 
-# Gaming/Joystick Commands (0xCE-0xD2)
+# Gaming/Joystick Commands (0xCE-0xD2, 0xD6-0xD7)
 HID_CMD_GAMING_SET_MODE = 0xCE           # Set gaming mode on/off
 HID_CMD_GAMING_SET_KEY_MAP = 0xCF        # Map key to joystick control
 HID_CMD_GAMING_SET_ANALOG_CONFIG = 0xD0  # Set min/max travel and deadzone
 HID_CMD_GAMING_GET_SETTINGS = 0xD1       # Get current gaming settings
 HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
+HID_CMD_GAMING_SET_RESPONSE = 0xD6       # Set gamepad response settings (curve, angle, etc.)
+HID_CMD_GAMING_GET_RESPONSE = 0xD7       # Get gamepad response settings
 
 # ADC Matrix Tester Command (0xDF)
 HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
@@ -1985,7 +1987,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_MODE, 0, [1 if enabled else 0])
             response = self.usb_send(self.dev, packet, retries=3)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2005,7 +2007,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = [control_id, row, col, 1 if enabled else 0]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_KEY_MAP, 0, data)
             response = self.usb_send(self.dev, packet, retries=3)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2027,7 +2029,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = [ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_ANALOG_CONFIG, 0, data)
             response = self.usb_send(self.dev, packet, retries=3)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2067,7 +2069,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_RESET, 0, None)
             response = self.usb_send(self.dev, packet, retries=3)
-            return response and len(response) > 5 and response[5] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2463,9 +2465,9 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             int(curve_index) & 0xFF
         ])
 
-        packet = self._create_hid_packet(0xDD, 0, data)  # HID_CMD_GAMING_SET_RESPONSE
+        packet = self._create_hid_packet(0xD6, 0, data)  # HID_CMD_GAMING_SET_RESPONSE
         response = self.usb_send(self.dev, packet, retries=3)
-        return response and len(response) > 5 and response[5] == 0x01
+        return response and len(response) > 5 and response[5] == 0x00
 
     def get_gaming_response(self):
         """
@@ -2480,10 +2482,10 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 'curve_index': int
             } or None
         """
-        packet = self._create_hid_packet(0xDE, 0, bytearray())  # HID_CMD_GAMING_GET_RESPONSE
+        packet = self._create_hid_packet(0xD7, 0, bytearray())  # HID_CMD_GAMING_GET_RESPONSE
         response = self.usb_send(self.dev, packet, retries=3)
 
-        if not response or len(response) < 11 or response[5] != 0x01:
+        if not response or len(response) < 11 or response[5] != 0x00:
             return None
 
         return {

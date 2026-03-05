@@ -298,6 +298,8 @@ bool layer_use_fixed_velocity(uint8_t layer);
 #define HID_CMD_GAMING_SET_ANALOG_CONFIG 0xD0  // Set min/max travel and deadzone
 #define HID_CMD_GAMING_GET_SETTINGS 0xD1       // Get current gaming settings
 #define HID_CMD_GAMING_RESET 0xD2              // Reset gaming settings to defaults
+#define HID_CMD_GAMING_SET_RESPONSE 0xD6       // Set gamepad response settings (curve, angle, etc.)
+#define HID_CMD_GAMING_GET_RESPONSE 0xD7       // Get gamepad response settings
 
 // =============================================================================
 // EEPROM ADDRESSES SUMMARY (REORGANIZED 2026-01-21 - ALL WITHIN 64KB):
