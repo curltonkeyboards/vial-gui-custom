@@ -8873,22 +8873,22 @@ static bool handle_macro_key_press(uint8_t macro_num, uint8_t macro_idx) {
             }
         }
         
-        if (playing_count == 0) {
-            // No other macros playing - finish recording and enter overdub immediately
+        if (playing_count == 0 && !seq_is_any_active_and_looped()) {
+            // No other macros playing and no seq running - finish recording and enter overdub immediately
             dynamic_macro_record_end(macro_start, macro_pointer, +1, macro_end_ptr, &recording_start_time);
             macro_id = 0;
             stop_dynamic_macro_recording();
-            
+
             // Start playback immediately
             if (!is_macro_empty) {
                 dynamic_macro_play(macro_start, *macro_end_ptr, +1);
                 dprintf("dynamic macro: finished recording and started playback of macro %d\n", macro_num);
-                
+
                 // Enter overdub mode immediately
                 start_overdub_recording(macro_num);
                 dprintf("dynamic macro: entered overdub mode for macro %d after recording\n", macro_num);
             }
-            
+
             return false;
         } else {
             // Other macros are playing - queue commands to stop recording and start overdub at loop trigger
