@@ -166,9 +166,14 @@ bool dks_load_from_eeprom(void) {
 
 /**
  * Save DKS configurations to EEPROM
+ *
+ * Writes slot-by-slot (32 bytes each) instead of the entire 1600-byte array
+ * at once, because eeprom_update_block() allocates a VLA of the same size on
+ * the stack for its read-compare buffer. 1600 bytes on stack would overflow
+ * the limited ARM Cortex-M stack.
  */
 void dks_save_to_eeprom(void) {
-    // Write header
+    // Write header (4 bytes - safe for stack)
     dks_eeprom_header_t header = {
         .magic = EEPROM_DKS_MAGIC,
         .version = EEPROM_DKS_VERSION,
@@ -176,12 +181,14 @@ void dks_save_to_eeprom(void) {
     };
     eeprom_update_block(&header, (void*)(EEPROM_DKS_BASE + EEPROM_DKS_HEADER_OFFSET), sizeof(header));
 
-    // Write all slots
-    eeprom_update_block(
-        dks_slots,
-        (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET),
-        sizeof(dks_slots)
-    );
+    // Write slots one at a time (32 bytes each - safe for stack)
+    for (uint8_t i = 0; i < DKS_NUM_SLOTS; i++) {
+        eeprom_update_block(
+            &dks_slots[i],
+            (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET + (i * sizeof(dks_slot_t))),
+            sizeof(dks_slot_t)
+        );
+    }
 }
 
 /**

@@ -272,7 +272,8 @@ class ProtocolDKS:
         """
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_SAVE_EEPROM, 0, None)
-            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
+            # Use extra retries - firmware writes 50 slots to I2C EEPROM which can take ~300ms
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=5)
             return response and len(response) > 5 and response[5] == 0
         except Exception as e:
             print(f"DKS: Error saving to EEPROM: {e}")
@@ -286,7 +287,8 @@ class ProtocolDKS:
         """
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_DKS_LOAD_EEPROM, 0, None)
-            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
+            # Use extra retries - firmware reads 50 slots from I2C EEPROM
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=5)
 
             success = response and len(response) > 5 and response[5] == 0
 
