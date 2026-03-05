@@ -558,11 +558,19 @@ class BasicStepSequencerGrid(QWidget):
 
     def _update_add_button_position(self):
         """Update the position of the '+' button to be after all note rows"""
+        self._ensure_add_note_label()
+
         # Remove the button and label from their current positions if they exist
-        if self.btn_add_note.parent() is not None:
-            self.grid_layout.removeWidget(self.btn_add_note)
-        if hasattr(self, 'add_note_label') and self.add_note_label.parent() is not None:
-            self.grid_layout.removeWidget(self.add_note_label)
+        try:
+            if self.btn_add_note.parent() is not None:
+                self.grid_layout.removeWidget(self.btn_add_note)
+        except RuntimeError:
+            pass
+        try:
+            if self.add_note_label.parent() is not None:
+                self.grid_layout.removeWidget(self.add_note_label)
+        except RuntimeError:
+            pass
 
         # Add them at the row after all existing rows (len(self.rows) + 2, accounting for 2 header rows)
         row_position = len(self.rows) + 2
@@ -571,14 +579,48 @@ class BasicStepSequencerGrid(QWidget):
         self.grid_layout.addWidget(self.btn_add_note, row_position, 1)
 
         # Add instruction label in column 2 (next to + button)
-        if not hasattr(self, 'add_note_label'):
+        self.grid_layout.addWidget(self.add_note_label, row_position, 2, 1, self.num_steps)
+
+    def _ensure_note_title(self):
+        """Ensure note_title QLabel exists and is valid (recreate if C++ object was deleted)"""
+        try:
+            self.note_title.isVisible()
+        except (RuntimeError, AttributeError):
+            self.note_title = QLabel("Note")
+            self.note_title.setAlignment(Qt.AlignCenter)
+            self.note_title.setStyleSheet("font-weight: bold;")
+
+    def _ensure_add_note_label(self):
+        """Ensure add_note_label QLabel exists and is valid (recreate if C++ object was deleted)"""
+        try:
+            if hasattr(self, 'add_note_label'):
+                self.add_note_label.isVisible()
+            else:
+                raise AttributeError
+        except (RuntimeError, AttributeError):
             self.add_note_label = QLabel("Add a new note row")
             self.add_note_label.setStyleSheet("color: gray; font-style: italic;")
             self.add_note_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.grid_layout.addWidget(self.add_note_label, row_position, 2, 1, self.num_steps)
+
+    def _remove_persistent_widgets_from_grid(self):
+        """Remove persistent widgets from grid layout to prevent deletion during grid clears"""
+        try:
+            self.grid_layout.removeWidget(self.btn_add_note)
+        except RuntimeError:
+            pass
+        try:
+            self.grid_layout.removeWidget(self.note_title)
+        except RuntimeError:
+            pass
+        try:
+            if hasattr(self, 'add_note_label'):
+                self.grid_layout.removeWidget(self.add_note_label)
+        except RuntimeError:
+            pass
 
     def _update_note_label_position(self):
         """Update the position of the 'Note' label to span all note rows"""
+        self._ensure_note_title()
         # Remove from current position
         self.grid_layout.removeWidget(self.note_title)
         # Add spanning all note rows (col 0, starting at row 2)
@@ -750,14 +792,15 @@ class BasicStepSequencerGrid(QWidget):
         row_data['note'] = note_names.index(note)
         row_data['octave'] = octave
 
-        # Update label
-        item = self.grid_layout.itemAtPosition(row_idx + 1, 0)
+        # Update label (row offset +2 for headers, col 1 for note widgets)
+        item = self.grid_layout.itemAtPosition(row_idx + 2, 1)
         if item and item.widget():
             widget = item.widget()
-            # Find the button (first child)
-            note_button = widget.findChild(QPushButton)
-            if note_button and note_button.text() != "X":  # Make sure it's not the delete button
-                note_button.setText(f"{note}{octave}")
+            # Find the note label button (not the delete "X" button)
+            for btn in widget.findChildren(QPushButton):
+                if btn.text() != "X":
+                    btn.setText(f"{note}{octave}")
+                    break
 
         self.dataChanged.emit()
 
@@ -806,15 +849,13 @@ class BasicStepSequencerGrid(QWidget):
                 row_states.append({
                     'active': cell.active,
                     'velocity': cell.velocity,
-                    'octave': cell.octave
+                    'octave': cell.octave,
+                    'is_tie': getattr(cell, 'is_tie', False)
                 })
             cell_states.append(row_states)
 
         # Remove persistent widgets from grid before clearing to prevent deletion
-        self.grid_layout.removeWidget(self.btn_add_note)
-        self.grid_layout.removeWidget(self.note_title)
-        if hasattr(self, 'add_note_label'):
-            self.grid_layout.removeWidget(self.add_note_label)
+        self._remove_persistent_widgets_from_grid()
 
         # Clear grid widgets
         for i in reversed(range(self.grid_layout.count())):
@@ -874,6 +915,7 @@ class BasicStepSequencerGrid(QWidget):
                 cell = GridCell(row_idx, step, self)
                 cell.leftClicked.connect(self.on_cell_left_click)
                 cell.rightClicked.connect(self.on_cell_right_click)
+                cell.dragEntered.connect(self.on_cell_drag_entered)
 
                 # Restore state if available
                 if row_idx < len(cell_states) and step < len(cell_states[row_idx]):
@@ -1021,13 +1063,20 @@ class BasicStepSequencerGrid(QWidget):
                 note_groups[key] = []
             note_groups[key].append(note)
 
-        # If no data AND we have existing rows, preserve them (don't clear)
-        # This prevents data loss when switching tabs
-        if not note_groups and existing_rows_config:
-            # Just update num_steps if needed
-            if self.num_steps != num_steps:
-                self.on_steps_changed(num_steps)
-            return
+        # Preserve existing row configurations that aren't in the new data
+        # This prevents empty rows from being dropped during tab switches
+        if existing_rows_config:
+            for row_config in existing_rows_config:
+                key = (row_config['note'], row_config['octave'])
+                if key not in note_groups:
+                    note_groups[key] = []  # Empty row - preserve the note/octave but no active cells
+
+        # If no data AND no existing rows, will fall through to create defaults below
+        if not note_groups and not existing_rows_config:
+            pass  # Will create defaults below
+
+        # Remove persistent widgets from grid before clearing to prevent deletion
+        self._remove_persistent_widgets_from_grid()
 
         # Clear existing rows - iterate with index to avoid lookup issues
         for i in range(len(self.rows) - 1, -1, -1):
@@ -1036,8 +1085,8 @@ class BasicStepSequencerGrid(QWidget):
             for cell in row_data['cells']:
                 self.grid_layout.removeWidget(cell)
                 cell.deleteLater()
-            # Remove and delete note label widget
-            item = self.grid_layout.itemAtPosition(i + 1, 0)
+            # Remove and delete note label widget (row offset +2 for headers, col 1)
+            item = self.grid_layout.itemAtPosition(i + 2, 1)
             if item and item.widget():
                 item.widget().deleteLater()
 
@@ -1060,12 +1109,29 @@ class BasicStepSequencerGrid(QWidget):
                 note_index = note_names.index(note_name)
                 self._create_row(note_index, octave)
             self._update_add_button_position()
+            self._update_note_label_position()
             return
 
-        # Create rows
+        # Create rows - use original row order when available, append new rows at end
         note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
-        for (note_idx, octave), notes in note_groups.items():
+        # Build ordered list of (note_idx, octave) keys preserving original row order
+        ordered_keys = []
+        seen_keys = set()
+        # First add keys in their original order from existing_rows_config
+        for row_config in existing_rows_config:
+            key = (row_config['note'], row_config['octave'])
+            if key in note_groups and key not in seen_keys:
+                ordered_keys.append(key)
+                seen_keys.add(key)
+        # Then add any new keys from note_groups that weren't in existing rows
+        for key in note_groups:
+            if key not in seen_keys:
+                ordered_keys.append(key)
+                seen_keys.add(key)
+
+        for (note_idx, octave) in ordered_keys:
+            notes = note_groups[(note_idx, octave)]
             row_idx = len(self.rows)
             row_data = {
                 'note': note_idx,
@@ -1110,7 +1176,7 @@ class BasicStepSequencerGrid(QWidget):
             note_layout.addWidget(note_label)
 
             note_widget.setLayout(note_layout)
-            self.grid_layout.addWidget(note_widget, row_idx + 1, 0)
+            self.grid_layout.addWidget(note_widget, row_idx + 2, 1)  # Row offset +2 for headers, col 1
 
             # Create cells
             for step in range(num_steps):
@@ -1128,11 +1194,12 @@ class BasicStepSequencerGrid(QWidget):
                     cell.set_active(True, matching_note.get('velocity', 127), 0)
 
                 row_data['cells'].append(cell)
-                self.grid_layout.addWidget(cell, row_idx + 1, step + 1)
+                self.grid_layout.addWidget(cell, row_idx + 2, step + 2)  # Row offset +2, col offset +2
 
             self.rows.append(row_data)
 
         self._update_add_button_position()
+        self._update_note_label_position()
 
 
 class BasicArpeggiatorGrid(QWidget):
@@ -1227,8 +1294,24 @@ class BasicArpeggiatorGrid(QWidget):
         # Build grid
         self.build_grid()
 
+    def _ensure_steps_hint(self):
+        """Ensure steps_hint QLabel exists and is valid (recreate if C++ object was deleted)"""
+        try:
+            self.steps_hint.isVisible()
+        except (RuntimeError, AttributeError):
+            palette = self.palette()
+            muted_color = palette.color(QPalette.WindowText).lighter(150)
+            self.steps_hint = QLabel("To add or remove steps, adjust the Number of Steps setting below")
+            self.steps_hint.setStyleSheet(f"color: {muted_color.name()}; font-size: 10px; font-style: italic; padding-top: 5px;")
+
     def build_grid(self):
         """Build the complete grid - swapped axes: steps as rows, intervals as columns"""
+        # Remove persistent widgets from grid before mass deletion to prevent them being destroyed
+        try:
+            self.grid_layout.removeWidget(self.steps_hint)
+        except RuntimeError:
+            pass
+
         # Clear existing
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
@@ -1294,6 +1377,7 @@ class BasicArpeggiatorGrid(QWidget):
 
     def _update_steps_hint_position(self):
         """Position the steps hint below the last step row"""
+        self._ensure_steps_hint()
         # Remove from current position if it exists
         self.grid_layout.removeWidget(self.steps_hint)
         # Add at row after all steps (num_steps + 2 accounts for 2 header rows)
@@ -1344,7 +1428,12 @@ class BasicArpeggiatorGrid(QWidget):
             self.cells = self.cells[:new_steps]
 
         # Update "Step" label to span new number of rows
-        self.grid_layout.removeWidget(self.step_title)
+        try:
+            self.grid_layout.removeWidget(self.step_title)
+        except RuntimeError:
+            self.step_title = QLabel("Step")
+            self.step_title.setAlignment(Qt.AlignCenter)
+            self.step_title.setStyleSheet("font-weight: bold;")
         self.grid_layout.addWidget(self.step_title, 2, 0, self.num_steps, 1)
 
         # Update hint position
