@@ -839,6 +839,11 @@ void preload_all_key_type_caches(void) {
     }
 }
 
+void invalidate_key_type_caches(void) {
+    key_type_cache_loaded = 0;
+    key_type_cache_layer = 0xFF;
+}
+
 // ============================================================================
 // PER-KEY ACTUATION LOOKUP (using optimized 280-byte cache)
 // ============================================================================

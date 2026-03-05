@@ -295,6 +295,11 @@ void rebuild_per_key_cache_layer(uint8_t layer);
 // Pre-populate all 12 layers' key type caches at startup (before USB active)
 void preload_all_key_type_caches(void);
 
+// Invalidate key type caches (forces re-read from EEPROM on next scan cycle)
+// Call after keymap changes (e.g. dynamic_keymap_set_keycode) so that newly
+// assigned DKS/MIDI keycodes are recognized without a power cycle.
+void invalidate_key_type_caches(void);
+
 // EQ curve EEPROM persistence
 void eq_curve_save_to_eeprom(void);
 void eq_curve_load_from_eeprom(void);

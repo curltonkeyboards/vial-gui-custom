@@ -1246,16 +1246,33 @@ class DKSEntryUI(QWidget):
         self.load_from_slot(slot)
 
     def load_from_slot(self, slot):
-        """Load UI from slot data"""
-        # Press actions
-        for i, editor in enumerate(self.press_editors):
-            action = slot.press_actions[i]
-            editor.set_action(action.keycode, action.actuation, action.behavior)
+        """Load UI from slot data.
 
-        # Release actions
-        for i, editor in enumerate(self.release_editors):
-            action = slot.release_actions[i]
-            editor.set_action(action.keycode, action.actuation, action.behavior)
+        Block signals on all editors during load to prevent _send_to_keyboard
+        from firing after each individual widget update.  Without this, the
+        first editor update triggers _send_to_keyboard which reads ALL editors
+        (most still at defaults) and overwrites the firmware's correct data
+        with partially-loaded values.
+        """
+        # Block signals to prevent intermediate _send_to_keyboard calls
+        all_editors = list(self.press_editors) + list(self.release_editors)
+        for editor in all_editors:
+            editor.blockSignals(True)
+
+        try:
+            # Press actions
+            for i, editor in enumerate(self.press_editors):
+                action = slot.press_actions[i]
+                editor.set_action(action.keycode, action.actuation, action.behavior)
+
+            # Release actions
+            for i, editor in enumerate(self.release_editors):
+                action = slot.release_actions[i]
+                editor.set_action(action.keycode, action.actuation, action.behavior)
+        finally:
+            # Always restore signals
+            for editor in all_editors:
+                editor.blockSignals(False)
 
         self._update_travel_bar()
 
