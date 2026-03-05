@@ -573,7 +573,7 @@ typedef velocity_presets_t user_curves_t;
 
 // EEPROM address for EQ sensitivity curve settings (26 bytes)
 // Layout: [magic(2), range_low(2), range_high(2), bands[15], scale[3], reserved(2)]
-#define EQ_CURVE_EEPROM_ADDR 42000  // Moved to accommodate larger preset storage (was 41400)
+#define EQ_CURVE_EEPROM_ADDR 42200  // After gaming settings (42000-42099). Was 42000 which overlapped.
 #define EQ_CURVE_MAGIC 0xEA01
 
 extern velocity_presets_t user_curves;  // Keep old name for backward compat

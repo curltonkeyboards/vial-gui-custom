@@ -34,9 +34,9 @@
 
 // EEPROM Configuration
 // NOTE: EEPROM chip is CAT24C512WI-GT3 (64KB = 65,536 bytes)
-// Per-key actuation ends at 44,721. DKS starts at 45,000.
-// DKS uses 1,604 bytes (4-byte header + 50 slots * 32 bytes = 45,000-46,603)
-#define EEPROM_DKS_BASE         45000
+// Per-key actuation: 45,000-51,719 (6720 bytes). DKS starts after at 52,000.
+// DKS uses 1,604 bytes (4-byte header + 50 slots * 32 bytes = 52,000-53,603)
+#define EEPROM_DKS_BASE         52000
 #define EEPROM_DKS_MAGIC        0xDC57  // "DKS" magic number
 #define EEPROM_DKS_VERSION      0x01
 
