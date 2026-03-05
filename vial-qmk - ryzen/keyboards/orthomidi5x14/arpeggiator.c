@@ -987,14 +987,14 @@ void arp_start(uint8_t preset_id) {
     arp_state.anchor_step = 0;
     arp_state.notes_released = false;
 
-    // Defer start to next seq step if synced mode and a step sequencer is running
+    // Defer start to next step if synced mode and a step sequencer or chord progression is running
     bool is_synced_mode = (arp_state.mode == ARPMODE_SINGLE_NOTE_SYNCED ||
                            arp_state.mode == ARPMODE_CHORD_SYNCED ||
                            arp_state.mode == ARPMODE_CHORD_ADVANCED);
-    if (is_synced_mode && seq_is_any_active()) {
+    if (is_synced_mode && (seq_is_any_active() || progression_is_active())) {
         arp_state.deferred_start_pending = true;
-        arp_state.next_note_time = UINT32_MAX;  // Don't play until seq step releases us
-        dprintf("arp: deferred start (synced mode + seq active)\n");
+        arp_state.next_note_time = UINT32_MAX;  // Don't play until seq/progression step releases us
+        dprintf("arp: deferred start (synced mode + seq/progression active)\n");
     } else {
         arp_state.deferred_start_pending = false;
         arp_state.next_note_time = timer_read32();  // Start immediately
@@ -1037,6 +1037,22 @@ void arp_stop(void) {
         }
     }
     arp_note_count = 0;  // Safety reset
+}
+
+// Check if arp has a deferred start pending (called from chord progression code)
+bool arp_deferred_start_pending_check(void) {
+    return arp_state.deferred_start_pending;
+}
+
+// Release a deferred arp start at the given align time (called from chord progression steps)
+void arp_release_deferred_start(uint32_t align_time) {
+    if (!arp_state.deferred_start_pending) return;
+    arp_state.deferred_start_pending = false;
+    arp_state.next_note_time = align_time;
+    arp_state.pattern_start_time = align_time;
+    arp_state.current_position_16ths = 0;
+    arp_state.anchor_step = 0;
+    dprintf("arp: deferred start released by chord progression step\n");
 }
 
 void arp_update(void) {
@@ -1568,6 +1584,7 @@ void seq_release_deferred_starts(uint32_t align_time) {
 // Returns true if the seq was deferred (caller should skip further init).
 static bool seq_apply_start_logic(uint8_t slot) {
     bool any_macro_playing = dynamic_macro_is_playing();
+    bool any_progression_playing = progression_is_active();
     bool in_group_window = group_start_active &&
                            (timer_elapsed32(group_start_time) < GROUP_START_WINDOW_MS);
 
@@ -1620,13 +1637,13 @@ static bool seq_apply_start_logic(uint8_t slot) {
         seq_state[slot].next_note_time = group_start_time;
         dprintf("seq: slot %d aligned to group start (time:%lu)\n", slot, group_start_time);
         return false;
-    } else if (any_running_seq || any_macro_playing) {
+    } else if (any_running_seq || any_macro_playing || any_progression_playing) {
         // Something running but outside group window - defer until next cycle point
         seq_state[slot].deferred_start_pending = true;
         seq_state[slot].next_note_time = UINT32_MAX;  // Don't play until released
         (void)any_looped_seq;  // Suppress -Wunused-but-set (used in debug builds)
-        dprintf("seq: slot %d deferred (running_seq:%d looped:%d macro:%d)\n",
-                slot, any_running_seq, any_looped_seq, any_macro_playing);
+        dprintf("seq: slot %d deferred (running_seq:%d looped:%d macro:%d prog:%d)\n",
+                slot, any_running_seq, any_looped_seq, any_macro_playing, any_progression_playing);
         return true;
     } else {
         // Nothing playing - start now, open group window
@@ -1944,6 +1961,12 @@ void seq_update(void) {
             arp_state.current_position_16ths = 0;
             arp_state.anchor_step = 0;
             dprintf("arp: deferred start released by seq step\n");
+        }
+
+        // Release deferred chord progression start on any seq step
+        if (progression_deferred_start_pending) {
+            progression_release_deferred_start(current_time);
+            dprintf("progression: deferred start released by seq step\n");
         }
 
         // Anchored next note time: pattern_start + offset for next position

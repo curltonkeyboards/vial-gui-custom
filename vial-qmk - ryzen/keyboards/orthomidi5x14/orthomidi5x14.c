@@ -877,9 +877,12 @@ void stop_chord_progression(void);
 // Global variables for chord progression
 bool progression_active = false;
 bool progression_key_held = false;
+bool progression_deferred_start_pending = false;  // Waiting for seq/loop cycle point
 uint8_t current_progression = 0;
 uint8_t current_chord_index = 0;
 uint32_t next_chord_time = 0;
+uint32_t progression_pattern_start_time = 0;      // Anchored timing base
+uint16_t progression_anchor_step = 0;             // Cumulative beat count for anchored timing
 uint8_t progression_key_offset = 0;
 
 // Variables to track currently pressed keys in the progression
@@ -1281,6 +1284,23 @@ uint16_t get_effective_bpm(void) {
    return (current_bpm == 0) ? 12000000 : current_bpm;  // Default to 120.00000 BPM
 }
 
+// Check if chord progression is actively playing (not deferred)
+bool progression_is_active(void) {
+    return progression_active && !progression_deferred_start_pending;
+}
+
+// Compute millisecond offset for a given number of quarter-note beats
+// using full-precision BPM (same math as arpeggiator's compute_step_time_offset
+// but hardcoded to quarter-note straight timing for chord progressions).
+static uint32_t progression_compute_beat_offset(uint16_t beats) {
+    // Use current_bpm directly (uint32_t, BPM * 100000 format) for full precision
+    uint32_t bpm = (current_bpm == 0) ? 12000000 : current_bpm;  // Default 120.00 BPM
+    // beats * 60000ms * 100000 / bpm  (64-bit to avoid overflow)
+    uint64_t numerator = (uint64_t)beats * 6000000000ULL;
+    uint64_t denominator = (uint64_t)bpm;
+    return (uint32_t)(numerator / denominator);
+}
+
 // Function to simulate pressing/releasing a key
 void simulate_key(uint16_t keycode, bool pressed) {
     keyrecord_t simulated_record = {
@@ -1377,6 +1397,7 @@ void freeze_chord_leds(void) {
 void stop_chord_progression(void) {
     progression_active = false;
     progression_key_held = false;
+    progression_deferred_start_pending = false;
     
     // Release any currently pressed chord keys
     release_current_chord();
@@ -1418,6 +1439,13 @@ void stop_chord_progression(void) {
     
     // Set progression_channel to 20 when not in use
     progression_channel = 20;
+
+    // Release any deferred seq/arp starts that were waiting on this progression
+    uint32_t now = timer_read32();
+    seq_release_deferred_starts(now);
+    if (arp_deferred_start_pending_check()) {
+        arp_release_deferred_start(now);
+    }
 }
 
 
@@ -2220,18 +2248,43 @@ void play_chord(uint16_t chord_type, uint8_t note_offset, bool is_minor_progress
 	freeze_chord_leds();
 }
 
+// Release a deferred chord progression start (called from seq_update loop point
+// or arp step boundary). align_time is the time to anchor the progression to.
+void progression_release_deferred_start(uint32_t align_time) {
+    if (!progression_active || !progression_deferred_start_pending) return;
+
+    progression_deferred_start_pending = false;
+    progression_pattern_start_time = align_time;
+    progression_anchor_step = 0;
+    current_chord_index = 0;
+
+    // Play the first chord immediately
+    uint16_t chord_type = chord_progressions[current_progression].chord_types[0];
+    uint8_t note_offset = chord_progressions[current_progression].note_offsets[0];
+    bool is_minor = chord_progressions[current_progression].is_minor;
+    play_chord(chord_type, note_offset, is_minor);
+
+    // Advance anchor by this chord's beat duration for next chord timing
+    progression_anchor_step = chord_progressions[current_progression].chord_durations[0];
+    next_chord_time = progression_pattern_start_time +
+        progression_compute_beat_offset(progression_anchor_step);
+}
+
 // Call this from your matrix scan function to handle chord progression timing
 void update_chord_progression(void) {
     if (!progression_active || !progression_key_held) return;
-    
+
+    // If deferred, don't play until released by seq/loop cycle point
+    if (progression_deferred_start_pending) return;
+
     uint32_t current_time = timer_read32();
-    
+
     if (current_time >= next_chord_time) {
         bool was_last_chord = (current_chord_index == chord_progressions[current_progression].length - 1);
-        
+
         // Move to next chord
         current_chord_index++;
-        
+
         // Check if we've reached the end of the progression
         if (current_chord_index >= chord_progressions[current_progression].length) {
             // Only reset tracking variables when not using randomprogression
@@ -2239,34 +2292,44 @@ void update_chord_progression(void) {
                 previous_highest_note = 0;
                 previous_lowest_note = 127;
             }
-            
-            // Loop back to beginning
+
+            // Loop back to beginning — advance anchor base by total pattern duration
+            // (prevents drift across loops, same approach as seq_update)
+            progression_pattern_start_time += progression_compute_beat_offset(progression_anchor_step);
+            progression_anchor_step = 0;
             current_chord_index = 0;
+
+            // Release any deferred seq/arp starts at this loop point
+            seq_release_deferred_starts(current_time);
         }
-        
+
         // If random progression is enabled, randomly set progressionvoicing to either 3 or 4
         // But only do this if it's not the first chord (after a reset) or we're continuing cycles
         if (randomprogression && (current_chord_index > 0 || was_last_chord)) {
             // Use timer value to generate pseudo-random number
             progressionvoicing = ((timer_read32() % 2) == 0) ? 3 : 4;
         }
-        
+
         // Get the chord information
         uint16_t chord_type = chord_progressions[current_progression].chord_types[current_chord_index];
         uint8_t note_offset = chord_progressions[current_progression].note_offsets[current_chord_index];
         bool is_minor = chord_progressions[current_progression].is_minor;
-        
+
         // Play the chord
         play_chord(chord_type, note_offset, is_minor);
-        
-				// Calculate time for next chord based on effective BPM
-		uint32_t actual_bpm = current_bpm / 100000;
-		if (actual_bpm == 0) actual_bpm = 120;  // Fallback if no BPM set
-		uint32_t ms_per_beat = 60000 / actual_bpm;
-		uint32_t chord_duration = ms_per_beat * chord_progressions[current_progression].chord_durations[current_chord_index];
-        
-        // Set time for next chord
-        next_chord_time = current_time + chord_duration;
+
+        // Release deferred arp start on each chord step (same as seq releases arp on each step)
+        if (arp_deferred_start_pending_check()) {
+            arp_release_deferred_start(current_time);
+        }
+
+        // Release deferred seq starts on each chord step
+        seq_release_deferred_starts(current_time);
+
+        // Anchored timing: accumulate beat count, compute next chord time from anchor base
+        progression_anchor_step += chord_progressions[current_progression].chord_durations[current_chord_index];
+        next_chord_time = progression_pattern_start_time +
+            progression_compute_beat_offset(progression_anchor_step);
     }
 }
 void start_chord_progression(uint8_t progression_id, uint8_t key_offset) {
@@ -2275,23 +2338,24 @@ void start_chord_progression(uint8_t progression_id, uint8_t key_offset) {
         uint8_t old_highest = previous_highest_note;
         uint8_t old_lowest = previous_lowest_note;
         bool was_random = randomprogression && progression_active;
-        
+
         // Stop any current progression
         if (progression_active) {
             stop_chord_progression();
         }
-        
+
         // Take a snapshot of the current channel and velocity
         progression_channel = channel_number;
         progression_velocity = he_velocity_min + ((he_velocity_max - he_velocity_min)/2);
-        
+
         // Set up new progression
         current_progression = progression_id;
         current_chord_index = 0;
         progression_active = true;
         progression_key_held = true;
         progression_key_offset = key_offset;
-        
+        progression_anchor_step = 0;
+
         // Only reset voice leading history if not using randomprogression
         // or if this is the first progression being started
         if (!randomprogression || !was_random) {
@@ -2302,19 +2366,32 @@ void start_chord_progression(uint8_t progression_id, uint8_t key_offset) {
             previous_highest_note = old_highest;
             previous_lowest_note = old_lowest;
         }
-        
+
+        // Defer start if a step sequencer or macro loop is already running
+        // (aligns chord progression to the next seq/loop cycle point)
+        bool any_seq_running = seq_is_any_active();
+        bool any_macro_running = dynamic_macro_is_playing();
+        if (any_seq_running || any_macro_running) {
+            progression_deferred_start_pending = true;
+            next_chord_time = UINT32_MAX;  // Don't play until released
+            return;
+        }
+
+        // Nothing else running — start immediately with anchored timing
+        uint32_t now = timer_read32();
+        progression_deferred_start_pending = false;
+        progression_pattern_start_time = now;
+
         // Play the first chord immediately
         uint16_t chord_type = chord_progressions[current_progression].chord_types[0];
         uint8_t note_offset = chord_progressions[current_progression].note_offsets[0];
         bool is_minor = chord_progressions[current_progression].is_minor;
-        
-        // Play the first chord
         play_chord(chord_type, note_offset, is_minor);
 
-		uint32_t start_actual_bpm = current_bpm / 100000;
-		if (start_actual_bpm == 0) start_actual_bpm = 120;
-		next_chord_time = timer_read32() + 
-			(60000 / start_actual_bpm) * chord_progressions[current_progression].chord_durations[0];
+        // Anchored timing for next chord
+        progression_anchor_step = chord_progressions[current_progression].chord_durations[0];
+        next_chord_time = progression_pattern_start_time +
+            progression_compute_beat_offset(progression_anchor_step);
     }
 }
 
