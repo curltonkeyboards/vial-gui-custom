@@ -1194,6 +1194,29 @@ void arp_update(void) {
         return;  // Not yet time
     }
 
+    // ---- Pattern end: handle loop at the correct time ----
+    // Position was advanced past the last step on the previous iteration,
+    // and next_note_time was set to the pattern end time. Now that we've
+    // reached that time, execute the loop so the last step's gate plays out.
+    if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
+        // Pattern loop: advance anchor by exact pattern duration (no drift)
+        uint8_t nv_end = (arp_state.rate_override != 0) ? (arp_state.rate_override & ~TIMING_MODE_MASK) : preset->note_value;
+        uint8_t tm_end = (arp_state.rate_override != 0) ? (arp_state.rate_override & TIMING_MODE_MASK) : preset->timing_mode;
+        arp_state.pattern_start_time += compute_step_time_offset(
+            preset->pattern_length_16ths, nv_end, tm_end);
+        arp_state.current_position_16ths = 0;
+        arp_state.anchor_step = 0;
+        arp_state.current_note_in_chord = 0;
+        arp_state.next_note_time = arp_anchored_next_time(preset, 0);
+
+        // Fire loop trigger at actual pattern end
+        if (!dynamic_macro_is_playing()) {
+            dynamic_macro_handle_loop_trigger();
+        }
+        dprintf("arp: pattern loop at pattern end\n");
+        return;
+    }
+
     // Check for deferred loop record stop at this step boundary
     if (loop_deferred_record_stop_pending) {
         execute_deferred_record_stop();
@@ -1201,14 +1224,11 @@ void arp_update(void) {
         // Still advance timing so arp continues normally
         arp_state.current_position_16ths++;
         if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
-            // Pattern loop: advance anchor by exact pattern duration (no drift)
-            arp_state.pattern_start_time += compute_step_time_offset(
-                preset->pattern_length_16ths,
-                (arp_state.rate_override != 0) ? (arp_state.rate_override & ~TIMING_MODE_MASK) : preset->note_value,
-                (arp_state.rate_override != 0) ? (arp_state.rate_override & TIMING_MODE_MASK) : preset->timing_mode);
-            arp_state.current_position_16ths = 0;
+            // Schedule pattern end time (loop handled at top on next call)
+            arp_state.next_note_time = arp_anchored_next_time(preset, preset->pattern_length_16ths);
+        } else {
+            arp_state.next_note_time = arp_anchored_next_time(preset, arp_state.current_position_16ths);
         }
-        arp_state.next_note_time = arp_anchored_next_time(preset, arp_state.current_position_16ths);
 
         // Fire loop trigger on every arp step (when no macro loop is playing)
         if (!dynamic_macro_is_playing()) {
@@ -1451,19 +1471,14 @@ void arp_update(void) {
     // Advance position (not used for CHORD_ADVANCED which handles this itself)
     arp_state.current_position_16ths++;
 
-    // Check for loop
+    // Anchored next note time
     if (arp_state.current_position_16ths >= preset->pattern_length_16ths) {
-        // Pattern loop: advance anchor by exact pattern duration (no drift)
-        arp_state.pattern_start_time += compute_step_time_offset(
-            preset->pattern_length_16ths,
-            (arp_state.rate_override != 0) ? (arp_state.rate_override & ~TIMING_MODE_MASK) : preset->note_value,
-            (arp_state.rate_override != 0) ? (arp_state.rate_override & TIMING_MODE_MASK) : preset->timing_mode);
-        arp_state.current_position_16ths = 0;
-        dprintf("arp: pattern loop\n");
+        // Last step just played - schedule the pattern END time so the
+        // last note's gate plays out before the loop fires
+        arp_state.next_note_time = arp_anchored_next_time(preset, preset->pattern_length_16ths);
+    } else {
+        arp_state.next_note_time = arp_anchored_next_time(preset, arp_state.current_position_16ths);
     }
-
-    // Anchored next note time: pattern_start + offset for next position
-    arp_state.next_note_time = arp_anchored_next_time(preset, arp_state.current_position_16ths);
 
     // Fire loop trigger on every arp step (when no macro loop is playing)
     if (!dynamic_macro_is_playing()) {
@@ -1806,6 +1821,53 @@ void seq_update(void) {
             continue;  // Not yet time
         }
 
+        // ---- Pattern end: handle loop/stop at the correct time ----
+        // Position was advanced past the last step on the previous iteration,
+        // and next_note_time was set to the pattern end time. Now that we've
+        // reached that time, execute the loop/stop so the last step's gate
+        // plays out fully before the pattern restarts or stops.
+        if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
+            // Deferred stop: pattern has fully completed
+            if (seq_state[slot].deferred_stop_pending) {
+                seq_state[slot].deferred_stop_pending = false;
+                seq_stop(slot);
+                dprintf("seq: deferred stop executed for slot %d at pattern end\n", slot);
+                continue;
+            }
+
+            // Pattern loop: advance anchor by exact pattern duration (no drift)
+            uint8_t nv, tm;
+            if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
+                nv = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
+                tm = seq_state[slot].rate_override & TIMING_MODE_MASK;
+            } else {
+                nv = preset->note_value;
+                tm = preset->timing_mode;
+            }
+            seq_state[slot].pattern_start_time += compute_step_time_offset(
+                preset->pattern_length_16ths, nv, tm);
+            seq_state[slot].current_position_16ths = 0;
+            seq_state[slot].has_looped = true;
+
+            // Release deferred starts at loop boundary
+            if (arp_state.deferred_start_pending) {
+                arp_state.deferred_start_pending = false;
+                arp_state.next_note_time = current_time;
+                arp_state.pattern_start_time = current_time;
+                arp_state.current_position_16ths = 0;
+                arp_state.anchor_step = 0;
+                dprintf("arp: deferred start released by seq loop boundary\n");
+            }
+            if (progression_deferred_start_pending) {
+                progression_release_deferred_start(current_time);
+                dprintf("progression: deferred start released by seq loop boundary\n");
+            }
+
+            // Set next note time for step 0 of new loop
+            seq_state[slot].next_note_time = seq_anchored_next_time(preset, slot, 0);
+            continue;
+        }
+
         // Cycle point detection: release deferred starts at bar boundaries
         if (seq_state[slot].has_looped) {
             uint8_t nv = get_slot_note_value(preset, slot);
@@ -1928,32 +1990,7 @@ void seq_update(void) {
         // Advance position
         seq_state[slot].current_position_16ths++;
 
-        // Check for loop (restart)
-        if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
-            // Deferred stop: if pending, stop now at the clean loop boundary
-            if (seq_state[slot].deferred_stop_pending) {
-                seq_state[slot].deferred_stop_pending = false;
-                seq_stop(slot);
-                dprintf("seq: deferred stop executed for slot %d at pattern end\n", slot);
-                continue;
-            }
-
-            // Pattern loop: advance anchor by exact pattern duration (no drift)
-            uint8_t nv, tm;
-            if (slot < MAX_SEQ_SLOTS && seq_state[slot].rate_override != 0) {
-                nv = seq_state[slot].rate_override & ~TIMING_MODE_MASK;
-                tm = seq_state[slot].rate_override & TIMING_MODE_MASK;
-            } else {
-                nv = preset->note_value;
-                tm = preset->timing_mode;
-            }
-            seq_state[slot].pattern_start_time += compute_step_time_offset(
-                preset->pattern_length_16ths, nv, tm);
-            seq_state[slot].current_position_16ths = 0;
-            seq_state[slot].has_looped = true;
-        }
-
-        // Release deferred arp start on any seq step
+        // Release deferred arp start on step boundaries
         if (arp_state.deferred_start_pending) {
             arp_state.deferred_start_pending = false;
             arp_state.next_note_time = current_time;
@@ -1963,15 +2000,22 @@ void seq_update(void) {
             dprintf("arp: deferred start released by seq step\n");
         }
 
-        // Release deferred chord progression start on any seq step
+        // Release deferred chord progression start on step boundaries
         if (progression_deferred_start_pending) {
             progression_release_deferred_start(current_time);
             dprintf("progression: deferred start released by seq step\n");
         }
 
-        // Anchored next note time: pattern_start + offset for next position
-        seq_state[slot].next_note_time = seq_anchored_next_time(preset, slot,
-            seq_state[slot].current_position_16ths);
+        // Anchored next note time
+        if (seq_state[slot].current_position_16ths >= preset->pattern_length_16ths) {
+            // Last step just played - schedule the pattern END time so the
+            // last note's gate plays out before the loop/stop fires
+            seq_state[slot].next_note_time = seq_anchored_next_time(preset, slot,
+                preset->pattern_length_16ths);
+        } else {
+            seq_state[slot].next_note_time = seq_anchored_next_time(preset, slot,
+                seq_state[slot].current_position_16ths);
+        }
     }
 }
 
@@ -3051,9 +3095,21 @@ void quick_build_finish(void) {
             return;
         }
 
-        // Use current_step + 1 as pattern length to preserve trailing empty steps
-        // (current_step is 0-based and includes any steps the user explicitly skipped)
-        header->pattern_length_16ths = quick_build_state.current_step + 1;
+        // Determine pattern length: if current_step has notes on it (user finished
+        // mid-chord or before auto-advance), include it. Otherwise current_step
+        // already points past the last recorded step after auto-advance.
+        bool has_notes_on_current = false;
+        arp_preset_note_t *notes = note_pool_get_notes(header);
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == quick_build_state.current_step) {
+                has_notes_on_current = true;
+                break;
+            }
+        }
+        header->pattern_length_16ths = has_notes_on_current ?
+            (quick_build_state.current_step + 1) : quick_build_state.current_step;
+        // Ensure at least 1 step
+        if (header->pattern_length_16ths == 0) header->pattern_length_16ths = 1;
         header->note_count = quick_build_state.note_count;
         header->valid = true;
 
@@ -3087,9 +3143,21 @@ void quick_build_finish(void) {
             return;
         }
 
-        // Use current_step + 1 as pattern length to preserve trailing empty steps
-        // (current_step is 0-based and includes any steps the user explicitly skipped)
-        header->pattern_length_16ths = quick_build_state.current_step + 1;
+        // Determine pattern length: if current_step has notes on it (user finished
+        // mid-chord or before auto-advance), include it. Otherwise current_step
+        // already points past the last recorded step after auto-advance.
+        bool has_notes_on_current = false;
+        arp_preset_note_t *notes = note_pool_get_notes(header);
+        for (uint16_t i = 0; i < quick_build_state.note_count; i++) {
+            if (NOTE_GET_TIMING(notes[i].packed_timing_vel) == quick_build_state.current_step) {
+                has_notes_on_current = true;
+                break;
+            }
+        }
+        header->pattern_length_16ths = has_notes_on_current ?
+            (quick_build_state.current_step + 1) : quick_build_state.current_step;
+        // Ensure at least 1 step
+        if (header->pattern_length_16ths == 0) header->pattern_length_16ths = 1;
         header->note_count = quick_build_state.note_count;
         header->valid = true;
 

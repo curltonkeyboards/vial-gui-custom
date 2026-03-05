@@ -2346,7 +2346,7 @@ void start_chord_progression(uint8_t progression_id, uint8_t key_offset) {
 
         // Take a snapshot of the current channel and velocity
         progression_channel = channel_number;
-        progression_velocity = he_velocity_min + ((he_velocity_max - he_velocity_min)/2);
+        progression_velocity = he_velocity_min + ((he_velocity_max - he_velocity_min) * 3 / 4);
 
         // Set up new progression
         current_progression = progression_id;
