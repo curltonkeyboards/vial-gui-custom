@@ -34,9 +34,9 @@ DKS_BEHAVIOR_RELEASE = 2            # Release only
 class DKSAction:
     """Represents a single DKS action (press or release)"""
 
-    def __init__(self, keycode=0, actuation=127, behavior=DKS_BEHAVIOR_TAP):
+    def __init__(self, keycode=0, actuation=50, behavior=DKS_BEHAVIOR_TAP):
         self.keycode = keycode          # Keycode to send (0 = disabled)
-        self.actuation = actuation      # Actuation point (0-255 = 0-4.0mm)
+        self.actuation = actuation      # Actuation point (0-100 = 0-4.0mm)
         self.behavior = behavior        # TAP/PRESS/RELEASE
 
     def is_enabled(self):
@@ -56,7 +56,7 @@ class DKSAction:
         """Create from dictionary"""
         return DKSAction(
             keycode=data.get('keycode', 0),
-            actuation=data.get('actuation', 60),
+            actuation=data.get('actuation', 50),
             behavior=data.get('behavior', DKS_BEHAVIOR_TAP)
         )
 
@@ -218,7 +218,7 @@ class ProtocolDKS:
             is_press: True for press action, False for release
             action_index: Action index (0-3)
             keycode: Keycode to send
-            actuation: Actuation point (0-100)
+            actuation: Actuation point (0-100, where 100 = 4.0mm)
             behavior: Behavior type (TAP/PRESS/RELEASE)
 
         Returns:

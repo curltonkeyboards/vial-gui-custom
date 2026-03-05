@@ -40,7 +40,9 @@ Updated: 2026-01-08
 │ 37,000-37,889   │ 890 B     │ Per-Key RGB Settings              │
 │ 37,890-37,999   │ 110 B     │ Gap                               │
 │ 38,000-44,721   │ 6,722 B   │ Per-Key Actuation Settings        │
-│ 44,722-65,535   │ 20,814 B  │ Available for future use          │
+│ 44,722-44,999   │ 278 B     │ Gap                               │
+│ 45,000-46,603   │ 1,604 B   │ DKS Configurations (50 slots)     │
+│ 46,604-65,535   │ 18,932 B  │ Available for future use          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,12 +86,13 @@ EEPROM_DRIVER = i2c
 | Gaming Settings | 36,500-36,599 | 100 | 0.2% |
 | Per-Key RGB | 37,000-37,889 | 890 | 1.4% |
 | **Per-Key Actuation** | 38,000-44,721 | **6,722** | **10.3%** |
-| **Available** | 44,722-65,535 | **20,814** | **31.8%** |
+| **DKS Configurations** | 45,000-46,603 | **1,604** | **2.4%** |
+| **Available** | 46,604-65,535 | **18,932** | **28.9%** |
 
 ### Key Statistics:
 
-**Total Used:** ~44,722 bytes / 65,536 bytes (~68%)
-**Remaining:** ~20,814 bytes (~32%)
+**Total Used:** ~46,604 bytes / 65,536 bytes (~71%)
+**Remaining:** ~18,932 bytes (~29%)
 
 **Largest Allocations:**
 1. VIA Text Macros: 20,183 bytes (30.8%)
@@ -119,6 +122,7 @@ With 20KB allocated for macros:
 3. **`quantum/process_keycode/process_dynamic_macro.h`** - Custom feature addresses
 4. **`keyboards/orthomidi5x14/orthomidi5x14.h`** - Arp, Seq, Gaming, Curves addresses
 5. **`keyboards/orthomidi5x14/per_key_rgb.h`** - Per-key RGB address
+6. **`quantum/process_keycode/process_dks.h`** - DKS EEPROM address (45,000)
 
 ---
 

@@ -84,8 +84,8 @@ void dks_set_behavior(dks_slot_t* slot, uint8_t action_index, dks_behavior_t beh
 
 /**
  * Convert user actuation point (0-100) to internal travel units (0-240)
- * User scale: 0 = 0mm, 100 = 2.5mm
- * Internal scale: 0-240 (with 6x precision)
+ * User scale: 0 = 0mm, 100 = 4.0mm (full key travel)
+ * Internal scale: 0-240 (FULL_TRAVEL_UNIT * TRAVEL_SCALE)
  */
 static inline uint8_t actuation_to_travel(uint8_t actuation) {
     // actuation (0-100) * FULL_TRAVEL_UNIT (40) * TRAVEL_SCALE (6) / 100
@@ -123,18 +123,18 @@ void dks_reset_all_slots(void) {
         memset(slot->press_keycode, 0, sizeof(slot->press_keycode));
         memset(slot->release_keycode, 0, sizeof(slot->release_keycode));
 
-        // Set default actuation points (evenly distributed)
-        // Press: 0.6mm, 1.2mm, 1.8mm, 2.4mm
-        slot->press_actuation[0] = 24;  // 0.6mm
-        slot->press_actuation[1] = 48;  // 1.2mm
-        slot->press_actuation[2] = 72;  // 1.8mm
-        slot->press_actuation[3] = 96;  // 2.4mm
+        // Set default actuation points (evenly distributed across 4.0mm travel)
+        // Press: 0.96mm, 1.92mm, 2.88mm, 3.84mm
+        slot->press_actuation[0] = 24;  // 0.96mm (24% of 4.0mm)
+        slot->press_actuation[1] = 48;  // 1.92mm (48% of 4.0mm)
+        slot->press_actuation[2] = 72;  // 2.88mm (72% of 4.0mm)
+        slot->press_actuation[3] = 96;  // 3.84mm (96% of 4.0mm)
 
-        // Release: 2.4mm, 1.8mm, 1.2mm, 0.6mm (mirror of press)
-        slot->release_actuation[0] = 96;  // 2.4mm
-        slot->release_actuation[1] = 72;  // 1.8mm
-        slot->release_actuation[2] = 48;  // 1.2mm
-        slot->release_actuation[3] = 24;  // 0.6mm
+        // Release: mirror of press
+        slot->release_actuation[0] = 96;  // 3.84mm
+        slot->release_actuation[1] = 72;  // 2.88mm
+        slot->release_actuation[2] = 48;  // 1.92mm
+        slot->release_actuation[3] = 24;  // 0.96mm
 
         // Set all behaviors to TAP (default)
         slot->behaviors = 0x0000;  // All 0s = TAP for all actions
