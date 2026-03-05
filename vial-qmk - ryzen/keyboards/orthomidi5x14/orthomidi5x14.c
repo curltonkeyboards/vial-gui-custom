@@ -7992,7 +7992,12 @@ bool rgb_matrix_indicators_kb(void) {
                         bool flash_on = (timer_read32() / 300) % 2;
                         if (flash_on) { r = 0; g = 200; b = 0; }
                         else { r = 0; g = 40; b = 0; }
-                    } else if (seq_state[s].active && !seq_state[s].deferred_start_pending) {
+                    } else if (seq_state[s].active && seq_state[s].deferred_stop_pending) {
+                        // Flash red: deferred stop pending (will stop at pattern end)
+                        bool flash_on = (timer_read32() / 300) % 2;
+                        if (flash_on) { r = 200; g = 0; b = 0; }
+                        else { r = 40; g = 0; b = 0; }
+                    } else if (seq_state[s].active) {
                         // Green: actively playing
                         r = 0; g = 200; b = 0;
                     } else {
