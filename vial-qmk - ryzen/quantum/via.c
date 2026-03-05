@@ -238,8 +238,8 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             return; // Don't process with VIA
         }
         // Arpeggiator commands (0xC0-0xCC), Layer actuations (0xCD)
-        // Gaming commands (0xCE-0xD2), User curves (0xD9-0xDC)
-        // Gaming response (0xDD-0xDE), ADC Matrix Tester (0xDF)
+        // Gaming commands (0xCE-0xD2), Gaming response (0xD6-0xD7)
+        // User curves (0xD9-0xDD), ADC Matrix Tester (0xDF)
         // Per-key actuation (0xE0-0xE6), Distance (0xE7), SET_KEYBOARD_PARAM_SINGLE (0xE8)
         // Curve Tuning (0xE9), EQ Curve Save (0xEA), Layer Actuation (0xEB-0xEE), EQ Get (0xEF)
         // Null bind, Toggle, EEPROM diag commands (0xF0-0xFB)
