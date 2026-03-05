@@ -13,6 +13,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPalette, QPixmap, QImage
 
 from editor.basic_editor import BasicEditor
+from editor.arpeggiator import DebugConsole
 from protocol.dks_protocol import (ProtocolDKS, DKSSlot, DKS_BEHAVIOR_TAP,
                                    DKS_BEHAVIOR_PRESS, DKS_BEHAVIOR_RELEASE,
                                    DKS_NUM_SLOTS, DKS_ACTIONS_PER_STAGE)
@@ -129,7 +130,7 @@ class TravelBarWidget(QWidget):
             if not enabled:
                 continue
 
-            x = margin + int((actuation / 255.0) * (width - 2 * margin))
+            x = margin + int((actuation / 100.0) * (width - 2 * margin))
 
             # Draw line
             painter.setPen(QPen(press_color, 3))  # Theme press color
@@ -140,7 +141,7 @@ class TravelBarWidget(QWidget):
             painter.drawEllipse(x - 5, bar_y - 28, 10, 10)
 
             # Draw actuation value
-            mm_value = (actuation / 255.0) * 4.0
+            mm_value = (actuation / 100.0) * 4.0
             painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
@@ -153,7 +154,7 @@ class TravelBarWidget(QWidget):
             if not enabled:
                 continue
 
-            x = margin + int((actuation / 255.0) * (width - 2 * margin))
+            x = margin + int((actuation / 100.0) * (width - 2 * margin))
 
             # Draw line
             painter.setPen(QPen(release_color, 3))  # Theme release color
@@ -164,7 +165,7 @@ class TravelBarWidget(QWidget):
             painter.drawEllipse(x - 5, bar_y + bar_height + 20, 10, 10)
 
             # Draw actuation value
-            mm_value = (actuation / 255.0) * 4.0
+            mm_value = (actuation / 100.0) * 4.0
             painter.setPen(text_color)  # Use theme text color for readability
             font_small = QFont()
             font_small.setPointSize(8)
@@ -278,7 +279,7 @@ class VerticalTravelBarWidget(QWidget):
     def _actuation_to_y(self, actuation):
         """Convert actuation value (0-255) to y position"""
         bar_x, margin_top, margin_bottom, bar_width, bar_height = self._get_bar_geometry()
-        return margin_top + int((actuation / 255.0) * bar_height)
+        return margin_top + int((actuation / 100.0) * bar_height)
 
     def mousePressEvent(self, event):
         """Handle mouse press - start dragging if clicking on an actuation point"""
@@ -567,7 +568,7 @@ class VerticalTravelBarWidget(QWidget):
 
                 # Release is upward from actuation point
                 # actuation is sensitivity in 0-100 (representing 0-4.0mm distance)
-                y = actuation_y - int((actuation / 255.0) * bar_height)
+                y = actuation_y - int((actuation / 100.0) * bar_height)
                 release_y = y
 
                 # Draw line to right
@@ -579,7 +580,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
                 # Draw "Release Threshold" identifier and mm value with button-like styling
-                mm_value = (actuation / 255.0) * 4.0
+                mm_value = (actuation / 100.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -634,7 +635,7 @@ class VerticalTravelBarWidget(QWidget):
 
                 # Press is downward from release point
                 # actuation is sensitivity in 0-100 (representing 0-4.0mm distance)
-                y = release_y + int((actuation / 255.0) * bar_height)
+                y = release_y + int((actuation / 100.0) * bar_height)
 
                 # Draw line to left
                 painter.setPen(QPen(press_color, 3))  # Theme press color
@@ -645,7 +646,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
                 # Draw "Press Threshold" identifier and mm value with button-like styling
-                mm_value = (actuation / 255.0) * 4.0
+                mm_value = (actuation / 100.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -704,7 +705,7 @@ class VerticalTravelBarWidget(QWidget):
                 if not enabled:
                     continue
 
-                y = margin_top + int((actuation / 255.0) * (height - margin_top - margin_bottom))
+                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
 
                 # Draw line to left
                 painter.setPen(QPen(press_color, 3))  # Theme press color
@@ -715,7 +716,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x - 28, y - 5, 10, 10)
 
                 # Draw identifier and mm value with button-like styling
-                mm_value = (actuation / 255.0) * 4.0
+                mm_value = (actuation / 100.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -770,7 +771,7 @@ class VerticalTravelBarWidget(QWidget):
                 if not enabled:
                     continue
 
-                y = margin_top + int((actuation / 255.0) * (height - margin_top - margin_bottom))
+                y = margin_top + int((actuation / 100.0) * (height - margin_top - margin_bottom))
 
                 # Draw line to right
                 painter.setPen(QPen(release_color, 3))  # Theme release color
@@ -781,7 +782,7 @@ class VerticalTravelBarWidget(QWidget):
                 painter.drawEllipse(bar_x + bar_width + 18, y - 5, 10, 10)
 
                 # Draw identifier and mm value with button-like styling
-                mm_value = (actuation / 255.0) * 4.0
+                mm_value = (actuation / 100.0) * 4.0
 
                 # Use bigger font for button-like appearance
                 font_label = QFont()
@@ -893,7 +894,7 @@ class DKSActionEditor(QWidget):
         self.actuation_slider = QSlider(Qt.Horizontal)
         self.actuation_slider.setMinimum(0)
         self.actuation_slider.setMaximum(100)
-        self.actuation_slider.setValue(127)
+        self.actuation_slider.setValue(50)
         self.actuation_slider.setFixedWidth(70)
         self.actuation_slider.valueChanged.connect(self._update_actuation_label)
         self.actuation_slider.valueChanged.connect(self._on_changed)
@@ -925,7 +926,7 @@ class DKSActionEditor(QWidget):
     def _update_actuation_label(self):
         """Update actuation label with mm value"""
         value = self.actuation_slider.value()
-        mm = (value / 255.0) * 4.0
+        mm = (value / 100.0) * 4.0
         self.actuation_label.setText(f"{mm:.2f}mm")
 
     def _on_changed(self):
@@ -1216,17 +1217,32 @@ class DKSEntryUI(QWidget):
         """Set the DKS protocol handler"""
         self.dks_protocol = protocol
 
+    def set_debug_log(self, debug_log):
+        """Set the debug log callback"""
+        self._debug_log = debug_log
+
+    def set_debug_console(self, console):
+        """Set the debug console widget for operation markers"""
+        self._debug_console = console
+
+    def _log(self, message, level="DEBUG"):
+        """Log to debug console if available"""
+        if hasattr(self, '_debug_log') and self._debug_log:
+            self._debug_log(message, level)
+
     def _on_load(self):
         """Load slot from keyboard"""
         if not self.dks_protocol:
+            self._log(f"Slot {self.slot_idx}: _on_load called but no protocol set", "WARN")
             return
 
+        self._log(f"Loading slot {self.slot_idx} from keyboard...", "INFO")
         slot = self.dks_protocol.get_slot(self.slot_idx)
         if not slot:
-            # Silently fail if firmware doesn't support DKS - don't show error popup
-            # This allows the tab to show even if firmware doesn't have DKS enabled
+            self._log(f"Slot {self.slot_idx}: get_slot returned None (firmware may not support DKS)", "WARN")
             return
 
+        self._log(f"Slot {self.slot_idx}: loaded successfully, updating UI", "INFO")
         self.load_from_slot(slot)
 
     def load_from_slot(self, slot):
@@ -1279,21 +1295,28 @@ class DKSEntryUI(QWidget):
     def _send_to_keyboard(self):
         """Send current configuration to keyboard"""
         if not self.dks_protocol:
+            self._log(f"Slot {self.slot_idx}: _send_to_keyboard skipped - no protocol", "WARN")
             return
+
+        self._log(f"Slot {self.slot_idx}: sending all 8 actions to keyboard...", "INFO")
 
         # Send press actions
         for i, editor in enumerate(self.press_editors):
             keycode, actuation, behavior = editor.get_action()
-            self.dks_protocol.set_action(
+            success = self.dks_protocol.set_action(
                 self.slot_idx, True, i, keycode, actuation, behavior
             )
+            if not success:
+                self._log(f"Slot {self.slot_idx}: FAILED to send Press[{i}]", "ERROR")
 
         # Send release actions
         for i, editor in enumerate(self.release_editors):
             keycode, actuation, behavior = editor.get_action()
-            self.dks_protocol.set_action(
+            success = self.dks_protocol.set_action(
                 self.slot_idx, False, i, keycode, actuation, behavior
             )
+            if not success:
+                self._log(f"Slot {self.slot_idx}: FAILED to send Release[{i}]", "ERROR")
 
     def _update_travel_bar(self):
         """Update travel bar visualization"""
@@ -1323,10 +1346,13 @@ class DKSEntryUI(QWidget):
         )
 
         if reply == QMessageBox.Yes:
+            self._log(f"User requested reset of slot {self.slot_idx}", "INFO")
             if self.dks_protocol.reset_slot(self.slot_idx):
+                self._log(f"Slot {self.slot_idx} reset OK, reloading...", "INFO")
                 QMessageBox.information(self, "Success", "Slot reset to defaults")
                 self._on_load()
             else:
+                self._log(f"Slot {self.slot_idx} reset FAILED", "ERROR")
                 QMessageBox.warning(self, "Error", "Failed to reset slot")
 
     def _on_save_eeprom(self):
@@ -1334,10 +1360,19 @@ class DKSEntryUI(QWidget):
         if not self.dks_protocol:
             return
 
-        if self.dks_protocol.save_to_eeprom():
+        console = getattr(self, '_debug_console', None)
+        if console:
+            console.mark_operation_start()
+        self._log("User requested SAVE TO EEPROM", "INFO")
+        success = self.dks_protocol.save_to_eeprom()
+        if success:
+            self._log("Save to EEPROM: SUCCESS", "INFO")
             QMessageBox.information(self, "Success", "DKS configuration saved to EEPROM")
         else:
+            self._log("Save to EEPROM: FAILED", "ERROR")
             QMessageBox.warning(self, "Error", "Failed to save to EEPROM")
+        if console:
+            console.mark_operation_end(success)
 
     def _on_reset_all(self):
         """Reset all slots to defaults"""
@@ -1351,10 +1386,13 @@ class DKSEntryUI(QWidget):
         )
 
         if reply == QMessageBox.Yes:
+            self._log("User requested RESET ALL SLOTS", "INFO")
             if self.dks_protocol.reset_all_slots():
+                self._log("Reset all slots: SUCCESS, reloading...", "INFO")
                 QMessageBox.information(self, "Success", "All slots reset to defaults")
                 self._on_load()
             else:
+                self._log("Reset all slots: FAILED", "ERROR")
                 QMessageBox.warning(self, "Error", "Failed to reset slots")
 
     def _on_load_eeprom(self):
@@ -1362,11 +1400,20 @@ class DKSEntryUI(QWidget):
         if not self.dks_protocol:
             return
 
-        if self.dks_protocol.load_from_eeprom():
+        console = getattr(self, '_debug_console', None)
+        if console:
+            console.mark_operation_start()
+        self._log("User requested LOAD FROM EEPROM", "INFO")
+        success = self.dks_protocol.load_from_eeprom()
+        if success:
+            self._log("Load from EEPROM: SUCCESS, reloading current slot...", "INFO")
             QMessageBox.information(self, "Success", "DKS configurations loaded from EEPROM")
             self._on_load()
         else:
+            self._log("Load from EEPROM: FAILED", "ERROR")
             QMessageBox.warning(self, "Error", "Failed to load from EEPROM")
+        if console:
+            console.mark_operation_end(success)
 
 
 class DKSSettingsTab(BasicEditor):
@@ -1410,6 +1457,10 @@ class DKSSettingsTab(BasicEditor):
         self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
         self.addWidget(self.tabbed_keycodes)
 
+        # Debug console at the bottom
+        self.debug_console = DebugConsole("DKS Debug Console")
+        self.addWidget(self.debug_console)
+
     def on_entry_changed(self):
         """Handle entry change (can be used for modified indicators)"""
         # Future: Add modified state tracking like TapDance
@@ -1430,13 +1481,20 @@ class DKSSettingsTab(BasicEditor):
             # Update keycode buttons to show new DKS count
             self.tabbed_keycodes.refresh_macro_buttons()
             self.tabs.setCurrentIndex(self._visible_tab_count - 1)
+            self.debug_log(f"Tab expanded - now showing {self._visible_tab_count} tabs", "INFO")
             return
 
         # Lazy load: Only load slot data when first viewing the tab
         if index >= 0 and index < len(self.dks_entries):
             if self.dks_protocol and index not in self.loaded_slots:
+                self.debug_log(f"Lazy loading slot {index} (first view)", "INFO")
                 self.dks_entries[index]._on_load()
                 self.loaded_slots.add(index)
+
+    def debug_log(self, message, level="DEBUG"):
+        """Log a message to the debug console"""
+        if hasattr(self, 'debug_console'):
+            self.debug_console.log(message, level)
 
     def rebuild(self, device):
         """Rebuild the editor when device changes"""
@@ -1446,19 +1504,27 @@ class DKSSettingsTab(BasicEditor):
             self.dks_protocol = None
             return
 
-        # Create DKS protocol handler
-        self.dks_protocol = ProtocolDKS(device)
+        self.debug_log("Device connected - initializing DKS protocol", "INFO")
+
+        # Create DKS protocol handler with debug logging callback
+        # NOTE: device is VialKeyboard, device.keyboard is the Keyboard comm object
+        # that has _create_hid_packet and usb_send methods
+        self.dks_protocol = ProtocolDKS(device.keyboard, debug_log=self.debug_log)
 
         # Set protocol for all entries
         for entry in self.dks_entries:
             entry.set_dks_protocol(self.dks_protocol)
+            entry.set_debug_log(self.debug_log)
+            entry.set_debug_console(self.debug_console)
 
         # Clear loaded slots cache on device change
         self.loaded_slots.clear()
 
         # Reset manual expansion and scan for used slots
         self._manually_expanded_count = 0
+        self.debug_log("Scanning all slots for content...", "INFO")
         self._scan_and_update_visible_tabs()
+        self.debug_log(f"Scan complete - {self._visible_tab_count} tabs visible", "INFO")
 
         # Set keyboard reference for tabbed keycodes
         if hasattr(device, 'keyboard'):

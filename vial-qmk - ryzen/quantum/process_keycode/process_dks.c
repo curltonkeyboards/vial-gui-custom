@@ -84,8 +84,8 @@ void dks_set_behavior(dks_slot_t* slot, uint8_t action_index, dks_behavior_t beh
 
 /**
  * Convert user actuation point (0-100) to internal travel units (0-240)
- * User scale: 0 = 0mm, 100 = 2.5mm
- * Internal scale: 0-240 (with 6x precision)
+ * User scale: 0 = 0mm, 100 = 4.0mm (full key travel)
+ * Internal scale: 0-240 (FULL_TRAVEL_UNIT * TRAVEL_SCALE)
  */
 static inline uint8_t actuation_to_travel(uint8_t actuation) {
     // actuation (0-100) * FULL_TRAVEL_UNIT (40) * TRAVEL_SCALE (6) / 100
@@ -123,18 +123,18 @@ void dks_reset_all_slots(void) {
         memset(slot->press_keycode, 0, sizeof(slot->press_keycode));
         memset(slot->release_keycode, 0, sizeof(slot->release_keycode));
 
-        // Set default actuation points (evenly distributed)
-        // Press: 0.6mm, 1.2mm, 1.8mm, 2.4mm
-        slot->press_actuation[0] = 24;  // 0.6mm
-        slot->press_actuation[1] = 48;  // 1.2mm
-        slot->press_actuation[2] = 72;  // 1.8mm
-        slot->press_actuation[3] = 96;  // 2.4mm
+        // Set default actuation points (evenly distributed across 4.0mm travel)
+        // Press: 0.96mm, 1.92mm, 2.88mm, 3.84mm
+        slot->press_actuation[0] = 24;  // 0.96mm (24% of 4.0mm)
+        slot->press_actuation[1] = 48;  // 1.92mm (48% of 4.0mm)
+        slot->press_actuation[2] = 72;  // 2.88mm (72% of 4.0mm)
+        slot->press_actuation[3] = 96;  // 3.84mm (96% of 4.0mm)
 
-        // Release: 2.4mm, 1.8mm, 1.2mm, 0.6mm (mirror of press)
-        slot->release_actuation[0] = 96;  // 2.4mm
-        slot->release_actuation[1] = 72;  // 1.8mm
-        slot->release_actuation[2] = 48;  // 1.2mm
-        slot->release_actuation[3] = 24;  // 0.6mm
+        // Release: mirror of press
+        slot->release_actuation[0] = 96;  // 3.84mm
+        slot->release_actuation[1] = 72;  // 2.88mm
+        slot->release_actuation[2] = 48;  // 1.92mm
+        slot->release_actuation[3] = 24;  // 0.96mm
 
         // Set all behaviors to TAP (default)
         slot->behaviors = 0x0000;  // All 0s = TAP for all actions
@@ -142,7 +142,26 @@ void dks_reset_all_slots(void) {
 }
 
 /**
+ * Validate a DKS slot has sane values.
+ * Returns true if the slot looks valid, false if it appears corrupted.
+ */
+static bool dks_validate_slot(const dks_slot_t* slot) {
+    // Check actuation points are in valid range (0-100)
+    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
+        if (slot->press_actuation[i] > 100) return false;
+        if (slot->release_actuation[i] > 100) return false;
+    }
+    // Check behaviors are valid (only 2 bits per action, packed in 16 bits)
+    // Each 2-bit field should be 0-3 which is always true for uint16_t,
+    // but check that reserved bits above bit 15 are not set (they can't be
+    // for uint16_t, so this is just a sanity check on the overall value)
+    return true;
+}
+
+/**
  * Load DKS configurations from EEPROM
+ * Reads slot-by-slot (32 bytes each) to avoid large stack allocations
+ * and validates each slot individually.
  */
 bool dks_load_from_eeprom(void) {
     // Read header
@@ -154,21 +173,47 @@ bool dks_load_from_eeprom(void) {
         return false;  // Not initialized or wrong version
     }
 
-    // Read all slots
-    eeprom_read_block(
-        dks_slots,
-        (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET),
-        sizeof(dks_slots)
-    );
+    // Read slots one at a time (32 bytes each - safe for stack)
+    // and validate each to prevent corrupted EEPROM data from crashing
+    for (uint8_t i = 0; i < DKS_NUM_SLOTS; i++) {
+        dks_slot_t temp_slot;
+        eeprom_read_block(
+            &temp_slot,
+            (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET + (i * sizeof(dks_slot_t))),
+            sizeof(dks_slot_t)
+        );
+
+        if (dks_validate_slot(&temp_slot)) {
+            memcpy(&dks_slots[i], &temp_slot, sizeof(dks_slot_t));
+        } else {
+            // Slot is corrupted - reset to defaults instead of loading garbage
+            memset(dks_slots[i].press_keycode, 0, sizeof(dks_slots[i].press_keycode));
+            memset(dks_slots[i].release_keycode, 0, sizeof(dks_slots[i].release_keycode));
+            dks_slots[i].press_actuation[0] = 24;
+            dks_slots[i].press_actuation[1] = 48;
+            dks_slots[i].press_actuation[2] = 72;
+            dks_slots[i].press_actuation[3] = 96;
+            dks_slots[i].release_actuation[0] = 96;
+            dks_slots[i].release_actuation[1] = 72;
+            dks_slots[i].release_actuation[2] = 48;
+            dks_slots[i].release_actuation[3] = 24;
+            dks_slots[i].behaviors = 0x0000;
+        }
+    }
 
     return true;
 }
 
 /**
  * Save DKS configurations to EEPROM
+ *
+ * Writes slot-by-slot (32 bytes each) instead of the entire 1600-byte array
+ * at once, because eeprom_update_block() allocates a VLA of the same size on
+ * the stack for its read-compare buffer. 1600 bytes on stack would overflow
+ * the limited ARM Cortex-M stack.
  */
 void dks_save_to_eeprom(void) {
-    // Write header
+    // Write header (4 bytes - safe for stack)
     dks_eeprom_header_t header = {
         .magic = EEPROM_DKS_MAGIC,
         .version = EEPROM_DKS_VERSION,
@@ -176,12 +221,14 @@ void dks_save_to_eeprom(void) {
     };
     eeprom_update_block(&header, (void*)(EEPROM_DKS_BASE + EEPROM_DKS_HEADER_OFFSET), sizeof(header));
 
-    // Write all slots
-    eeprom_update_block(
-        dks_slots,
-        (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET),
-        sizeof(dks_slots)
-    );
+    // Write slots one at a time (32 bytes each - safe for stack)
+    for (uint8_t i = 0; i < DKS_NUM_SLOTS; i++) {
+        eeprom_update_block(
+            &dks_slots[i],
+            (void*)(EEPROM_DKS_BASE + EEPROM_DKS_SLOTS_OFFSET + (i * sizeof(dks_slot_t))),
+            sizeof(dks_slot_t)
+        );
+    }
 }
 
 /**

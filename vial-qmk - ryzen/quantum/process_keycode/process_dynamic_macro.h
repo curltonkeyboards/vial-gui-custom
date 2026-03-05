@@ -235,17 +235,19 @@ void set_custom_animations_eeprom_initialized(void);
 //   22,000-22,399: Toggle Keys (see orthomidi5x14.h)
 //   23,000-26,999: Arp User Presets (see orthomidi5x14.h)
 //   27,500-35,339: Seq User Presets (see orthomidi5x14.h)
-//   36,000-36,699: Custom Animations (700 bytes)
+//   36,000-36,749: Custom Animations (750 bytes: 50 slots × 15 bytes)
 //   37,000-37,199: Loop Settings (200 bytes)
 //   38,000-38,249: Keyboard Settings (250 bytes, 5 slots)
 //   38,500:        RGB Defaults Magic
 //   39,000-39,107: Layer RGB Settings (108 bytes)
 //   40,000-40,059: Layer Actuation Settings (60 bytes)
-//   41,000-41,241: User Curves (see orthomidi5x14.h)
+//   41,000-41,901: User Curves (902 bytes: 10 presets × 90 + 2 magic)
 //   42,000-42,099: Gaming Settings (see orthomidi5x14.h)
-//   43,000-43,889: Per-Key RGB (890 bytes)
+//   42,200-42,225: EQ Curve Settings (26 bytes, see orthomidi5x14.h)
+//   43,000-43,887: Per-Key RGB (888 bytes)
 //   45,000-51,719: Per-Key Actuation (6720 bytes)
-//   52,000-65,535: Available for future use (~13KB)
+//   52,000-53,603: DKS Configurations (1604 bytes: 4 header + 50 × 32)
+//   54,000-65,535: Available for future use (~11KB)
 // =============================================================================
 
 #define EECONFIG_CUSTOM_ANIMATIONS 36000  // Custom animations (750 bytes: 15 bytes * 50 slots)
@@ -305,8 +307,8 @@ bool layer_use_fixed_velocity(uint8_t layer);
 #define HID_CMD_GAMING_RESET 0xD2              // Reset gaming settings to defaults
 
 // =============================================================================
-// EEPROM ADDRESSES SUMMARY (REORGANIZED 2026-01-21 - ALL WITHIN 64KB):
-// VIA Text Macros:     4509-20000                    (DYNAMIC_KEYMAP_EEPROM_MAX_ADDR)
+// EEPROM ADDRESSES SUMMARY (UPDATED 2026-03-05 - ALL WITHIN 64KB):
+// VIA Text Macros:     4509-20999                    (DYNAMIC_KEYMAP_EEPROM_MAX_ADDR)
 // Null Bind:           NULLBIND_EEPROM_ADDR          = 21000 (orthomidi5x14.h)
 // Toggle Keys:         TOGGLE_EEPROM_ADDR            = 22000 (orthomidi5x14.h)
 // Arp Presets:         ARP_EEPROM_ADDR               = 23000 (orthomidi5x14.h)
@@ -317,11 +319,13 @@ bool layer_use_fixed_velocity(uint8_t layer);
 // RGB Magic:           RGB_DEFAULTS_MAGIC_ADDR       = 38500
 // Layer RGB:           LAYER_SETTINGS_EEPROM_ADDR    = 39000
 // Layer Actuation:     LAYER_ACTUATION_EEPROM_ADDR   = 40000
-// User Curves:         USER_CURVES_EEPROM_ADDR       = 41000 (orthomidi5x14.h)
-// Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 42000 (orthomidi5x14.h)
-// Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 43000 (per_key_rgb.h)
-// Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 45000
-// Available:           52000-65535                   (~13KB for future use)
+// User Curves:         USER_CURVES_EEPROM_ADDR       = 41000 (orthomidi5x14.h, 902 bytes)
+// Gaming Settings:     GAMING_SETTINGS_EEPROM_ADDR   = 42000 (orthomidi5x14.h, 100 bytes)
+// EQ Curve:            EQ_CURVE_EEPROM_ADDR          = 42200 (orthomidi5x14.h, 26 bytes)
+// Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 43000 (per_key_rgb.h, 888 bytes)
+// Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 45000 (6720 bytes, ends 51719)
+// DKS:                 EEPROM_DKS_BASE               = 52000 (process_dks.h, 1604 bytes)
+// Available:           54000-65535                   (~11KB for future use)
 // =============================================================================
 
 // Function declarations for layer settings

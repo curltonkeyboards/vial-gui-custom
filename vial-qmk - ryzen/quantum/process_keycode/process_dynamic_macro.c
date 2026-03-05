@@ -12688,6 +12688,11 @@ static void handle_clear_all_loops(void) {
 /**
  * Get DKS slot configuration and send it back via HID
  * Packet format: [slot_num]
+ *
+ * NOTE: The full dks_slot_t is 32 bytes but a single HID response can only
+ * carry 26 bytes of data (32 byte packet - 6 byte header).  The first 26
+ * bytes contain all meaningful fields (keycodes, actuations, behaviors).
+ * The trailing 6 bytes are reserved padding and are NOT transmitted.
  */
 static void handle_dks_get_slot(const uint8_t* data) {
     uint8_t slot_num = data[0];
@@ -12703,8 +12708,10 @@ static void handle_dks_get_slot(const uint8_t* data) {
         return;
     }
 
-    // Send back the 32-byte slot configuration
-    send_hid_response(HID_CMD_DKS_GET_SLOT, 0, 0, (const uint8_t*)slot, sizeof(dks_slot_t));
+    // Send back 26 bytes: the meaningful fields (excludes 6-byte reserved padding)
+    // Layout: press_keycode[4](8) + press_actuation[4](4) + release_keycode[4](8)
+    //       + release_actuation[4](4) + behaviors(2) = 26 bytes
+    send_hid_response(HID_CMD_DKS_GET_SLOT, 0, 0, (const uint8_t*)slot, 26);
 }
 
 /**
@@ -12764,16 +12771,16 @@ static void handle_dks_reset_slot(const uint8_t* data) {
     memset(slot->press_keycode, 0, sizeof(slot->press_keycode));
     memset(slot->release_keycode, 0, sizeof(slot->release_keycode));
 
-    // Set default actuation points
-    slot->press_actuation[0] = 24;  // 0.6mm
-    slot->press_actuation[1] = 48;  // 1.2mm
-    slot->press_actuation[2] = 72;  // 1.8mm
-    slot->press_actuation[3] = 96;  // 2.4mm
+    // Set default actuation points (evenly distributed across 4.0mm travel)
+    slot->press_actuation[0] = 24;  // 0.96mm (24% of 4.0mm)
+    slot->press_actuation[1] = 48;  // 1.92mm (48% of 4.0mm)
+    slot->press_actuation[2] = 72;  // 2.88mm (72% of 4.0mm)
+    slot->press_actuation[3] = 96;  // 3.84mm (96% of 4.0mm)
 
-    slot->release_actuation[0] = 96;  // 2.4mm
-    slot->release_actuation[1] = 72;  // 1.8mm
-    slot->release_actuation[2] = 48;  // 1.2mm
-    slot->release_actuation[3] = 24;  // 0.6mm
+    slot->release_actuation[0] = 96;  // 3.84mm
+    slot->release_actuation[1] = 72;  // 2.88mm
+    slot->release_actuation[2] = 48;  // 1.92mm
+    slot->release_actuation[3] = 24;  // 0.96mm
 
     slot->behaviors = 0x0000;  // All TAP
 
