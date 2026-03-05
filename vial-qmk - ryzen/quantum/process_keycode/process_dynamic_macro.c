@@ -4066,6 +4066,7 @@ if (is_independent_overdub && macro_num > 0) {
             state->waiting_for_loop_gap = false;
             check_loop_trigger();
             seq_release_deferred_starts(timer_read32());
+            progression_release_deferred_start(timer_read32());
 
 			if (sync_midi_mode && overdub_advanced_mode) {
 				if (alternate_restart_mode) {
@@ -4416,6 +4417,7 @@ if (is_independent_overdub && macro_num > 0) {
                 if ((current_bpm == 0 || bpm_source_macro != 0) && macro_num > 0 && !macro_playback[macro_num - 1].is_playing) {
                     check_loop_trigger();
                     seq_release_deferred_starts(timer_read32());
+                    progression_release_deferred_start(timer_read32());
                 } else if (current_bpm > 0 && bpm_source_macro == 0) {
                     dprintf("midi macro: overdub %d skipped loop trigger (manual bpm sync active)\n", macro_num);
                 } else {
@@ -4425,6 +4427,7 @@ if (is_independent_overdub && macro_num > 0) {
                 if (current_bpm == 0 || bpm_source_macro != 0) {
                     check_loop_trigger();
                     seq_release_deferred_starts(timer_read32());
+                    progression_release_deferred_start(timer_read32());
                 } else {
                     dprintf("midi macro: skipped loop trigger (manual bpm sync active) from macro %d\n", macro_num);
                 }
@@ -10767,8 +10770,9 @@ void dynamic_macro_handle_loop_trigger(void) {
     // Close group start window
     group_start_active = false;
 
-    // Release deferred step sequencer starts at this cycle point
+    // Release deferred step sequencer and chord progression starts at this cycle point
     seq_release_deferred_starts(timer_read32());
+    progression_release_deferred_start(timer_read32());
 
     // Original loop trigger handling (processes batched commands including deferred loop plays)
     check_loop_trigger();

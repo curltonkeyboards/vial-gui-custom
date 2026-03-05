@@ -101,6 +101,11 @@ extern uint32_t group_start_time;
 extern bool group_start_active;
 #define GROUP_START_WINDOW_MS 50
 
+// Chord progression deferred start (defined in orthomidi5x14.c)
+extern bool progression_deferred_start_pending;
+void progression_release_deferred_start(uint32_t align_time);
+bool progression_is_active(void);
+
 // Optional user hooks
 void dynamic_macro_record_start_user(int8_t direction);
 void dynamic_macro_play_user(int8_t direction);
