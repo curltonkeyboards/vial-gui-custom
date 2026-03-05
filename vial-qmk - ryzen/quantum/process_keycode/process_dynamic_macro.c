@@ -2619,16 +2619,17 @@ static void execute_command_batch(void) {
                 
                 // Start new recording
                 macro_id = target;
+                snapshot_recording_settings(target);  // Snapshot curve/min/max when recording starts
                 midi_event_t *macro_start = get_macro_buffer(macro_id);
                 macro_pointer = macro_start;
                 recording_start_time = timer_read32();
                 first_note_recorded = true;
-                
+
                 // Use collected preroll events if we were collecting them
                 if (collecting_preroll) {
                     dynamic_macro_actual_start(&recording_start_time);
                 }
-                
+
                 setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
                 dprintf("dynamic macro: batch started recording of macro %d\n", target);
                  
@@ -10070,16 +10071,33 @@ static bool handle_regular_mode(uint8_t macro_num, uint8_t macro_idx,
                     }
                 }
             } else {
-                // No macro exists - prime for recording
-                dynamic_macro_record_start(&macro_pointer, macro_start, +1, &recording_start_time);
-                macro_id = macro_num;
-                snapshot_recording_settings(macro_num);  // Snapshot curve/min/max when recording starts
-                setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
+                // No macro exists - check if a step sequencer is running
+                if (seq_is_any_active_and_looped()) {
+                    // Seq running - batch the record command so recording waits for
+                    // the next seq cycle point (same behavior as slave recording).
+                    // Without this, a note press would trigger immediate recording
+                    // start, causing the timer to be out of sync with the seq.
+                    add_command_to_batch(CMD_RECORD, macro_num);
 
-                // If overdub button is held, set flag for after recording
-                if (overdub_button_held) {
-                    macro_in_overdub_mode[macro_idx] = true;
-                    dprintf("dynamic macro: will enter overdub mode after recording macro %d\n", macro_num);
+                    // If overdub button is held, set flag for after recording
+                    if (overdub_button_held) {
+                        macro_in_overdub_mode[macro_idx] = true;
+                        dprintf("dynamic macro: will enter overdub mode after recording macro %d\n", macro_num);
+                    }
+
+                    dprintf("dynamic macro: deferred loop %d record to next seq cycle point\n", macro_num);
+                } else {
+                    // No seq running - prime for recording directly
+                    dynamic_macro_record_start(&macro_pointer, macro_start, +1, &recording_start_time);
+                    macro_id = macro_num;
+                    snapshot_recording_settings(macro_num);  // Snapshot curve/min/max when recording starts
+                    setup_dynamic_macro_recording(macro_id, macro_buffer, NULL, (void**)&macro_pointer, &recording_start_time);
+
+                    // If overdub button is held, set flag for after recording
+                    if (overdub_button_held) {
+                        macro_in_overdub_mode[macro_idx] = true;
+                        dprintf("dynamic macro: will enter overdub mode after recording macro %d\n", macro_num);
+                    }
                 }
             }
         } else if (macro_id > 0 || is_macro_primed) {
