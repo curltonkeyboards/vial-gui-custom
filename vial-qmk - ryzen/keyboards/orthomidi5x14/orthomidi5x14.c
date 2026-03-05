@@ -6662,7 +6662,7 @@ const char* getChordName(void) {
             static char sc_bracket_name[24];
             const char* sc_name = getSmartChordDisplayName();
             if (sc_name[0] != '\0') {
-                snprintf(sc_bracket_name, sizeof(sc_bracket_name), "[%s]", sc_name);
+                snprintf(sc_bracket_name, sizeof(sc_bracket_name), "[  ] %s", sc_name);
                 return sc_bracket_name;
             }
         }
