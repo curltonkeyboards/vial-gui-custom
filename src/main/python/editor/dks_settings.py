@@ -1143,6 +1143,7 @@ class DKSEntryUI(QWidget):
         self.slot_idx = slot_idx
         self.dks_protocol = None
         self.selected_key_widget = None  # Track which key widget is selected
+        self._loading = False  # Guard flag: True while loading from keyboard/slot
 
         # Set minimum height to prevent squishing - allows scroll instead
         self.setMinimumHeight(400)
@@ -1248,17 +1249,13 @@ class DKSEntryUI(QWidget):
     def load_from_slot(self, slot):
         """Load UI from slot data.
 
-        Block signals on all editors during load to prevent _send_to_keyboard
-        from firing after each individual widget update.  Without this, the
-        first editor update triggers _send_to_keyboard which reads ALL editors
-        (most still at defaults) and overwrites the firmware's correct data
-        with partially-loaded values.
+        Sets _loading flag to prevent _on_action_changed (and therefore
+        _send_to_keyboard) from firing while editors are being populated.
+        Without this guard, the first editor update triggers _send_to_keyboard
+        which reads ALL editors (most still at defaults) and overwrites the
+        firmware's correct slot data with partially-loaded values.
         """
-        # Block signals to prevent intermediate _send_to_keyboard calls
-        all_editors = list(self.press_editors) + list(self.release_editors)
-        for editor in all_editors:
-            editor.blockSignals(True)
-
+        self._loading = True
         try:
             # Press actions
             for i, editor in enumerate(self.press_editors):
@@ -1270,9 +1267,7 @@ class DKSEntryUI(QWidget):
                 action = slot.release_actions[i]
                 editor.set_action(action.keycode, action.actuation, action.behavior)
         finally:
-            # Always restore signals
-            for editor in all_editors:
-                editor.blockSignals(False)
+            self._loading = False
 
         self._update_travel_bar()
 
@@ -1289,7 +1284,9 @@ class DKSEntryUI(QWidget):
         return (press_actions, release_actions)
 
     def _on_action_changed(self):
-        """Handle action change"""
+        """Handle action change - skip if we're loading data from the keyboard"""
+        if self._loading:
+            return
         self._update_travel_bar()
         self._send_to_keyboard()
         self.changed.emit()
