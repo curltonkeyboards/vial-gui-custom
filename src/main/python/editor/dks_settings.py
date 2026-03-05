@@ -1507,7 +1507,9 @@ class DKSSettingsTab(BasicEditor):
         self.debug_log("Device connected - initializing DKS protocol", "INFO")
 
         # Create DKS protocol handler with debug logging callback
-        self.dks_protocol = ProtocolDKS(device, debug_log=self.debug_log)
+        # NOTE: device is VialKeyboard, device.keyboard is the Keyboard comm object
+        # that has _create_hid_packet and usb_send methods
+        self.dks_protocol = ProtocolDKS(device.keyboard, debug_log=self.debug_log)
 
         # Set protocol for all entries
         for entry in self.dks_entries:
