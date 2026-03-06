@@ -550,10 +550,14 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
         }
     }
 
-    // Full release - reset triggered flags AFTER processing.
-    // Defer the reset if release actions are still pending (rate-limited),
-    // otherwise the bitmask would be cleared before deferred actions fire.
-    if (state->key_was_down && !key_is_down && !state->release_pending) {
+    // Full release - reset triggered flags when key is at rest and all
+    // pending releases have completed.  Uses state-based check instead of
+    // edge-detect (key_was_down && !key_is_down) because the edge can fire
+    // while release_pending is still true, and by the time pending clears,
+    // key_was_down has already transitioned to false — so the reset would
+    // never happen and press_triggered stays set permanently.
+    if (!key_is_down && !state->release_pending &&
+        (state->press_triggered || state->release_triggered || state->max_travel)) {
         state->press_triggered = 0;
         state->release_triggered = 0;
         state->max_travel = 0;
