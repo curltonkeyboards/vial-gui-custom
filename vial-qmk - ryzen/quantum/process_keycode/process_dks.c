@@ -293,6 +293,31 @@ void dks_set_slot(uint8_t slot, const dks_slot_t* config) {
 // ============================================================================
 
 /**
+ * Check if a keycode is a basic/mods keycode that register_code16 can handle.
+ * Anything above QK_MODS_MAX (0x1FFF) is an extended keycode (MIDI, RGB, etc.)
+ * that must go through the QMK process_record pipeline instead.
+ */
+static inline bool is_basic_keycode16(uint16_t keycode) {
+    return keycode <= 0x1FFF;
+}
+
+/**
+ * Simulate a key press or release through QMK's processing pipeline.
+ * This handles ALL keycode types: basic, MIDI, RGB, macros, custom, etc.
+ */
+static void process_record_keycode(uint16_t keycode, bool pressed) {
+    keyrecord_t record = {
+        .event = {
+            .key = {.row = 0, .col = 0},
+            .pressed = pressed,
+            .time = timer_read(),
+            .type = KEY_EVENT,
+        },
+    };
+    process_record_quantum_helper(keycode, &record);
+}
+
+/**
  * Trigger a DKS action
  */
 static void trigger_action(uint16_t keycode, dks_behavior_t behavior, uint8_t action_bit) {
@@ -302,18 +327,28 @@ static void trigger_action(uint16_t keycode, dks_behavior_t behavior, uint8_t ac
 
     switch (behavior) {
         case DKS_BEHAVIOR_TAP:
-            // Send press and release immediately
-            tap_code16(keycode);
+            if (is_basic_keycode16(keycode)) {
+                tap_code16(keycode);
+            } else {
+                process_record_keycode(keycode, true);
+                process_record_keycode(keycode, false);
+            }
             break;
 
         case DKS_BEHAVIOR_PRESS:
-            // Send press and hold
-            register_code16(keycode);
+            if (is_basic_keycode16(keycode)) {
+                register_code16(keycode);
+            } else {
+                process_record_keycode(keycode, true);
+            }
             break;
 
         case DKS_BEHAVIOR_RELEASE:
-            // Send release only
-            unregister_code16(keycode);
+            if (is_basic_keycode16(keycode)) {
+                unregister_code16(keycode);
+            } else {
+                process_record_keycode(keycode, false);
+            }
             break;
 
         default:
@@ -330,7 +365,11 @@ static void release_action(uint16_t keycode, dks_behavior_t behavior) {
     }
 
     if (behavior == DKS_BEHAVIOR_PRESS) {
-        unregister_code16(keycode);
+        if (is_basic_keycode16(keycode)) {
+            unregister_code16(keycode);
+        } else {
+            process_record_keycode(keycode, false);
+        }
     }
     // TAP and RELEASE don't need cleanup
 }
