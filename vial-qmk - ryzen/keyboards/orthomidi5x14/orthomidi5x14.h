@@ -396,6 +396,9 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define TEMP_TRANS_PLUS24       0xEF86  // Hold: temporarily add +24 to transposition
 #define TEMP_TRANS_MINUS12      0xEF87  // Hold: temporarily add -12 to transposition
 
+// Clear modifier: hold and press loop/seq/arp QB buttons to instantly clear them
+#define CLEAR_HOLD              0xEF88  // Hold: OLED shows "Press Loop/Seq to Clear", then press to clear
+
 // =============================================================================
 // GAMING / JOYSTICK SYSTEM
 // =============================================================================

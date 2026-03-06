@@ -702,15 +702,23 @@ static bool mode_display_active = false;
 #define MODE_DISPLAY_DURATION 2000  // Show for 2 seconds
 
 // Quick build erase-on-hold tracking (declared early for use in rgb_matrix_indicators_kb and process_record_user)
-static uint8_t qb_erase_hold_type = 0;     // 0=none, 1=arp, 2=seq
-static uint8_t qb_erase_hold_slot = 0;     // seq slot (only for type==2)
-static uint32_t qb_erase_hold_start = 0;   // timer when hold started
-static bool qb_erase_triggered = false;     // erase already happened this hold
+// Per-slot erase hold tracking (supports erasing multiple simultaneously)
+static bool qb_erase_arp_active[MAX_ARP_QB_SLOTS];      // hold tracking active per arp slot
+static uint32_t qb_erase_arp_start[MAX_ARP_QB_SLOTS];   // timer when hold started
+static bool qb_erase_arp_triggered[MAX_ARP_QB_SLOTS];    // erase already happened this hold
+
+static bool qb_erase_seq_active[MAX_SEQ_SLOTS];          // hold tracking active per seq slot
+static uint32_t qb_erase_seq_start[MAX_SEQ_SLOTS];       // timer when hold started
+static bool qb_erase_seq_triggered[MAX_SEQ_SLOTS];        // erase already happened this hold
+
 static uint32_t qb_erase_display_time = 0;  // when erase was triggered (for OLED/LED display)
 static uint8_t qb_erase_display_type = 0;   // what was cleared: 1=arp, 2=seq (for OLED text)
-static uint8_t qb_erase_display_slot = 0;   // seq slot that was cleared
+static uint8_t qb_erase_display_slot = 0;   // slot that was cleared
 #define QB_ERASE_HOLD_MS 1500
 #define QB_ERASE_DISPLAY_MS 1500            // how long to show "Cleared" message
+
+// Clear button modifier (hold to instantly clear on press)
+static bool clear_button_held = false;
 
 // ============================================================================
 // EXTERNAL CLOCK RECEPTION STATE
@@ -7936,8 +7944,7 @@ bool rgb_matrix_indicators_kb(void) {
                         timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
                         // Cyan flash: just cleared
                         r = 0; g = 200; b = 200;
-                    } else if (qb_erase_hold_type == 1 && qb_erase_hold_slot == s &&
-                               !qb_erase_triggered) {
+                    } else if (qb_erase_arp_active[s] && !qb_erase_arp_triggered[s]) {
                         // Purple: hold in progress, approaching erase
                         r = 180; g = 0; b = 200;
                     } else if ((quick_build_state.mode == QUICK_BUILD_ARP_SETUP ||
@@ -7977,8 +7984,7 @@ bool rgb_matrix_indicators_kb(void) {
                     timer_elapsed32(qb_erase_display_time) < QB_ERASE_DISPLAY_MS) {
                     // Cyan flash: just cleared
                     r = 0; g = 200; b = 200;
-                } else if (qb_erase_hold_type == 2 && qb_erase_hold_slot == s &&
-                           !qb_erase_triggered) {
+                } else if (qb_erase_seq_active[s] && !qb_erase_seq_triggered[s]) {
                     // Purple: hold in progress, approaching erase
                     r = 180; g = 0; b = 200;
                 } else if ((quick_build_state.mode == QUICK_BUILD_SEQ_SETUP ||
@@ -12257,6 +12263,15 @@ break;
         snprintf(name, sizeof(name), "Temp Trans: %+d", temp_transpose_offset);
     }
 
+    // Clear modifier display
+    if (keycode == CLEAR_HOLD) {
+        if (clear_button_held) {
+            snprintf(name, sizeof(name), "Press Loop/Seq:Clear");
+        } else {
+            snprintf(name, sizeof(name), "Clear Released");
+        }
+    }
+
     // Update keylog
     //snprintf(keylog_str, sizeof(keylog_str), "%-21s", name);
 	
@@ -14329,6 +14344,24 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         else slot = 3;
 
         if (record->event.pressed) {
+            // Clear modifier: instantly erase this arp QB slot
+            if (clear_button_held && quick_build_state.has_saved_arp_build[slot]) {
+                arp_stop();
+                quick_build_erase_arp(slot);
+                qb_erase_display_time = timer_read32();
+                qb_erase_display_type = 1;
+                qb_erase_display_slot = slot;
+                char msg[22];
+                snprintf(msg, sizeof(msg), "Arp %d Cleared", slot + 1);
+                int len = strlen(msg);
+                int pad = 21 - len;
+                int lpad = pad / 2;
+                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, pad - lpad, "");
+                dprintf("clear: instantly erased arp slot %d\n", slot);
+                set_keylog(keycode, record);
+                return false;
+            }
+
             if (quick_build_state.has_saved_arp_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved arp build for this slot and not currently building
@@ -14346,10 +14379,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     arp_toggle();
                 }
                 // Start tracking hold for erase
-                qb_erase_hold_type = 1;  // arp
-                qb_erase_hold_slot = slot;
-                qb_erase_hold_start = timer_read32();
-                qb_erase_triggered = false;
+                qb_erase_arp_active[slot] = true;
+                qb_erase_arp_start[slot] = timer_read32();
+                qb_erase_arp_triggered[slot] = false;
             } else if (quick_build_state.mode == QUICK_BUILD_ARP_SETUP &&
                        quick_build_state.arp_slot == slot) {
                 // In setup phase for this slot: button confirms parameter
@@ -14373,10 +14405,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 if (quick_build_state.has_saved_arp_build[slot]) {
                     quick_build_load_arp_slot(slot);
                     arp_toggle();
-                    qb_erase_hold_type = 1;
-                    qb_erase_hold_slot = slot;
-                    qb_erase_hold_start = timer_read32();
-                    qb_erase_triggered = false;
+                    qb_erase_arp_active[slot] = true;
+                    qb_erase_arp_start[slot] = timer_read32();
+                    qb_erase_arp_triggered[slot] = false;
                 } else {
                     quick_build_start_arp(slot);
                 }
@@ -14385,10 +14416,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 quick_build_start_arp(slot);
             }
         } else {
-            // Button released: clear hold tracking
-            if (qb_erase_hold_type == 1 && qb_erase_hold_slot == slot) {
-                qb_erase_hold_type = 0;
-            }
+            // Button released: clear hold tracking for this slot
+            qb_erase_arp_active[slot] = false;
         }
         set_keylog(keycode, record);
         return false;
@@ -14412,15 +14441,32 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 return false;
             }
 
+            // Clear modifier: instantly erase this seq QB slot
+            if (clear_button_held && quick_build_state.has_saved_seq_build[slot]) {
+                seq_stop(slot);
+                quick_build_erase_seq(slot);
+                qb_erase_display_time = timer_read32();
+                qb_erase_display_type = 2;
+                qb_erase_display_slot = slot;
+                char msg[22];
+                snprintf(msg, sizeof(msg), "Seq %d Cleared", slot + 1);
+                int len = strlen(msg);
+                int pad = 21 - len;
+                int lpad = pad / 2;
+                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, pad - lpad, "");
+                dprintf("clear: instantly erased seq slot %d\n", slot);
+                set_keylog(keycode, record);
+                return false;
+            }
+
             if (quick_build_state.has_saved_seq_build[slot] &&
                 quick_build_state.mode == QUICK_BUILD_NONE) {
                 // Has saved seq build for this slot and not currently building: toggle play
                 seq_start_slot(slot);
                 // Start tracking hold for erase
-                qb_erase_hold_type = 2;  // seq
-                qb_erase_hold_slot = slot;
-                qb_erase_hold_start = timer_read32();
-                qb_erase_triggered = false;
+                qb_erase_seq_active[slot] = true;
+                qb_erase_seq_start[slot] = timer_read32();
+                qb_erase_seq_triggered[slot] = false;
             } else if (quick_build_state.mode == QUICK_BUILD_SEQ_SETUP &&
                        quick_build_state.seq_slot == slot) {
                 // In setup phase: button confirms parameter
@@ -14434,10 +14480,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 quick_build_dismiss_summary();
                 if (quick_build_state.has_saved_seq_build[slot]) {
                     seq_start_slot(slot);
-                    qb_erase_hold_type = 2;
-                    qb_erase_hold_slot = slot;
-                    qb_erase_hold_start = timer_read32();
-                    qb_erase_triggered = false;
+                    qb_erase_seq_active[slot] = true;
+                    qb_erase_seq_start[slot] = timer_read32();
+                    qb_erase_seq_triggered[slot] = false;
                 } else {
                     quick_build_start_seq(slot);
                 }
@@ -14446,10 +14491,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 quick_build_start_seq(slot);
             }
         } else {
-            // Button released: clear hold tracking
-            if (qb_erase_hold_type == 2 && qb_erase_hold_slot == slot) {
-                qb_erase_hold_type = 0;
-            }
+            // Button released: clear hold tracking for this slot
+            qb_erase_seq_active[slot] = false;
         }
         set_keylog(keycode, record);
         return false;
@@ -15184,6 +15227,19 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         } else {
             temp_transpose_offset += 12;
             dprintf("temp transpose: -12 removed, total offset = %d\n", temp_transpose_offset);
+        }
+        set_keylog(keycode, record);
+        return false;
+    }
+
+    // Clear modifier: hold and press loop/seq/arp QB to instantly clear
+    if (keycode == CLEAR_HOLD) {
+        if (record->event.pressed) {
+            clear_button_held = true;
+            dprintf("clear: modifier HELD\n");
+        } else {
+            clear_button_held = false;
+            dprintf("clear: modifier RELEASED\n");
         }
         set_keylog(keycode, record);
         return false;
@@ -17624,41 +17680,39 @@ void matrix_scan_user(void) {
     // Update quick build sustain monitoring
     quick_build_update();
 
-    // Check for quick build erase-on-hold (3 second hold triggers erase)
-    if (qb_erase_hold_type > 0 && !qb_erase_triggered &&
-        timer_elapsed32(qb_erase_hold_start) >= QB_ERASE_HOLD_MS) {
-        qb_erase_triggered = true;
-        qb_erase_display_time = timer_read32();
-        qb_erase_display_type = qb_erase_hold_type;
-        qb_erase_display_slot = qb_erase_hold_slot;
-        if (qb_erase_hold_type == 1) {
-            // Erase arp quick build for this slot
+    // Check for quick build erase-on-hold (per-slot, supports multiple simultaneous holds)
+    for (uint8_t s = 0; s < MAX_ARP_QB_SLOTS; s++) {
+        if (qb_erase_arp_active[s] && !qb_erase_arp_triggered[s] &&
+            timer_elapsed32(qb_erase_arp_start[s]) >= QB_ERASE_HOLD_MS) {
+            qb_erase_arp_triggered[s] = true;
+            qb_erase_display_time = timer_read32();
+            qb_erase_display_type = 1;
+            qb_erase_display_slot = s;
             arp_stop();
-            quick_build_erase_arp(qb_erase_hold_slot);
-            // Show "Arp N Cleared" in keylog area (like button press names)
-            {
-                char msg[22];
-                snprintf(msg, sizeof(msg), "Arp %d Cleared", qb_erase_hold_slot + 1);
-                int len = strlen(msg);
-                int pad = 21 - len;
-                int lpad = pad / 2;
-                int rpad = pad - lpad;
-                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, rpad, "");
-            }
-        } else if (qb_erase_hold_type == 2) {
-            // Erase seq quick build for this slot
-            seq_stop(qb_erase_hold_slot);
-            quick_build_erase_seq(qb_erase_hold_slot);
-            // Show "Seq N Cleared" in keylog area (like button press names)
-            {
-                char msg[22];
-                snprintf(msg, sizeof(msg), "Seq %d Cleared", qb_erase_hold_slot + 1);
-                int len = strlen(msg);
-                int pad = 21 - len;
-                int lpad = pad / 2;
-                int rpad = pad - lpad;
-                snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, rpad, "");
-            }
+            quick_build_erase_arp(s);
+            char msg[22];
+            snprintf(msg, sizeof(msg), "Arp %d Cleared", s + 1);
+            int len = strlen(msg);
+            int pad = 21 - len;
+            int lpad = pad / 2;
+            snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, pad - lpad, "");
+        }
+    }
+    for (uint8_t s = 0; s < MAX_SEQ_SLOTS; s++) {
+        if (qb_erase_seq_active[s] && !qb_erase_seq_triggered[s] &&
+            timer_elapsed32(qb_erase_seq_start[s]) >= QB_ERASE_HOLD_MS) {
+            qb_erase_seq_triggered[s] = true;
+            qb_erase_display_time = timer_read32();
+            qb_erase_display_type = 2;
+            qb_erase_display_slot = s;
+            seq_stop(s);
+            quick_build_erase_seq(s);
+            char msg[22];
+            snprintf(msg, sizeof(msg), "Seq %d Cleared", s + 1);
+            int len = strlen(msg);
+            int pad = 21 - len;
+            int lpad = pad / 2;
+            snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, pad - lpad, "");
         }
     }
 
