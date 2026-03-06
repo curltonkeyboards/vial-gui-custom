@@ -494,14 +494,20 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
     // Consider key "down" if past minimum threshold (~0.2mm)
     bool key_is_down = (travel > actuation_to_travel(5));
 
-    // Full release detected: fire any remaining release actions, then reset
-    if (state->key_was_down && !key_is_down) {
-        // Fire any release actions that haven't triggered yet
-        // (handles fast releases that skip intermediate scans)
+    // Process based on direction first - this fires actions at their
+    // correct individual thresholds during normal keystroke movement
+    if (going_down) {
+        process_press_actions(state, slot, travel);
+    } else if (going_up) {
         process_release_actions(state, slot, travel);
-        // Clean up any held press actions
         cleanup_press_actions(state, slot, travel);
-        // Release any remaining held keycodes
+    }
+
+    // Full release detected: clean up any remaining held keycodes and
+    // reset state for the next press cycle. Do NOT call process_release_actions
+    // here - the going_up branch above already handled threshold-based firing.
+    // This block only releases held PRESS-behavior keys and resets flags.
+    if (state->key_was_down && !key_is_down) {
         for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
             if (state->active_keycodes & (1 << i)) {
                 release_action(slot->press_keycode[i], dks_get_behavior(slot, i));
@@ -510,18 +516,9 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
                 release_action(slot->release_keycode[i], dks_get_behavior(slot, i + 4));
             }
         }
-        // Reset all state for next press cycle
         state->press_triggered = 0;
         state->release_triggered = 0;
         state->active_keycodes = 0;
-    }
-
-    // Process based on direction (prevents double-fires from oscillation)
-    if (going_down) {
-        process_press_actions(state, slot, travel);
-    } else if (going_up) {
-        process_release_actions(state, slot, travel);
-        cleanup_press_actions(state, slot, travel);
     }
 
     state->last_travel = travel;
