@@ -5390,6 +5390,13 @@ uint8_t migrate_velocity_curve(uint8_t old_value) {
 #ifdef JOYSTICK_ENABLE
 #include "joystick.h"
 
+// All 6 axes are virtual - we set them programmatically from gaming_update_joystick(),
+// not from physical ADC pins. Without this, the default joystick_task() reads pin 0
+// for every axis and overwrites our values with garbage before flushing.
+joystick_config_t joystick_axes[JOYSTICK_AXIS_COUNT] = {
+    [0 ... JOYSTICK_AXIS_COUNT-1] = JOYSTICK_AXIS_VIRTUAL
+};
+
 // Global gaming state
 bool gaming_mode_active = false;
 gaming_settings_t gaming_settings;
@@ -5719,6 +5726,9 @@ void gaming_update_joystick(void) {
             }
         }
     }
+
+    // Flush all pending axis/button changes to the host
+    joystick_flush();
 }
 
 #endif // JOYSTICK_ENABLE
