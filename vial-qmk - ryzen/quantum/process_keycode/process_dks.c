@@ -334,33 +334,26 @@ static void release_action(uint16_t keycode, dks_behavior_t behavior) {
 }
 
 /**
- * Process press actions (downstroke)
+ * Process press actions (downstroke) - Threshold-based model
+ *
+ * Fires when travel >= threshold, regardless of last_travel.
+ * Iterates shallowest to deepest (i=0→3) so actions fire in the
+ * physical order they're reached during a downstroke.
+ * Each action fires at most once per press cycle (guarded by press_triggered).
  */
 static void process_press_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
     for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
-        // Skip if already triggered
-        if (state->press_triggered & (1 << i)) {
-            continue;
-        }
+        if (state->press_triggered & (1 << i)) continue;
+        if (slot->press_keycode[i] == KC_NO) continue;
 
-        // Skip if keycode is disabled
-        if (slot->press_keycode[i] == KC_NO) {
-            continue;
-        }
-
-        // Convert actuation point to travel units
         uint8_t threshold = actuation_to_travel(slot->press_actuation[i]);
 
-        // Check if we crossed threshold (going down)
-        if (state->last_travel < threshold && travel >= threshold) {
-            // Trigger this action!
+        // Threshold-based: if we're at or past this point, fire it
+        if (travel >= threshold) {
             dks_behavior_t behavior = dks_get_behavior(slot, i);
             trigger_action(slot->press_keycode[i], behavior, i);
-
-            // Mark as triggered
             state->press_triggered |= (1 << i);
 
-            // Track if it's active (for PRESS behavior release later)
             if (behavior == DKS_BEHAVIOR_PRESS) {
                 state->active_keycodes |= (1 << i);
             }
@@ -369,42 +362,27 @@ static void process_press_actions(dks_state_t* state, const dks_slot_t* slot, ui
 }
 
 /**
- * Process release actions (upstroke)
+ * Process release actions (upstroke) - Threshold-based model
  *
- * Iterates in reverse order (3→0) so that higher-threshold release actions
- * fire first, matching the physical key movement (deeper thresholds are
- * crossed first during upstroke).
- *
- * Uses >= for the last_travel comparison to handle the boundary case where
- * a release action is set at 100% travel (threshold=240).  With strict >
- * the condition could never be satisfied since travel maxes at 240.
+ * Fires when travel < threshold, regardless of last_travel.
+ * Release actuations are stored deepest-first (index 0 = deepest threshold,
+ * index 3 = shallowest), so iterating 0→3 fires actions in the physical
+ * order they're reached during an upstroke (deepest crossed first).
+ * Each action fires at most once per release cycle (guarded by release_triggered).
  */
 static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
-    for (int8_t i = DKS_ACTIONS_PER_STAGE - 1; i >= 0; i--) {
-        // Skip if already triggered
-        if (state->release_triggered & (1 << i)) {
-            continue;
-        }
+    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
+        if (state->release_triggered & (1 << i)) continue;
+        if (slot->release_keycode[i] == KC_NO) continue;
 
-        // Skip if keycode is disabled
-        if (slot->release_keycode[i] == KC_NO) {
-            continue;
-        }
-
-        // Convert actuation point to travel units
         uint8_t threshold = actuation_to_travel(slot->release_actuation[i]);
 
-        // Check if we crossed threshold (going up)
-        // Use >= for last_travel to handle max-travel boundary (threshold=240)
-        if (state->last_travel >= threshold && travel < threshold) {
-            // Trigger this action!
-            dks_behavior_t behavior = dks_get_behavior(slot, i + 4);  // Release actions are 4-7
+        // Threshold-based: if we're above (less travel than) this point, fire it
+        if (travel < threshold) {
+            dks_behavior_t behavior = dks_get_behavior(slot, i + 4);
             trigger_action(slot->release_keycode[i], behavior, i + 4);
-
-            // Mark as triggered
             state->release_triggered |= (1 << i);
 
-            // Track if it's active
             if (behavior == DKS_BEHAVIOR_PRESS) {
                 state->active_keycodes |= (1 << (i + 4));
             }
@@ -443,28 +421,35 @@ static void cleanup_press_actions(dks_state_t* state, const dks_slot_t* slot, ui
 /**
  * Main DKS processing function
  * Called from matrix scanning for each DKS key
+ *
+ * Uses a threshold-based model:
+ * - Press actions fire when travel >= their threshold (shallowest first)
+ * - Release actions fire when travel < their threshold (deepest first)
+ * - Each action fires at most once per press/release cycle
+ * - Triggered flags reset on full release (travel drops to near-zero)
+ *
+ * Direction gating prevents press actions from firing during upstroke
+ * and release actions from firing during downstroke, avoiding double-fires
+ * when travel oscillates around a threshold.
  */
 void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode) {
     if (!dks_initialized) {
         return;
     }
 
-    // Validate row/col
     if (row >= MATRIX_ROWS || col >= MATRIX_COLS) {
         return;
     }
 
-    // Get slot number from keycode
     uint8_t slot_num = dks_keycode_to_slot(keycode);
     if (slot_num >= DKS_NUM_SLOTS) {
         return;
     }
 
-    // Get state and configuration
     dks_state_t* state = &dks_states[row][col];
     const dks_slot_t* slot = &dks_slots[slot_num];
 
-    // Initialize state if this is the first time seeing this key
+    // Initialize state on first detection
     if (!state->is_dks_key) {
         state->is_dks_key = true;
         state->dks_slot = slot_num;
@@ -473,32 +458,45 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
         state->release_triggered = 0;
         state->active_keycodes = 0;
         state->key_was_down = false;
-        return;  // Skip processing on first detection
+        return;
     }
 
     // Update slot if keycode changed
     if (state->dks_slot != slot_num) {
-        // Release any active actions from old slot
         dks_reset_states();
         state->is_dks_key = true;
         state->dks_slot = slot_num;
     }
 
-    // Determine direction
     bool going_down = (travel > state->last_travel);
     bool going_up = (travel < state->last_travel);
 
-    // Detect full press/release for state reset
-    bool key_is_down = (travel > actuation_to_travel(5));  // Consider "down" if > 0.125mm
+    // Consider key "down" if past minimum threshold (~0.2mm)
+    bool key_is_down = (travel > actuation_to_travel(5));
 
-    // Full release - reset all triggered flags
+    // Full release detected: fire any remaining release actions, then reset
     if (state->key_was_down && !key_is_down) {
+        // Fire any release actions that haven't triggered yet
+        // (handles fast releases that skip intermediate scans)
+        process_release_actions(state, slot, travel);
+        // Clean up any held press actions
+        cleanup_press_actions(state, slot, travel);
+        // Release any remaining held keycodes
+        for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
+            if (state->active_keycodes & (1 << i)) {
+                release_action(slot->press_keycode[i], dks_get_behavior(slot, i));
+            }
+            if (state->active_keycodes & (1 << (i + 4))) {
+                release_action(slot->release_keycode[i], dks_get_behavior(slot, i + 4));
+            }
+        }
+        // Reset all state for next press cycle
         state->press_triggered = 0;
         state->release_triggered = 0;
-        // Keep active_keycodes to track held PRESS actions
+        state->active_keycodes = 0;
     }
 
-    // Process based on direction
+    // Process based on direction (prevents double-fires from oscillation)
     if (going_down) {
         process_press_actions(state, slot, travel);
     } else if (going_up) {
@@ -506,7 +504,6 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
         cleanup_press_actions(state, slot, travel);
     }
 
-    // Update state
     state->last_travel = travel;
     state->key_was_down = key_is_down;
 }
