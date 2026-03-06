@@ -371,16 +371,16 @@ static void process_press_actions(dks_state_t* state, const dks_slot_t* slot, ui
 /**
  * Process release actions (upstroke)
  *
- * Iterates in reverse order (3→0) so that higher-threshold release actions
- * fire first, matching the physical key movement (deeper thresholds are
- * crossed first during upstroke).
+ * Iterates forward (0→3) to match the physical crossing order: default
+ * release thresholds are stored in descending order [96,72,48,24], so
+ * index 0 (highest threshold) is crossed first during upstroke.
  *
  * Uses >= for the last_travel comparison to handle the boundary case where
  * a release action is set at 100% travel (threshold=240).  With strict >
  * the condition could never be satisfied since travel maxes at 240.
  */
 static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
-    for (int8_t i = DKS_ACTIONS_PER_STAGE - 1; i >= 0; i--) {
+    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
         // Skip if already triggered
         if (state->release_triggered & (1 << i)) {
             continue;
@@ -491,19 +491,22 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
     // Detect full press/release for state reset
     bool key_is_down = (travel > actuation_to_travel(5));  // Consider "down" if > 0.125mm
 
-    // Full release - reset all triggered flags
-    if (state->key_was_down && !key_is_down) {
-        state->press_triggered = 0;
-        state->release_triggered = 0;
-        // Keep active_keycodes to track held PRESS actions
-    }
-
     // Process based on direction
     if (going_down) {
         process_press_actions(state, slot, travel);
     } else if (going_up) {
         process_release_actions(state, slot, travel);
         cleanup_press_actions(state, slot, travel);
+    }
+
+    // Full release - reset triggered flags AFTER processing so that
+    // release actions complete before flags are cleared for the next cycle.
+    // Previously this ran before processing, which caused double-fires when
+    // the reset and a threshold crossing occurred in the same scan.
+    if (state->key_was_down && !key_is_down) {
+        state->press_triggered = 0;
+        state->release_triggered = 0;
+        // Keep active_keycodes to track held PRESS actions
     }
 
     // Update state
