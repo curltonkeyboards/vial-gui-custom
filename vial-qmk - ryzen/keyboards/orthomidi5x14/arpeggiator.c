@@ -3854,9 +3854,9 @@ void seq_start_slot(uint8_t slot) {
                 dprintf("seq: slot %d force-started immediately (no running seq)\n", slot);
             }
         } else if (seq_state[slot].deferred_stop_pending) {
-            // Already pending deferred stop: cancel it (un-stop)
-            seq_state[slot].deferred_stop_pending = false;
-            dprintf("seq: slot %d cancelled deferred stop\n", slot);
+            // Already pending deferred stop: stop immediately
+            seq_stop(slot);
+            dprintf("seq: slot %d immediate stop (was deferred)\n", slot);
         } else {
             // Already playing: defer stop to end of current pattern loop
             seq_state[slot].deferred_stop_pending = true;
