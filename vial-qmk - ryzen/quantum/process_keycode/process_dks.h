@@ -94,11 +94,13 @@ _Static_assert(sizeof(dks_slot_t) == 32, "dks_slot_t must be exactly 32 bytes");
 typedef struct {
     uint8_t  dks_slot;              // Which DKS slot this key is using (0-49)
     uint8_t  last_travel;           // Last travel position (0-240 internal units)
+    uint8_t  max_travel;            // Maximum travel seen during current press cycle
     uint8_t  press_triggered;       // Bitmask: which press actions have been triggered
     uint8_t  release_triggered;     // Bitmask: which release actions have been triggered
     uint16_t active_keycodes;       // Bitmask: which keycodes are currently held down
     bool     is_dks_key;            // Is this physical key a DKS key?
     bool     key_was_down;          // Was key down on last scan?
+    bool     release_pending;       // More release actions need to fire (rate-limited)
 } dks_state_t;
 
 /**
