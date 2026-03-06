@@ -263,7 +263,9 @@ void dks_reset_states(void) {
             state->release_triggered = 0;
             state->active_keycodes = 0;
             state->last_travel = 0;
+            state->max_travel = 0;
             state->key_was_down = false;
+            state->release_pending = false;
         }
     }
 }
@@ -369,47 +371,81 @@ static void process_press_actions(dks_state_t* state, const dks_slot_t* slot, ui
 }
 
 /**
- * Process release actions (upstroke)
+ * Process release actions (upstroke) - rate-limited to ONE action per scan
  *
- * Iterates forward (0→3) to match the physical crossing order: default
- * release thresholds are stored in descending order [96,72,48,24], so
- * index 0 (highest threshold) is crossed first during upstroke.
+ * On fast upstroke, travel can jump a large distance in a single scan cycle
+ * (e.g., 240→20), crossing multiple release thresholds simultaneously.
+ * If all actions fire in the same scan, tap_code16 calls happen within
+ * microseconds and the ChibiOS USB endpoint buffer gets overwritten before
+ * the host polls - causing missed keystrokes and wrong ordering.
  *
- * Uses >= for the last_travel comparison to handle the boundary case where
- * a release action is set at 100% travel (threshold=240).  With strict >
- * the condition could never be satisfied since travel maxes at 240.
+ * Fix: fire only the highest-threshold unfired action per scan cycle.
+ * This matches the physical upstroke crossing order (highest threshold is
+ * crossed first) and gives USB ~1ms between each action to transmit.
+ *
+ * Uses max_travel (peak travel during this press cycle) instead of
+ * last_travel to validate that the key actually reached the threshold
+ * depth. This prevents false triggering when the key bounces during
+ * release or when release_pending re-enters on a stationary key.
+ *
+ * Returns true if an action was fired (caller should check release_pending).
  */
-static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
+static bool process_release_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
+    // Find the unfired action with the HIGHEST threshold that travel is now below.
+    // This ensures correct physical ordering regardless of how indices are arranged.
+    int8_t best_idx = -1;
+    uint8_t best_threshold = 0;
+
     for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
-        // Skip if already triggered
         if (state->release_triggered & (1 << i)) {
             continue;
         }
-
-        // Skip if keycode is disabled
         if (slot->release_keycode[i] == KC_NO) {
             continue;
         }
 
-        // Convert actuation point to travel units
         uint8_t threshold = actuation_to_travel(slot->release_actuation[i]);
 
-        // Check if we crossed threshold (going up)
-        // Use >= for last_travel to handle max-travel boundary (threshold=240)
-        if (state->last_travel >= threshold && travel < threshold) {
-            // Trigger this action!
-            dks_behavior_t behavior = dks_get_behavior(slot, i + 4);  // Release actions are 4-7
-            trigger_action(slot->release_keycode[i], behavior, i + 4);
-
-            // Mark as triggered
-            state->release_triggered |= (1 << i);
-
-            // Track if it's active
-            if (behavior == DKS_BEHAVIOR_PRESS) {
-                state->active_keycodes |= (1 << (i + 4));
+        // Key must have actually reached this depth (max_travel >= threshold)
+        // and travel must now be below it
+        if (state->max_travel >= threshold && travel < threshold) {
+            if (threshold > best_threshold) {
+                best_threshold = threshold;
+                best_idx = i;
             }
         }
     }
+
+    if (best_idx < 0) {
+        state->release_pending = false;
+        return false;
+    }
+
+    // Fire the selected action
+    dks_behavior_t behavior = dks_get_behavior(slot, best_idx + 4);
+    trigger_action(slot->release_keycode[best_idx], behavior, best_idx + 4);
+    state->release_triggered |= (1 << best_idx);
+    if (behavior == DKS_BEHAVIOR_PRESS) {
+        state->active_keycodes |= (1 << (best_idx + 4));
+    }
+
+    // Check if more actions are still pending below current travel
+    state->release_pending = false;
+    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
+        if (state->release_triggered & (1 << i)) {
+            continue;
+        }
+        if (slot->release_keycode[i] == KC_NO) {
+            continue;
+        }
+        uint8_t threshold = actuation_to_travel(slot->release_actuation[i]);
+        if (state->max_travel >= threshold && travel < threshold) {
+            state->release_pending = true;
+            break;
+        }
+    }
+
+    return true;
 }
 
 /**
@@ -469,10 +505,12 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
         state->is_dks_key = true;
         state->dks_slot = slot_num;
         state->last_travel = travel;
+        state->max_travel = 0;
         state->press_triggered = 0;
         state->release_triggered = 0;
         state->active_keycodes = 0;
         state->key_was_down = false;
+        state->release_pending = false;
         return;  // Skip processing on first detection
     }
 
@@ -484,6 +522,11 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
         state->dks_slot = slot_num;
     }
 
+    // Track peak travel during this press cycle (for release threshold validation)
+    if (travel > state->max_travel) {
+        state->max_travel = travel;
+    }
+
     // Determine direction
     bool going_down = (travel > state->last_travel);
     bool going_up = (travel < state->last_travel);
@@ -491,21 +534,29 @@ void dks_process_key(uint8_t row, uint8_t col, uint8_t travel, uint16_t keycode)
     // Detect full press/release for state reset
     bool key_is_down = (travel > actuation_to_travel(5));  // Consider "down" if > 0.125mm
 
-    // Process based on direction
+    // Process based on direction.
+    // release_pending: continue firing deferred release actions even when
+    // the key is stationary (going_up would be false if key isn't moving).
     if (going_down) {
+        // New press direction cancels any pending releases
+        state->release_pending = false;
         process_press_actions(state, slot, travel);
-    } else if (going_up) {
+    } else if (going_up || state->release_pending) {
         process_release_actions(state, slot, travel);
-        cleanup_press_actions(state, slot, travel);
+        // Only clean up press actions when all releases are done,
+        // to avoid interleaving press cleanup with release firing.
+        if (!state->release_pending) {
+            cleanup_press_actions(state, slot, travel);
+        }
     }
 
-    // Full release - reset triggered flags AFTER processing so that
-    // release actions complete before flags are cleared for the next cycle.
-    // Previously this ran before processing, which caused double-fires when
-    // the reset and a threshold crossing occurred in the same scan.
-    if (state->key_was_down && !key_is_down) {
+    // Full release - reset triggered flags AFTER processing.
+    // Defer the reset if release actions are still pending (rate-limited),
+    // otherwise the bitmask would be cleared before deferred actions fire.
+    if (state->key_was_down && !key_is_down && !state->release_pending) {
         state->press_triggered = 0;
         state->release_triggered = 0;
+        state->max_travel = 0;
         // Keep active_keycodes to track held PRESS actions
     }
 
