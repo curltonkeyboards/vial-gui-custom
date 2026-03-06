@@ -1985,7 +1985,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_MODE, 0, [1 if enabled else 0])
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2005,7 +2005,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = [control_id, row, col, 1 if enabled else 0]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_KEY_MAP, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2027,7 +2027,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = [ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_ANALOG_CONFIG, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2067,7 +2067,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_RESET, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
