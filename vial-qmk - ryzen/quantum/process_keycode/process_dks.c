@@ -362,22 +362,40 @@ static void process_press_actions(dks_state_t* state, const dks_slot_t* slot, ui
 }
 
 /**
- * Process release actions (upstroke) - Threshold-based model
+ * Process release actions (upstroke) - Sequential threshold model
  *
- * Fires when travel < threshold, regardless of last_travel.
+ * Fires when travel < threshold, but only if all preceding actions (0..i-1)
+ * have already been triggered (or have no keycode). This enforces sequential
+ * ordering: the deepest release threshold must fire before shallower ones can.
+ *
  * Release actuations are stored deepest-first (index 0 = deepest threshold,
- * index 3 = shallowest), so iterating 0→3 fires actions in the physical
- * order they're reached during an upstroke (deepest crossed first).
- * Each action fires at most once per release cycle (guarded by release_triggered).
+ * index 3 = shallowest). During a slow upstroke, action 0 fires first when
+ * travel drops below its deep threshold, then action 1 fires later when
+ * travel drops below its shallower threshold, etc.
+ *
+ * During a fast release that skips multiple thresholds in one scan, the
+ * prerequisites cascade: action 0 fires, enabling action 1, which fires
+ * and enables action 2, etc. All fire in one scan but in correct order.
  */
 static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
     for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
         if (state->release_triggered & (1 << i)) continue;
         if (slot->release_keycode[i] == KC_NO) continue;
 
+        // Sequential gate: all preceding actions must have fired first
+        // (skip empty keycode slots - they don't block the sequence)
+        bool prerequisites_met = true;
+        for (uint8_t j = 0; j < i; j++) {
+            if (slot->release_keycode[j] == KC_NO) continue;
+            if (!(state->release_triggered & (1 << j))) {
+                prerequisites_met = false;
+                break;
+            }
+        }
+        if (!prerequisites_met) break;  // No point checking later actions either
+
         uint8_t threshold = actuation_to_travel(slot->release_actuation[i]);
 
-        // Threshold-based: if we're above (less travel than) this point, fire it
         if (travel < threshold) {
             dks_behavior_t behavior = dks_get_behavior(slot, i + 4);
             trigger_action(slot->release_keycode[i], behavior, i + 4);
@@ -386,6 +404,8 @@ static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, 
             if (behavior == DKS_BEHAVIOR_PRESS) {
                 state->active_keycodes |= (1 << (i + 4));
             }
+        } else {
+            break;  // Haven't reached this threshold yet, stop checking
         }
     }
 }
