@@ -370,9 +370,17 @@ static void process_press_actions(dks_state_t* state, const dks_slot_t* slot, ui
 
 /**
  * Process release actions (upstroke)
+ *
+ * Iterates in reverse order (3→0) so that higher-threshold release actions
+ * fire first, matching the physical key movement (deeper thresholds are
+ * crossed first during upstroke).
+ *
+ * Uses >= for the last_travel comparison to handle the boundary case where
+ * a release action is set at 100% travel (threshold=240).  With strict >
+ * the condition could never be satisfied since travel maxes at 240.
  */
 static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
-    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
+    for (int8_t i = DKS_ACTIONS_PER_STAGE - 1; i >= 0; i--) {
         // Skip if already triggered
         if (state->release_triggered & (1 << i)) {
             continue;
@@ -387,7 +395,8 @@ static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, 
         uint8_t threshold = actuation_to_travel(slot->release_actuation[i]);
 
         // Check if we crossed threshold (going up)
-        if (state->last_travel > threshold && travel <= threshold) {
+        // Use >= for last_travel to handle max-travel boundary (threshold=240)
+        if (state->last_travel >= threshold && travel < threshold) {
             // Trigger this action!
             dks_behavior_t behavior = dks_get_behavior(slot, i + 4);  // Release actions are 4-7
             trigger_action(slot->release_keycode[i], behavior, i + 4);

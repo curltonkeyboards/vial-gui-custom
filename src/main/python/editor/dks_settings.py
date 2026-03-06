@@ -1143,6 +1143,7 @@ class DKSEntryUI(QWidget):
         self.slot_idx = slot_idx
         self.dks_protocol = None
         self.selected_key_widget = None  # Track which key widget is selected
+        self._loading = False  # Guard flag: True while loading from keyboard/slot
 
         # Set minimum height to prevent squishing - allows scroll instead
         self.setMinimumHeight(400)
@@ -1246,16 +1247,27 @@ class DKSEntryUI(QWidget):
         self.load_from_slot(slot)
 
     def load_from_slot(self, slot):
-        """Load UI from slot data"""
-        # Press actions
-        for i, editor in enumerate(self.press_editors):
-            action = slot.press_actions[i]
-            editor.set_action(action.keycode, action.actuation, action.behavior)
+        """Load UI from slot data.
 
-        # Release actions
-        for i, editor in enumerate(self.release_editors):
-            action = slot.release_actions[i]
-            editor.set_action(action.keycode, action.actuation, action.behavior)
+        Sets _loading flag to prevent _on_action_changed (and therefore
+        _send_to_keyboard) from firing while editors are being populated.
+        Without this guard, the first editor update triggers _send_to_keyboard
+        which reads ALL editors (most still at defaults) and overwrites the
+        firmware's correct slot data with partially-loaded values.
+        """
+        self._loading = True
+        try:
+            # Press actions
+            for i, editor in enumerate(self.press_editors):
+                action = slot.press_actions[i]
+                editor.set_action(action.keycode, action.actuation, action.behavior)
+
+            # Release actions
+            for i, editor in enumerate(self.release_editors):
+                action = slot.release_actions[i]
+                editor.set_action(action.keycode, action.actuation, action.behavior)
+        finally:
+            self._loading = False
 
         self._update_travel_bar()
 
@@ -1272,7 +1284,9 @@ class DKSEntryUI(QWidget):
         return (press_actions, release_actions)
 
     def _on_action_changed(self):
-        """Handle action change"""
+        """Handle action change - skip if we're loading data from the keyboard"""
+        if self._loading:
+            return
         self._update_travel_bar()
         self._send_to_keyboard()
         self.changed.emit()

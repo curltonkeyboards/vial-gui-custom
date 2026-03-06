@@ -341,6 +341,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             // Call the LED scanning functions
             scan_keycode_categories();
             scan_current_layer_midi_leds();
+            // Also invalidate key type caches so DKS/MIDI keys are recognized
+            invalidate_key_type_caches();
 
             msg[0] = 0x01; // Success response
             break;
@@ -1133,6 +1135,8 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
 			} else if (sub_cmd == 0x01) {
 				// Sub-command 0x01: Trigger rescan from RAM cache
 				rescan_from_ram();
+				// Also invalidate key type caches so DKS/MIDI keys are recognized
+				invalidate_key_type_caches();
 				msg[0] = 0x01;  // Success
 			} else {
 				msg[0] = 0x00;  // Unknown sub-command

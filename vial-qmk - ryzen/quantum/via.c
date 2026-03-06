@@ -372,10 +372,14 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         }
         case id_dynamic_keymap_set_keycode: {
             dynamic_keymap_set_keycode(command_data[0], command_data[1], command_data[2], (command_data[3] << 8) | command_data[4]);
+            // Invalidate key type caches so newly assigned DKS/MIDI keycodes
+            // are recognized on the next scan cycle without a power cycle
+            invalidate_key_type_caches();
             break;
         }
         case id_dynamic_keymap_reset: {
             dynamic_keymap_reset();
+            invalidate_key_type_caches();
             break;
         }
         case id_lighting_set_value: {
