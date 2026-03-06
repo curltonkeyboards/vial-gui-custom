@@ -371,16 +371,19 @@ static void process_press_actions(dks_state_t* state, const dks_slot_t* slot, ui
 /**
  * Process release actions (upstroke)
  *
- * Iterates in reverse order (3→0) so that higher-threshold release actions
- * fire first, matching the physical key movement (deeper thresholds are
- * crossed first during upstroke).
+ * Iterates in forward order (0→3) because release_actuation[] is stored in
+ * descending threshold order: index 0 has the highest threshold (deepest
+ * position), which is physically crossed first during upstroke.  Forward
+ * iteration therefore matches the real chronological order of threshold
+ * crossings, which matters when a fast upstroke crosses multiple thresholds
+ * in a single scan cycle.
  *
  * Uses >= for the last_travel comparison to handle the boundary case where
  * a release action is set at 100% travel (threshold=240).  With strict >
  * the condition could never be satisfied since travel maxes at 240.
  */
 static void process_release_actions(dks_state_t* state, const dks_slot_t* slot, uint8_t travel) {
-    for (int8_t i = DKS_ACTIONS_PER_STAGE - 1; i >= 0; i--) {
+    for (uint8_t i = 0; i < DKS_ACTIONS_PER_STAGE; i++) {
         // Skip if already triggered
         if (state->release_triggered & (1 << i)) {
             continue;
