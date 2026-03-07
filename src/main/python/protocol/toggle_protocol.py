@@ -212,14 +212,22 @@ class ProtocolToggle:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_GET_MULTI, 0, [slot_num])
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
+            print(f"Toggle GET_MULTI slot={slot_num}: response len={len(response) if response else 0}")
+            if response:
+                print(f"Toggle GET_MULTI raw response[4:20]: [{', '.join('0x{:02X}'.format(b) for b in response[4:20])}]")
+
             if not response or len(response) < (5 + TOGGLE_MULTI_EXTRA_KEYS * 2):
+                print(f"Toggle GET_MULTI slot={slot_num}: response too short or empty")
                 return
 
             if response[4] != 0:
+                print(f"Toggle GET_MULTI slot={slot_num}: error status {response[4]}")
                 return
 
             for j in range(TOGGLE_MULTI_EXTRA_KEYS):
                 slot.multi_keycodes[j] = struct.unpack_from('<H', response, 5 + j * 2)[0]
+
+            print(f"Toggle GET_MULTI slot={slot_num}: loaded keycodes {['0x{:04X}'.format(slot.multi_keycodes[j]) for j in range(TOGGLE_MULTI_EXTRA_KEYS)]}")
 
         except Exception as e:
             print(f"Toggle: Error getting multi keycodes for slot {slot_num}: {e}")
@@ -233,10 +241,13 @@ class ProtocolToggle:
             # Packet: [slot_num, target_kc_lo, target_kc_hi, flags, num_keys]
             data = bytearray([slot_num]) + bytearray(slot.to_bytes())
 
+            print(f"Toggle SET_SLOT slot={slot_num}: target=0x{slot.target_keycode:04X} flags=0x{slot.flags:02X} num_keys={slot.num_keys} is_multi={slot.is_multi_key}")
+
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SET_SLOT, 0, data)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             success = response and len(response) > 4 and response[4] == 0
+            print(f"Toggle SET_SLOT response: success={success}")
 
             # If multi-key mode, also send the extra keycodes
             if success and slot.is_multi_key:
@@ -261,10 +272,15 @@ class ProtocolToggle:
                 data.append(kc & 0xFF)
                 data.append((kc >> 8) & 0xFF)
 
+            print(f"Toggle SET_MULTI slot={slot_num}: sending keycodes {['0x{:04X}'.format(slot.multi_keycodes[j]) for j in range(TOGGLE_MULTI_EXTRA_KEYS)]}")
+            print(f"Toggle SET_MULTI raw data: [{', '.join('0x{:02X}'.format(b) for b in data)}]")
+
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SET_MULTI, 0, data)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            return response and len(response) > 4 and response[4] == 0
+            success = response and len(response) > 4 and response[4] == 0
+            print(f"Toggle SET_MULTI response: success={success}, response[4]={response[4] if response and len(response) > 4 else 'N/A'}")
+            return success
 
         except Exception as e:
             print(f"Toggle: Error setting multi keycodes for slot {slot_num}: {e}")

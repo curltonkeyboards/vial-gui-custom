@@ -4647,19 +4647,25 @@ void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
     response[0] = 0;  // Success
     toggle_entry_t* entry = toggle_find(slot_num);
     if (entry) {
+        dprintf("TGL GET_MULTI slot=%d pool: ", slot_num);
         for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
             response[1 + j * 2] = entry->multi_keycodes[j] & 0xFF;
             response[2 + j * 2] = (entry->multi_keycodes[j] >> 8) & 0xFF;
+            dprintf("kc[%d]=0x%04X ", j, entry->multi_keycodes[j]);
         }
+        dprintf("\n");
     } else {
         // Not in pool - read from EEPROM
         uint16_t magic = eeprom_read_word((uint16_t*)(TOGGLE_MULTI_EEPROM_ADDR));
         uint32_t addr = TOGGLE_MULTI_EEPROM_ADDR + 2 + (slot_num * TOGGLE_MULTI_EXTRA_KEYS * 2);
+        dprintf("TGL GET_MULTI slot=%d eeprom (magic=0x%04X): ", slot_num, magic);
         for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
             uint16_t kc = (magic == TOGGLE_MULTI_MAGIC) ? eeprom_read_word((uint16_t*)(addr + j * 2)) : 0;
             response[1 + j * 2] = kc & 0xFF;
             response[2 + j * 2] = (kc >> 8) & 0xFF;
+            dprintf("kc[%d]=0x%04X ", j, kc);
         }
+        dprintf("\n");
     }
 }
 
@@ -4675,9 +4681,12 @@ void handle_toggle_set_multi(const uint8_t* data) {
         if (!entry) return;  // Pool full
     }
 
+    dprintf("TGL SET_MULTI slot=%d: ", slot_num);
     for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
         entry->multi_keycodes[j] = data[1 + j * 2] | (data[2 + j * 2] << 8);
+        dprintf("kc[%d]=0x%04X(raw=%02X,%02X) ", j, entry->multi_keycodes[j], data[1 + j * 2], data[2 + j * 2]);
     }
+    dprintf("\n");
     entry->cycle_index = 0;
 }
 
