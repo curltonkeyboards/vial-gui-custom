@@ -37,7 +37,11 @@ typedef struct {
     int8_t   transpose_semi;   // -48 to +48 semitones offset per repeat
     uint8_t  transpose_mode;   // 0=fixed (all repeats same offset), 1=cumulative
     uint8_t  max_active_notes;  // 0=no limit, 1-12=max simultaneous delay notes per slot
-    uint8_t  reserved[5];      // Future use, padding to 16 bytes
+    uint8_t  channel_count;    // 1=single channel, 2-4=multi-channel cycling (repeats rotate)
+    uint8_t  channel2;         // 2nd channel (1-16) for multi-channel mode
+    uint8_t  channel3;         // 3rd channel (1-16) for multi-channel mode
+    uint8_t  channel4;         // 4th channel (1-16) for multi-channel mode
+    uint8_t  reserved[1];     // Future use, padding to 16 bytes
 } delay_slot_config_t;
 
 // Runtime toggle state per slot (not persisted - all off at boot)

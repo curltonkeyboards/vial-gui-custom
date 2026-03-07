@@ -628,14 +628,16 @@ void midi_send_noteoff_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
         collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, raw_travel_scaled);
     }
 
-    // Delay note-offs bypass sustain - they should always send immediately
-    // regardless of whether the sustain pedal is held
-    midi_send_noteoff(&midi_device, channel, note, velocity);
-    remove_lighting_live_note(channel, note);
-    if (current_macro_id > 0) {
-        dynamic_macro_intercept_noteoff(channel, note, raw_travel_scaled, current_macro_id,
-                                      current_macro_buffer1, current_macro_buffer2,
-                                      current_macro_pointer, current_recording_start_time);
+    if (sustain_active) {
+        add_sustain_note(channel, note, velocity);
+    } else {
+        midi_send_noteoff(&midi_device, channel, note, velocity);
+        remove_lighting_live_note(channel, note);
+        if (current_macro_id > 0) {
+            dynamic_macro_intercept_noteoff(channel, note, raw_travel_scaled, current_macro_id,
+                                          current_macro_buffer1, current_macro_buffer2,
+                                          current_macro_pointer, current_recording_start_time);
+        }
     }
 }
 

@@ -159,6 +159,11 @@ void midi_delay_init(void) {
         delay_system.configs[i].channel = 0;             // Same channel
         delay_system.configs[i].transpose_semi = 0;      // No transpose
         delay_system.configs[i].transpose_mode = 0;      // Fixed
+        delay_system.configs[i].max_active_notes = 0;    // No limit
+        delay_system.configs[i].channel_count = 1;       // Single channel
+        delay_system.configs[i].channel2 = 0;
+        delay_system.configs[i].channel3 = 0;
+        delay_system.configs[i].channel4 = 0;
     }
 
     memset(note_on_times, 0, sizeof(note_on_times));
@@ -284,29 +289,40 @@ void midi_delay_schedule_note_on(uint8_t channel, uint8_t note, uint8_t velocity
 
         // Max active notes: limit how many distinct notes can have pending delays in this slot
         if (cfg->max_active_notes > 0) {
-            // Count distinct original notes currently pending in this slot (excluding current note)
+            // Step 1: Always cancel existing delays for the SAME note (re-trigger resets delay)
+            for (int8_t i = delay_system.queue_count - 1; i >= 0; i--) {
+                delay_event_t *evt = &delay_system.queue[i];
+                if (evt->slot_id == s && evt->original_note == note) {
+                    if (!evt->is_note_off && evt->note_on_sent) {
+                        midi_send_noteoff_delay(evt->channel, evt->note, 0);
+                    }
+                    queue_remove(i);
+                }
+            }
+
+            // Step 2: Count distinct OTHER notes still pending in this slot
             uint8_t distinct_notes[128];
             uint8_t distinct_count = 0;
             memset(distinct_notes, 0, sizeof(distinct_notes));
 
             for (uint8_t i = 0; i < delay_system.queue_count; i++) {
                 delay_event_t *evt = &delay_system.queue[i];
-                if (evt->slot_id == s && evt->original_note != note && !distinct_notes[evt->original_note]) {
+                if (evt->slot_id == s && !distinct_notes[evt->original_note]) {
                     distinct_notes[evt->original_note] = 1;
                     distinct_count++;
                 }
             }
 
-            // If adding this note would exceed limit, remove oldest notes' events
+            // Step 3: Evict oldest notes until we have room for the new one
             while (distinct_count >= cfg->max_active_notes) {
-                // Find the oldest pending note in this slot (by fire_time)
+                // Find the oldest pending note in this slot (by earliest fire_time)
                 uint8_t oldest_note = 0;
                 uint32_t oldest_time = UINT32_MAX;
                 bool found = false;
 
                 for (uint8_t i = 0; i < delay_system.queue_count; i++) {
                     delay_event_t *evt = &delay_system.queue[i];
-                    if (evt->slot_id == s && evt->original_note != note && !evt->is_note_off) {
+                    if (evt->slot_id == s && !evt->is_note_off) {
                         if (!found || (int32_t)(evt->fire_time - oldest_time) < 0) {
                             oldest_time = evt->fire_time;
                             oldest_note = evt->original_note;
@@ -358,8 +374,23 @@ void midi_delay_schedule_note_on(uint8_t channel, uint8_t note, uint8_t velocity
             // Skip if out of MIDI range
             if (transposed < 0 || transposed > 127) continue;
 
-            // Determine channel
-            uint8_t ch = (cfg->channel == 0) ? channel : (cfg->channel - 1);
+            // Determine channel (multi-channel mode cycles through channels per repeat)
+            uint8_t ch;
+            if (cfg->channel == 0) {
+                ch = channel;  // Same as original
+            } else if (cfg->channel_count >= 2) {
+                // Multi-channel: build channel list and cycle through it
+                uint8_t ch_list[4];
+                uint8_t ch_count = cfg->channel_count;
+                if (ch_count > 4) ch_count = 4;
+                ch_list[0] = cfg->channel - 1;
+                ch_list[1] = (ch_count >= 2 && cfg->channel2 > 0) ? (cfg->channel2 - 1) : ch_list[0];
+                ch_list[2] = (ch_count >= 3 && cfg->channel3 > 0) ? (cfg->channel3 - 1) : ch_list[0];
+                ch_list[3] = (ch_count >= 4 && cfg->channel4 > 0) ? (cfg->channel4 - 1) : ch_list[0];
+                ch = ch_list[(r - 1) % ch_count];
+            } else {
+                ch = cfg->channel - 1;  // Single different channel
+            }
 
             // Schedule the note-on event
             delay_event_t evt = {0};

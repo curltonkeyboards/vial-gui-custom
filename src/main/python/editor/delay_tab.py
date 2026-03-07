@@ -204,20 +204,54 @@ class DelaySlotEditor(QWidget):
         self.channel_check.stateChanged.connect(self._on_channel_check_changed)
         channel_layout.addWidget(self.channel_check)
 
-        self.channel_row = QHBoxLayout()
-        self.channel_row_label = QLabel("Output Channel:")
-        self.channel_row.addWidget(self.channel_row_label)
+        # Single channel controls (hidden until checkbox ticked)
+        self.channel_controls = QWidget()
+        channel_controls_layout = QVBoxLayout()
+        channel_controls_layout.setContentsMargins(0, 4, 0, 0)
+        channel_controls_layout.setSpacing(4)
+
+        # Channel 1 row
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Output Channel:"))
         self.channel_combo = QComboBox()
         for i in range(1, 17):
             self.channel_combo.addItem(f"Channel {i}")
         self.channel_combo.setMinimumWidth(140)
-        self.channel_row.addWidget(self.channel_combo)
-        self.channel_row.addStretch()
-        channel_layout.addLayout(self.channel_row)
+        row.addWidget(self.channel_combo)
+        row.addStretch()
+        channel_controls_layout.addLayout(row)
 
-        # Initially hidden
-        self.channel_row_label.setVisible(False)
-        self.channel_combo.setVisible(False)
+        # Multi-channel checkbox
+        self.multi_channel_check = QCheckBox("Allow multiple channels (repeats cycle through channels)")
+        self.multi_channel_check.stateChanged.connect(self._on_multi_channel_check_changed)
+        channel_controls_layout.addWidget(self.multi_channel_check)
+
+        # Extra channel rows (hidden until multi-channel ticked)
+        self.multi_channel_widget = QWidget()
+        multi_layout = QVBoxLayout()
+        multi_layout.setContentsMargins(0, 2, 0, 0)
+        multi_layout.setSpacing(4)
+
+        self.channel_combos_extra = []
+        for idx in range(2, 5):
+            row = QHBoxLayout()
+            row.addWidget(QLabel(f"Channel {idx}:"))
+            combo = QComboBox()
+            for i in range(1, 17):
+                combo.addItem(f"Channel {i}")
+            combo.setMinimumWidth(140)
+            row.addWidget(combo)
+            row.addStretch()
+            multi_layout.addLayout(row)
+            self.channel_combos_extra.append(combo)
+
+        self.multi_channel_widget.setLayout(multi_layout)
+        self.multi_channel_widget.setVisible(False)
+        channel_controls_layout.addWidget(self.multi_channel_widget)
+
+        self.channel_controls.setLayout(channel_controls_layout)
+        self.channel_controls.setVisible(False)
+        channel_layout.addWidget(self.channel_controls)
 
         channel_group.setLayout(channel_layout)
         layout.addWidget(channel_group)
@@ -310,10 +344,12 @@ class DelaySlotEditor(QWidget):
         self.fixed_ms_spin.setVisible(not is_bpm)
 
     def _on_channel_check_changed(self, state):
-        """Show/hide channel dropdown based on checkbox"""
-        checked = (state == Qt.Checked)
-        self.channel_row_label.setVisible(checked)
-        self.channel_combo.setVisible(checked)
+        """Show/hide channel controls based on checkbox"""
+        self.channel_controls.setVisible(state == Qt.Checked)
+
+    def _on_multi_channel_check_changed(self, state):
+        """Show/hide extra channel dropdowns"""
+        self.multi_channel_widget.setVisible(state == Qt.Checked)
 
     def _on_pitch_check_changed(self, state):
         """Show/hide pitch controls based on checkbox"""
@@ -354,9 +390,21 @@ class DelaySlotEditor(QWidget):
         if slot.channel == 0:
             self.channel_check.setChecked(False)
             self.channel_combo.setCurrentIndex(0)
+            self.multi_channel_check.setChecked(False)
         else:
             self.channel_check.setChecked(True)
             self.channel_combo.setCurrentIndex(slot.channel - 1)
+            # Multi-channel
+            if slot.channel_count >= 2:
+                self.multi_channel_check.setChecked(True)
+                if slot.channel2 > 0:
+                    self.channel_combos_extra[0].setCurrentIndex(slot.channel2 - 1)
+                if slot.channel3 > 0 and len(self.channel_combos_extra) > 1:
+                    self.channel_combos_extra[1].setCurrentIndex(slot.channel3 - 1)
+                if slot.channel4 > 0 and len(self.channel_combos_extra) > 2:
+                    self.channel_combos_extra[2].setCurrentIndex(slot.channel4 - 1)
+            else:
+                self.multi_channel_check.setChecked(False)
 
         # Pitch delay: show controls if transpose is non-zero
         has_pitch = (slot.transpose_semi != 0)
@@ -384,8 +432,17 @@ class DelaySlotEditor(QWidget):
         # Channel: unchecked=0 (same), checked=1-16
         if self.channel_check.isChecked():
             slot.channel = self.channel_combo.currentIndex() + 1
+            # Multi-channel
+            if self.multi_channel_check.isChecked():
+                slot.channel_count = 1 + len(self.channel_combos_extra)  # 4 total
+                slot.channel2 = self.channel_combos_extra[0].currentIndex() + 1
+                slot.channel3 = self.channel_combos_extra[1].currentIndex() + 1
+                slot.channel4 = self.channel_combos_extra[2].currentIndex() + 1
+            else:
+                slot.channel_count = 1
         else:
             slot.channel = 0
+            slot.channel_count = 1
 
         # Pitch delay: if disabled, force transpose to 0
         if self.pitch_check.isChecked():
