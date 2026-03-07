@@ -1264,4 +1264,4 @@ void handle_toggle_save_eeprom(void);
 void handle_toggle_load_eeprom(void);
 void handle_toggle_reset_all(void);
 void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response);
-void handle_toggle_set_multi(const uint8_t* data);
+void handle_toggle_set_multi(const uint8_t* data, uint8_t* response);

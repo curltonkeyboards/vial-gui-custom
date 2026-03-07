@@ -1798,8 +1798,8 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             case HID_CMD_TOGGLE_SET_MULTI:  // 0xFD
                 // Format: [slot_num, kc2_lo, kc2_hi, ...] at data[6]
-                handle_toggle_set_multi(&data[6]);
-                response[4] = 0;  // Success status
+                // Response: [status, sizeof, readback_kc0..kc6, flags, num_keys] at response[4]
+                handle_toggle_set_multi(&data[6], &response[4]);
                 break;
 
             default:

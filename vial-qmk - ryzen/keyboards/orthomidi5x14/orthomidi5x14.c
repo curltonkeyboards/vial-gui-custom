@@ -4654,6 +4654,15 @@ void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
             dprintf("kc[%d]=0x%04X ", j, entry->multi_keycodes[j]);
         }
         dprintf("\n");
+        // Diagnostics in bytes 15-22 (within &response[4] space, so response[15..22])
+        response[15] = (uint8_t)sizeof(toggle_entry_t);  // Expected: 22 (or 20 if packed)
+        response[16] = 0;  // Source: 0 = pool
+        response[17] = entry->flags;
+        response[18] = entry->num_keys;
+        response[19] = entry->target_keycode & 0xFF;
+        response[20] = (entry->target_keycode >> 8) & 0xFF;
+        response[21] = entry->slot_num;
+        response[22] = entry->cycle_index;
     } else {
         // Not in pool - read from EEPROM
         uint16_t magic = eeprom_read_word((uint16_t*)(TOGGLE_MULTI_EEPROM_ADDR));
@@ -4666,19 +4675,28 @@ void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
             dprintf("kc[%d]=0x%04X ", j, kc);
         }
         dprintf("\n");
+        response[15] = (uint8_t)sizeof(toggle_entry_t);
+        response[16] = 1;  // Source: 1 = EEPROM
     }
 }
 
 // HID handler: Set multi-key keycodes for a slot
-void handle_toggle_set_multi(const uint8_t* data) {
+// Response format: [status, sizeof_entry, readback_kc0_lo, readback_kc0_hi, ..., readback_kc6_lo, readback_kc6_hi]
+void handle_toggle_set_multi(const uint8_t* data, uint8_t* response) {
     uint8_t slot_num = data[0];
-    if (slot_num >= TOGGLE_NUM_SLOTS) return;
+    if (slot_num >= TOGGLE_NUM_SLOTS) {
+        response[0] = 1;  // Error: invalid slot
+        return;
+    }
 
     toggle_entry_t* entry = toggle_find(slot_num);
     if (!entry) {
         // Slot not in pool yet - add it if we have multi-key data
         entry = toggle_add(slot_num);
-        if (!entry) return;  // Pool full
+        if (!entry) {
+            response[0] = 2;  // Error: pool full
+            return;
+        }
     }
 
     dprintf("TGL SET_MULTI slot=%d: ", slot_num);
@@ -4688,6 +4706,20 @@ void handle_toggle_set_multi(const uint8_t* data) {
     }
     dprintf("\n");
     entry->cycle_index = 0;
+
+    // Response: status + sizeof + readback verification
+    response[0] = 0;  // Success
+    response[1] = (uint8_t)sizeof(toggle_entry_t);
+
+    // Readback: re-read multi_keycodes from the entry to verify writes
+    for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
+        uint16_t readback = entry->multi_keycodes[j];
+        response[2 + j * 2] = readback & 0xFF;
+        response[3 + j * 2] = (readback >> 8) & 0xFF;
+    }
+    // Also include flags and num_keys for cross-reference
+    response[16] = entry->flags;
+    response[17] = entry->num_keys;
 }
 
 // HID handler: Save toggle slots to EEPROM

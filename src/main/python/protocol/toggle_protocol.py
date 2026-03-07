@@ -238,7 +238,7 @@ class ProtocolToggle:
                 self._log(f"GET_MULTI slot={slot_num}: response too short ({len(response) if response else 0} bytes)", "ERROR")
                 return
 
-            self._log(f"GET_MULTI slot={slot_num}: raw response[4:20]=[{self._hex_bytes(response[4:20])}]", "HID_RX")
+            self._log(f"GET_MULTI slot={slot_num}: raw response[4:26]=[{self._hex_bytes(response[4:27])}]", "HID_RX")
 
             if response[4] != 0:
                 self._log(f"GET_MULTI slot={slot_num}: error status {response[4]}", "ERROR")
@@ -248,6 +248,18 @@ class ProtocolToggle:
                 slot.multi_keycodes[j] = struct.unpack_from('<H', response, 5 + j * 2)[0]
 
             self._log(f"GET_MULTI slot={slot_num}: parsed keycodes=[{self._hex_keycodes(slot.multi_keycodes)}]", "DATA")
+
+            # Parse diagnostics from extended response bytes
+            if len(response) >= 27:
+                sizeof_entry = response[19]  # response[4+15]
+                source = response[20]        # response[4+16]: 0=pool, 1=EEPROM
+                fw_flags = response[21]      # response[4+17]
+                fw_num_keys = response[22]   # response[4+18]
+                fw_target_kc = struct.unpack_from('<H', response, 23)[0]  # response[4+19..20]
+                fw_slot_num = response[25]   # response[4+21]
+                fw_cycle_idx = response[26]  # response[4+22]
+                source_str = "POOL" if source == 0 else "EEPROM"
+                self._log(f"GET_MULTI DIAG: sizeof={sizeof_entry} source={source_str} slot_num={fw_slot_num} target=0x{fw_target_kc:04X} flags=0x{fw_flags:02X} num_keys={fw_num_keys} cycle_idx={fw_cycle_idx}", "DEBUG")
 
         except Exception as e:
             self._log(f"GET_MULTI slot={slot_num}: exception: {e}", "ERROR")
@@ -300,7 +312,28 @@ class ProtocolToggle:
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             success = response and len(response) > 4 and response[4] == 0
-            self._log(f"SET_MULTI response: {'OK' if success else 'FAIL'} (response[4]={response[4] if response and len(response) > 4 else 'N/A'})", "HID_RX")
+            self._log(f"SET_MULTI response: {'OK' if success else 'FAIL'} (status={response[4] if response and len(response) > 4 else 'N/A'})", "HID_RX")
+
+            # Parse extended response: readback verification from firmware
+            if response and len(response) >= 22:
+                sizeof_entry = response[5]
+                readback_kcs = []
+                for j in range(TOGGLE_MULTI_EXTRA_KEYS):
+                    readback_kcs.append(struct.unpack_from('<H', response, 6 + j * 2)[0])
+                fw_flags = response[20] if len(response) > 20 else -1
+                fw_num_keys = response[21] if len(response) > 21 else -1
+                self._log(f"SET_MULTI READBACK: sizeof(toggle_entry_t)={sizeof_entry} flags=0x{fw_flags:02X} num_keys={fw_num_keys}", "DEBUG")
+                self._log(f"SET_MULTI READBACK keycodes=[{self._hex_keycodes(readback_kcs)}]", "DEBUG")
+
+                # Compare sent vs readback
+                mismatch = False
+                for j in range(TOGGLE_MULTI_EXTRA_KEYS):
+                    if slot.multi_keycodes[j] != readback_kcs[j]:
+                        self._log(f"SET_MULTI MISMATCH at kc[{j}]: sent=0x{slot.multi_keycodes[j]:04X} readback=0x{readback_kcs[j]:04X}", "ERROR")
+                        mismatch = True
+                if not mismatch:
+                    self._log(f"SET_MULTI READBACK: all keycodes match!", "DEBUG")
+
             return success
 
         except Exception as e:
