@@ -7,6 +7,7 @@
 #include "matrix.h"
 #include "process_dynamic_macro.h"
 #include <string.h>
+#include <stdio.h>
 
 // =============================================================================
 // ARPEGGIATOR RAW HID HANDLERS
