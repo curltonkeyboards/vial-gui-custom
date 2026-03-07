@@ -269,9 +269,13 @@ class DelaySlotEditor(QWidget):
 
             # "×" remove button (removes this channel row)
             remove_btn = QPushButton("×")
-            remove_btn.setMaximumWidth(28)
-            remove_btn.setMaximumHeight(28)
+            remove_btn.setFixedSize(24, 24)
             remove_btn.setToolTip(f"Remove channel {idx}")
+            remove_btn.setStyleSheet(
+                "QPushButton { background-color: #cc3333; color: white; "
+                "font-weight: bold; font-size: 14px; border: none; border-radius: 3px; }"
+                "QPushButton:hover { background-color: #ee4444; }"
+            )
             remove_btn.setVisible(False)
             remove_btn.clicked.connect(lambda _, i=idx: self._on_remove_channel(i))
             row_layout.addWidget(remove_btn)

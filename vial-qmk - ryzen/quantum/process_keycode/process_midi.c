@@ -530,6 +530,9 @@ void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note, final_velocity);
 
+    // MIDI Delay: schedule delayed repeats for smartchord notes
+    midi_delay_schedule_note_on(channel, note, final_velocity);
+
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, raw_travel_scaled);
     }
@@ -551,6 +554,8 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
     remove_live_note(channel, note);
 	noteoffdisplayupdates(note);
 
+    // MIDI Delay: schedule delayed note-offs for smartchord notes
+    midi_delay_schedule_note_off(channel, note);
 
     // Scale MIDI velocity (0-127) to raw_travel range (0-255) for recording
     uint8_t raw_travel_scaled = (velocity > 0) ? (uint8_t)((uint16_t)velocity * 255 / 127) : 0;
@@ -1138,6 +1143,9 @@ void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8
     // Send MIDI note-on
     midi_send_noteon(&midi_device, channel, note, final_velocity);
 
+    // MIDI Delay: schedule delayed repeats for arpeggiator notes
+    midi_delay_schedule_note_on(channel, note, final_velocity);
+
     // Display updates
     noteondisplayupdates(note);
 
@@ -1169,6 +1177,9 @@ void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8
 void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity) {
     // Send MIDI note-off
     midi_send_noteoff(&midi_device, channel, note, velocity);
+
+    // MIDI Delay: schedule delayed note-offs for arpeggiator notes
+    midi_delay_schedule_note_off(channel, note);
 
     // Display updates
     noteoffdisplayupdates(note);
