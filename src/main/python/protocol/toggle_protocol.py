@@ -239,6 +239,7 @@ class ProtocolToggle:
                 return
 
             self._log(f"GET_MULTI slot={slot_num}: raw response[4:26]=[{self._hex_bytes(response[4:27])}]", "HID_RX")
+            self._log(f"GET_MULTI FULL RX response=[{self._hex_bytes(response[:32])}]", "DEBUG")
 
             if response[4] != 0:
                 self._log(f"GET_MULTI slot={slot_num}: error status {response[4]}", "ERROR")
@@ -313,6 +314,11 @@ class ProtocolToggle:
 
             success = response and len(response) > 4 and response[4] == 0
             self._log(f"SET_MULTI response: {'OK' if success else 'FAIL'} (status={response[4] if response and len(response) > 4 else 'N/A'})", "HID_RX")
+
+            # Dump FULL raw response and sent packet for byte-level debugging
+            if response:
+                self._log(f"SET_MULTI FULL TX packet=[{self._hex_bytes(packet[:32])}]", "DEBUG")
+                self._log(f"SET_MULTI FULL RX response=[{self._hex_bytes(response[:32])}]", "DEBUG")
 
             # Parse extended response: readback verification from firmware
             if response and len(response) >= 22:
