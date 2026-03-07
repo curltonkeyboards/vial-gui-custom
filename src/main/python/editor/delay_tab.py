@@ -16,6 +16,7 @@ from editor.basic_editor import BasicEditor
 from protocol.delay_protocol import (ProtocolDelay, DelaySlot,
                                       DELAY_NUM_SLOTS, RATE_MODE_BPM, RATE_MODE_FIXED_MS,
                                       TRANSPOSE_FIXED, TRANSPOSE_CUMULATIVE)
+from vial_device import VialKeyboard
 
 
 class DelaySlotEditor(QWidget):
@@ -264,8 +265,8 @@ class DelayTab(BasicEditor):
         self.addWidget(container)
 
     def valid(self):
-        """Tab is valid when a device is connected"""
-        return isinstance(self.device, object) and self.device is not None
+        """Tab is valid when a Vial keyboard is connected"""
+        return isinstance(self.device, VialKeyboard)
 
     def rebuild(self, device):
         """Rebuild when device changes"""
