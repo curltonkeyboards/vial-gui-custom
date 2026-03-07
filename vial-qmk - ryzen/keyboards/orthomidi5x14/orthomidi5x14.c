@@ -15355,6 +15355,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             gaming_mode_active = !gaming_mode_active;
             gaming_settings.gaming_mode_enabled = gaming_mode_active;
+            // Re-scan keymap for gaming axis keycodes when enabling
+            // This picks up keycodes assigned via the GUI without requiring a reboot
+            if (gaming_mode_active) {
+                gaming_scan_keymap_for_axes();
+            }
             gaming_save_settings();
             dprintf("Gaming Mode: %s\n", gaming_mode_active ? "ON" : "OFF");
             // Display gaming mode status on OLED keylog

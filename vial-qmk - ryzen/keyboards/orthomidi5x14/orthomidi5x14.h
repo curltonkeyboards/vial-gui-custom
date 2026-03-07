@@ -612,6 +612,7 @@ void gaming_init(void);
 void gaming_save_settings(void);
 void gaming_load_settings(void);
 void gaming_reset_settings(void);
+void gaming_scan_keymap_for_axes(void);
 void gaming_update_joystick(void);
 bool gaming_is_key_mapped(uint8_t row, uint8_t col);
 
