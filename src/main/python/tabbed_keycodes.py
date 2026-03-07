@@ -2604,12 +2604,14 @@ class MacroTab(QWidget):
         self.tap_dance_editor = None
         self.dks_settings = None
         self.toggle_settings = None
+        self.delay_settings = None
 
         # Default counts (will be updated when editors are set)
         self.macro_count = 1
         self.tapdance_count = 1
         self.dks_count = 1
         self.toggle_count = 1
+        self.delay_count = 100
 
         # Create sub-tabs
         self.macro_subtab = MacroSubTab(self, "macro")
