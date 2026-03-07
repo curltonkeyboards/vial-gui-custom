@@ -438,6 +438,7 @@ class MainWindow(QMainWindow):
             (self.loop_manager, "loop_manager"),
             (self.arpeggiator, "arpeggiator"),
             (self.step_sequencer, "step_sequencer"),
+            (self.delay_tab, "delay_tab"),
             (self.velocity_tab, "velocity_tab"),
         ]
 
