@@ -14,6 +14,7 @@ from PyQt5.QtCore import Qt
 from editor.basic_editor import BasicEditor
 from protocol.delay_protocol import (ProtocolDelay, DelaySlot,
                                       DELAY_NUM_SLOTS, DELAY_FACTORY_COUNT,
+                                      DELAY_USER_SLOT_COUNT,
                                       RATE_MODE_BPM, RATE_MODE_FIXED_MS,
                                       TRANSPOSE_FIXED, TRANSPOSE_CUMULATIVE)
 from vial_device import VialKeyboard
@@ -533,30 +534,36 @@ class DelaySlotEditor(QWidget):
 
 
 class DelayTab(BasicEditor):
-    """Main Delay settings editor tab - tabbed slot interface like Toggle Keys"""
+    """Main Delay settings editor tab - only shows user-configurable slots (50).
+    Factory presets (48) are in firmware flash and not editable from the GUI."""
 
     def __init__(self):
         super().__init__()
         self.delay_protocol = None
         self.keyboard = None
-        self.loaded_slots = {}  # slot_num -> DelaySlot
+        self.loaded_slots = {}  # user_index (0-49) -> DelaySlot
         self.slot_editors = []
         self.slot_scroll_widgets = []
 
-        # Dynamic tab tracking
+        # Dynamic tab tracking (for user slots only)
         self._visible_tab_count = 1
         self._manually_expanded_count = 0
 
         # Title
-        title = QLabel("MIDI Delay")
+        title = QLabel("MIDI Delay - User Slots")
         title.setStyleSheet("font-size: 14px; font-weight: bold;")
         self.addWidget(title)
 
-        # Tab widget for delay slots
+        info = QLabel("Factory presets (48) are built into the firmware. Configure your own delay slots below.")
+        info.setStyleSheet("color: #888; font-size: 9pt;")
+        info.setWordWrap(True)
+        self.addWidget(info)
+
+        # Tab widget for user delay slots
         self.tabs = QTabWidget()
 
-        # Create all slot editors and scroll wrappers
-        for i in range(DELAY_NUM_SLOTS):
+        # Create editors for user slots only (50)
+        for i in range(DELAY_USER_SLOT_COUNT):
             editor = DelaySlotEditor()
             self.slot_editors.append(editor)
 
@@ -591,6 +598,10 @@ class DelayTab(BasicEditor):
 
         self.addLayout(button_layout)
 
+    def _user_to_unified(self, user_index):
+        """Convert user slot index (0-49) to unified index (48-97)"""
+        return DELAY_FACTORY_COUNT + user_index
+
     def valid(self):
         """Tab is valid when a Vial keyboard is connected"""
         return isinstance(self.device, VialKeyboard)
@@ -604,75 +615,69 @@ class DelayTab(BasicEditor):
             self.delay_protocol = ProtocolDelay(self.keyboard)
             self.loaded_slots.clear()
 
-            # Reset manual expansion and scan for used slots
+            # Reset manual expansion and scan for used user slots
             self._manually_expanded_count = 0
             self._scan_and_update_visible_tabs()
 
     def _scan_and_update_visible_tabs(self):
-        """Scan all slots to find which have non-default config and update visible tabs"""
+        """Scan user slots to find which have non-default config"""
         if not self.delay_protocol:
             return
 
-        # Factory presets (0-47) are always visible
-        # Only check user slots (48-99) for is_default()
-        last_used = DELAY_FACTORY_COUNT - 1  # Factory presets always count as "used"
-        for i in range(DELAY_NUM_SLOTS):
-            slot = self.delay_protocol.get_slot(i)
+        last_used = -1
+        for i in range(DELAY_USER_SLOT_COUNT):
+            unified = self._user_to_unified(i)
+            slot = self.delay_protocol.get_slot(unified)
             if slot:
                 self.loaded_slots[i] = slot
                 self.slot_editors[i].load_from_slot(slot)
-                # Only check user slots for non-default
-                if i >= DELAY_FACTORY_COUNT and not slot.is_default():
+                if not slot.is_default():
                     last_used = i
 
         self._update_visible_tabs_with_last_used(last_used)
 
     def _update_visible_tabs_with_last_used(self, last_used):
-        """Update visible tabs given the last used index"""
+        """Update visible tabs given the last used user index"""
         base_visible = max(1, last_used + 1)
-        self._visible_tab_count = min(DELAY_NUM_SLOTS, base_visible + self._manually_expanded_count)
+        self._visible_tab_count = min(DELAY_USER_SLOT_COUNT, base_visible + self._manually_expanded_count)
 
         # Remove all tabs
         while self.tabs.count() > 0:
             self.tabs.removeTab(0)
 
-        # Add visible delay tabs
+        # Add visible user delay tabs
         for x in range(self._visible_tab_count):
-            if x < DELAY_FACTORY_COUNT:
-                self.tabs.addTab(self.slot_scroll_widgets[x], f"F{x + 1}")
-            else:
-                self.tabs.addTab(self.slot_scroll_widgets[x], f"U{x + 1 - DELAY_FACTORY_COUNT}")
+            self.tabs.addTab(self.slot_scroll_widgets[x], f"User {x + 1}")
 
         # Add "+" tab if not all tabs are visible
-        if self._visible_tab_count < DELAY_NUM_SLOTS:
+        if self._visible_tab_count < DELAY_USER_SLOT_COUNT:
             plus_widget = QWidget()
             self.tabs.addTab(plus_widget, "+")
 
     def _on_tab_changed(self, index):
         """Handle tab change - lazy load and handle '+' tab"""
         # Check if "+" tab was clicked
-        if self._visible_tab_count < DELAY_NUM_SLOTS and index == self._visible_tab_count:
+        if self._visible_tab_count < DELAY_USER_SLOT_COUNT and index == self._visible_tab_count:
             self._manually_expanded_count += 1
             self._update_visible_tabs()
             self.tabs.setCurrentIndex(self._visible_tab_count - 1)
             return
 
         # Lazy load: Only load slot data when first viewing the tab
-        if 0 <= index < DELAY_NUM_SLOTS:
+        if 0 <= index < DELAY_USER_SLOT_COUNT:
             if self.delay_protocol and index not in self.loaded_slots:
-                slot = self.delay_protocol.get_slot(index)
+                unified = self._user_to_unified(index)
+                slot = self.delay_protocol.get_slot(unified)
                 if slot:
                     self.loaded_slots[index] = slot
                     self.slot_editors[index].load_from_slot(slot)
 
     def _find_last_used_index(self):
-        """Find the index of the last delay slot that has non-default config.
-        Factory presets (0-47) always count as used."""
-        last = DELAY_FACTORY_COUNT - 1  # Factory presets always visible
-        for idx in range(DELAY_NUM_SLOTS - 1, DELAY_FACTORY_COUNT - 1, -1):
+        """Find the index of the last user slot that has non-default config"""
+        for idx in range(DELAY_USER_SLOT_COUNT - 1, -1, -1):
             if idx in self.loaded_slots and not self.loaded_slots[idx].is_default():
                 return idx
-        return last
+        return -1
 
     def _update_visible_tabs(self):
         """Update which tabs are visible based on content and manual expansion"""
@@ -680,35 +685,32 @@ class DelayTab(BasicEditor):
         self._update_visible_tabs_with_last_used(last_used)
 
     def _on_save_slot(self):
-        """Save current slot settings to keyboard"""
+        """Save current user slot settings to keyboard"""
         if not self.delay_protocol:
             return
 
         index = self.tabs.currentIndex()
-        if index < 0 or index >= DELAY_NUM_SLOTS:
+        if index < 0 or index >= DELAY_USER_SLOT_COUNT:
             return
 
-        if index < DELAY_FACTORY_COUNT:
-            QMessageBox.information(None, "Factory Preset",
-                                   f"Delay slot {index + 1} is a factory preset and cannot be modified.")
-            return
-
+        unified = self._user_to_unified(index)
         slot = self.slot_editors[index].save_to_slot()
-        if self.delay_protocol.set_slot(index, slot):
+        if self.delay_protocol.set_slot(unified, slot):
             self.loaded_slots[index] = slot
         else:
-            QMessageBox.warning(None, "Error", f"Failed to save delay slot {index + 1}")
+            QMessageBox.warning(None, "Error", f"Failed to save user delay slot {index + 1}")
 
     def _on_save_all(self):
-        """Save all slot configs to EEPROM"""
+        """Save all user slot configs to EEPROM"""
         if not self.delay_protocol:
             return
 
         # Save current slot first
         index = self.tabs.currentIndex()
-        if 0 <= index < DELAY_NUM_SLOTS:
+        if 0 <= index < DELAY_USER_SLOT_COUNT:
+            unified = self._user_to_unified(index)
             slot = self.slot_editors[index].save_to_slot()
-            self.delay_protocol.set_slot(index, slot)
+            self.delay_protocol.set_slot(unified, slot)
             self.loaded_slots[index] = slot
 
         # Trigger EEPROM save
@@ -718,12 +720,13 @@ class DelayTab(BasicEditor):
             QMessageBox.warning(None, "Error", "Failed to save to EEPROM")
 
     def _on_reload_slot(self):
-        """Reload current slot from keyboard"""
+        """Reload current user slot from keyboard"""
         index = self.tabs.currentIndex()
-        if 0 <= index < DELAY_NUM_SLOTS:
+        if 0 <= index < DELAY_USER_SLOT_COUNT:
             self.loaded_slots.pop(index, None)
             if self.delay_protocol:
-                slot = self.delay_protocol.get_slot(index)
+                unified = self._user_to_unified(index)
+                slot = self.delay_protocol.get_slot(unified)
                 if slot:
                     self.loaded_slots[index] = slot
                     self.slot_editors[index].load_from_slot(slot)

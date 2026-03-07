@@ -14,13 +14,15 @@ HID_CMD_DELAY_SET_SLOT = 0xD7     # Set single slot config (0xFF = save to EEPRO
 HID_CMD_DELAY_GET_BULK = 0xD8     # Get multiple slots (chunked)
 
 # Delay Constants
-DELAY_NUM_SLOTS = 100
-DELAY_FACTORY_COUNT = 48  # First 48 slots are read-only factory presets
+DELAY_FACTORY_COUNT = 48  # Factory presets in firmware flash (read-only)
+DELAY_USER_SLOT_COUNT = 50  # User-configurable slots
+DELAY_TOTAL_SLOT_COUNT = DELAY_FACTORY_COUNT + DELAY_USER_SLOT_COUNT  # 98 total
+DELAY_NUM_SLOTS = DELAY_USER_SLOT_COUNT  # For backward compat (editor uses this for user slots)
 DELAY_CONFIG_SIZE = 16
 
-# Delay Keycode Range
+# Delay Keycode Range (unified: 0-47 factory, 48-97 user)
 DELAY_KEY_BASE = 0xEF90
-DELAY_KEY_MAX = 0xEFF3  # DELAY_KEY_BASE + 99
+DELAY_KEY_MAX = DELAY_KEY_BASE + DELAY_TOTAL_SLOT_COUNT - 1  # 0xEFF1
 
 # Rate modes
 RATE_MODE_BPM = 0
@@ -133,8 +135,8 @@ class ProtocolDelay:
         self.slots_cache = {}
 
     def get_slot(self, slot_num):
-        """Get delay slot configuration from keyboard"""
-        if slot_num < 0 or slot_num >= DELAY_NUM_SLOTS:
+        """Get delay slot configuration from keyboard (unified index 0-97)"""
+        if slot_num < 0 or slot_num >= DELAY_TOTAL_SLOT_COUNT:
             return None
 
         try:
@@ -160,9 +162,11 @@ class ProtocolDelay:
             return None
 
     def set_slot(self, slot_num, slot):
-        """Set delay slot configuration"""
-        if slot_num < 0 or slot_num >= DELAY_NUM_SLOTS:
+        """Set delay slot configuration (only user slots 48-97 accepted by firmware)"""
+        if slot_num < 0 or slot_num >= DELAY_TOTAL_SLOT_COUNT:
             return False
+        if slot_num < DELAY_FACTORY_COUNT:
+            return False  # Factory presets are read-only
 
         try:
             data = bytearray([slot_num]) + bytearray(slot.to_bytes())

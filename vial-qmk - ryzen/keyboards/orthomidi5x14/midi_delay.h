@@ -11,12 +11,13 @@
 // CONSTANTS
 // =============================================================================
 
-#define DELAY_SLOT_COUNT        100     // Number of independent delay slots
-#define DELAY_FACTORY_COUNT     48      // Factory preset slots (0-47)
+#define DELAY_FACTORY_COUNT     48      // Factory presets in flash (read-only)
+#define DELAY_USER_SLOT_COUNT   50      // User-configurable slots in RAM/EEPROM
+#define DELAY_TOTAL_SLOT_COUNT  (DELAY_FACTORY_COUNT + DELAY_USER_SLOT_COUNT)  // 98 total
 #define DELAY_MAX_PENDING       255     // Maximum pending delay events in queue (uint8_t max)
 #define DELAY_CONFIG_SIZE       16      // Bytes per slot config (for EEPROM alignment)
 #define DELAY_EEPROM_ADDR       43000   // EEPROM base address
-#define DELAY_EEPROM_MAGIC      0xDE01  // Validation magic
+#define DELAY_EEPROM_MAGIC      0xDE02  // Validation magic (bumped from 0xDE01 for new layout)
 #define DELAY_FIXED_MS_MIN      10      // Minimum fixed delay (ms)
 #define DELAY_FIXED_MS_MAX      5000    // Maximum fixed delay (ms)
 #define DELAY_TRANSPOSE_MIN     (-48)   // Minimum semitone transpose
@@ -26,7 +27,7 @@
 // DATA STRUCTURES
 // =============================================================================
 
-// Per-slot configuration (16 bytes each, stored in EEPROM)
+// Per-slot configuration (16 bytes each)
 typedef struct {
     uint8_t  rate_mode;        // 0=BPM-synced, 1=fixed ms
     uint8_t  note_value;       // 0=1/1, 1=1/2, 2=1/4, 3=1/8, 4=1/16
@@ -61,23 +62,29 @@ typedef struct {
     uint8_t  original_note;    // Original note before transpose (for matching note-offs)
     uint8_t  original_channel; // Original channel (for matching note-offs)
     uint8_t  note_on_sent;     // Was the corresponding note-on actually sent?
-    uint8_t  slot_id;          // Which delay slot spawned this
+    uint8_t  slot_id;          // Which delay slot spawned this (0-97 unified index)
 } delay_event_t;
 
 // Full delay system state
 typedef struct {
-    delay_slot_config_t  configs[DELAY_SLOT_COUNT];   // Slot configurations
-    delay_slot_runtime_t runtime[DELAY_SLOT_COUNT];    // Runtime toggle states
-    delay_event_t        queue[DELAY_MAX_PENDING];     // Pending event queue
-    uint8_t              queue_count;                   // Number of events in queue
-    uint16_t             magic;                         // EEPROM validation
+    delay_slot_config_t  user_configs[DELAY_USER_SLOT_COUNT];   // User slot configurations (RAM + EEPROM)
+    delay_slot_runtime_t runtime[DELAY_TOTAL_SLOT_COUNT];       // Runtime toggle states (all slots)
+    delay_event_t        queue[DELAY_MAX_PENDING];              // Pending event queue
+    uint8_t              queue_count;                            // Number of events in queue
+    uint16_t             magic;                                  // EEPROM validation
 } delay_system_t;
+
+// Factory presets stored in flash (read-only)
+extern const delay_slot_config_t delay_factory_presets[DELAY_FACTORY_COUNT];
 
 extern delay_system_t delay_system;
 
 // =============================================================================
 // PUBLIC API
 // =============================================================================
+
+// Get config for a unified slot index (0-97): factory or user
+const delay_slot_config_t* midi_delay_get_config(uint8_t slot_id);
 
 // Initialization and persistence
 void midi_delay_init(void);

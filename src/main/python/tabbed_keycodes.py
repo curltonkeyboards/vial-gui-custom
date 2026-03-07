@@ -14,7 +14,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
     KEYCODES_DAW_ABLETON, KEYCODES_DAW_FL, KEYCODES_DAW_LOGIC, KEYCODES_DAW_PROTOOLS, KEYCODES_DAW_GARAGEBAND, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, KEYCODES_TOGGLE, KEYCODES_DELAY_CLEAR, KEYCODES_DELAY, \
+    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, KEYCODES_TOGGLE, KEYCODES_DELAY_CLEAR, KEYCODES_DELAY, KEYCODES_DELAY_FACTORY, KEYCODES_DELAY_USER, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_HE_VELOCITY_CURVE, KEYCODES_HE_VELOCITY_RANGE, \
@@ -2611,7 +2611,7 @@ class MacroTab(QWidget):
         self.tapdance_count = 1
         self.dks_count = 1
         self.toggle_count = 1
-        self.delay_count = 100
+        self.delay_count = 50
 
         # Create sub-tabs
         self.macro_subtab = MacroSubTab(self, "macro")
@@ -2775,11 +2775,11 @@ class MacroTab(QWidget):
         else:
             self.toggle_count = 1
 
-        # Get Delay count from editor's visible tab count
+        # Get Delay user count from editor's visible tab count
         if self.delay_settings is not None and hasattr(self.delay_settings, '_visible_tab_count'):
             self.delay_count = max(1, self.delay_settings._visible_tab_count)
         else:
-            self.delay_count = 100  # Show all by default
+            self.delay_count = 50  # Show all user slots by default
 
         # Update sub-tab counts
         self.macro_subtab.set_button_count(self.macro_count)
@@ -5002,19 +5002,18 @@ class StepSequencerTab(QScrollArea):
         pass  # Implement if needed
 
 
-DELAY_FACTORY_COUNT = 48  # First 48 slots are factory presets (always visible)
-
 class DelayMusicTab(QScrollArea):
-    """MIDI Delay slot toggle tab - shows delay keycodes for keymap assignment"""
+    """MIDI Delay slot toggle tab - shows delay keycodes for keymap assignment.
+    Factory presets (48) are always visible. User slots shown based on _visible_tab_count."""
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, delay_keycodes, delay_clear_keycodes=None):
+    def __init__(self, parent, label, factory_keycodes, user_keycodes, delay_clear_keycodes=None):
         super().__init__(parent)
         self.label = label
-        self.delay_keycodes = delay_keycodes
+        self.factory_keycodes = factory_keycodes  # 48 factory preset keycodes (always shown)
+        self.user_keycodes = user_keycodes        # 50 user slot keycodes (limited by count)
         self.delay_clear_keycodes = delay_clear_keycodes or []
-        # user_button_count controls how many USER slots (48-99) are shown
-        self.user_button_count = len(delay_keycodes)  # Show all by default
+        self.user_button_count = len(user_keycodes)  # Show all user slots by default
         self.current_keycode_filter = None
 
         self.scroll_content = QWidget()
@@ -5031,7 +5030,7 @@ class DelayMusicTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
     def set_button_count(self, count):
-        """Set the number of USER delay slot buttons to display (factory always shown)"""
+        """Set the number of user delay slot buttons to display"""
         self.user_button_count = count
 
     def _make_btn(self, keycode, keycode_filter):
@@ -5066,28 +5065,23 @@ class DelayMusicTab(QScrollArea):
             clear_group.setLayout(clear_layout)
             self.main_layout.addWidget(clear_group)
 
-        # Factory Presets (first 48) - ALWAYS visible
-        factory_keycodes = self.delay_keycodes[:DELAY_FACTORY_COUNT]
-        if factory_keycodes:
+        # Factory Presets - ALWAYS fully visible (48 presets in flash)
+        if self.factory_keycodes:
             factory_group = QGroupBox("Factory Delay Presets")
             factory_layout = FlowLayout()
-            for keycode in factory_keycodes:
+            for keycode in self.factory_keycodes:
                 btn = self._make_btn(keycode, keycode_filter)
                 if btn:
                     factory_layout.addWidget(btn)
             factory_group.setLayout(factory_layout)
             self.main_layout.addWidget(factory_group)
 
-        # User Delay Slots (49-100) - limited by user_button_count
-        user_keycodes = self.delay_keycodes[DELAY_FACTORY_COUNT:]
-        if user_keycodes:
+        # User Delay Slots - limited by user_button_count
+        if self.user_keycodes:
             user_group = QGroupBox("User Delay Slots")
             user_layout = FlowLayout()
-            # user_button_count is the total visible count from delay_tab
-            # Subtract factory count to get how many user slots to show
-            user_visible = max(0, self.user_button_count - DELAY_FACTORY_COUNT)
-            for i, keycode in enumerate(user_keycodes):
-                if i >= user_visible:
+            for i, keycode in enumerate(self.user_keycodes):
+                if i >= self.user_button_count:
                     break
                 btn = self._make_btn(keycode, keycode_filter)
                 if btn:
@@ -5098,7 +5092,7 @@ class DelayMusicTab(QScrollArea):
         self.main_layout.addStretch(1)
 
     def has_buttons(self):
-        return len(self.delay_keycodes) > 0
+        return len(self.factory_keycodes) > 0 or len(self.user_keycodes) > 0
 
     def relabel_buttons(self):
         pass
@@ -5124,7 +5118,7 @@ class MusicTab(QWidget):
                                            KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION)
         self.arpeggiator_tab = ArpeggiatorTab(parent, "Arpeggiator", KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS)
         self.step_sequencer_tab = StepSequencerTab(parent, "Step Sequencer", KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS)
-        self.delay_tab = DelayMusicTab(parent, "Delay", KEYCODES_DELAY, KEYCODES_DELAY_CLEAR)
+        self.delay_tab = DelayMusicTab(parent, "Delay", KEYCODES_DELAY_FACTORY, KEYCODES_DELAY_USER, KEYCODES_DELAY_CLEAR)
         self.ear_training_tab = EarTrainerTab(parent, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER)
         self.key_split_tab = KeySplitOnlyTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
         self.triple_split_tab = TripleSplitTab(parent, "TripleSplit", KEYCODES_KEYSPLIT_BUTTONS)

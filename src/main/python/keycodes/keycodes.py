@@ -3483,12 +3483,13 @@ KEYCODES_DELAY_CLEAR = [
     K("DELAY_CLEAR", "Delay\nClear", "Clear all active delays and stop queue"),
 ]
 
-# MIDI Delay slot keycodes (100 slots)
-# Factory presets (0-47): 5 rates x 3 timings x 3 decays + 3 pitch delays
-# User slots (48-99): generic labels
-KEYCODES_DELAY = []
+# MIDI Delay slot keycodes (98 total: 48 factory + 50 user)
+# Factory presets are const in firmware flash. User slots are in EEPROM.
+# Unified keycode range: DELAY_01-DELAY_98, indices 0-47 factory, 48-97 user
 
-# Factory preset labels: rate x timing x decay
+# Factory preset keycodes (48): always visible, read-only
+KEYCODES_DELAY_FACTORY = []
+
 _delay_rates = ["1/1", "1/2", "1/4", "1/8", "1/16"]
 _delay_timings = ["Note", "Dot.", "Trip"]  # Straight, Dotted, Triplet (matches firmware order)
 _delay_decays = ["Short", "Med", "Long"]   # 38%, 20%, 11%
@@ -3498,26 +3499,32 @@ for r in range(5):
         for d in range(3):
             idx = r * 9 + t * 3 + d
             label = "{} {}\nDecay\n{}".format(_delay_rates[r], _delay_timings[t], _delay_decays[d])
-            tooltip = "Delay {}: {} {} decay {}".format(idx + 1, _delay_rates[r], _delay_timings[t], _delay_decays[d])
-            KEYCODES_DELAY.append(
+            tooltip = "Factory delay {}: {} {} decay {}".format(idx + 1, _delay_rates[r], _delay_timings[t], _delay_decays[d])
+            KEYCODES_DELAY_FACTORY.append(
                 K("DELAY_{:02d}".format(idx + 1), label, tooltip)
             )
 
-# Pitch delay presets (slots 45-47)
+# Pitch delay presets (factory slots 45-47)
 _pitch_rates = ["1/4", "1/8", "1/16"]
 for p in range(3):
     idx = 45 + p
     label = "{} Note\nPitch\nDelay".format(_pitch_rates[p])
-    tooltip = "Delay {}: {} pitch delay (+12 semi cumulative)".format(idx + 1, _pitch_rates[p])
-    KEYCODES_DELAY.append(
+    tooltip = "Factory delay {}: {} pitch delay (+12 semi cumulative)".format(idx + 1, _pitch_rates[p])
+    KEYCODES_DELAY_FACTORY.append(
         K("DELAY_{:02d}".format(idx + 1), label, tooltip)
     )
 
-# User slots (49-100)
-for x in range(48, 100):
-    KEYCODES_DELAY.append(
-        K("DELAY_{:02d}".format(x + 1), "Delay\n{}".format(x + 1), "MIDI Delay slot {} - toggle delay effect on/off".format(x + 1))
+# User delay slot keycodes (50): shown based on _visible_tab_count
+KEYCODES_DELAY_USER = []
+for x in range(50):
+    unified_idx = 48 + x  # Unified index (factory count + user index)
+    KEYCODES_DELAY_USER.append(
+        K("DELAY_{:02d}".format(unified_idx + 1), "User\nDelay\n{}".format(x + 1),
+          "User delay slot {} - toggle delay effect on/off".format(x + 1))
     )
+
+# Combined for backward compat
+KEYCODES_DELAY = KEYCODES_DELAY_FACTORY + KEYCODES_DELAY_USER
 
 # =============================================================================
 # DAW (Digital Audio Workstation) Shortcut Keycodes

@@ -15406,7 +15406,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             midi_delay_clear_queue();
             // Deactivate all delay slots
-            for (uint8_t i = 0; i < DELAY_SLOT_COUNT; i++) {
+            for (uint8_t i = 0; i < DELAY_TOTAL_SLOT_COUNT; i++) {
                 delay_system.runtime[i].active = false;
             }
             dprintf("DELAY_CLEAR: queue cleared, all slots deactivated\n");

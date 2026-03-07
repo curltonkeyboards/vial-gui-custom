@@ -403,14 +403,10 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 // MIDI DELAY SYSTEM KEYCODES
 // =============================================================================
 #define DELAY_CLEAR             0xEF8F  // Clear all active delays and stop queue
-#define DELAY_SLOT_BASE         0xEF90  // Base keycode for delay slot toggles (0xEF90-0xEFF3)
-#define DELAY_SLOT_1            0xEF90
-#define DELAY_SLOT_2            0xEF91
-#define DELAY_SLOT_3            0xEF92
-#define DELAY_SLOT_4            0xEF93
-// ... slots 5-99 follow sequentially ...
-#define DELAY_SLOT_100          0xEFF3
-#define DELAY_SLOT_KC_COUNT     100
+#define DELAY_SLOT_BASE         0xEF90  // Base keycode for delay slot toggles
+// Unified keycode range: 0xEF90-0xEFF1 (98 slots: 48 factory + 50 user)
+#define DELAY_SLOT_1            0xEF90  // First factory preset
+#define DELAY_SLOT_KC_COUNT     98      // 48 factory + 50 user = 98 total
 
 // HID commands for delay system
 #define HID_CMD_DELAY_GET_SLOT  0xD6  // Get single slot config

@@ -12,6 +12,59 @@
 #include <string.h>
 
 // =============================================================================
+// FACTORY PRESETS (const in flash - zero RAM cost)
+// =============================================================================
+// Layout: 5 rates x 3 timings x 3 decays = 45, then 3 pitch delay variants = 48 total
+// Rates: 0=1/1, 1=1/2, 2=1/4, 3=1/8, 4=1/16
+// Timings: 0=Straight, 2=Dotted, 1=Triplet
+// Decays: 38% (Short), 20% (Med), 11% (Long)
+
+#define FACTORY_PRESET(rv, tm, dp) \
+    { .rate_mode = 0, .note_value = (rv), .timing_mode = (tm), .decay_percent = (dp), \
+      .fixed_delay_ms = 500, .max_repeats = 0, .channel = 0, .transpose_semi = 0, \
+      .transpose_mode = 0, .max_active_notes = 0, .channel_count = 1, \
+      .channel2 = 0, .channel3 = 0, .channel4 = 0, .reserved = {0} }
+
+#define PITCH_PRESET(rv) \
+    { .rate_mode = 0, .note_value = (rv), .timing_mode = 0, .decay_percent = 21, \
+      .fixed_delay_ms = 500, .max_repeats = 2, .channel = 0, .transpose_semi = 12, \
+      .transpose_mode = 1, .max_active_notes = 0, .channel_count = 1, \
+      .channel2 = 0, .channel3 = 0, .channel4 = 0, .reserved = {0} }
+
+const delay_slot_config_t delay_factory_presets[DELAY_FACTORY_COUNT] = {
+    // ---- 1/1 Whole note (rate 0) ----
+    // Note, Dotted, Triplet x Short, Med, Long
+    FACTORY_PRESET(0, 0, 38), FACTORY_PRESET(0, 0, 20), FACTORY_PRESET(0, 0, 11),  // 1/1 Note
+    FACTORY_PRESET(0, 2, 38), FACTORY_PRESET(0, 2, 20), FACTORY_PRESET(0, 2, 11),  // 1/1 Dotted
+    FACTORY_PRESET(0, 1, 38), FACTORY_PRESET(0, 1, 20), FACTORY_PRESET(0, 1, 11),  // 1/1 Triplet
+
+    // ---- 1/2 Half note (rate 1) ----
+    FACTORY_PRESET(1, 0, 38), FACTORY_PRESET(1, 0, 20), FACTORY_PRESET(1, 0, 11),  // 1/2 Note
+    FACTORY_PRESET(1, 2, 38), FACTORY_PRESET(1, 2, 20), FACTORY_PRESET(1, 2, 11),  // 1/2 Dotted
+    FACTORY_PRESET(1, 1, 38), FACTORY_PRESET(1, 1, 20), FACTORY_PRESET(1, 1, 11),  // 1/2 Triplet
+
+    // ---- 1/4 Quarter note (rate 2) ----
+    FACTORY_PRESET(2, 0, 38), FACTORY_PRESET(2, 0, 20), FACTORY_PRESET(2, 0, 11),  // 1/4 Note
+    FACTORY_PRESET(2, 2, 38), FACTORY_PRESET(2, 2, 20), FACTORY_PRESET(2, 2, 11),  // 1/4 Dotted
+    FACTORY_PRESET(2, 1, 38), FACTORY_PRESET(2, 1, 20), FACTORY_PRESET(2, 1, 11),  // 1/4 Triplet
+
+    // ---- 1/8 Eighth note (rate 3) ----
+    FACTORY_PRESET(3, 0, 38), FACTORY_PRESET(3, 0, 20), FACTORY_PRESET(3, 0, 11),  // 1/8 Note
+    FACTORY_PRESET(3, 2, 38), FACTORY_PRESET(3, 2, 20), FACTORY_PRESET(3, 2, 11),  // 1/8 Dotted
+    FACTORY_PRESET(3, 1, 38), FACTORY_PRESET(3, 1, 20), FACTORY_PRESET(3, 1, 11),  // 1/8 Triplet
+
+    // ---- 1/16 Sixteenth note (rate 4) ----
+    FACTORY_PRESET(4, 0, 38), FACTORY_PRESET(4, 0, 20), FACTORY_PRESET(4, 0, 11),  // 1/16 Note
+    FACTORY_PRESET(4, 2, 38), FACTORY_PRESET(4, 2, 20), FACTORY_PRESET(4, 2, 11),  // 1/16 Dotted
+    FACTORY_PRESET(4, 1, 38), FACTORY_PRESET(4, 1, 20), FACTORY_PRESET(4, 1, 11),  // 1/16 Triplet
+
+    // ---- Pitch delay variants: +12 cumulative, 2 repeats, 21% decay ----
+    PITCH_PRESET(2),   // Slot 45: 1/4 Note Pitch Delay
+    PITCH_PRESET(3),   // Slot 46: 1/8 Note Pitch Delay
+    PITCH_PRESET(4),   // Slot 47: 1/16 Note Pitch Delay
+};
+
+// =============================================================================
 // GLOBAL STATE
 // =============================================================================
 
@@ -28,6 +81,21 @@ typedef struct {
 
 #define MAX_NOTE_ON_TRACKING 32
 static note_on_tracker_t note_on_times[MAX_NOTE_ON_TRACKING];
+
+// =============================================================================
+// CONFIG ACCESSOR
+// =============================================================================
+
+const delay_slot_config_t* midi_delay_get_config(uint8_t slot_id) {
+    if (slot_id < DELAY_FACTORY_COUNT) {
+        return &delay_factory_presets[slot_id];
+    }
+    uint8_t user_idx = slot_id - DELAY_FACTORY_COUNT;
+    if (user_idx < DELAY_USER_SLOT_COUNT) {
+        return &delay_system.user_configs[user_idx];
+    }
+    return NULL;
+}
 
 // =============================================================================
 // TIMING CALCULATION
@@ -145,92 +213,30 @@ static void queue_remove(uint8_t index) {
 // INITIALIZATION & PERSISTENCE
 // =============================================================================
 
-// Factory delay preset definitions
-// Layout: 5 rates x (3 timings x 3 decays) = 45 + 3 pitch variants = 48
-#define DELAY_FACTORY_COUNT  48
-#define DECAY_SHORT  38
-#define DECAY_MED    20
-#define DECAY_LONG   11
-
-static void midi_delay_load_factory_defaults(void) {
-    // Rate note_values: 0=1/1, 1=1/2, 2=1/4, 3=1/8, 4=1/16
-    // Timings: 0=Note, 1=Triplet, 2=Dotted
-    // Decays: Short(38%), Med(20%), Long(11%)
-    static const uint8_t rates[] = {0, 1, 2, 3, 4};
-    static const uint8_t timings[] = {0, 2, 1};  // Note, Dotted, Triplet
-    static const uint8_t decays[] = {DECAY_SHORT, DECAY_MED, DECAY_LONG};
-
-    uint8_t idx = 0;
-    for (uint8_t r = 0; r < 5; r++) {
-        for (uint8_t t = 0; t < 3; t++) {
-            for (uint8_t d = 0; d < 3; d++) {
-                delay_slot_config_t *cfg = &delay_system.configs[idx];
-                cfg->rate_mode = 0;
-                cfg->note_value = rates[r];
-                cfg->timing_mode = timings[t];
-                cfg->decay_percent = decays[d];
-                cfg->fixed_delay_ms = 500;
-                cfg->max_repeats = 0;  // Unlimited (decay kills it)
-                cfg->channel = 0;
-                cfg->transpose_semi = 0;
-                cfg->transpose_mode = 0;
-                cfg->max_active_notes = 0;
-                cfg->channel_count = 1;
-                idx++;
-            }
-        }
-    }
-
-    // Pitch delay variants: +12 cumulative, max_repeats=2, decay=21%
-    // Slot 45: 1/4 Note Pitch Delay
-    // Slot 46: 1/8 Note Pitch Delay
-    // Slot 47: 1/16 Note Pitch Delay
-    static const uint8_t pitch_rates[] = {2, 3, 4};  // 1/4, 1/8, 1/16
-    for (uint8_t p = 0; p < 3; p++) {
-        delay_slot_config_t *cfg = &delay_system.configs[idx];
-        cfg->rate_mode = 0;
-        cfg->note_value = pitch_rates[p];
-        cfg->timing_mode = 0;  // Note (straight)
-        cfg->decay_percent = 21;
-        cfg->fixed_delay_ms = 500;
-        cfg->max_repeats = 2;
-        cfg->channel = 0;
-        cfg->transpose_semi = 12;
-        cfg->transpose_mode = 1;  // Cumulative
-        cfg->max_active_notes = 0;
-        cfg->channel_count = 1;
-        idx++;
-    }
-}
-
 void midi_delay_init(void) {
     memset(&delay_system, 0, sizeof(delay_system_t));
 
-    // Set defaults for all slots
-    for (uint8_t i = 0; i < DELAY_SLOT_COUNT; i++) {
-        delay_system.configs[i].rate_mode = 0;
-        delay_system.configs[i].note_value = 3;
-        delay_system.configs[i].timing_mode = 0;
-        delay_system.configs[i].decay_percent = 50;
-        delay_system.configs[i].fixed_delay_ms = 500;
-        delay_system.configs[i].max_repeats = 3;
-        delay_system.configs[i].channel = 0;
-        delay_system.configs[i].transpose_semi = 0;
-        delay_system.configs[i].transpose_mode = 0;
-        delay_system.configs[i].max_active_notes = 0;
-        delay_system.configs[i].channel_count = 1;
-        delay_system.configs[i].channel2 = 0;
-        delay_system.configs[i].channel3 = 0;
-        delay_system.configs[i].channel4 = 0;
+    // Set defaults for user slots
+    for (uint8_t i = 0; i < DELAY_USER_SLOT_COUNT; i++) {
+        delay_system.user_configs[i].rate_mode = 0;
+        delay_system.user_configs[i].note_value = 3;
+        delay_system.user_configs[i].timing_mode = 0;
+        delay_system.user_configs[i].decay_percent = 50;
+        delay_system.user_configs[i].fixed_delay_ms = 500;
+        delay_system.user_configs[i].max_repeats = 3;
+        delay_system.user_configs[i].channel = 0;
+        delay_system.user_configs[i].transpose_semi = 0;
+        delay_system.user_configs[i].transpose_mode = 0;
+        delay_system.user_configs[i].max_active_notes = 0;
+        delay_system.user_configs[i].channel_count = 1;
+        delay_system.user_configs[i].channel2 = 0;
+        delay_system.user_configs[i].channel3 = 0;
+        delay_system.user_configs[i].channel4 = 0;
     }
-
-    // Load factory presets into slots 0-47
-    midi_delay_load_factory_defaults();
 
     memset(note_on_times, 0, sizeof(note_on_times));
 
-    // Try to load USER slots (48-99) from EEPROM
-    // Factory presets (0-47) are always loaded from code above, never from EEPROM
+    // Load user slots from EEPROM (factory presets are const in flash)
     midi_delay_load();
 }
 
@@ -239,12 +245,12 @@ void midi_delay_save(void) {
     uint16_t magic = DELAY_EEPROM_MAGIC;
     eeprom_write_block(&magic, (void *)(DELAY_EEPROM_ADDR), 2);
 
-    // Write all configs
-    eeprom_write_block(delay_system.configs,
+    // Write only user slot configs
+    eeprom_write_block(delay_system.user_configs,
                        (void *)(DELAY_EEPROM_ADDR + 2),
-                       sizeof(delay_slot_config_t) * DELAY_SLOT_COUNT);
+                       sizeof(delay_slot_config_t) * DELAY_USER_SLOT_COUNT);
 
-    dprintf("midi_delay: saved %d slots to EEPROM\n", DELAY_SLOT_COUNT);
+    dprintf("midi_delay: saved %d user slots to EEPROM\n", DELAY_USER_SLOT_COUNT);
 }
 
 void midi_delay_load(void) {
@@ -257,41 +263,40 @@ void midi_delay_load(void) {
         return;
     }
 
-    // Only load USER slots (48-99) from EEPROM - factory presets (0-47) are always from code
-    eeprom_read_block(&delay_system.configs[DELAY_FACTORY_COUNT],
-                      (void *)(DELAY_EEPROM_ADDR + 2 + sizeof(delay_slot_config_t) * DELAY_FACTORY_COUNT),
-                      sizeof(delay_slot_config_t) * (DELAY_SLOT_COUNT - DELAY_FACTORY_COUNT));
+    // Load user slots from EEPROM
+    eeprom_read_block(delay_system.user_configs,
+                      (void *)(DELAY_EEPROM_ADDR + 2),
+                      sizeof(delay_slot_config_t) * DELAY_USER_SLOT_COUNT);
 
-    dprintf("midi_delay: loaded user slots %d-%d from EEPROM\n", DELAY_FACTORY_COUNT, DELAY_SLOT_COUNT - 1);
+    dprintf("midi_delay: loaded %d user slots from EEPROM\n", DELAY_USER_SLOT_COUNT);
 }
 
 void midi_delay_reset(void) {
     midi_delay_clear_queue();
 
     // Deactivate all slots
-    for (uint8_t i = 0; i < DELAY_SLOT_COUNT; i++) {
+    for (uint8_t i = 0; i < DELAY_TOTAL_SLOT_COUNT; i++) {
         delay_system.runtime[i].active = false;
     }
 
-    // Re-apply factory presets (0-47)
-    midi_delay_load_factory_defaults();
-
-    // Reset user slots (48-99) to defaults
-    for (uint8_t i = DELAY_FACTORY_COUNT; i < DELAY_SLOT_COUNT; i++) {
-        delay_system.configs[i].rate_mode = 0;
-        delay_system.configs[i].note_value = 3;
-        delay_system.configs[i].timing_mode = 0;
-        delay_system.configs[i].decay_percent = 50;
-        delay_system.configs[i].fixed_delay_ms = 500;
-        delay_system.configs[i].max_repeats = 3;
-        delay_system.configs[i].channel = 0;
-        delay_system.configs[i].transpose_semi = 0;
-        delay_system.configs[i].transpose_mode = 0;
-        memset(delay_system.configs[i].reserved, 0, sizeof(delay_system.configs[i].reserved));
+    // Reset user slots to defaults
+    for (uint8_t i = 0; i < DELAY_USER_SLOT_COUNT; i++) {
+        delay_system.user_configs[i].rate_mode = 0;
+        delay_system.user_configs[i].note_value = 3;
+        delay_system.user_configs[i].timing_mode = 0;
+        delay_system.user_configs[i].decay_percent = 50;
+        delay_system.user_configs[i].fixed_delay_ms = 500;
+        delay_system.user_configs[i].max_repeats = 3;
+        delay_system.user_configs[i].channel = 0;
+        delay_system.user_configs[i].transpose_semi = 0;
+        delay_system.user_configs[i].transpose_mode = 0;
+        delay_system.user_configs[i].max_active_notes = 0;
+        delay_system.user_configs[i].channel_count = 1;
+        memset(delay_system.user_configs[i].reserved, 0, sizeof(delay_system.user_configs[i].reserved));
     }
 
     midi_delay_save();
-    dprintf("midi_delay: reset all slots to defaults\n");
+    dprintf("midi_delay: reset all user slots to defaults\n");
 }
 
 // =============================================================================
@@ -350,11 +355,12 @@ void midi_delay_schedule_note_on(uint8_t channel, uint8_t note, uint8_t velocity
     // Track this note-on time for duration mirroring
     track_note_on_time(channel, note, now);
 
-    // Check each active slot
-    for (uint8_t s = 0; s < DELAY_SLOT_COUNT; s++) {
+    // Check each active slot (factory + user)
+    for (uint8_t s = 0; s < DELAY_TOTAL_SLOT_COUNT; s++) {
         if (!delay_system.runtime[s].active) continue;
 
-        delay_slot_config_t *cfg = &delay_system.configs[s];
+        const delay_slot_config_t *cfg = midi_delay_get_config(s);
+        if (!cfg) continue;
 
         // Max active notes: limit how many distinct notes can have pending delays in this slot
         if (cfg->max_active_notes > 0) {
@@ -519,10 +525,12 @@ void midi_delay_schedule_note_off(uint8_t channel, uint8_t note) {
 
     // Also handle note-on events that have ALREADY fired (their note is still sounding)
     // These won't be in the queue anymore, so check all active slots
-    for (uint8_t s = 0; s < DELAY_SLOT_COUNT; s++) {
+    for (uint8_t s = 0; s < DELAY_TOTAL_SLOT_COUNT; s++) {
         if (!delay_system.runtime[s].active) continue;
 
-        delay_slot_config_t *cfg = &delay_system.configs[s];
+        const delay_slot_config_t *cfg = midi_delay_get_config(s);
+        if (!cfg) continue;
+
         uint32_t interval = compute_delay_interval(cfg);
         if (interval == 0) continue;
 
@@ -583,14 +591,15 @@ void midi_delay_schedule_note_off(uint8_t channel, uint8_t note) {
 // =============================================================================
 
 void midi_delay_toggle_slot(uint8_t slot_id) {
-    if (slot_id >= DELAY_SLOT_COUNT) return;
+    if (slot_id >= DELAY_TOTAL_SLOT_COUNT) return;
     delay_system.runtime[slot_id].active = !delay_system.runtime[slot_id].active;
-    dprintf("midi_delay: slot %d %s\n", slot_id + 1,
-            delay_system.runtime[slot_id].active ? "ON" : "OFF");
+    dprintf("midi_delay: slot %d %s%s\n", slot_id + 1,
+            delay_system.runtime[slot_id].active ? "ON" : "OFF",
+            slot_id < DELAY_FACTORY_COUNT ? " (factory)" : "");
 }
 
 bool midi_delay_slot_active(uint8_t slot_id) {
-    if (slot_id >= DELAY_SLOT_COUNT) return false;
+    if (slot_id >= DELAY_TOTAL_SLOT_COUNT) return false;
     return delay_system.runtime[slot_id].active;
 }
 
@@ -613,9 +622,12 @@ void midi_delay_clear_queue(void) {
 // =============================================================================
 
 bool midi_delay_any_bpm_synced_active(void) {
-    for (uint8_t s = 0; s < DELAY_SLOT_COUNT; s++) {
-        if (delay_system.runtime[s].active && delay_system.configs[s].rate_mode == 0) {
-            return true;
+    for (uint8_t s = 0; s < DELAY_TOTAL_SLOT_COUNT; s++) {
+        if (delay_system.runtime[s].active) {
+            const delay_slot_config_t *cfg = midi_delay_get_config(s);
+            if (cfg && cfg->rate_mode == 0) {
+                return true;
+            }
         }
     }
     return false;
@@ -627,33 +639,36 @@ bool midi_delay_any_bpm_synced_active(void) {
 
 void midi_delay_hid_get_slot(uint8_t slot_id, uint8_t *response) {
     // response format: [status, 16 bytes config]
-    if (slot_id >= DELAY_SLOT_COUNT) {
+    // Unified slot index: 0-47 = factory (from flash), 48-97 = user (from RAM)
+    const delay_slot_config_t *cfg = midi_delay_get_config(slot_id);
+    if (!cfg) {
         response[0] = 0x00;  // Error
         return;
     }
 
     response[0] = 0x01;  // Success
-    memcpy(&response[1], &delay_system.configs[slot_id], DELAY_CONFIG_SIZE);
+    memcpy(&response[1], cfg, DELAY_CONFIG_SIZE);
 }
 
 void midi_delay_hid_set_slot(uint8_t slot_id, const uint8_t *data) {
-    if (slot_id >= DELAY_SLOT_COUNT) return;
-    // Factory presets (0-47) are read-only - ignore HID writes to them
+    // Factory presets (0-47) are read-only in flash
     if (slot_id < DELAY_FACTORY_COUNT) {
         dprintf("midi_delay: slot %d is a factory preset, ignoring HID write\n", slot_id + 1);
         return;
     }
-    memcpy(&delay_system.configs[slot_id], data, DELAY_CONFIG_SIZE);
-    dprintf("midi_delay: slot %d config updated via HID\n", slot_id + 1);
+    uint8_t user_idx = slot_id - DELAY_FACTORY_COUNT;
+    if (user_idx >= DELAY_USER_SLOT_COUNT) return;
+
+    memcpy(&delay_system.user_configs[user_idx], data, DELAY_CONFIG_SIZE);
+    dprintf("midi_delay: user slot %d config updated via HID\n", user_idx + 1);
 }
 
 void midi_delay_hid_get_bulk(uint8_t start, uint8_t count, uint8_t *data, uint8_t length) {
     // Bulk read: send multiple slots in chunked packets
-    // Each 32-byte packet can hold: header(4) + meta(3) + 1 slot config(16) = 23 bytes, fits 1 slot
-    // So we send one packet per slot
+    // Unified index: 0-47 factory, 48-97 user
 
     uint8_t end = start + count;
-    if (end > DELAY_SLOT_COUNT) end = DELAY_SLOT_COUNT;
+    if (end > DELAY_TOTAL_SLOT_COUNT) end = DELAY_TOTAL_SLOT_COUNT;
 
     for (uint8_t s = start; s < end; s++) {
         uint8_t response[32] = {0};
@@ -664,10 +679,13 @@ void midi_delay_hid_get_bulk(uint8_t start, uint8_t count, uint8_t *data, uint8_
         response[3] = 0xD8;  // HID_CMD_DELAY_GET_BULK
 
         response[4] = 0x01;  // Success
-        response[5] = s;     // Slot index
-        response[6] = end - start;  // Total count
+        response[5] = s;     // Unified slot index
+        response[6] = (s < DELAY_FACTORY_COUNT) ? 0x01 : 0x00;  // is_factory flag
 
-        memcpy(&response[7], &delay_system.configs[s], DELAY_CONFIG_SIZE);
+        const delay_slot_config_t *cfg = midi_delay_get_config(s);
+        if (cfg) {
+            memcpy(&response[7], cfg, DELAY_CONFIG_SIZE);
+        }
 
         raw_hid_send(response, 32);
     }
