@@ -5437,6 +5437,7 @@ void gaming_reset_settings(void) {
     gaming_settings.diagonal_angle = 0;  // 0 degrees (no adjustment)
     gaming_settings.use_square_output = false;
     gaming_settings.snappy_joystick_enabled = false;
+    gaming_settings.suppress_keystrokes = true;  // Suppress normal keycodes by default
 
     gaming_settings.magic = GAMING_SETTINGS_MAGIC;
 }
@@ -5501,6 +5502,32 @@ void gaming_init(void) {
     gaming_load_settings();
     // Auto-populate axis mappings from keymap keycodes
     gaming_scan_keymap_for_axes();
+}
+
+// Check if a key (row, col) is mapped to any gaming control (axis, trigger, or button)
+bool gaming_is_key_mapped(uint8_t row, uint8_t col) {
+    // Check axis mappings
+    const gaming_key_map_t* maps[] = {
+        &gaming_settings.ls_up, &gaming_settings.ls_down,
+        &gaming_settings.ls_left, &gaming_settings.ls_right,
+        &gaming_settings.rs_up, &gaming_settings.rs_down,
+        &gaming_settings.rs_left, &gaming_settings.rs_right,
+        &gaming_settings.lt, &gaming_settings.rt
+    };
+    for (uint8_t i = 0; i < 10; i++) {
+        if (maps[i]->enabled && maps[i]->row == row && maps[i]->col == col) {
+            return true;
+        }
+    }
+    // Check button mappings
+    for (uint8_t i = 0; i < 16; i++) {
+        if (gaming_settings.buttons[i].enabled &&
+            gaming_settings.buttons[i].row == row &&
+            gaming_settings.buttons[i].col == col) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // =============================================================================
@@ -15347,6 +15374,16 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (keycode >= 0xCC6B && keycode <= 0xCC74) {
         set_keylog(keycode, record);
         return false;
+    }
+#endif
+
+#ifdef JOYSTICK_ENABLE
+    // Suppress normal keycodes for keys mapped as gaming controls
+    // when gaming mode is active and suppress_keystrokes is enabled
+    if (gaming_mode_active && gaming_settings.suppress_keystrokes) {
+        if (gaming_is_key_mapped(record->event.key.row, record->event.key.col)) {
+            return false;
+        }
     }
 #endif
 

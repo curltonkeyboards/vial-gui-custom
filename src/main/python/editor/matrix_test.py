@@ -5365,6 +5365,18 @@ class GamingConfigurator(BasicEditor):
         snappy_row.addStretch()
         response_layout.addLayout(snappy_row)
 
+        # Suppress Keystrokes
+        suppress_row = QHBoxLayout()
+        suppress_row.addWidget(self.create_help_label(
+            "When enabled, keys mapped as gaming controls will not send\n"
+            "their normal keystrokes (e.g. 'E') while Gaming Mode is active.\n"
+            "Only the joystick button/axis output will be sent."))
+        self.suppress_keystrokes_checkbox = QCheckBox(tr("GamingConfigurator", "Suppress keystrokes"))
+        self.suppress_keystrokes_checkbox.setChecked(True)  # Default ON
+        suppress_row.addWidget(self.suppress_keystrokes_checkbox)
+        suppress_row.addStretch()
+        response_layout.addLayout(suppress_row)
+
         response_calibration_layout.addWidget(response_group, alignment=QtCore.Qt.AlignTop)
 
         # Analog Calibration Group
@@ -5744,7 +5756,8 @@ class GamingConfigurator(BasicEditor):
                 QMessageBox.warning(None, "Invalid Range", "Trigger Min travel must be less than Trigger Max travel")
                 return
 
-            success = self.keyboard.set_gaming_analog_config(ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max)
+            suppress_keystrokes = self.suppress_keystrokes_checkbox.isChecked()
+            success = self.keyboard.set_gaming_analog_config(ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, suppress_keystrokes)
 
             # Save key mappings
             for control_id, data in self.gaming_controls.items():
@@ -5814,6 +5827,11 @@ class GamingConfigurator(BasicEditor):
                 self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
                 self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
                 self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+
+                # Update suppress keystrokes checkbox
+                self.suppress_keystrokes_checkbox.blockSignals(True)
+                self.suppress_keystrokes_checkbox.setChecked(settings.get('suppress_keystrokes', True))
+                self.suppress_keystrokes_checkbox.blockSignals(False)
 
                 # Load user curve names first (so dropdown is populated)
                 user_curve_names = self.keyboard.get_all_user_curve_names()
@@ -6016,6 +6034,11 @@ class GamingConfigurator(BasicEditor):
                 self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
                 self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
                 self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+
+                # Update suppress keystrokes checkbox
+                self.suppress_keystrokes_checkbox.blockSignals(True)
+                self.suppress_keystrokes_checkbox.setChecked(settings.get('suppress_keystrokes', True))
+                self.suppress_keystrokes_checkbox.blockSignals(False)
 
             # Load user curve names (so dropdown is populated)
             user_curve_names = self.keyboard.get_all_user_curve_names()
