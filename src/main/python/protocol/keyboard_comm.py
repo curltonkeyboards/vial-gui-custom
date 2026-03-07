@@ -2025,6 +2025,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             bool: True if successful, False otherwise
         """
         try:
+            # Values should be in 0.1mm units (firmware native), e.g. 10 = 1.0mm
             data = [ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, 1 if suppress_keystrokes else 0]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_ANALOG_CONFIG, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
@@ -2047,14 +2048,15 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
 
             # Parse gaming settings from response
             # Response format: [status, enabled, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, suppress_keystrokes, ...]
+            # Values are in 0.1mm units (firmware native), e.g. 10 = 1.0mm
             return {
                 'enabled': response[6] != 0,
-                'ls_min_travel_mm_x10': response[7],
-                'ls_max_travel_mm_x10': response[8],
-                'rs_min_travel_mm_x10': response[9],
-                'rs_max_travel_mm_x10': response[10],
-                'trigger_min_travel_mm_x10': response[11],
-                'trigger_max_travel_mm_x10': response[12],
+                'ls_min_travel': response[7],
+                'ls_max_travel': response[8],
+                'rs_min_travel': response[9],
+                'rs_max_travel': response[10],
+                'trigger_min_travel': response[11],
+                'trigger_max_travel': response[12],
                 'suppress_keystrokes': response[13] != 0 if len(response) > 13 else True
             }
         except Exception as e:
