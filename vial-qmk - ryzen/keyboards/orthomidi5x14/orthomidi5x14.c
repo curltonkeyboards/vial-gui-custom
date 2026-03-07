@@ -15374,30 +15374,26 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     // Gaming button keycodes (0xCC61-0xCC6A, 0xCC75-0xCC78) - direct joystick button registration
     // These keycodes directly register/unregister joystick buttons on press/release
-    // Only send joystick buttons when gaming mode is active
+    // Always active regardless of gaming mode state (hardcoded keymap keycodes)
     if (keycode >= 0xCC61 && keycode <= 0xCC6A) {
-        if (gaming_mode_active) {
-            // Face buttons, bumpers, back/start, stick clicks (buttons 0-9)
-            uint8_t button_id = keycode - 0xCC61;
-            if (record->event.pressed) {
-                register_joystick_button(button_id);
-            } else {
-                unregister_joystick_button(button_id);
-            }
+        // Face buttons, bumpers, back/start, stick clicks (buttons 0-9)
+        uint8_t button_id = keycode - 0xCC61;
+        if (record->event.pressed) {
+            register_joystick_button(button_id);
+        } else {
+            unregister_joystick_button(button_id);
         }
         set_keylog(keycode, record);
         return false;
     }
 
     if (keycode >= 0xCC75 && keycode <= 0xCC78) {
-        if (gaming_mode_active) {
-            // D-pad buttons (buttons 12-15)
-            uint8_t button_id = 12 + (keycode - 0xCC75);
-            if (record->event.pressed) {
-                register_joystick_button(button_id);
-            } else {
-                unregister_joystick_button(button_id);
-            }
+        // D-pad buttons (buttons 12-15)
+        uint8_t button_id = 12 + (keycode - 0xCC75);
+        if (record->event.pressed) {
+            register_joystick_button(button_id);
+        } else {
+            unregister_joystick_button(button_id);
         }
         set_keylog(keycode, record);
         return false;
@@ -18004,10 +18000,10 @@ void matrix_scan_user(void) {
     }
 
 #ifdef JOYSTICK_ENABLE
-    // Update joystick/gaming controller state only when gaming mode is active
-    if (gaming_mode_active) {
-        gaming_update_joystick();
-    }
+    // Update joystick/gaming controller state every scan cycle
+    // Always active so hardcoded gaming keycodes (axis/trigger) work without Gaming Mode
+    // GUI-assigned mappings via gaming_settings also always process when configured
+    gaming_update_joystick();
 #endif
 
 #ifdef MIDI_SERIAL_ENABLE

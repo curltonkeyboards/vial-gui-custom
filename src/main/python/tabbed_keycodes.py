@@ -4008,7 +4008,7 @@ class GamingTab(QScrollArea):
         return btn
 
     def recreate_buttons(self, keycode_filter=None):
-        """Recreate buttons - simplified to just Gaming Mode toggle + info"""
+        """Recreate all buttons for the gaming controller layout"""
         self.current_keycode_filter = keycode_filter
 
         # Clear existing layout
@@ -4019,23 +4019,232 @@ class GamingTab(QScrollArea):
             elif item.layout():
                 self.clear_layout(item.layout())
 
-        # Gaming Mode toggle button
-        gaming_mode_btn = self.create_button("GAMING_MODE", 120, 45)
-        if gaming_mode_btn:
-            gaming_mode_btn.setStyleSheet("font-size: 11pt; font-weight: bold;")
-            self.main_layout.addWidget(gaming_mode_btn, alignment=Qt.AlignHCenter)
-
-        # Info label directing users to Gaming Settings tab
+        # Info label
         info_label = QLabel(
-            "Assign this keycode to a key in your keymap to toggle Gaming Mode on/off.\n\n"
-            "To configure gamepad button mappings, analog calibration, and response curves,\n"
-            "use the Gaming Settings tab."
+            "These keycodes always send joystick output when assigned in your keymap, "
+            "regardless of Gaming Mode state.\n"
+            "For configurable key-to-gamepad mappings, use the Gaming Settings tab."
         )
         info_label.setAlignment(Qt.AlignCenter)
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: gray; font-size: 10pt; padding: 20px;")
+        info_label.setStyleSheet("color: gray; font-size: 9pt; padding: 5px;")
         self.main_layout.addWidget(info_label)
 
+        # Create gamepad widget with drawn outline
+        gamepad_widget = GamepadWidget()
+        gamepad_widget.setFixedSize(750, 560)
+
+        # Triggers (LT and RT)
+        lt_btn = self.create_button("LT", 60, 35)
+        if lt_btn:
+            lt_btn.setParent(gamepad_widget)
+            lt_btn.move(177, 25)
+
+        rt_btn = self.create_button("RT", 60, 35)
+        if rt_btn:
+            rt_btn.setParent(gamepad_widget)
+            rt_btn.move(503, 25)
+
+        # Gaming Mode Toggle
+        gaming_mode_btn = self.create_button("GAMING_MODE", 100, 40)
+        if gaming_mode_btn:
+            gaming_mode_btn.setParent(gamepad_widget)
+            gaming_mode_btn.move(325, 75)
+
+        # Bumpers (LB and RB)
+        lb_btn = self.create_button("XBOX_LB", 60, 30)
+        if lb_btn:
+            lb_btn.setParent(gamepad_widget)
+            lb_btn.move(177, 65)
+
+        rb_btn = self.create_button("XBOX_RB", 60, 30)
+        if rb_btn:
+            rb_btn.setParent(gamepad_widget)
+            rb_btn.move(503, 65)
+
+        # D-pad buttons with tapered arrow shapes
+        kc = self.get_keycode("DPAD_UP")
+        if kc:
+            dpad_up = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_up.setFixedSize(56, 58)
+            dpad_up.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_up.keycode = kc
+            dpad_up.setText("↑")
+            dpad_up.setParent(gamepad_widget)
+            dpad_up.move(180, 105)
+            path = QPainterPath()
+            path.moveTo(28, 58)
+            path.lineTo(3, 33)
+            path.lineTo(3, 8)
+            path.quadTo(8, 3, 15, 3)
+            path.lineTo(41, 3)
+            path.quadTo(48, 3, 53, 8)
+            path.lineTo(53, 33)
+            path.lineTo(28, 58)
+            path.closeSubpath()
+            dpad_up.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_up.set_border_path(path)
+
+        kc = self.get_keycode("DPAD_DOWN")
+        if kc:
+            dpad_down = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_down.setFixedSize(56, 58)
+            dpad_down.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_down.keycode = kc
+            dpad_down.setText("↓")
+            dpad_down.setParent(gamepad_widget)
+            dpad_down.move(180, 163)
+            path = QPainterPath()
+            path.moveTo(28, 0)
+            path.lineTo(3, 25)
+            path.lineTo(3, 50)
+            path.quadTo(8, 55, 15, 55)
+            path.lineTo(41, 55)
+            path.quadTo(48, 55, 53, 50)
+            path.lineTo(53, 25)
+            path.lineTo(28, 0)
+            path.closeSubpath()
+            dpad_down.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_down.set_border_path(path)
+
+        kc = self.get_keycode("DPAD_LEFT")
+        if kc:
+            dpad_left = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_left.setFixedSize(58, 56)
+            dpad_left.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_left.keycode = kc
+            dpad_left.setText("←")
+            dpad_left.setParent(gamepad_widget)
+            dpad_left.move(150, 135)
+            path = QPainterPath()
+            path.moveTo(58, 28)
+            path.lineTo(33, 3)
+            path.lineTo(8, 3)
+            path.quadTo(3, 8, 3, 15)
+            path.lineTo(3, 41)
+            path.quadTo(3, 48, 8, 53)
+            path.lineTo(33, 53)
+            path.lineTo(58, 28)
+            path.closeSubpath()
+            dpad_left.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_left.set_border_path(path)
+
+        kc = self.get_keycode("DPAD_RIGHT")
+        if kc:
+            dpad_right = DpadButton(Keycode.label(kc.qmk_id))
+            dpad_right.setFixedSize(58, 56)
+            dpad_right.clicked.connect(lambda: self.keycode_changed.emit(kc.qmk_id))
+            dpad_right.keycode = kc
+            dpad_right.setText("→")
+            dpad_right.setParent(gamepad_widget)
+            dpad_right.move(208, 135)
+            path = QPainterPath()
+            path.moveTo(0, 28)
+            path.lineTo(25, 3)
+            path.lineTo(50, 3)
+            path.quadTo(55, 8, 55, 15)
+            path.lineTo(55, 41)
+            path.quadTo(55, 48, 50, 53)
+            path.lineTo(25, 53)
+            path.lineTo(0, 28)
+            path.closeSubpath()
+            dpad_right.setMask(QRegion(path.toFillPolygon().toPolygon()))
+            dpad_right.set_border_path(path)
+
+        # Left Analog Stick
+        ls_up = self.create_button("LS_UP", 38, 38)
+        if ls_up:
+            ls_up.setParent(gamepad_widget)
+            ls_up.move(275, 185)
+
+        ls_down = self.create_button("LS_DOWN", 38, 38)
+        if ls_down:
+            ls_down.setParent(gamepad_widget)
+            ls_down.move(275, 261)
+
+        ls_left = self.create_button("LS_LEFT", 38, 38)
+        if ls_left:
+            ls_left.setParent(gamepad_widget)
+            ls_left.move(237, 223)
+
+        ls_right = self.create_button("LS_RIGHT", 38, 38)
+        if ls_right:
+            ls_right.setParent(gamepad_widget)
+            ls_right.move(313, 223)
+
+        l3_btn = self.create_button("XBOX_L3", 38, 38)
+        if l3_btn:
+            l3_btn.setParent(gamepad_widget)
+            l3_btn.move(275, 223)
+
+        # Center buttons (Back and Start)
+        back_btn = self.create_button("XBOX_BACK", 50, 30)
+        if back_btn:
+            back_btn.setParent(gamepad_widget)
+            back_btn.move(320, 170)
+
+        start_btn = self.create_button("XBOX_START", 50, 30)
+        if start_btn:
+            start_btn.setParent(gamepad_widget)
+            start_btn.move(380, 170)
+
+        # Right Analog Stick
+        rs_up = self.create_button("RS_UP", 38, 38)
+        if rs_up:
+            rs_up.setParent(gamepad_widget)
+            rs_up.move(439, 185)
+
+        rs_down = self.create_button("RS_DOWN", 38, 38)
+        if rs_down:
+            rs_down.setParent(gamepad_widget)
+            rs_down.move(439, 261)
+
+        rs_left = self.create_button("RS_LEFT", 38, 38)
+        if rs_left:
+            rs_left.setParent(gamepad_widget)
+            rs_left.move(401, 223)
+
+        rs_right = self.create_button("RS_RIGHT", 38, 38)
+        if rs_right:
+            rs_right.setParent(gamepad_widget)
+            rs_right.move(477, 223)
+
+        r3_btn = self.create_button("XBOX_R3", 38, 38)
+        if r3_btn:
+            r3_btn.setParent(gamepad_widget)
+            r3_btn.move(439, 223)
+
+        # Face Buttons (circular)
+        btn4 = self.create_button("XBOX_Y", 50, 50)
+        if btn4:
+            btn4.setText("Button\n4")
+            btn4.setParent(gamepad_widget)
+            btn4.setStyleSheet("border-radius: 25px;")
+            btn4.move(517, 103)
+
+        btn3 = self.create_button("XBOX_X", 50, 50)
+        if btn3:
+            btn3.setText("Button\n3")
+            btn3.setParent(gamepad_widget)
+            btn3.setStyleSheet("border-radius: 25px;")
+            btn3.move(481, 139)
+
+        btn2 = self.create_button("XBOX_B", 50, 50)
+        if btn2:
+            btn2.setText("Button\n2")
+            btn2.setParent(gamepad_widget)
+            btn2.setStyleSheet("border-radius: 25px;")
+            btn2.move(553, 139)
+
+        btn1 = self.create_button("XBOX_A", 50, 50)
+        if btn1:
+            btn1.setText("Button\n1")
+            btn1.setParent(gamepad_widget)
+            btn1.setStyleSheet("border-radius: 25px;")
+            btn1.move(517, 178)
+
+        # Center the gamepad widget
+        self.main_layout.addWidget(gamepad_widget, alignment=Qt.AlignHCenter)
         self.main_layout.addStretch()
 
     def clear_layout(self, layout):
