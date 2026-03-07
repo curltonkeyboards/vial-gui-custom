@@ -50,6 +50,7 @@ from editor.velocity_tab import VelocityTab
 from editor.midi_patch import MIDIPatchBay
 from editor.loop_manager import LoopManager
 from editor.arpeggiator import Arpeggiator, StepSequencer
+from editor.delay_tab import DelayTab
 
 import themes
 
@@ -159,6 +160,7 @@ class MainWindow(QMainWindow):
         self.loop_manager = LoopManager()
         self.arpeggiator = Arpeggiator()
         self.step_sequencer = StepSequencer()
+        self.delay_tab = DelayTab()
         _startup_log(f"  MIDI configurators ({time.time()-t0:.2f}s)")
 
         # Updated editors list with new tabs inserted between Lighting and Tap Dance
@@ -169,6 +171,7 @@ class MainWindow(QMainWindow):
                         (self.gaming_configurator, "Gaming Settings"),
                         (self.midi_patchbay, "MIDI Patch"), (self.loop_manager, "Loop Manager"),
                         (self.arpeggiator, "Arpeggiator"), (self.step_sequencer, "Step Sequencer"),
+                        (self.delay_tab, "Delay"),
                         (self.tap_dance, "Tap Dance"), (self.combos, "Combos"),
                         (self.key_override, "Key Overrides"), (self.qmk_settings, "QMK Settings"),
                         (self.matrix_tester, "Matrix tester"), (self.velocity_tab, "Velocity"),

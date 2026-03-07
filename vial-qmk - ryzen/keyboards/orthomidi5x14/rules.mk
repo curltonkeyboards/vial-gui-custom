@@ -49,5 +49,8 @@ SRC += arpeggiator.c
 SRC += arpeggiator_hid.c
 SRC += arp_factory_presets.c
 
+# MIDI Delay system
+SRC += midi_delay.c
+
 # DKS (Dynamic Keystroke) system
 SRC += quantum/process_keycode/process_dks.c

@@ -12,6 +12,7 @@
 #include "dynamic_keymap.h"
 #include "process_dynamic_macro.h"
 #include "matrix.h"
+#include "midi_delay.h"
 #include <math.h>
 extern MidiDevice midi_device;
 extern void force_load_per_key_cache_at_init(uint8_t layer);  // matrix.c
@@ -5780,6 +5781,9 @@ void keyboard_post_init_user(void) {
 
 	// Initialize toggle keys system
 	toggle_load_from_eeprom();
+
+	// Initialize MIDI delay system
+	midi_delay_init();
 
 	// Initialize encoder click buttons and footswitch pins
 	setPinInputHigh(B14);  // Encoder 0 click (directly polled GPIO)
@@ -12415,6 +12419,13 @@ break;
         }
     }
 
+    // MIDI Delay slot display
+    if (keycode >= DELAY_SLOT_BASE && keycode < DELAY_SLOT_BASE + DELAY_SLOT_KC_COUNT) {
+        uint8_t slot = keycode - DELAY_SLOT_BASE;
+        snprintf(name, sizeof(name), "Delay %d: %s", slot + 1,
+                 midi_delay_slot_active(slot) ? "ON" : "OFF");
+    }
+
     // Update keylog
     //snprintf(keylog_str, sizeof(keylog_str), "%-21s", name);
 	
@@ -15388,6 +15399,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    // =============================================================================
+    // MIDI DELAY SLOT TOGGLES (0xEF90-0xEFF3)
+    // =============================================================================
+    if (keycode >= DELAY_SLOT_BASE && keycode < DELAY_SLOT_BASE + DELAY_SLOT_KC_COUNT) {
+        if (record->event.pressed) {
+            uint8_t slot = keycode - DELAY_SLOT_BASE;
+            midi_delay_toggle_slot(slot);
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
     if (keycode == 0xC929) {
         if (record->event.pressed) {
             // Key pressed - start timer
@@ -17819,6 +17842,9 @@ void matrix_scan_user(void) {
     // Update arpeggiator and sequencer timing and gate-offs
     arp_update();
     seq_update();
+
+    // Process pending MIDI delay events
+    midi_delay_tick();
 
     // Update quick build sustain monitoring
     quick_build_update();

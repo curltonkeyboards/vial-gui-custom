@@ -1,6 +1,7 @@
 #include "process_midi.h"
 #include "process_dynamic_macro.h"
 #include "matrix.h"
+#include "midi_delay.h"
 
 #ifdef MIDI_ENABLE
 #    include <LUFA/Drivers/USB/USB.h>
@@ -789,6 +790,9 @@ void midi_send_noteon_with_recording(uint8_t channel, uint8_t note, uint8_t velo
                 midi_send_noteon_smartchord(channel, (uint8_t)doubled_note, final_velocity);
             }
         }
+
+        // MIDI Delay: schedule delayed repeats of this note
+        midi_delay_schedule_note_on(channel, note, final_velocity);
     }
 
     // Always update display and live note tracking (arp reads live_notes[])
@@ -948,6 +952,9 @@ void midi_send_noteoff_with_recording(uint8_t channel, uint8_t note, uint8_t vel
             midi_send_noteoff_smartchord(channel, (uint8_t)doubled_note, velocity);
         }
     }
+
+    // MIDI Delay: schedule delayed note-offs mirroring the original held duration
+    midi_delay_schedule_note_off(channel, note);
 
     // Check if this note type should ignore smartchord for note-off
     bool ignore_smartchord_off = false;
