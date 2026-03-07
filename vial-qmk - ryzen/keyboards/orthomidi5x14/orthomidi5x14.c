@@ -4639,8 +4639,6 @@ void handle_toggle_set_slot(const uint8_t* data) {
 
 // HID handler: Get multi-key keycodes for a slot
 void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
-    dprintf("TGL GET_MULTI: slot=%d sizeof(toggle_entry_t)=%u\n", slot_num, (unsigned)sizeof(toggle_entry_t));
-
     if (slot_num >= TOGGLE_NUM_SLOTS) {
         response[0] = 1;  // Error
         return;
@@ -4649,24 +4647,15 @@ void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
     response[0] = 0;  // Success
     toggle_entry_t* entry = toggle_find(slot_num);
     if (entry) {
-        // DIAG: Dump raw entry memory
-        dprintf("TGL GET_MULTI POOL: entry=%p slot=%u target=0x%04X flags=0x%02X num=%u\n",
-                entry, entry->slot_num, entry->target_keycode, entry->flags, entry->num_keys);
-        dprintf("TGL GET_MULTI MEM: ");
-        const uint8_t* raw_entry = (const uint8_t*)entry;
-        for (uint8_t i = 0; i < (uint8_t)sizeof(toggle_entry_t) && i < 24; i++) {
-            dprintf("%02X ", raw_entry[i]);
-        }
-        dprintf("\n");
-
-        dprintf("TGL GET_MULTI KEYCODES: ");
+        dprintf("TGL GET_MULTI slot=%d pool: ", slot_num);
         for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
             response[1 + j * 2] = entry->multi_keycodes[j] & 0xFF;
             response[2 + j * 2] = (entry->multi_keycodes[j] >> 8) & 0xFF;
             dprintf("kc[%d]=0x%04X ", j, entry->multi_keycodes[j]);
         }
         dprintf("\n");
-        response[15] = (uint8_t)sizeof(toggle_entry_t);
+        // Diagnostics in bytes 15-22 (within &response[4] space, so response[15..22])
+        response[15] = (uint8_t)sizeof(toggle_entry_t);  // Expected: 22 (or 20 if packed)
         response[16] = 0;  // Source: 0 = pool
         response[17] = entry->flags;
         response[18] = entry->num_keys;
@@ -4678,7 +4667,7 @@ void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
         // Not in pool - read from EEPROM
         uint16_t magic = eeprom_read_word((uint16_t*)(TOGGLE_MULTI_EEPROM_ADDR));
         uint32_t addr = TOGGLE_MULTI_EEPROM_ADDR + 2 + (slot_num * TOGGLE_MULTI_EXTRA_KEYS * 2);
-        dprintf("TGL GET_MULTI EEPROM: magic=0x%04X addr=0x%08lX\n", magic, (unsigned long)addr);
+        dprintf("TGL GET_MULTI slot=%d eeprom (magic=0x%04X): ", slot_num, magic);
         for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
             uint16_t kc = (magic == TOGGLE_MULTI_MAGIC) ? eeprom_read_word((uint16_t*)(addr + j * 2)) : 0;
             response[1 + j * 2] = kc & 0xFF;
@@ -4689,38 +4678,12 @@ void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
         response[15] = (uint8_t)sizeof(toggle_entry_t);
         response[16] = 1;  // Source: 1 = EEPROM
     }
-
-    // DIAG: Dump response buffer
-    dprintf("TGL GET_MULTI RESP[0..22]: ");
-    for (uint8_t i = 0; i < 23; i++) {
-        dprintf("%02X ", response[i]);
-    }
-    dprintf("\n");
 }
 
 // HID handler: Set multi-key keycodes for a slot
 // Response format: [status, sizeof_entry, readback_kc0_lo, readback_kc0_hi, ..., readback_kc6_lo, readback_kc6_hi]
 void handle_toggle_set_multi(const uint8_t* data, uint8_t* response) {
     uint8_t slot_num = data[0];
-
-    // DIAG: Dump first 16 raw input bytes so we can verify byte alignment
-    dprintf("TGL SET_MULTI RAW_IN[0..15]: ");
-    for (uint8_t i = 0; i < 16; i++) {
-        dprintf("%02X ", data[i]);
-    }
-    dprintf("\n");
-
-    // DIAG: Struct layout verification
-    dprintf("TGL SET_MULTI STRUCT: sizeof=%u offsetof(target_keycode)=%u offsetof(flags)=%u "
-            "offsetof(num_keys)=%u offsetof(multi_keycodes)=%u offsetof(is_held)=%u offsetof(cycle_index)=%u\n",
-            (unsigned)sizeof(toggle_entry_t),
-            (unsigned)__builtin_offsetof(toggle_entry_t, target_keycode),
-            (unsigned)__builtin_offsetof(toggle_entry_t, flags),
-            (unsigned)__builtin_offsetof(toggle_entry_t, num_keys),
-            (unsigned)__builtin_offsetof(toggle_entry_t, multi_keycodes),
-            (unsigned)__builtin_offsetof(toggle_entry_t, is_held),
-            (unsigned)__builtin_offsetof(toggle_entry_t, cycle_index));
-
     if (slot_num >= TOGGLE_NUM_SLOTS) {
         response[0] = 1;  // Error: invalid slot
         return;
@@ -4728,6 +4691,7 @@ void handle_toggle_set_multi(const uint8_t* data, uint8_t* response) {
 
     toggle_entry_t* entry = toggle_find(slot_num);
     if (!entry) {
+        // Slot not in pool yet - add it if we have multi-key data
         entry = toggle_add(slot_num);
         if (!entry) {
             response[0] = 2;  // Error: pool full
@@ -4735,26 +4699,13 @@ void handle_toggle_set_multi(const uint8_t* data, uint8_t* response) {
         }
     }
 
-    // DIAG: Entry state BEFORE write
-    dprintf("TGL SET_MULTI PRE: entry=%p slot=%u target=0x%04X flags=0x%02X num=%u\n",
-            entry, entry->slot_num, entry->target_keycode, entry->flags, entry->num_keys);
-
-    dprintf("TGL SET_MULTI WRITE: ");
+    dprintf("TGL SET_MULTI slot=%d: ", slot_num);
     for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
         entry->multi_keycodes[j] = data[1 + j * 2] | (data[2 + j * 2] << 8);
-        dprintf("kc[%d]=0x%04X(d[%d]=%02X,d[%d]=%02X) ", j, entry->multi_keycodes[j],
-                1 + j * 2, data[1 + j * 2], 2 + j * 2, data[2 + j * 2]);
+        dprintf("kc[%d]=0x%04X(raw=%02X,%02X) ", j, entry->multi_keycodes[j], data[1 + j * 2], data[2 + j * 2]);
     }
     dprintf("\n");
     entry->cycle_index = 0;
-
-    // DIAG: Read back by casting entry to raw bytes to verify memory layout
-    dprintf("TGL SET_MULTI MEM: ");
-    const uint8_t* raw_entry = (const uint8_t*)entry;
-    for (uint8_t i = 0; i < (uint8_t)sizeof(toggle_entry_t) && i < 24; i++) {
-        dprintf("%02X ", raw_entry[i]);
-    }
-    dprintf("\n");
 
     // Response: status + sizeof + readback verification
     response[0] = 0;  // Success
@@ -4769,13 +4720,6 @@ void handle_toggle_set_multi(const uint8_t* data, uint8_t* response) {
     // Also include flags and num_keys for cross-reference
     response[16] = entry->flags;
     response[17] = entry->num_keys;
-
-    // DIAG: Dump the response buffer we're about to send
-    dprintf("TGL SET_MULTI RESP[0..21]: ");
-    for (uint8_t i = 0; i < 22; i++) {
-        dprintf("%02X ", response[i]);
-    }
-    dprintf("\n");
 }
 
 // HID handler: Save toggle slots to EEPROM
