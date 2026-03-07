@@ -5390,6 +5390,13 @@ uint8_t migrate_velocity_curve(uint8_t old_value) {
 #ifdef JOYSTICK_ENABLE
 #include "joystick.h"
 
+// All 6 axes are virtual - we set them programmatically from gaming_update_joystick(),
+// not from physical ADC pins. Without this, the default joystick_task() reads pin 0
+// for every axis and overwrites our values with garbage before flushing.
+joystick_config_t joystick_axes[JOYSTICK_AXIS_COUNT] = {
+    [0 ... JOYSTICK_AXIS_COUNT-1] = JOYSTICK_AXIS_VIRTUAL
+};
+
 // Global gaming state
 bool gaming_mode_active = false;
 gaming_settings_t gaming_settings;
@@ -5430,6 +5437,7 @@ void gaming_reset_settings(void) {
     gaming_settings.diagonal_angle = 0;  // 0 degrees (no adjustment)
     gaming_settings.use_square_output = false;
     gaming_settings.snappy_joystick_enabled = false;
+    gaming_settings.suppress_keystrokes = true;  // Suppress normal keycodes by default
 
     gaming_settings.magic = GAMING_SETTINGS_MAGIC;
 }
@@ -5453,9 +5461,73 @@ void gaming_load_settings(void) {
     gaming_mode_active = gaming_settings.gaming_mode_enabled;
 }
 
+// Scan keymap for gaming keycodes and auto-populate axis/trigger mappings
+// This allows users to just assign gaming keycodes in the keymap editor
+// without having to separately configure the Gaming Configurator
+void gaming_scan_keymap_for_axes(void) {
+    // Scan ALL layers for gaming axis and trigger keycodes
+    uint8_t layer_count = dynamic_keymap_get_layer_count();
+    for (uint8_t layer = 0; layer < layer_count; layer++) {
+        for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+                uint16_t kc = dynamic_keymap_get_keycode(layer, row, col);
+                gaming_key_map_t mapping = {.row = row, .col = col, .enabled = 1};
+
+                switch (kc) {
+                    case 0xCC6B: gaming_settings.ls_up = mapping; break;
+                    case 0xCC6C: gaming_settings.ls_down = mapping; break;
+                    case 0xCC6D: gaming_settings.ls_left = mapping; break;
+                    case 0xCC6E: gaming_settings.ls_right = mapping; break;
+                    case 0xCC6F: gaming_settings.rs_up = mapping; break;
+                    case 0xCC70: gaming_settings.rs_down = mapping; break;
+                    case 0xCC71: gaming_settings.rs_left = mapping; break;
+                    case 0xCC72: gaming_settings.rs_right = mapping; break;
+                    case 0xCC73: gaming_settings.lt = mapping; break;
+                    case 0xCC74: gaming_settings.rt = mapping; break;
+                    default: break;
+                }
+            }
+        }
+    }
+    dprintf("Gaming: keymap scan complete - LS: U=%d D=%d L=%d R=%d, RS: U=%d D=%d L=%d R=%d, LT=%d RT=%d\n",
+            gaming_settings.ls_up.enabled, gaming_settings.ls_down.enabled,
+            gaming_settings.ls_left.enabled, gaming_settings.ls_right.enabled,
+            gaming_settings.rs_up.enabled, gaming_settings.rs_down.enabled,
+            gaming_settings.rs_left.enabled, gaming_settings.rs_right.enabled,
+            gaming_settings.lt.enabled, gaming_settings.rt.enabled);
+}
+
 // Initialize gaming system
 void gaming_init(void) {
     gaming_load_settings();
+    // Auto-populate axis mappings from keymap keycodes
+    gaming_scan_keymap_for_axes();
+}
+
+// Check if a key (row, col) is mapped to any gaming control (axis, trigger, or button)
+bool gaming_is_key_mapped(uint8_t row, uint8_t col) {
+    // Check axis mappings
+    const gaming_key_map_t* maps[] = {
+        &gaming_settings.ls_up, &gaming_settings.ls_down,
+        &gaming_settings.ls_left, &gaming_settings.ls_right,
+        &gaming_settings.rs_up, &gaming_settings.rs_down,
+        &gaming_settings.rs_left, &gaming_settings.rs_right,
+        &gaming_settings.lt, &gaming_settings.rt
+    };
+    for (uint8_t i = 0; i < 10; i++) {
+        if (maps[i]->enabled && maps[i]->row == row && maps[i]->col == col) {
+            return true;
+        }
+    }
+    // Check button mappings
+    for (uint8_t i = 0; i < 16; i++) {
+        if (gaming_settings.buttons[i].enabled &&
+            gaming_settings.buttons[i].row == row &&
+            gaming_settings.buttons[i].col == col) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // =============================================================================
@@ -5597,8 +5669,8 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value) {
 }
 
 // Update joystick state based on current key states
+// Axes, triggers, and buttons are always updated if mappings exist (from keymap scan or GUI config)
 void gaming_update_joystick(void) {
-    if (!gaming_mode_active) return;
 
     // Left stick X axis (left/right) - use LS config
     int16_t ls_x_pos = 0, ls_x_neg = 0;
@@ -5704,7 +5776,10 @@ void gaming_update_joystick(void) {
     }
     joystick_set_axis(5, rt_val);  // Axis 5 = Right Trigger
 
-    // Buttons (simple on/off based on key press state)
+    // Buttons from Gaming Configurator mappings
+    // Always updated if mappings exist (matching axes/triggers behavior)
+    // Buttons assigned via gaming keycodes (0xCC61-0xCC6A, 0xCC75-0xCC78)
+    // are handled directly in process_record_user
     for (uint8_t i = 0; i < 16; i++) {
         if (gaming_settings.buttons[i].enabled) {
             bool pressed = analog_matrix_get_key_state(
@@ -5719,6 +5794,9 @@ void gaming_update_joystick(void) {
             }
         }
     }
+
+    // Flush all pending axis/button changes to the host
+    joystick_flush();
 }
 
 #endif // JOYSTICK_ENABLE
@@ -15265,15 +15343,47 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    // Gaming button handlers (0xCC61-0xCC78)
-    // These keycodes are handled by the gaming_update_joystick() in matrix_scan
-    // But we still need to prevent them from triggering normal keyboard actions
-    if (gaming_mode_active && keycode >= 0xCC61 && keycode <= 0xCC78) {
-        // When gaming mode is active and these keys are mapped,
-        // they should not send keyboard events
-        // The actual joystick state is updated in gaming_update_joystick()
+    // Gaming button keycodes (0xCC61-0xCC6A, 0xCC75-0xCC78) - direct joystick button registration
+    // These keycodes directly register/unregister joystick buttons on press/release
+    if (keycode >= 0xCC61 && keycode <= 0xCC6A) {
+        // Face buttons, bumpers, back/start, stick clicks (buttons 0-9)
+        uint8_t button_id = keycode - 0xCC61;
+        if (record->event.pressed) {
+            register_joystick_button(button_id);
+        } else {
+            unregister_joystick_button(button_id);
+        }
         set_keylog(keycode, record);
-        return false;  // Suppress normal keyboard processing
+        return false;
+    }
+
+    if (keycode >= 0xCC75 && keycode <= 0xCC78) {
+        // D-pad buttons (buttons 12-15)
+        uint8_t button_id = 12 + (keycode - 0xCC75);
+        if (record->event.pressed) {
+            register_joystick_button(button_id);
+        } else {
+            unregister_joystick_button(button_id);
+        }
+        set_keylog(keycode, record);
+        return false;
+    }
+
+    // Gaming axis keycodes (0xCC6B-0xCC74) - handled by gaming_update_joystick() via analog read
+    // These are suppressed here; the analog axis values are read every scan cycle
+    if (keycode >= 0xCC6B && keycode <= 0xCC74) {
+        set_keylog(keycode, record);
+        return false;
+    }
+#endif
+
+#ifdef JOYSTICK_ENABLE
+    // Suppress normal keycodes for keys mapped as gaming controls
+    // when gaming mode is active and suppress_keystrokes is enabled
+    if (gaming_mode_active && gaming_settings.suppress_keystrokes) {
+        if (gaming_is_key_mapped(record->event.key.row, record->event.key.col)) {
+            return false;
+        }
     }
 #endif
 

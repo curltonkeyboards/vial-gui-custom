@@ -4271,7 +4271,7 @@ class GamingTab(QScrollArea):
             # Slider
             slider = QSlider(Qt.Horizontal)
             slider.setMinimum(0)
-            slider.setMaximum(25)
+            slider.setMaximum(40)
             slider.setValue(default_value)
             slider.setTickInterval(1)
             slider.setMinimumWidth(200)
@@ -4457,12 +4457,12 @@ class GamingTab(QScrollArea):
                 self.trigger_max_slider.blockSignals(True)
 
                 # Set slider values
-                self.ls_min_slider.setValue(settings.get('ls_min_travel_mm_x10', 10))
-                self.ls_max_slider.setValue(settings.get('ls_max_travel_mm_x10', 20))
-                self.rs_min_slider.setValue(settings.get('rs_min_travel_mm_x10', 10))
-                self.rs_max_slider.setValue(settings.get('rs_max_travel_mm_x10', 20))
-                self.trigger_min_slider.setValue(settings.get('trigger_min_travel_mm_x10', 10))
-                self.trigger_max_slider.setValue(settings.get('trigger_max_travel_mm_x10', 20))
+                self.ls_min_slider.setValue(settings.get('ls_min_travel', 10))
+                self.ls_max_slider.setValue(settings.get('ls_max_travel', 20))
+                self.rs_min_slider.setValue(settings.get('rs_min_travel', 10))
+                self.rs_max_slider.setValue(settings.get('rs_max_travel', 20))
+                self.trigger_min_slider.setValue(settings.get('trigger_min_travel', 10))
+                self.trigger_max_slider.setValue(settings.get('trigger_max_travel', 20))
 
                 # Unblock signals
                 self.ls_min_slider.blockSignals(False)
@@ -4473,12 +4473,12 @@ class GamingTab(QScrollArea):
                 self.trigger_max_slider.blockSignals(False)
 
                 # Update labels
-                self.ls_min_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                self.ls_max_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                self.rs_min_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                self.rs_max_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                self.trigger_min_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                self.trigger_max_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                self.ls_min_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel', 10)/10:.1f}")
+                self.ls_max_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel', 20)/10:.1f}")
+                self.rs_min_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel', 10)/10:.1f}")
+                self.rs_max_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel', 20)/10:.1f}")
+                self.trigger_min_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel', 10)/10:.1f}")
+                self.trigger_max_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel', 20)/10:.1f}")
 
                 QMessageBox.information(None, "Success", "Calibration settings loaded from keyboard")
             else:

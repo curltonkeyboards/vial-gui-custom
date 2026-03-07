@@ -450,6 +450,7 @@ typedef struct {
     uint8_t diagonal_angle;            // 0-90 degrees for diagonal adjustment
     bool use_square_output;            // Square vs circular joystick output
     bool snappy_joystick_enabled;      // Use max instead of combining opposite inputs
+    bool suppress_keystrokes;          // Suppress normal keycodes for keys mapped as gaming controls
 
     uint16_t magic;  // 0x47A3 (GAME) for validation
 } gaming_settings_t;
@@ -612,6 +613,7 @@ void gaming_save_settings(void);
 void gaming_load_settings(void);
 void gaming_reset_settings(void);
 void gaming_update_joystick(void);
+bool gaming_is_key_mapped(uint8_t row, uint8_t col);
 
 // Gamepad response transformation functions
 void apply_angle_adjustment(int16_t* x, int16_t* y, uint8_t angle_deg);

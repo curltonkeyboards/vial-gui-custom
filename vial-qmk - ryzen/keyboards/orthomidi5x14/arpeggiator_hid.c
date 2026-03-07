@@ -846,13 +846,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             case 0xD0: {  // HID_CMD_GAMING_SET_ANALOG_CONFIG
                 #ifdef JOYSTICK_ENABLE
-                // Format: [header(6), ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
+                // Format: [header(6), ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, suppress_keystrokes]
                 gaming_settings.ls_config.min_travel_mm_x10 = data[6];
                 gaming_settings.ls_config.max_travel_mm_x10 = data[7];
                 gaming_settings.rs_config.min_travel_mm_x10 = data[8];
                 gaming_settings.rs_config.max_travel_mm_x10 = data[9];
                 gaming_settings.trigger_config.min_travel_mm_x10 = data[10];
                 gaming_settings.trigger_config.max_travel_mm_x10 = data[11];
+                gaming_settings.suppress_keystrokes = data[12] != 0;
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
                 #else
@@ -871,6 +872,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 response[10] = gaming_settings.rs_config.max_travel_mm_x10;
                 response[11] = gaming_settings.trigger_config.min_travel_mm_x10;
                 response[12] = gaming_settings.trigger_config.max_travel_mm_x10;
+                response[13] = gaming_settings.suppress_keystrokes ? 1 : 0;
                 #else
                 response[5] = 0x01;  // Error - joystick not enabled
                 #endif
@@ -901,6 +903,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 memset(&gaming_settings.lt, 0, sizeof(gaming_key_map_t));
                 memset(&gaming_settings.rt, 0, sizeof(gaming_key_map_t));
                 memset(gaming_settings.buttons, 0, sizeof(gaming_settings.buttons));
+                gaming_settings.suppress_keystrokes = true;  // Default ON
 
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
@@ -1109,21 +1112,73 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            case 0xDD: {  // HID_CMD_VELOCITY_PRESET_DEBUG_TOGGLE
-                // Toggle velocity preset debug display on OLED
-                extern bool velocity_preset_debug_mode;
-                velocity_preset_debug_mode = !velocity_preset_debug_mode;
-                dprintf("VELOCITY_PRESET_DEBUG: %s\n", velocity_preset_debug_mode ? "ON" : "OFF");
+            default:
+                response[4] = 0x00;
+                response[5] = 0x00;  // Error - unknown command
+                break;
+        }
 
-                response[4] = 0x00;  // Reserved
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // =========================================================================
+    // GAMING RESPONSE COMMANDS (0xDD-0xDE)
+    // Set/get gamepad response transformation settings (angle, curve, etc.)
+    // =========================================================================
+
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xDD && data[3] <= 0xDE) {
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xDD: {  // HID_CMD_GAMING_SET_RESPONSE
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), angle_adj_enabled, diagonal_angle, square_output, snappy_joystick, curve_index]
+                gaming_settings.angle_adjustment_enabled = data[6] != 0;
+                gaming_settings.diagonal_angle = data[7];
+                gaming_settings.use_square_output = data[8] != 0;
+                gaming_settings.snappy_joystick_enabled = data[9] != 0;
+                gaming_settings.analog_curve_index = data[10];
+                gaming_save_settings();
+                response[4] = 0x00;
                 response[5] = 0x01;  // Success
-                response[6] = velocity_preset_debug_mode ? 0x01 : 0x00;  // Current state
+                dprintf("Gaming response set: angle_adj=%d, angle=%d, square=%d, snappy=%d, curve=%d\n",
+                        data[6], data[7], data[8], data[9], data[10]);
+                #else
+                response[5] = 0x00;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xDE: {  // HID_CMD_GAMING_GET_RESPONSE
+                #ifdef JOYSTICK_ENABLE
+                response[4] = 0x00;
+                response[5] = 0x01;  // Success
+                response[6] = gaming_settings.angle_adjustment_enabled ? 1 : 0;
+                response[7] = gaming_settings.diagonal_angle;
+                response[8] = gaming_settings.use_square_output ? 1 : 0;
+                response[9] = gaming_settings.snappy_joystick_enabled ? 1 : 0;
+                response[10] = gaming_settings.analog_curve_index;
+                #else
+                response[5] = 0x00;  // Error - joystick not enabled
+                #endif
                 break;
             }
 
             default:
-                response[4] = 0x00;
-                response[5] = 0x00;  // Error - unknown command
+                response[5] = 0x00;  // Error
                 break;
         }
 
