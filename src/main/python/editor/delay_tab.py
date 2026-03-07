@@ -2,14 +2,13 @@
 """
 MIDI Delay Settings Editor
 
-Configures delay slots (DELAY_1 - DELAY_100) that repeat MIDI notes
+Configures delay slots (DELAY_01 - DELAY_100) that repeat MIDI notes
 with configurable timing, decay, channel routing, and transposition.
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QGroupBox, QMessageBox, QSpinBox, QSlider,
-                              QListWidget, QListWidgetItem, QStackedWidget,
-                              QSizePolicy, QScrollArea, QFrame)
+                              QSizePolicy, QScrollArea, QTabWidget)
 from PyQt5.QtCore import Qt
 
 from editor.basic_editor import BasicEditor
@@ -19,138 +18,177 @@ from protocol.delay_protocol import (ProtocolDelay, DelaySlot,
 from vial_device import VialKeyboard
 
 
+# Repeats slider: positions 0-9 map to [1,2,3,4,5,6,7,8,9,255]
+REPEATS_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 255]
+REPEATS_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "\u221E"]  # infinity symbol
+
+
+def repeats_to_slider(val):
+    """Convert max_repeats value to slider position"""
+    if val >= 255 or val == 0:
+        return 9  # Infinite
+    if val < 1:
+        return 0
+    if val > 9:
+        return 9
+    return val - 1
+
+
+def slider_to_repeats(pos):
+    """Convert slider position to max_repeats value"""
+    if pos < 0:
+        pos = 0
+    if pos >= len(REPEATS_VALUES):
+        pos = len(REPEATS_VALUES) - 1
+    return REPEATS_VALUES[pos]
+
+
 class DelaySlotEditor(QWidget):
-    """Editor widget for a single delay slot's settings"""
+    """Compact editor widget for a single delay slot's settings"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.slot = DelaySlot()
         self._building = False
+        self.setMaximumWidth(480)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
 
-        # ---- Rate Settings ----
-        rate_group = QGroupBox("Rate")
+        # ---- Rate & Decay (combined box) ----
+        rate_group = QGroupBox("Rate && Decay")
         rate_layout = QVBoxLayout()
+        rate_layout.setSpacing(4)
 
-        # Rate mode
+        # Row 1: Mode + Note Value + Timing (BPM) or Mode + Delay ms (Fixed)
         row = QHBoxLayout()
         row.addWidget(QLabel("Mode:"))
         self.rate_mode_combo = QComboBox()
         self.rate_mode_combo.addItems(["BPM Synced", "Fixed ms"])
+        self.rate_mode_combo.setMaximumWidth(100)
         self.rate_mode_combo.currentIndexChanged.connect(self._on_rate_mode_changed)
         row.addWidget(self.rate_mode_combo)
-        row.addStretch()
-        rate_layout.addLayout(row)
 
-        # BPM-synced controls
-        self.bpm_widget = QWidget()
-        bpm_layout = QHBoxLayout()
-        bpm_layout.setContentsMargins(0, 0, 0, 0)
-
-        bpm_layout.addWidget(QLabel("Note Value:"))
+        # BPM controls (inline)
+        self.note_value_label = QLabel("  Note:")
+        row.addWidget(self.note_value_label)
         self.note_value_combo = QComboBox()
-        self.note_value_combo.addItems(["Quarter", "Eighth", "Sixteenth"])
-        bpm_layout.addWidget(self.note_value_combo)
+        self.note_value_combo.addItems(["1/1", "1/2", "1/4", "1/8", "1/16"])
+        self.note_value_combo.setMaximumWidth(65)
+        row.addWidget(self.note_value_combo)
 
-        bpm_layout.addWidget(QLabel("Timing:"))
+        self.timing_label = QLabel("  Timing:")
+        row.addWidget(self.timing_label)
         self.timing_combo = QComboBox()
-        self.timing_combo.addItems(["Straight", "Triplet", "Dotted"])
-        bpm_layout.addWidget(self.timing_combo)
+        self.timing_combo.addItems(["Note", "Triplet", "Dotted"])
+        self.timing_combo.setMaximumWidth(80)
+        row.addWidget(self.timing_combo)
 
-        bpm_layout.addStretch()
-        self.bpm_widget.setLayout(bpm_layout)
-        rate_layout.addWidget(self.bpm_widget)
-
-        # Fixed ms controls
-        self.fixed_widget = QWidget()
-        fixed_layout = QHBoxLayout()
-        fixed_layout.setContentsMargins(0, 0, 0, 0)
-
-        fixed_layout.addWidget(QLabel("Delay:"))
+        # Fixed ms control (inline, hidden by default)
+        self.fixed_ms_label = QLabel("  Delay:")
+        self.fixed_ms_label.setVisible(False)
+        row.addWidget(self.fixed_ms_label)
         self.fixed_ms_spin = QSpinBox()
         self.fixed_ms_spin.setRange(10, 5000)
         self.fixed_ms_spin.setSuffix(" ms")
         self.fixed_ms_spin.setSingleStep(10)
-        fixed_layout.addWidget(self.fixed_ms_spin)
+        self.fixed_ms_spin.setMaximumWidth(100)
+        self.fixed_ms_spin.setVisible(False)
+        row.addWidget(self.fixed_ms_spin)
 
-        fixed_layout.addStretch()
-        self.fixed_widget.setLayout(fixed_layout)
-        rate_layout.addWidget(self.fixed_widget)
+        row.addStretch()
+        rate_layout.addLayout(row)
 
-        rate_group.setLayout(rate_layout)
-        layout.addWidget(rate_group)
-
-        # ---- Decay & Repeats ----
-        decay_group = QGroupBox("Decay & Repeats")
-        decay_layout = QVBoxLayout()
-
-        # Decay slider
+        # Row 2: Decay + Max Repeats (same row)
         row = QHBoxLayout()
         row.addWidget(QLabel("Decay:"))
         self.decay_slider = QSlider(Qt.Horizontal)
         self.decay_slider.setRange(0, 100)
-        self.decay_slider.setTickInterval(10)
+        self.decay_slider.setTickInterval(25)
         self.decay_slider.setTickPosition(QSlider.TicksBelow)
+        self.decay_slider.setMaximumWidth(150)
         row.addWidget(self.decay_slider)
         self.decay_label = QLabel("50%")
-        self.decay_label.setMinimumWidth(40)
+        self.decay_label.setMinimumWidth(32)
         row.addWidget(self.decay_label)
         self.decay_slider.valueChanged.connect(
             lambda v: self.decay_label.setText(f"{v}%"))
-        decay_layout.addLayout(row)
 
-        # Max repeats
-        row = QHBoxLayout()
-        row.addWidget(QLabel("Max Repeats:"))
-        self.repeats_spin = QSpinBox()
-        self.repeats_spin.setRange(0, 255)
-        self.repeats_spin.setSpecialValueText("Infinite")
-        row.addWidget(self.repeats_spin)
+        row.addWidget(QLabel("  Repeats:"))
+        self.repeats_slider = QSlider(Qt.Horizontal)
+        self.repeats_slider.setRange(0, 9)
+        self.repeats_slider.setTickInterval(1)
+        self.repeats_slider.setTickPosition(QSlider.TicksBelow)
+        self.repeats_slider.setMaximumWidth(150)
+        row.addWidget(self.repeats_slider)
+        self.repeats_label = QLabel("3")
+        self.repeats_label.setMinimumWidth(20)
+        row.addWidget(self.repeats_label)
+        self.repeats_slider.valueChanged.connect(self._on_repeats_changed)
+
         row.addStretch()
-        decay_layout.addLayout(row)
+        rate_layout.addLayout(row)
 
-        decay_group.setLayout(decay_layout)
-        layout.addWidget(decay_group)
+        rate_group.setLayout(rate_layout)
+        layout.addWidget(rate_group)
 
-        # ---- Channel & Transpose ----
-        routing_group = QGroupBox("Channel & Transpose")
-        routing_layout = QVBoxLayout()
-
-        # Channel
-        row = QHBoxLayout()
-        row.addWidget(QLabel("Channel:"))
+        # ---- Channel Delay ----
+        channel_group = QGroupBox("Channel Delay")
+        channel_layout = QHBoxLayout()
+        channel_layout.addWidget(QLabel("Output Channel:"))
         self.channel_combo = QComboBox()
         self.channel_combo.addItem("Same as Original")
         for i in range(1, 17):
             self.channel_combo.addItem(f"Channel {i}")
-        row.addWidget(self.channel_combo)
-        row.addStretch()
-        routing_layout.addLayout(row)
+        self.channel_combo.setMaximumWidth(160)
+        channel_layout.addWidget(self.channel_combo)
+        channel_layout.addStretch()
+        channel_group.setLayout(channel_layout)
+        layout.addWidget(channel_group)
 
-        # Transpose
-        row = QHBoxLayout()
-        row.addWidget(QLabel("Transpose:"))
-        self.transpose_spin = QSpinBox()
-        self.transpose_spin.setRange(-48, 48)
-        self.transpose_spin.setSuffix(" semitones")
-        row.addWidget(self.transpose_spin)
-        row.addStretch()
-        routing_layout.addLayout(row)
+        # ---- Pitch Delay ----
+        pitch_group = QGroupBox("Pitch Delay")
+        pitch_layout = QVBoxLayout()
+        pitch_layout.setSpacing(4)
 
-        # Transpose mode
+        # Transpose slider + mode (same row)
         row = QHBoxLayout()
-        row.addWidget(QLabel("Transpose Mode:"))
+        row.addWidget(QLabel("Semitones:"))
+        self.transpose_slider = QSlider(Qt.Horizontal)
+        self.transpose_slider.setRange(-24, 24)
+        self.transpose_slider.setTickInterval(12)
+        self.transpose_slider.setTickPosition(QSlider.TicksBelow)
+        self.transpose_slider.setMaximumWidth(200)
+        row.addWidget(self.transpose_slider)
+        self.transpose_label = QLabel("0")
+        self.transpose_label.setMinimumWidth(28)
+        row.addWidget(self.transpose_label)
+        self.transpose_slider.valueChanged.connect(self._on_transpose_changed)
+
+        row.addWidget(QLabel("  Mode:"))
         self.transpose_mode_combo = QComboBox()
-        self.transpose_mode_combo.addItems(["Fixed (same offset for all repeats)",
-                                             "Cumulative (adds offset each repeat)"])
+        self.transpose_mode_combo.addItems(["Fixed", "Cumulative"])
+        self.transpose_mode_combo.setMaximumWidth(110)
         row.addWidget(self.transpose_mode_combo)
-        row.addStretch()
-        routing_layout.addLayout(row)
 
-        routing_group.setLayout(routing_layout)
-        layout.addWidget(routing_group)
+        row.addStretch()
+        pitch_layout.addLayout(row)
+
+        # Tick labels for -24, -12, 0, +12, +24
+        tick_row = QHBoxLayout()
+        tick_row.addSpacing(68)  # Align with slider start
+        for lbl in ["-24", "-12", "0", "+12", "+24"]:
+            t = QLabel(lbl)
+            t.setStyleSheet("font-size: 9px; color: gray;")
+            tick_row.addWidget(t)
+            if lbl != "+24":
+                tick_row.addStretch()
+        tick_row.addSpacing(160)  # Right padding past slider
+        pitch_layout.addLayout(tick_row)
+
+        pitch_group.setLayout(pitch_layout)
+        layout.addWidget(pitch_group)
 
         layout.addStretch()
         self.setLayout(layout)
@@ -160,8 +198,21 @@ class DelaySlotEditor(QWidget):
 
     def _on_rate_mode_changed(self, index):
         """Show/hide rate controls based on mode"""
-        self.bpm_widget.setVisible(index == RATE_MODE_BPM)
-        self.fixed_widget.setVisible(index == RATE_MODE_FIXED_MS)
+        is_bpm = (index == RATE_MODE_BPM)
+        self.note_value_label.setVisible(is_bpm)
+        self.note_value_combo.setVisible(is_bpm)
+        self.timing_label.setVisible(is_bpm)
+        self.timing_combo.setVisible(is_bpm)
+        self.fixed_ms_label.setVisible(not is_bpm)
+        self.fixed_ms_spin.setVisible(not is_bpm)
+
+    def _on_repeats_changed(self, pos):
+        """Update repeats label from slider position"""
+        self.repeats_label.setText(REPEATS_LABELS[pos])
+
+    def _on_transpose_changed(self, val):
+        """Update transpose label"""
+        self.transpose_label.setText(f"{val:+d}" if val != 0 else "0")
 
     def load_from_slot(self, slot):
         """Load settings from a DelaySlot object"""
@@ -174,9 +225,11 @@ class DelaySlotEditor(QWidget):
         self.fixed_ms_spin.setValue(slot.fixed_delay_ms)
         self.decay_slider.setValue(slot.decay_percent)
         self.decay_label.setText(f"{slot.decay_percent}%")
-        self.repeats_spin.setValue(slot.max_repeats)
+        self.repeats_slider.setValue(repeats_to_slider(slot.max_repeats))
+        self._on_repeats_changed(repeats_to_slider(slot.max_repeats))
         self.channel_combo.setCurrentIndex(slot.channel)
-        self.transpose_spin.setValue(slot.transpose_semi)
+        self.transpose_slider.setValue(slot.transpose_semi)
+        self._on_transpose_changed(slot.transpose_semi)
         self.transpose_mode_combo.setCurrentIndex(slot.transpose_mode)
 
         self._on_rate_mode_changed(slot.rate_mode)
@@ -190,79 +243,71 @@ class DelaySlotEditor(QWidget):
         slot.timing_mode = self.timing_combo.currentIndex()
         slot.fixed_delay_ms = self.fixed_ms_spin.value()
         slot.decay_percent = self.decay_slider.value()
-        slot.max_repeats = self.repeats_spin.value()
+        slot.max_repeats = slider_to_repeats(self.repeats_slider.value())
         slot.channel = self.channel_combo.currentIndex()
-        slot.transpose_semi = self.transpose_spin.value()
+        slot.transpose_semi = self.transpose_slider.value()
         slot.transpose_mode = self.transpose_mode_combo.currentIndex()
         return slot
 
 
 class DelayTab(BasicEditor):
-    """Main Delay settings editor tab"""
+    """Main Delay settings editor tab - tabbed slot interface like Toggle Keys"""
 
     def __init__(self):
         super().__init__()
         self.delay_protocol = None
         self.keyboard = None
         self.loaded_slots = {}  # slot_num -> DelaySlot
+        self.slot_editors = []
+        self.slot_scroll_widgets = []
 
-        # Main horizontal layout: slot list | settings editor
-        main_layout = QHBoxLayout()
+        # Dynamic tab tracking
+        self._visible_tab_count = 1
+        self._manually_expanded_count = 0
 
-        # ---- Left: Slot List ----
-        left_widget = QWidget()
-        left_layout = QVBoxLayout()
-        left_layout.setContentsMargins(0, 0, 0, 0)
+        # Title
+        title = QLabel("MIDI Delay")
+        title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        self.addWidget(title)
 
-        left_layout.addWidget(QLabel("Delay Slots"))
+        # Tab widget for delay slots
+        self.tabs = QTabWidget()
 
-        self.slot_list = QListWidget()
-        self.slot_list.setMaximumWidth(180)
+        # Create all slot editors and scroll wrappers
         for i in range(DELAY_NUM_SLOTS):
-            self.slot_list.addItem(f"Delay {i + 1}")
-        self.slot_list.currentRowChanged.connect(self._on_slot_selected)
-        left_layout.addWidget(self.slot_list)
+            editor = DelaySlotEditor()
+            self.slot_editors.append(editor)
 
-        left_widget.setLayout(left_layout)
-        main_layout.addWidget(left_widget)
+            scroll = QScrollArea()
+            scroll.setWidget(editor)
+            scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.slot_scroll_widgets.append(scroll)
 
-        # ---- Right: Settings Editor ----
-        right_widget = QWidget()
-        right_layout = QVBoxLayout()
-        right_layout.setContentsMargins(0, 0, 0, 0)
+        self.addWidget(self.tabs)
 
-        self.slot_editor = DelaySlotEditor()
-        scroll = QScrollArea()
-        scroll.setWidget(self.slot_editor)
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        right_layout.addWidget(scroll)
+        # Connect tab changes for lazy loading and "+" tab handling
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
-        # Action buttons
-        btn_layout = QHBoxLayout()
+        # Bottom action buttons
+        button_layout = QHBoxLayout()
 
-        self.save_slot_btn = QPushButton("Save Slot to Keyboard")
+        self.save_slot_btn = QPushButton("Save Slot")
         self.save_slot_btn.clicked.connect(self._on_save_slot)
-        btn_layout.addWidget(self.save_slot_btn)
+        button_layout.addWidget(self.save_slot_btn)
 
         self.save_all_btn = QPushButton("Save All to EEPROM")
         self.save_all_btn.clicked.connect(self._on_save_all)
-        btn_layout.addWidget(self.save_all_btn)
+        button_layout.addWidget(self.save_all_btn)
 
-        btn_layout.addStretch()
+        button_layout.addStretch()
 
-        self.load_slot_btn = QPushButton("Reload Slot")
-        self.load_slot_btn.clicked.connect(self._on_load_slot)
-        btn_layout.addWidget(self.load_slot_btn)
+        self.reload_btn = QPushButton("Reload Slot")
+        self.reload_btn.clicked.connect(self._on_reload_slot)
+        button_layout.addWidget(self.reload_btn)
 
-        right_layout.addLayout(btn_layout)
-        right_widget.setLayout(right_layout)
-        main_layout.addWidget(right_widget, 1)
-
-        # Wrap in a container widget
-        container = QWidget()
-        container.setLayout(main_layout)
-        self.addWidget(container)
+        self.addLayout(button_layout)
 
     def valid(self):
         """Tab is valid when a Vial keyboard is connected"""
@@ -277,56 +322,99 @@ class DelayTab(BasicEditor):
             self.delay_protocol = ProtocolDelay(self.keyboard)
             self.loaded_slots.clear()
 
-            # Load first slot
-            self.slot_list.setCurrentRow(0)
-            self._load_slot(0)
+            # Reset manual expansion and scan for used slots
+            self._manually_expanded_count = 0
+            self._scan_and_update_visible_tabs()
 
-    def _on_slot_selected(self, row):
-        """Handle slot selection from list"""
-        if row < 0 or row >= DELAY_NUM_SLOTS:
-            return
-
-        if row in self.loaded_slots:
-            self.slot_editor.load_from_slot(self.loaded_slots[row])
-        else:
-            self._load_slot(row)
-
-    def _load_slot(self, slot_num):
-        """Load a slot from the keyboard"""
+    def _scan_and_update_visible_tabs(self):
+        """Scan all slots to find which have non-default config and update visible tabs"""
         if not self.delay_protocol:
             return
 
-        slot = self.delay_protocol.get_slot(slot_num)
-        if slot:
-            self.loaded_slots[slot_num] = slot
-            self.slot_editor.load_from_slot(slot)
+        last_used = -1
+        for i in range(DELAY_NUM_SLOTS):
+            slot = self.delay_protocol.get_slot(i)
+            if slot:
+                self.loaded_slots[i] = slot
+                self.slot_editors[i].load_from_slot(slot)
+                if not slot.is_default():
+                    last_used = i
+
+        self._update_visible_tabs_with_last_used(last_used)
+
+    def _update_visible_tabs_with_last_used(self, last_used):
+        """Update visible tabs given the last used index"""
+        base_visible = max(1, last_used + 1)
+        self._visible_tab_count = min(DELAY_NUM_SLOTS, base_visible + self._manually_expanded_count)
+
+        # Remove all tabs
+        while self.tabs.count() > 0:
+            self.tabs.removeTab(0)
+
+        # Add visible delay tabs
+        for x in range(self._visible_tab_count):
+            self.tabs.addTab(self.slot_scroll_widgets[x], f"Delay {x + 1}")
+
+        # Add "+" tab if not all tabs are visible
+        if self._visible_tab_count < DELAY_NUM_SLOTS:
+            plus_widget = QWidget()
+            self.tabs.addTab(plus_widget, "+")
+
+    def _on_tab_changed(self, index):
+        """Handle tab change - lazy load and handle '+' tab"""
+        # Check if "+" tab was clicked
+        if self._visible_tab_count < DELAY_NUM_SLOTS and index == self._visible_tab_count:
+            self._manually_expanded_count += 1
+            self._update_visible_tabs()
+            self.tabs.setCurrentIndex(self._visible_tab_count - 1)
+            return
+
+        # Lazy load: Only load slot data when first viewing the tab
+        if 0 <= index < DELAY_NUM_SLOTS:
+            if self.delay_protocol and index not in self.loaded_slots:
+                slot = self.delay_protocol.get_slot(index)
+                if slot:
+                    self.loaded_slots[index] = slot
+                    self.slot_editors[index].load_from_slot(slot)
+
+    def _find_last_used_index(self):
+        """Find the index of the last delay slot that has non-default config"""
+        for idx in range(DELAY_NUM_SLOTS - 1, -1, -1):
+            if idx in self.loaded_slots and not self.loaded_slots[idx].is_default():
+                return idx
+        return -1
+
+    def _update_visible_tabs(self):
+        """Update which tabs are visible based on content and manual expansion"""
+        last_used = self._find_last_used_index()
+        self._update_visible_tabs_with_last_used(last_used)
 
     def _on_save_slot(self):
         """Save current slot settings to keyboard"""
         if not self.delay_protocol:
             return
 
-        row = self.slot_list.currentRow()
-        if row < 0:
+        index = self.tabs.currentIndex()
+        if index < 0 or index >= DELAY_NUM_SLOTS:
             return
 
-        slot = self.slot_editor.save_to_slot()
-        if self.delay_protocol.set_slot(row, slot):
-            self.loaded_slots[row] = slot
+        slot = self.slot_editors[index].save_to_slot()
+        if self.delay_protocol.set_slot(index, slot):
+            self.loaded_slots[index] = slot
         else:
-            QMessageBox.warning(None, "Error", f"Failed to save delay slot {row + 1}")
+            QMessageBox.warning(None, "Error", f"Failed to save delay slot {index + 1}")
 
     def _on_save_all(self):
         """Save all slot configs to EEPROM"""
         if not self.delay_protocol:
             return
 
-        # First save any unsaved current slot
-        row = self.slot_list.currentRow()
-        if row >= 0:
-            slot = self.slot_editor.save_to_slot()
-            self.delay_protocol.set_slot(row, slot)
-            self.loaded_slots[row] = slot
+        # Save current slot first
+        index = self.tabs.currentIndex()
+        if 0 <= index < DELAY_NUM_SLOTS:
+            slot = self.slot_editors[index].save_to_slot()
+            self.delay_protocol.set_slot(index, slot)
+            self.loaded_slots[index] = slot
 
         # Trigger EEPROM save
         if self.delay_protocol.save_to_eeprom():
@@ -334,10 +422,13 @@ class DelayTab(BasicEditor):
         else:
             QMessageBox.warning(None, "Error", "Failed to save to EEPROM")
 
-    def _on_load_slot(self):
+    def _on_reload_slot(self):
         """Reload current slot from keyboard"""
-        row = self.slot_list.currentRow()
-        if row >= 0:
-            # Clear cache for this slot to force reload
-            self.loaded_slots.pop(row, None)
-            self._load_slot(row)
+        index = self.tabs.currentIndex()
+        if 0 <= index < DELAY_NUM_SLOTS:
+            self.loaded_slots.pop(index, None)
+            if self.delay_protocol:
+                slot = self.delay_protocol.get_slot(index)
+                if slot:
+                    self.loaded_slots[index] = slot
+                    self.slot_editors[index].load_from_slot(slot)

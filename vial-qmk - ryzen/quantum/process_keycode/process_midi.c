@@ -580,6 +580,68 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
     }
 }
 
+
+void midi_send_noteon_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
+    // Like smartchord: sends MIDI, records to loops/macros, tracks live notes
+    // Unlike smartchord: does NOT update OLED display (no noteondisplayupdates)
+    uint8_t final_velocity = velocity;
+    if (final_velocity < 1) final_velocity = 1;
+    if (final_velocity > 127) final_velocity = 127;
+
+    uint8_t raw_travel_scaled = (uint8_t)((uint16_t)final_velocity * 255 / 127);
+
+    // Quick build hook (same as smartchord)
+    extern bool quick_build_is_active(void);
+    extern bool quick_build_is_recording(void);
+    extern void quick_build_handle_chord_note(uint8_t channel, uint8_t note, uint8_t velocity, uint8_t raw_travel);
+    if (quick_build_is_active() && quick_build_is_recording()) {
+        quick_build_handle_chord_note(channel, note, final_velocity, raw_travel_scaled);
+    }
+
+    midi_send_noteon(&midi_device, channel, note, final_velocity);
+    // Skip noteondisplayupdates() - delay notes don't show on OLED
+    add_live_note(channel, note, final_velocity);
+    add_lighting_live_note(channel, note, final_velocity);
+
+    if (collecting_preroll) {
+        collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, raw_travel_scaled);
+    }
+
+    if (current_macro_id > 0) {
+        dynamic_macro_intercept_noteon(channel, note, raw_travel_scaled, current_macro_id,
+                                     current_macro_buffer1, current_macro_buffer2,
+                                     current_macro_pointer, current_recording_start_time);
+    }
+}
+
+void midi_send_noteoff_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
+    // Don't send note-off if the note is currently held live (physically pressed)
+    // This prevents delay note-offs from cutting off notes the user is holding
+    if (is_live_note_active(channel, note)) {
+        return;
+    }
+
+    // Same as smartchord note-off minus display updates
+    uint8_t raw_travel_scaled = (velocity > 0) ? (uint8_t)((uint16_t)velocity * 255 / 127) : 0;
+
+    if (collecting_preroll) {
+        collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, raw_travel_scaled);
+    }
+
+    if (sustain_active) {
+        add_sustain_note(channel, note, velocity);
+    } else {
+        midi_send_noteoff(&midi_device, channel, note, velocity);
+        remove_lighting_live_note(channel, note);
+        if (current_macro_id > 0) {
+            dynamic_macro_intercept_noteoff(channel, note, raw_travel_scaled, current_macro_id,
+                                          current_macro_buffer1, current_macro_buffer2,
+                                          current_macro_pointer, current_recording_start_time);
+        }
+    }
+}
+
+
 void midi_send_noteon_trainer(uint8_t channel, uint8_t note, uint8_t velocity) {
     // Velocity has already been determined by the caller
     // Do NOT re-process it - just clamp to valid range

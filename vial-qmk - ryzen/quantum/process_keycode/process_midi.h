@@ -59,6 +59,8 @@ void midi_send_pitchbend_with_recording(uint8_t channel, int16_t bend_value);
 void midi_send_external_cc_with_recording(uint8_t channel, uint8_t cc, uint8_t value);
 void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity);
 void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocity);
+void midi_send_noteon_delay(uint8_t channel, uint8_t note, uint8_t velocity);
+void midi_send_noteoff_delay(uint8_t channel, uint8_t note, uint8_t velocity);
 void midi_send_noteon_trainer(uint8_t channel, uint8_t note, uint8_t velocity);
 void midi_send_noteoff_trainer(uint8_t channel, uint8_t note, uint8_t velocity);
 

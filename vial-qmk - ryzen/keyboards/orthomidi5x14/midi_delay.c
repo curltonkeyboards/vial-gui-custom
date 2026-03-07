@@ -4,6 +4,7 @@
 #include QMK_KEYBOARD_H
 #include "midi_delay.h"
 #include "orthomidi5x14.h"
+#include "process_midi.h"
 #include "midi/qmk_midi.h"
 #include "midi/midi.h"
 #include "raw_hid.h"
@@ -47,9 +48,11 @@ static uint32_t compute_delay_interval(const delay_slot_config_t *cfg) {
     // Note value multiplier (how many 16ths per step)
     uint8_t multiplier = 1;
     switch (cfg->note_value) {
-        case 0: multiplier = 4; break;  // NOTE_VALUE_QUARTER
-        case 1: multiplier = 2; break;  // NOTE_VALUE_EIGHTH
-        case 2:                          // NOTE_VALUE_SIXTEENTH
+        case 0: multiplier = 16; break; // 1/1 Whole note
+        case 1: multiplier = 8; break;  // 1/2 Half note
+        case 2: multiplier = 4; break;  // 1/4 Quarter note
+        case 3: multiplier = 2; break;  // 1/8 Eighth note
+        case 4:                          // 1/16 Sixteenth note
         default: multiplier = 1; break;
     }
 
@@ -148,7 +151,7 @@ void midi_delay_init(void) {
     // Set sensible defaults for all slots
     for (uint8_t i = 0; i < DELAY_SLOT_COUNT; i++) {
         delay_system.configs[i].rate_mode = 0;          // BPM-synced
-        delay_system.configs[i].note_value = 1;          // Eighth note
+        delay_system.configs[i].note_value = 3;          // 1/8 Eighth note
         delay_system.configs[i].timing_mode = 0;         // Straight
         delay_system.configs[i].decay_percent = 50;      // 50% decay
         delay_system.configs[i].fixed_delay_ms = 500;    // 500ms default
@@ -236,13 +239,13 @@ void midi_delay_tick(void) {
             if (evt->is_note_off) {
                 // Only send note-off if the corresponding note-on was actually sent
                 if (evt->note_on_sent) {
-                    midi_send_noteoff(&midi_device, evt->channel, evt->note, 0);
+                    midi_send_noteoff_delay(evt->channel, evt->note, 0);
                     dprintf("midi_delay: note-off ch:%d note:%d\n", evt->channel, evt->note);
                 }
             } else {
                 // Note-on
                 if (evt->velocity > 0) {
-                    midi_send_noteon(&midi_device, evt->channel, evt->note, evt->velocity);
+                    midi_send_noteon_delay(evt->channel, evt->note, evt->velocity);
                     evt->note_on_sent = 1;
                     dprintf("midi_delay: note-on ch:%d note:%d vel:%d\n",
                             evt->channel, evt->note, evt->velocity);

@@ -50,8 +50,8 @@ class DelaySlot:
 
     def __init__(self):
         self.rate_mode = RATE_MODE_BPM       # 0=BPM-synced, 1=fixed ms
-        self.note_value = 1                   # 0=quarter, 1=eighth, 2=sixteenth
-        self.timing_mode = 0                  # 0=straight, 1=triplet, 2=dotted
+        self.note_value = 3                   # 0=1/1, 1=1/2, 2=1/4, 3=1/8, 4=1/16
+        self.timing_mode = 0                  # 0=note, 1=triplet, 2=dotted
         self.decay_percent = 50               # 0-100
         self.fixed_delay_ms = 500             # 10-5000
         self.max_repeats = 3                  # 0-255 (0=infinite)
@@ -97,7 +97,7 @@ class DelaySlot:
     def is_default(self):
         """Check if slot has default/unconfigured values"""
         return (self.rate_mode == RATE_MODE_BPM and
-                self.note_value == 1 and
+                self.note_value == 3 and
                 self.timing_mode == 0 and
                 self.decay_percent == 50 and
                 self.fixed_delay_ms == 500 and
