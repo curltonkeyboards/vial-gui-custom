@@ -253,6 +253,7 @@ class DelaySlotEditor(QWidget):
         self.channel_combos_extra = []
         self.channel_rows = []  # Widgets for each extra channel row
         self.add_channel_buttons = []  # "+ Add Channel" buttons
+        self.remove_channel_buttons = []  # "×" remove buttons
 
         for idx in range(2, 5):
             # Channel row widget
@@ -265,6 +266,17 @@ class DelaySlotEditor(QWidget):
                 combo.addItem(f"Channel {i}")
             combo.setMinimumWidth(140)
             row_layout.addWidget(combo)
+
+            # "×" remove button (removes this channel row)
+            remove_btn = QPushButton("×")
+            remove_btn.setMaximumWidth(28)
+            remove_btn.setMaximumHeight(28)
+            remove_btn.setToolTip(f"Remove channel {idx}")
+            remove_btn.setVisible(False)
+            remove_btn.clicked.connect(lambda _, i=idx: self._on_remove_channel(i))
+            row_layout.addWidget(remove_btn)
+            self.remove_channel_buttons.append(remove_btn)
+
             row_layout.addStretch()
             row_widget.setLayout(row_layout)
             row_widget.setVisible(False)
@@ -397,9 +409,24 @@ class DelaySlotEditor(QWidget):
             self.channel_rows[2].setVisible(False)
             if len(self.add_channel_buttons) > 1:
                 self.add_channel_buttons[1].setVisible(False)
+            self._update_remove_buttons()
+
+    def _update_remove_buttons(self):
+        """Show × only on the highest visible channel row (and only if > 1 extra channel)"""
+        # Find the highest visible channel row index
+        highest_visible = -1
+        for i in range(len(self.channel_rows) - 1, -1, -1):
+            if self.channel_rows[i].isVisible():
+                highest_visible = i
+                break
+
+        # Show × only on the highest, hide on all others
+        # Channel 2 (index 0) always stays when multi-channel is on, so only show × if it's the highest
+        for i, btn in enumerate(self.remove_channel_buttons):
+            btn.setVisible(i == highest_visible and highest_visible >= 0)
 
     def _on_add_channel(self, channel_idx):
-        """Show the next channel row and update add buttons"""
+        """Show the next channel row and update add/remove buttons"""
         # channel_idx is 2 or 3 (the channel being added is channel_idx+1)
         # channel_rows: [ch2, ch3, ch4] = indices [0, 1, 2]
         # add_channel_buttons: [add_ch3, add_ch4] = indices [0, 1]
@@ -415,6 +442,34 @@ class DelaySlotEditor(QWidget):
         next_btn_idx = btn_idx + 1
         if next_btn_idx < len(self.add_channel_buttons):
             self.add_channel_buttons[next_btn_idx].setVisible(True)
+
+        self._update_remove_buttons()
+
+    def _on_remove_channel(self, channel_idx):
+        """Remove the highest channel and update add/remove buttons"""
+        # channel_idx is 2, 3, or 4 (the channel being removed)
+        # channel_rows: [ch2, ch3, ch4] = indices [0, 1, 2]
+        row_idx = channel_idx - 2  # 0 for ch2, 1 for ch3, 2 for ch4
+        self.channel_rows[row_idx].setVisible(False)
+
+        # Hide all add buttons first
+        for btn in self.add_channel_buttons:
+            btn.setVisible(False)
+
+        # Show the add button that corresponds to the removed channel
+        # add_channel_buttons: [add_ch3, add_ch4] = indices [0, 1]
+        # Removing ch4 (row_idx=2) → show add_ch4 button (btn_idx=1)
+        # Removing ch3 (row_idx=1) → show add_ch3 button (btn_idx=0)
+        # Removing ch2 (row_idx=0) → no add button needed (multi-channel unchecks)
+        if row_idx == 0:
+            # Removing channel 2 means we disable multi-channel entirely
+            self.multi_channel_check.setChecked(False)
+        else:
+            btn_idx = row_idx - 1  # 0 for ch3, 1 for ch4
+            if btn_idx < len(self.add_channel_buttons):
+                self.add_channel_buttons[btn_idx].setVisible(True)
+
+        self._update_remove_buttons()
 
     def _on_pitch_check_changed(self, state):
         """Show/hide pitch controls based on checkbox"""
@@ -480,6 +535,8 @@ class DelaySlotEditor(QWidget):
                     self.add_channel_buttons[0].setVisible(True)
                 elif slot.channel_count == 3 and len(self.add_channel_buttons) > 1:
                     self.add_channel_buttons[1].setVisible(True)
+                # Update × buttons
+                self._update_remove_buttons()
             else:
                 self.multi_channel_check.setChecked(False)
 

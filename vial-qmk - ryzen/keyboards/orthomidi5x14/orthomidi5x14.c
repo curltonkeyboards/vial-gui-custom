@@ -15416,13 +15416,33 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
-    // MIDI DELAY SLOT TOGGLES (0xEF90-0xEFF3)
+    // MIDI DELAY SLOT TOGGLES (0xEF90+)
+    // Exclusive mode: tap toggles one slot and turns off all others.
+    // Multi mode: hold one delay key, tap others to enable multiple simultaneously.
     // =============================================================================
     if (keycode >= DELAY_SLOT_BASE && keycode < DELAY_SLOT_BASE + DELAY_SLOT_KC_COUNT) {
+        static uint8_t delay_keys_held_count = 0;
+
         if (record->event.pressed) {
             uint8_t slot = keycode - DELAY_SLOT_BASE;
+
+            if (delay_keys_held_count == 0) {
+                // Exclusive mode: no other delay key held - turn off all others first
+                for (uint8_t i = 0; i < DELAY_TOTAL_SLOT_COUNT; i++) {
+                    if (i != slot && delay_system.runtime[i].active) {
+                        delay_system.runtime[i].active = false;
+                    }
+                }
+            }
+            // Toggle this slot (works for both exclusive and multi mode)
             midi_delay_toggle_slot(slot);
+            delay_keys_held_count++;
             set_keylog(keycode, record);
+        } else {
+            // Key released
+            if (delay_keys_held_count > 0) {
+                delay_keys_held_count--;
+            }
         }
         return false;
     }
