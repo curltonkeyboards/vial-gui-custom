@@ -4527,29 +4527,20 @@ void toggle_process_key(uint16_t keycode, bool pressed) {
     toggle_entry_t* entry = toggle_find(slot_num);
     if (!entry || entry->target_keycode == 0) return;
 
-    // Multi-key toggle mode: release current held keycode, hold next one
+    // Multi-key toggle mode: tap current keycode, advance to next
     if (entry->flags & TOGGLE_FLAG_MULTI_KEY) {
         uint8_t num_keys = entry->num_keys;
         if (num_keys < 2) num_keys = 2;
         if (num_keys > TOGGLE_MULTI_MAX_KEYS) num_keys = TOGGLE_MULTI_MAX_KEYS;
 
-        // Release the currently held keycode (from previous cycle step)
-        uint16_t prev_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
-        if (prev_kc != 0 && entry->is_held) {
-            vial_keycode_up(prev_kc);
+        uint16_t current_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
+
+        if (current_kc != 0) {
+            vial_keycode_down(current_kc);
+            vial_keycode_up(current_kc);
         }
 
-        // Advance to next step
         entry->cycle_index = (entry->cycle_index + 1) % num_keys;
-
-        // Hold the new keycode
-        uint16_t next_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
-        if (next_kc != 0) {
-            vial_keycode_down(next_kc);
-            entry->is_held = true;
-        } else {
-            entry->is_held = false;
-        }
         return;
     }
 
