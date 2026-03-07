@@ -121,6 +121,7 @@ HID_CMD_GAMING_SET_KEY_MAP = 0xCF        # Map key to joystick control
 HID_CMD_GAMING_SET_ANALOG_CONFIG = 0xD0  # Set min/max travel and deadzone
 HID_CMD_GAMING_GET_SETTINGS = 0xD1       # Get current gaming settings
 HID_CMD_GAMING_RESET = 0xD2              # Reset gaming settings to defaults
+HID_CMD_GAMING_GET_KEY_MAP = 0xDC       # Get all gaming key mappings (paged)
 
 # ADC Matrix Tester Command (0xDF)
 HID_CMD_GET_ADC_MATRIX = 0xDF             # Get ADC values for matrix row
@@ -2074,6 +2075,38 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
+
+    def get_gaming_key_maps(self):
+        """Get all gaming key mappings from keyboard (paged: 3 pages)
+
+        Returns:
+            dict: {control_id: {'row': int, 'col': int, 'enabled': bool}} or None
+        """
+        try:
+            mappings = {}
+            page_ranges = [(0, 0, 7), (1, 8, 15), (2, 16, 25)]
+            for page, start_id, end_id in page_ranges:
+                data = bytearray([page])
+                packet = self._create_hid_packet(HID_CMD_GAMING_GET_KEY_MAP, 0, data)
+                response = self.usb_send(self.dev, packet, retries=10)
+                if not response or len(response) < 7 or response[5] != 0x00:
+                    continue
+                offset = 7  # After header + page byte
+                for cid in range(start_id, end_id + 1):
+                    if offset + 2 < len(response):
+                        row = response[offset]
+                        col = response[offset + 1]
+                        enabled = response[offset + 2]
+                        mappings[cid] = {
+                            'row': row,
+                            'col': col,
+                            'enabled': bool(enabled)
+                        }
+                        offset += 3
+            return mappings
+        except Exception as e:
+            print(f"Error getting gaming key maps: {e}")
+            return None
 
     def reload_gaming_settings(self):
         """Load gaming settings from keyboard"""

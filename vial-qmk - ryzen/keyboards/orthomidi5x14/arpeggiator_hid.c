@@ -929,6 +929,58 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
             }
 
+            case 0xDC: {  // HID_CMD_GAMING_GET_KEY_MAP - retrieve all key mappings
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), page_number]
+                // Page 0: control_ids 0-7 (8 mappings × 3 bytes = 24 bytes)
+                // Page 1: control_ids 8-15 (8 mappings × 3 bytes = 24 bytes)
+                // Page 2: control_ids 16-25 (10 mappings × 3 bytes = 30 bytes, but capped at 26)
+                uint8_t page = data[6];
+                response[5] = 0x00;  // Success
+                response[6] = page;
+
+                uint8_t start_id, end_id;
+                if (page == 0) { start_id = 0; end_id = 7; }
+                else if (page == 1) { start_id = 8; end_id = 15; }
+                else if (page == 2) { start_id = 16; end_id = 25; }
+                else { response[5] = 0x01; break; }  // Invalid page
+
+                uint8_t offset = 7;  // Start writing after header + page byte
+                for (uint8_t cid = start_id; cid <= end_id && offset + 2 < 32; cid++) {
+                    gaming_key_map_t* target = NULL;
+                    switch (cid) {
+                        case 0: target = &gaming_settings.ls_up; break;
+                        case 1: target = &gaming_settings.ls_down; break;
+                        case 2: target = &gaming_settings.ls_left; break;
+                        case 3: target = &gaming_settings.ls_right; break;
+                        case 4: target = &gaming_settings.rs_up; break;
+                        case 5: target = &gaming_settings.rs_down; break;
+                        case 6: target = &gaming_settings.rs_left; break;
+                        case 7: target = &gaming_settings.rs_right; break;
+                        case 8: target = &gaming_settings.lt; break;
+                        case 9: target = &gaming_settings.rt; break;
+                        default:
+                            if (cid >= 10 && cid < 26) {
+                                target = &gaming_settings.buttons[cid - 10];
+                            }
+                            break;
+                    }
+                    if (target) {
+                        response[offset++] = target->row;
+                        response[offset++] = target->col;
+                        response[offset++] = target->enabled;
+                    } else {
+                        response[offset++] = 0;
+                        response[offset++] = 0;
+                        response[offset++] = 0;
+                    }
+                }
+                #else
+                response[5] = 0x01;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
             default:
                 response[5] = 0x01;  // Error - unknown command
                 break;
