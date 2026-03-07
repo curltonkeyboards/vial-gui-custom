@@ -282,17 +282,52 @@ void midi_delay_schedule_note_on(uint8_t channel, uint8_t note, uint8_t velocity
 
         delay_slot_config_t *cfg = &delay_system.configs[s];
 
-        // Solo mode: cancel all pending events from this slot for other notes
-        if (cfg->solo_mode) {
-            for (int8_t i = delay_system.queue_count - 1; i >= 0; i--) {
+        // Max active notes: limit how many distinct notes can have pending delays in this slot
+        if (cfg->max_active_notes > 0) {
+            // Count distinct original notes currently pending in this slot (excluding current note)
+            uint8_t distinct_notes[128];
+            uint8_t distinct_count = 0;
+            memset(distinct_notes, 0, sizeof(distinct_notes));
+
+            for (uint8_t i = 0; i < delay_system.queue_count; i++) {
                 delay_event_t *evt = &delay_system.queue[i];
-                if (evt->slot_id == s && evt->original_note != note) {
-                    // Send immediate note-off for any note-on that already fired
-                    if (!evt->is_note_off && evt->note_on_sent) {
-                        midi_send_noteoff_delay(evt->channel, evt->note, 0);
-                    }
-                    queue_remove(i);
+                if (evt->slot_id == s && evt->original_note != note && !distinct_notes[evt->original_note]) {
+                    distinct_notes[evt->original_note] = 1;
+                    distinct_count++;
                 }
+            }
+
+            // If adding this note would exceed limit, remove oldest notes' events
+            while (distinct_count >= cfg->max_active_notes) {
+                // Find the oldest pending note in this slot (by fire_time)
+                uint8_t oldest_note = 0;
+                uint32_t oldest_time = UINT32_MAX;
+                bool found = false;
+
+                for (uint8_t i = 0; i < delay_system.queue_count; i++) {
+                    delay_event_t *evt = &delay_system.queue[i];
+                    if (evt->slot_id == s && evt->original_note != note && !evt->is_note_off) {
+                        if (!found || (int32_t)(evt->fire_time - oldest_time) < 0) {
+                            oldest_time = evt->fire_time;
+                            oldest_note = evt->original_note;
+                            found = true;
+                        }
+                    }
+                }
+
+                if (!found) break;
+
+                // Remove all events for this oldest note and send note-offs
+                for (int8_t i = delay_system.queue_count - 1; i >= 0; i--) {
+                    delay_event_t *evt = &delay_system.queue[i];
+                    if (evt->slot_id == s && evt->original_note == oldest_note) {
+                        if (!evt->is_note_off && evt->note_on_sent) {
+                            midi_send_noteoff_delay(evt->channel, evt->note, 0);
+                        }
+                        queue_remove(i);
+                    }
+                }
+                distinct_count--;
             }
         }
 
@@ -471,6 +506,19 @@ void midi_delay_clear_queue(void) {
     delay_system.queue_count = 0;
     memset(note_on_times, 0, sizeof(note_on_times));
     dprintf("midi_delay: queue cleared\n");
+}
+
+// =============================================================================
+// QUERY HELPERS
+// =============================================================================
+
+bool midi_delay_any_bpm_synced_active(void) {
+    for (uint8_t s = 0; s < DELAY_SLOT_COUNT; s++) {
+        if (delay_system.runtime[s].active && delay_system.configs[s].rate_mode == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // =============================================================================

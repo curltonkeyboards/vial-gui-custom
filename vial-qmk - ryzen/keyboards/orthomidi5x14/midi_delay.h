@@ -12,7 +12,7 @@
 // =============================================================================
 
 #define DELAY_SLOT_COUNT        100     // Number of independent delay slots
-#define DELAY_MAX_PENDING       64      // Maximum pending delay events in queue
+#define DELAY_MAX_PENDING       128     // Maximum pending delay events in queue
 #define DELAY_CONFIG_SIZE       16      // Bytes per slot config (for EEPROM alignment)
 #define DELAY_EEPROM_ADDR       43000   // EEPROM base address
 #define DELAY_EEPROM_MAGIC      0xDE01  // Validation magic
@@ -36,7 +36,7 @@ typedef struct {
     uint8_t  channel;          // 0=same as original, 1-16=specific MIDI channel
     int8_t   transpose_semi;   // -48 to +48 semitones offset per repeat
     uint8_t  transpose_mode;   // 0=fixed (all repeats same offset), 1=cumulative
-    uint8_t  solo_mode;        // 0=polyphonic, 1=solo (new note kills old delays)
+    uint8_t  max_active_notes;  // 0=no limit, 1-12=max simultaneous delay notes per slot
     uint8_t  reserved[5];      // Future use, padding to 16 bytes
 } delay_slot_config_t;
 
@@ -91,6 +91,9 @@ void midi_delay_schedule_note_off(uint8_t channel, uint8_t note);
 void midi_delay_toggle_slot(uint8_t slot_id);
 bool midi_delay_slot_active(uint8_t slot_id);
 void midi_delay_clear_queue(void);
+
+// Query helpers
+bool midi_delay_any_bpm_synced_active(void);
 
 // HID handlers
 void midi_delay_hid_get_slot(uint8_t slot_id, uint8_t *response);

@@ -8,7 +8,7 @@ with configurable timing, decay, channel routing, and transposition.
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QGroupBox, QMessageBox, QSpinBox, QSlider,
-                              QCheckBox, QSizePolicy, QScrollArea, QTabWidget)
+                              QCheckBox, QSizePolicy, QScrollArea, QTabWidget, QToolTip)
 from PyQt5.QtCore import Qt
 
 from editor.basic_editor import BasicEditor
@@ -21,6 +21,10 @@ from vial_device import VialKeyboard
 # Repeats slider: positions 0-9 map to [1,2,3,4,5,6,7,8,9,255]
 REPEATS_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 255]
 REPEATS_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "\u221E"]  # infinity symbol
+
+# Max active notes slider: positions 0-12 map to [0,1,2,...,12] where 0=no limit
+MAX_ACTIVE_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+MAX_ACTIVE_LABELS = ["No Limit", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
 
 
 def repeats_to_slider(val):
@@ -41,6 +45,19 @@ def slider_to_repeats(pos):
     if pos >= len(REPEATS_VALUES):
         pos = len(REPEATS_VALUES) - 1
     return REPEATS_VALUES[pos]
+
+
+def _make_help_label(tooltip_text):
+    """Create a small clickable question mark label with tooltip"""
+    lbl = QLabel(" ?")
+    lbl.setStyleSheet(
+        "color: #888; font-weight: bold; font-size: 11px; "
+        "border: 1px solid #888; border-radius: 7px; "
+        "min-width: 14px; max-width: 14px; min-height: 14px; max-height: 14px; "
+        "padding: 0px; text-align: center;"
+    )
+    lbl.setToolTip(tooltip_text)
+    return lbl
 
 
 class DelaySlotEditor(QWidget):
@@ -105,6 +122,10 @@ class DelaySlotEditor(QWidget):
         # Row 2: Decay slider
         row = QHBoxLayout()
         row.addWidget(QLabel("Decay:"))
+        row.addWidget(_make_help_label(
+            "Velocity reduction per repeat.\n"
+            "Higher values = echoes fade faster.\n"
+            "0% = all repeats at full velocity."))
         self.decay_slider = QSlider(Qt.Horizontal)
         self.decay_slider.setRange(0, 100)
         self.decay_slider.setTickInterval(25)
@@ -120,6 +141,10 @@ class DelaySlotEditor(QWidget):
         # Row 3: Max Repeats slider
         row = QHBoxLayout()
         row.addWidget(QLabel("Repeats:"))
+        row.addWidget(_make_help_label(
+            "Maximum number of delay echoes per note.\n"
+            "\u221E = unlimited (echoes continue until\n"
+            "velocity decays to zero)."))
         self.repeats_slider = QSlider(Qt.Horizontal)
         self.repeats_slider.setRange(0, 9)
         self.repeats_slider.setTickInterval(1)
@@ -129,6 +154,26 @@ class DelaySlotEditor(QWidget):
         self.repeats_label.setMinimumWidth(20)
         row.addWidget(self.repeats_label)
         self.repeats_slider.valueChanged.connect(self._on_repeats_changed)
+        rate_layout.addLayout(row)
+
+        # Row 4: Max Active Notes slider
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Max Notes:"))
+        row.addWidget(_make_help_label(
+            "Limits how many notes can have active\n"
+            "delay echoes at once in this slot.\n"
+            "When exceeded, the oldest note's delays\n"
+            "are cancelled. 'No Limit' allows all notes\n"
+            "to echo freely (polyphonic delay)."))
+        self.max_active_slider = QSlider(Qt.Horizontal)
+        self.max_active_slider.setRange(0, 12)
+        self.max_active_slider.setTickInterval(1)
+        self.max_active_slider.setTickPosition(QSlider.TicksBelow)
+        row.addWidget(self.max_active_slider)
+        self.max_active_label = QLabel("No Limit")
+        self.max_active_label.setMinimumWidth(52)
+        row.addWidget(self.max_active_label)
+        self.max_active_slider.valueChanged.connect(self._on_max_active_changed)
         rate_layout.addLayout(row)
 
         rate_group.setLayout(rate_layout)
@@ -166,6 +211,16 @@ class DelaySlotEditor(QWidget):
         pitch_layout = QVBoxLayout()
         pitch_layout.setSpacing(6)
 
+        self.pitch_check = QCheckBox("Enable pitch delay")
+        self.pitch_check.stateChanged.connect(self._on_pitch_check_changed)
+        pitch_layout.addWidget(self.pitch_check)
+
+        # Pitch controls container (hidden by default)
+        self.pitch_controls = QWidget()
+        pitch_controls_layout = QVBoxLayout()
+        pitch_controls_layout.setContentsMargins(0, 4, 0, 0)
+        pitch_controls_layout.setSpacing(6)
+
         # Transpose slider
         row = QHBoxLayout()
         row.addWidget(QLabel("Semitones:"))
@@ -178,7 +233,7 @@ class DelaySlotEditor(QWidget):
         self.transpose_label.setMinimumWidth(32)
         row.addWidget(self.transpose_label)
         self.transpose_slider.valueChanged.connect(self._on_transpose_changed)
-        pitch_layout.addLayout(row)
+        pitch_controls_layout.addLayout(row)
 
         # Tick labels for -24, -12, 0, +12, +24
         tick_row = QHBoxLayout()
@@ -190,28 +245,31 @@ class DelaySlotEditor(QWidget):
             if lbl != "+24":
                 tick_row.addStretch()
         tick_row.addSpacing(40)
-        pitch_layout.addLayout(tick_row)
+        pitch_controls_layout.addLayout(tick_row)
 
         # Transpose mode
         row = QHBoxLayout()
         row.addWidget(QLabel("Mode:"))
+        row.addWidget(_make_help_label(
+            "Fixed: every echo is shifted by the same\n"
+            "amount from the original note.\n"
+            "  e.g. +3 semitones: C -> Eb, Eb, Eb, Eb...\n\n"
+            "Cumulative: each echo shifts further from\n"
+            "the previous one (stacking).\n"
+            "  e.g. +3 semitones: C -> Eb, Gb, A, C..."))
         self.transpose_mode_combo = QComboBox()
         self.transpose_mode_combo.addItems(["Fixed", "Cumulative"])
         self.transpose_mode_combo.setMinimumWidth(120)
         row.addWidget(self.transpose_mode_combo)
         row.addStretch()
-        pitch_layout.addLayout(row)
+        pitch_controls_layout.addLayout(row)
+
+        self.pitch_controls.setLayout(pitch_controls_layout)
+        self.pitch_controls.setVisible(False)
+        pitch_layout.addWidget(self.pitch_controls)
 
         pitch_group.setLayout(pitch_layout)
         layout.addWidget(pitch_group)
-
-        # ---- Options ----
-        options_group = QGroupBox("Options")
-        options_layout = QVBoxLayout()
-        self.solo_check = QCheckBox("Solo mode (new note cancels pending delays)")
-        options_layout.addWidget(self.solo_check)
-        options_group.setLayout(options_layout)
-        layout.addWidget(options_group)
 
         layout.addStretch()
 
@@ -241,9 +299,17 @@ class DelaySlotEditor(QWidget):
         self.channel_row_label.setVisible(checked)
         self.channel_combo.setVisible(checked)
 
+    def _on_pitch_check_changed(self, state):
+        """Show/hide pitch controls based on checkbox"""
+        self.pitch_controls.setVisible(state == Qt.Checked)
+
     def _on_repeats_changed(self, pos):
         """Update repeats label from slider position"""
         self.repeats_label.setText(REPEATS_LABELS[pos])
+
+    def _on_max_active_changed(self, val):
+        """Update max active notes label from slider position"""
+        self.max_active_label.setText(MAX_ACTIVE_LABELS[val])
 
     def _on_transpose_changed(self, val):
         """Update transpose label"""
@@ -263,6 +329,10 @@ class DelaySlotEditor(QWidget):
         self.repeats_slider.setValue(repeats_to_slider(slot.max_repeats))
         self._on_repeats_changed(repeats_to_slider(slot.max_repeats))
 
+        # Max active notes
+        self.max_active_slider.setValue(min(slot.max_active_notes, 12))
+        self._on_max_active_changed(min(slot.max_active_notes, 12))
+
         # Channel: 0=same (unchecked), 1-16=different channel (checked)
         if slot.channel == 0:
             self.channel_check.setChecked(False)
@@ -271,10 +341,12 @@ class DelaySlotEditor(QWidget):
             self.channel_check.setChecked(True)
             self.channel_combo.setCurrentIndex(slot.channel - 1)
 
+        # Pitch delay: show controls if transpose is non-zero
+        has_pitch = (slot.transpose_semi != 0)
+        self.pitch_check.setChecked(has_pitch)
         self.transpose_slider.setValue(slot.transpose_semi)
         self._on_transpose_changed(slot.transpose_semi)
         self.transpose_mode_combo.setCurrentIndex(slot.transpose_mode)
-        self.solo_check.setChecked(slot.solo_mode)
 
         self._on_rate_mode_changed(slot.rate_mode)
         self._building = False
@@ -289,15 +361,23 @@ class DelaySlotEditor(QWidget):
         slot.decay_percent = self.decay_slider.value()
         slot.max_repeats = slider_to_repeats(self.repeats_slider.value())
 
+        # Max active notes
+        slot.max_active_notes = self.max_active_slider.value()
+
         # Channel: unchecked=0 (same), checked=1-16
         if self.channel_check.isChecked():
             slot.channel = self.channel_combo.currentIndex() + 1
         else:
             slot.channel = 0
 
-        slot.transpose_semi = self.transpose_slider.value()
-        slot.transpose_mode = self.transpose_mode_combo.currentIndex()
-        slot.solo_mode = self.solo_check.isChecked()
+        # Pitch delay: if disabled, force transpose to 0
+        if self.pitch_check.isChecked():
+            slot.transpose_semi = self.transpose_slider.value()
+            slot.transpose_mode = self.transpose_mode_combo.currentIndex()
+        else:
+            slot.transpose_semi = 0
+            slot.transpose_mode = 0
+
         return slot
 
 
