@@ -96,7 +96,7 @@ class FilteredTabbedKeycodesNoLayers(QTabWidget):
             elif hasattr(tab, 'keyboard'):
                 tab.keyboard = keyboard
 
-    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None, **kwargs):
         """Set editor references for tabs that need them (e.g., MacroTab)"""
         for tab in self.tabs:
             if hasattr(tab, 'set_editors') and callable(tab.set_editors):
@@ -148,7 +148,7 @@ class TabbedKeycodesNoLayers(QWidget):
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.set_keyboard(keyboard)
 
-    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None, **kwargs):
         """Set editor references for all tab widgets"""
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)

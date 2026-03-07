@@ -14,12 +14,15 @@ HID_CMD_DELAY_SET_SLOT = 0xD7     # Set single slot config (0xFF = save to EEPRO
 HID_CMD_DELAY_GET_BULK = 0xD8     # Get multiple slots (chunked)
 
 # Delay Constants
-DELAY_NUM_SLOTS = 100
+DELAY_FACTORY_COUNT = 48  # Factory presets in firmware flash (read-only)
+DELAY_USER_SLOT_COUNT = 50  # User-configurable slots
+DELAY_TOTAL_SLOT_COUNT = DELAY_FACTORY_COUNT + DELAY_USER_SLOT_COUNT  # 98 total
+DELAY_NUM_SLOTS = DELAY_USER_SLOT_COUNT  # For backward compat (editor uses this for user slots)
 DELAY_CONFIG_SIZE = 16
 
-# Delay Keycode Range
+# Delay Keycode Range (unified: 0-47 factory, 48-97 user)
 DELAY_KEY_BASE = 0xEF90
-DELAY_KEY_MAX = 0xEFF3  # DELAY_KEY_BASE + 99
+DELAY_KEY_MAX = DELAY_KEY_BASE + DELAY_TOTAL_SLOT_COUNT - 1  # 0xEFF1
 
 # Rate modes
 RATE_MODE_BPM = 0
@@ -58,7 +61,11 @@ class DelaySlot:
         self.channel = 0                      # 0=same, 1-16=specific
         self.transpose_semi = 0               # -48 to +48
         self.transpose_mode = TRANSPOSE_FIXED # 0=fixed, 1=cumulative
-        self.solo_mode = False                # True=solo (new note kills old delays)
+        self.max_active_notes = 0             # 0=no limit, 1-12=max active delay notes per slot
+        self.channel_count = 1                # 1=single channel, 2-4=multi-channel cycling
+        self.channel2 = 0                     # 2nd channel (1-16, 0=unused)
+        self.channel3 = 0                     # 3rd channel (1-16, 0=unused)
+        self.channel4 = 0                     # 4th channel (1-16, 0=unused)
 
     def to_bytes(self):
         """Pack slot into firmware format (16 bytes)"""
@@ -72,8 +79,12 @@ class DelaySlot:
         data[7] = self.channel & 0xFF
         data[8] = self.transpose_semi & 0xFF  # int8_t stored as uint8_t
         data[9] = self.transpose_mode & 0xFF
-        data[10] = 1 if self.solo_mode else 0
-        # bytes 11-15 reserved
+        data[10] = min(self.max_active_notes, 12) & 0xFF
+        data[11] = min(max(self.channel_count, 1), 4) & 0xFF
+        data[12] = self.channel2 & 0xFF
+        data[13] = self.channel3 & 0xFF
+        data[14] = self.channel4 & 0xFF
+        # byte 15 reserved
         return bytes(data)
 
     @staticmethod
@@ -94,7 +105,11 @@ class DelaySlot:
         raw = data[8]
         slot.transpose_semi = raw if raw < 128 else raw - 256
         slot.transpose_mode = data[9]
-        slot.solo_mode = data[10] != 0
+        slot.max_active_notes = data[10] if data[10] <= 12 else 0
+        slot.channel_count = data[11] if 1 <= data[11] <= 4 else 1
+        slot.channel2 = data[12] if data[12] <= 16 else 0
+        slot.channel3 = data[13] if data[13] <= 16 else 0
+        slot.channel4 = data[14] if data[14] <= 16 else 0
         return slot
 
     def is_default(self):
@@ -108,7 +123,8 @@ class DelaySlot:
                 self.channel == 0 and
                 self.transpose_semi == 0 and
                 self.transpose_mode == TRANSPOSE_FIXED and
-                not self.solo_mode)
+                self.max_active_notes == 0 and
+                self.channel_count == 1)
 
 
 class ProtocolDelay:
@@ -119,8 +135,8 @@ class ProtocolDelay:
         self.slots_cache = {}
 
     def get_slot(self, slot_num):
-        """Get delay slot configuration from keyboard"""
-        if slot_num < 0 or slot_num >= DELAY_NUM_SLOTS:
+        """Get delay slot configuration from keyboard (unified index 0-97)"""
+        if slot_num < 0 or slot_num >= DELAY_TOTAL_SLOT_COUNT:
             return None
 
         try:
@@ -146,9 +162,11 @@ class ProtocolDelay:
             return None
 
     def set_slot(self, slot_num, slot):
-        """Set delay slot configuration"""
-        if slot_num < 0 or slot_num >= DELAY_NUM_SLOTS:
+        """Set delay slot configuration (only user slots 48-97 accepted by firmware)"""
+        if slot_num < 0 or slot_num >= DELAY_TOTAL_SLOT_COUNT:
             return False
+        if slot_num < DELAY_FACTORY_COUNT:
+            return False  # Factory presets are read-only
 
         try:
             data = bytearray([slot_num]) + bytearray(slot.to_bytes())

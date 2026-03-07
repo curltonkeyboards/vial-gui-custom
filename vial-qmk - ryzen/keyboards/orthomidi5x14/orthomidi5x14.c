@@ -150,6 +150,18 @@ typedef struct {
     uint8_t slot_num;
 } toggle_led_entry_t;
 
+// Delay LED cache: maps LED positions to delay slot indices for per-key color rendering
+#define MAX_DELAY_LEDS 70
+typedef struct {
+    uint8_t led_index;
+    uint8_t slot_num;   // Unified delay slot index (0-97)
+} delay_led_entry_t;
+
+typedef struct {
+    delay_led_entry_t entries[MAX_DELAY_LEDS];
+    uint8_t count;
+} layer_delay_cache_t;
+
 // Hall Effect Sensor Linearization LUT
 uint8_t lut_correction_strength = 0;  // 0=linear (no correction), 100=full logarithmic LUT
 
@@ -3057,11 +3069,13 @@ typedef struct {
 } layer_toggle_cache_t;
 
 static layer_toggle_cache_t toggle_led_caches[NUM_LAYERS] = {0};
+static layer_delay_cache_t delay_led_caches[NUM_LAYERS] = {0};
 
 void scan_keycode_categories(void) {
     // Reset all layers
     for (int layer = 0; layer < NUM_LAYERS; layer++) {
         led_categories[layer].count = 0;
+        delay_led_caches[layer].count = 0;
         toggle_led_caches[layer].count = 0;
     }
     
@@ -3239,6 +3253,16 @@ void scan_keycode_categories(void) {
                             toggle_led_caches[layer].entries[tgl_count].led_index = led_index;
                             toggle_led_caches[layer].entries[tgl_count].slot_num = (uint8_t)(keycode - TOGGLE_KEY_BASE);
                             toggle_led_caches[layer].count = tgl_count + 1;
+                        }
+                    }
+
+                    // Build delay LED cache (maps LED position to delay slot index)
+                    if (keycode >= DELAY_SLOT_BASE && keycode < DELAY_SLOT_BASE + DELAY_SLOT_KC_COUNT) {
+                        uint8_t dly_count = delay_led_caches[layer].count;
+                        if (dly_count < MAX_DELAY_LEDS) {
+                            delay_led_caches[layer].entries[dly_count].led_index = led_index;
+                            delay_led_caches[layer].entries[dly_count].slot_num = (uint8_t)(keycode - DELAY_SLOT_BASE);
+                            delay_led_caches[layer].count = dly_count + 1;
                         }
                     }
                 }
@@ -8456,6 +8480,32 @@ bool rgb_matrix_indicators_kb(void) {
         }
     }
 
+    // Delay slot LEDs (yellow when inactive, green when active)
+    {
+        uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
+        if (current_layer < NUM_LAYERS) {
+            layer_delay_cache_t *dcache = &delay_led_caches[current_layer];
+            for (uint8_t i = 0; i < dcache->count; i++) {
+                uint8_t led = dcache->entries[i].led_index;
+                uint8_t slot = dcache->entries[i].slot_num;
+                if (slot < DELAY_TOTAL_SLOT_COUNT && led < RGB_MATRIX_LED_COUNT) {
+                    if (delay_system.runtime[slot].active) {
+                        // Green: delay slot is active
+                        rgb_matrix_set_color(led,
+                            0,
+                            (uint8_t)(200 * brightness_factor),
+                            0);
+                    } else {
+                        // Yellow: delay slot is inactive (ready to toggle)
+                        rgb_matrix_set_color(led,
+                            (uint8_t)(200 * brightness_factor),
+                            (uint8_t)(180 * brightness_factor),
+                            0);
+                    }
+                }
+            }
+        }
+    }
 #ifdef JOYSTICK_ENABLE
     // Gaming Mode LED (purple when active, off when inactive)
     {
@@ -15843,13 +15893,69 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
-    // MIDI DELAY SLOT TOGGLES (0xEF90-0xEFF3)
+    // MIDI DELAY CLEAR (0xEF8F)
+    // =============================================================================
+    if (keycode == DELAY_CLEAR) {
+        if (record->event.pressed) {
+            midi_delay_clear_queue();
+            // Deactivate all delay slots
+            for (uint8_t i = 0; i < DELAY_TOTAL_SLOT_COUNT; i++) {
+                delay_system.runtime[i].active = false;
+            }
+            dprintf("DELAY_CLEAR: queue cleared, all slots deactivated\n");
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // =============================================================================
+    // MIDI DELAY SLOT TOGGLES (0xEF90+)
+    // Exclusive mode (tap, no other held): toggle this slot, turn off all others.
+    // Multi mode (hold + tap): held key is ALWAYS forced ON + all others off,
+    //   then tapped keys while held are also forced ON.
     // =============================================================================
     if (keycode >= DELAY_SLOT_BASE && keycode < DELAY_SLOT_BASE + DELAY_SLOT_KC_COUNT) {
+        static uint8_t delay_keys_held_count = 0;
+        static uint8_t delay_first_held_slot = 0xFF;  // Track the first held slot
+
         if (record->event.pressed) {
             uint8_t slot = keycode - DELAY_SLOT_BASE;
-            midi_delay_toggle_slot(slot);
+
+            if (delay_keys_held_count == 0) {
+                // First key pressed (the one being held or single-tapped)
+                // Turn off all OTHER delays
+                for (uint8_t i = 0; i < DELAY_TOTAL_SLOT_COUNT; i++) {
+                    if (i != slot) {
+                        delay_system.runtime[i].active = false;
+                    }
+                }
+                // Toggle this slot (tap behavior: on→off or off→on)
+                midi_delay_toggle_slot(slot);
+                delay_first_held_slot = slot;
+            } else {
+                // Additional key while another is held (multi mode)
+                // Force the first held key ON (it may have been toggled off on first press)
+                if (delay_first_held_slot < DELAY_TOTAL_SLOT_COUNT &&
+                    !delay_system.runtime[delay_first_held_slot].active) {
+                    delay_system.runtime[delay_first_held_slot].active = true;
+                    dprintf("midi_delay: slot %d ON (held key forced on)\n", delay_first_held_slot + 1);
+                }
+                // Force this tapped slot ON
+                if (!delay_system.runtime[slot].active) {
+                    delay_system.runtime[slot].active = true;
+                    dprintf("midi_delay: slot %d ON (multi-select)\n", slot + 1);
+                }
+            }
+            delay_keys_held_count++;
             set_keylog(keycode, record);
+        } else {
+            // Key released
+            if (delay_keys_held_count > 0) {
+                delay_keys_held_count--;
+            }
+            if (delay_keys_held_count == 0) {
+                delay_first_held_slot = 0xFF;
+            }
         }
         return false;
     }

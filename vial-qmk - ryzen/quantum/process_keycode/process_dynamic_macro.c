@@ -7,6 +7,7 @@
 #include "raw_hid.h"
 #include <math.h>
 #include "keyboards/orthomidi5x14/orthomidi5x14.h"
+#include "keyboards/orthomidi5x14/midi_delay.h"
 #include "process_dks.h"
 #include "hal.h"
 #include <ch.h>
@@ -6514,9 +6515,38 @@ if (macro_num > 0) {
     }
     
     // ========================================================================
+    // DELAY BPM OVERRIDE: Force 120 BPM when delay is active
+    // ========================================================================
+    // If this is the first loop (BPM was 0) and a BPM-synced delay slot is
+    // active, force 120 BPM and quantize the loop length to the nearest
+    // 16th note (125ms). This matches the arpeggiator's deferred stop
+    // behavior so delay timing stays consistent across recordings.
+    if (bpm_was_zero && bpm_changed && midi_delay_any_bpm_synced_active()) {
+        current_bpm = 12000000;  // Force 120.00000 BPM
+        bpm_source_macro = macro_num;
+        macro_recording_bpm[macro_num - 1] = current_bpm;
+
+        // Quantize loop_length to nearest 16th note at 120 BPM (125ms)
+        if (state->loop_length > 0) {
+            const uint32_t step_ms = 125;
+            uint32_t raw_length = state->loop_length;
+            uint32_t quantized = ((raw_length + step_ms / 2) / step_ms) * step_ms;
+            if (quantized < step_ms) quantized = step_ms;
+
+            if (quantized != raw_length) {
+                dprintf("delay bpm override: quantized loop_length %lu -> %lu ms\n",
+                        raw_length, quantized);
+                state->loop_length = quantized;
+            }
+        }
+
+        dprintf("delay bpm override: forced 120 BPM for delay-active first loop\n");
+    }
+
+    // ========================================================================
     // MIDI CLOCK INTEGRATION
     // ========================================================================
-    
+
     // If BPM was just set from loop AND we're not receiving external clock
     if (bpm_changed && bpm_was_zero && !is_external_clock_active()) {
         // Start internal MIDI clock automatically

@@ -530,6 +530,9 @@ void midi_send_noteon_smartchord(uint8_t channel, uint8_t note, uint8_t velocity
     add_live_note(channel, note, final_velocity);
     add_lighting_live_note(channel, note, final_velocity);
 
+    // MIDI Delay: schedule delayed repeats for smartchord notes
+    midi_delay_schedule_note_on(channel, note, final_velocity);
+
     if (collecting_preroll) {
         collect_preroll_event(MIDI_EVENT_NOTE_ON, channel, note, raw_travel_scaled);
     }
@@ -551,6 +554,8 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
     remove_live_note(channel, note);
 	noteoffdisplayupdates(note);
 
+    // MIDI Delay: schedule delayed note-offs for smartchord notes
+    midi_delay_schedule_note_off(channel, note);
 
     // Scale MIDI velocity (0-127) to raw_travel range (0-255) for recording
     uint8_t raw_travel_scaled = (velocity > 0) ? (uint8_t)((uint16_t)velocity * 255 / 127) : 0;
@@ -628,16 +633,15 @@ void midi_send_noteoff_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
         collect_preroll_event(MIDI_EVENT_NOTE_OFF, channel, note, raw_travel_scaled);
     }
 
-    if (sustain_active) {
-        add_sustain_note(channel, note, velocity);
-    } else {
-        midi_send_noteoff(&midi_device, channel, note, velocity);
-        remove_lighting_live_note(channel, note);
-        if (current_macro_id > 0) {
-            dynamic_macro_intercept_noteoff(channel, note, raw_travel_scaled, current_macro_id,
-                                          current_macro_buffer1, current_macro_buffer2,
-                                          current_macro_pointer, current_recording_start_time);
-        }
+    // Bypass sustain entirely (like macro playback notes).
+    // Delay notes don't enter live_notes so they must not enter the sustain
+    // queue either - otherwise they'd hang until pedal release.
+    midi_send_noteoff(&midi_device, channel, note, velocity);
+    remove_lighting_live_note(channel, note);
+    if (current_macro_id > 0) {
+        dynamic_macro_intercept_noteoff(channel, note, raw_travel_scaled, current_macro_id,
+                                      current_macro_buffer1, current_macro_buffer2,
+                                      current_macro_pointer, current_recording_start_time);
     }
 }
 
@@ -1139,6 +1143,9 @@ void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8
     // Send MIDI note-on
     midi_send_noteon(&midi_device, channel, note, final_velocity);
 
+    // MIDI Delay: schedule delayed repeats for arpeggiator notes
+    midi_delay_schedule_note_on(channel, note, final_velocity);
+
     // Display updates
     noteondisplayupdates(note);
 
@@ -1170,6 +1177,9 @@ void midi_send_noteon_arp(uint8_t channel, uint8_t note, uint8_t velocity, uint8
 void midi_send_noteoff_arp(uint8_t channel, uint8_t note, uint8_t velocity) {
     // Send MIDI note-off
     midi_send_noteoff(&midi_device, channel, note, velocity);
+
+    // MIDI Delay: schedule delayed note-offs for arpeggiator notes
+    midi_delay_schedule_note_off(channel, note);
 
     // Display updates
     noteoffdisplayupdates(note);
@@ -1488,7 +1498,10 @@ bool process_midi(uint16_t keycode, keyrecord_t *record) {
                 // Clear all live notes and the sustain queue
                 live_note_count = 0;
                 sustain_note_count = 0;
-                
+
+                // Clear all pending delay events (sends note-offs for fired notes)
+                midi_delay_clear_queue();
+
                 midi_send_cc(&midi_device, channel_number, 0x7B, 0);
                 dprintf("midi all notes off\n");
             }
