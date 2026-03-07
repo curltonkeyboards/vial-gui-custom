@@ -20,11 +20,11 @@ from vial_device import VialKeyboard
 
 # Repeats slider: positions 0-9 map to [1,2,3,4,5,6,7,8,9,255]
 REPEATS_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 255]
-REPEATS_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "\u221E"]  # infinity symbol
+REPEATS_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "No Limit"]
 
-# Max active notes slider: positions 0-12 map to [0,1,2,...,12] where 0=no limit
-MAX_ACTIVE_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-MAX_ACTIVE_LABELS = ["No Limit", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+# Max active notes slider: positions 0-12 where 1-12=limit, 13=no limit (rightmost)
+# Slider range 0-12: position 0=1 note, position 11=12 notes, position 12=no limit
+MAX_ACTIVE_SLIDER_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "No Limit"]
 
 
 def repeats_to_slider(val):
@@ -45,6 +45,22 @@ def slider_to_repeats(pos):
     if pos >= len(REPEATS_VALUES):
         pos = len(REPEATS_VALUES) - 1
     return REPEATS_VALUES[pos]
+
+
+def max_active_to_slider(val):
+    """Convert max_active_notes firmware value to slider position.
+    Firmware: 0=no limit, 1-12=limit. Slider: 0-11=1-12, 12=no limit."""
+    if val == 0 or val > 12:
+        return 12  # No Limit (rightmost)
+    return val - 1  # 1->0, 2->1, ... 12->11
+
+
+def slider_to_max_active(pos):
+    """Convert slider position to max_active_notes firmware value.
+    Slider: 0-11=1-12, 12=no limit. Firmware: 0=no limit, 1-12=limit."""
+    if pos >= 12:
+        return 0  # No limit
+    return pos + 1  # 0->1, 1->2, ... 11->12
 
 
 def _make_help_label(tooltip_text):
@@ -309,7 +325,7 @@ class DelaySlotEditor(QWidget):
 
     def _on_max_active_changed(self, val):
         """Update max active notes label from slider position"""
-        self.max_active_label.setText(MAX_ACTIVE_LABELS[val])
+        self.max_active_label.setText(MAX_ACTIVE_SLIDER_LABELS[val])
 
     def _on_transpose_changed(self, val):
         """Update transpose label"""
@@ -329,9 +345,10 @@ class DelaySlotEditor(QWidget):
         self.repeats_slider.setValue(repeats_to_slider(slot.max_repeats))
         self._on_repeats_changed(repeats_to_slider(slot.max_repeats))
 
-        # Max active notes
-        self.max_active_slider.setValue(min(slot.max_active_notes, 12))
-        self._on_max_active_changed(min(slot.max_active_notes, 12))
+        # Max active notes (firmware 0=no limit -> slider 12, firmware 1-12 -> slider 0-11)
+        slider_pos = max_active_to_slider(slot.max_active_notes)
+        self.max_active_slider.setValue(slider_pos)
+        self._on_max_active_changed(slider_pos)
 
         # Channel: 0=same (unchecked), 1-16=different channel (checked)
         if slot.channel == 0:
@@ -361,8 +378,8 @@ class DelaySlotEditor(QWidget):
         slot.decay_percent = self.decay_slider.value()
         slot.max_repeats = slider_to_repeats(self.repeats_slider.value())
 
-        # Max active notes
-        slot.max_active_notes = self.max_active_slider.value()
+        # Max active notes (slider 0-11 -> firmware 1-12, slider 12 -> firmware 0=no limit)
+        slot.max_active_notes = slider_to_max_active(self.max_active_slider.value())
 
         # Channel: unchecked=0 (same), checked=1-16
         if self.channel_check.isChecked():
