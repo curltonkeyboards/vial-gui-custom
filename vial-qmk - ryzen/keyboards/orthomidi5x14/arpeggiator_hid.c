@@ -6,6 +6,7 @@
 #include "process_midi.h"
 #include "matrix.h"
 #include "process_dynamic_macro.h"
+#include "midi_delay.h"
 #include <string.h>
 
 // =============================================================================
@@ -1424,6 +1425,62 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         dprintf("Calibration Debug: %d keys queried\n", num_keys);
 
         // Send response
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // =================================================================
+    // MIDI DELAY COMMANDS (0xD6-0xD8)
+    // =================================================================
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= HID_CMD_DELAY_GET_SLOT && data[3] <= HID_CMD_DELAY_GET_BULK) {
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case HID_CMD_DELAY_GET_SLOT: {  // 0xD6
+                // Format: data[6] = slot_id
+                uint8_t slot_id = data[6];
+                midi_delay_hid_get_slot(slot_id, &response[4]);
+                break;
+            }
+
+            case HID_CMD_DELAY_SET_SLOT: {  // 0xD7
+                // Format: data[6] = slot_id, data[7..22] = 16 bytes config
+                // Special: slot_id = 0xFF triggers EEPROM save (no config data needed)
+                uint8_t slot_id = data[6];
+                if (slot_id == 0xFF) {
+                    midi_delay_save();
+                    response[4] = 0x01;  // Success
+                } else {
+                    midi_delay_hid_set_slot(slot_id, &data[7]);
+                    response[4] = 0x01;  // Success
+                }
+                break;
+            }
+
+            case HID_CMD_DELAY_GET_BULK: {  // 0xD8
+                // Format: data[6] = start_slot, data[7] = count
+                uint8_t start = data[6];
+                uint8_t count = data[7];
+                midi_delay_hid_get_bulk(start, count, data, length);
+                return;  // Already sent responses
+            }
+
+            default:
+                response[4] = 0x00;  // Error
+                break;
+        }
+
         raw_hid_send(response, 32);
         return;
     }

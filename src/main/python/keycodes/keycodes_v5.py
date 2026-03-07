@@ -2586,6 +2586,9 @@ class keycodes_v5:
         # NOTE: Moved from 0xEE00-0xEE63 to avoid conflict with Arpeggiator keycodes
         "TGL_00": 0xEF10,  # Base for Toggle slot selection
 
+        # MIDI Delay Slots (0xEF90-0xEFF3) - 100 slots
+        "DELAY_01": 0xEF90,  # Base for Delay slot toggle
+
         "QK_KB": 0xF500, #custom keycodes safe range - moved from 0xCC57 to avoid Gaming keycode collision
 
         # =============================================================================
@@ -2928,6 +2931,10 @@ for x in range(50):
 # Generate Toggle key slot selection keycodes (100 slots)
 for x in range(100):
     keycodes_v5.kc["TGL_{:02d}".format(x)] = keycodes_v5.kc["TGL_00"] + x
+
+# Generate MIDI Delay slot toggle keycodes (100 slots)
+for x in range(100):
+    keycodes_v5.kc["DELAY_{:02d}".format(x + 1)] = keycodes_v5.kc["DELAY_01"] + x
 
 for name, val in keycodes_v5.kc.items():
     if name.endswith("(kc)"):

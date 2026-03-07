@@ -14,7 +14,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
     KEYCODES_DAW_ABLETON, KEYCODES_DAW_FL, KEYCODES_DAW_LOGIC, KEYCODES_DAW_PROTOOLS, KEYCODES_DAW_GARAGEBAND, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, KEYCODES_TOGGLE, \
+    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, KEYCODES_TOGGLE, KEYCODES_DELAY, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_HE_VELOCITY_CURVE, KEYCODES_HE_VELOCITY_RANGE, \
@@ -4993,6 +4993,62 @@ class StepSequencerTab(QScrollArea):
         pass  # Implement if needed
 
 
+class DelayMusicTab(QScrollArea):
+    """MIDI Delay slot toggle tab - shows delay keycodes for keymap assignment"""
+    keycode_changed = pyqtSignal(str)
+
+    def __init__(self, parent, label, delay_keycodes):
+        super().__init__(parent)
+        self.label = label
+        self.delay_keycodes = delay_keycodes
+        self.current_keycode_filter = None
+
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setSpacing(20)
+        self.main_layout.setContentsMargins(20, 15, 20, 15)
+        self.main_layout.setAlignment(Qt.AlignTop)
+
+        self.recreate_buttons(keycode_filter_any)
+
+        self.setWidget(self.scroll_content)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+    def recreate_buttons(self, keycode_filter):
+        self.current_keycode_filter = keycode_filter
+
+        # Clear existing layout
+        while self.main_layout.count():
+            child = self.main_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        # Delay Slot Toggles
+        delay_group = QGroupBox("Delay Slot Toggles")
+        delay_layout = FlowLayout()
+        for keycode in self.delay_keycodes:
+            if keycode_filter(keycode):
+                btn = SquareButton()
+                btn.setRelSize(KEYCODE_BTN_RATIO)
+                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                btn.keycode = keycode
+                btn.setText(keycode.label)
+                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                delay_layout.addWidget(btn)
+        delay_group.setLayout(delay_layout)
+        self.main_layout.addWidget(delay_group)
+
+        self.main_layout.addStretch(1)
+
+    def has_buttons(self):
+        return len(self.delay_keycodes) > 0
+
+    def relabel_buttons(self):
+        pass
+
+
 class MusicTab(QWidget):
     """Nested tab container for Music-related tabs with side-tab style"""
 
@@ -5013,6 +5069,7 @@ class MusicTab(QWidget):
                                            KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION)
         self.arpeggiator_tab = ArpeggiatorTab(parent, "Arpeggiator", KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS)
         self.step_sequencer_tab = StepSequencerTab(parent, "Step Sequencer", KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS)
+        self.delay_tab = DelayMusicTab(parent, "Delay", KEYCODES_DELAY)
         self.ear_training_tab = EarTrainerTab(parent, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER)
         self.key_split_tab = KeySplitOnlyTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
         self.triple_split_tab = TripleSplitTab(parent, "TripleSplit", KEYCODES_KEYSPLIT_BUTTONS)
@@ -5028,6 +5085,7 @@ class MusicTab(QWidget):
         self.chord_progressions_tab.keycode_changed.connect(self.on_keycode_changed)
         self.arpeggiator_tab.keycode_changed.connect(self.on_keycode_changed)
         self.step_sequencer_tab.keycode_changed.connect(self.on_keycode_changed)
+        self.delay_tab.keycode_changed.connect(self.on_keycode_changed)
 
         # Define sections (tab_widget, display_name)
         self.sections = [
@@ -5039,7 +5097,8 @@ class MusicTab(QWidget):
             (self.triple_split_tab, "TripleSplit"),
             (self.chord_progressions_tab, "Chord Progressions"),
             (self.arpeggiator_tab, "Arpeggiator"),
-            (self.step_sequencer_tab, "Step Sequencer")
+            (self.step_sequencer_tab, "Step Sequencer"),
+            (self.delay_tab, "Delay")
         ]
 
         # Create horizontal layout: side tabs on left, content on right
