@@ -176,6 +176,23 @@ class ProtocolToggle:
     def __init__(self, keyboard):
         self.keyboard = keyboard
         self.slots_cache = {}
+        self._debug_console = None
+
+    def set_debug_console(self, console):
+        """Attach a DebugConsole widget for logging"""
+        self._debug_console = console
+
+    def _log(self, message, level="INFO"):
+        if self._debug_console:
+            self._debug_console.log(message, level)
+
+    @staticmethod
+    def _hex_bytes(data):
+        return ' '.join('0x{:02X}'.format(b) for b in data)
+
+    @staticmethod
+    def _hex_keycodes(keycodes):
+        return ', '.join('0x{:04X}'.format(kc) for kc in keycodes)
 
     def get_slot(self, slot_num: int) -> Optional[ToggleSlot]:
         """Get toggle slot configuration from keyboard"""
@@ -184,16 +201,20 @@ class ProtocolToggle:
 
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_GET_SLOT, 0, [slot_num])
+            self._log(f"GET_SLOT slot={slot_num}", "HID_TX")
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             if not response or len(response) < (5 + TOGGLE_SLOT_SIZE):
+                self._log(f"GET_SLOT slot={slot_num}: response too short ({len(response) if response else 0} bytes)", "ERROR")
                 return None
 
             if response[4] != 0:
+                self._log(f"GET_SLOT slot={slot_num}: error status {response[4]}", "ERROR")
                 return None
 
             slot_data = response[5:5 + TOGGLE_SLOT_SIZE]
             slot = ToggleSlot.from_bytes(slot_data)
+            self._log(f"GET_SLOT slot={slot_num}: target=0x{slot.target_keycode:04X} flags=0x{slot.flags:02X} num_keys={slot.num_keys} raw=[{self._hex_bytes(slot_data)}]", "HID_RX")
 
             # If multi-key mode, also load the extra keycodes
             if slot.is_multi_key:
@@ -203,34 +224,33 @@ class ProtocolToggle:
             return slot
 
         except Exception as e:
-            print(f"Toggle: Error getting slot {slot_num}: {e}")
+            self._log(f"GET_SLOT slot={slot_num}: exception: {e}", "ERROR")
             return None
 
     def _load_multi_keycodes(self, slot_num: int, slot: ToggleSlot):
         """Load multi-key extra keycodes from firmware"""
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_GET_MULTI, 0, [slot_num])
+            self._log(f"GET_MULTI slot={slot_num}", "HID_TX")
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
-            print(f"Toggle GET_MULTI slot={slot_num}: response len={len(response) if response else 0}")
-            if response:
-                print(f"Toggle GET_MULTI raw response[4:20]: [{', '.join('0x{:02X}'.format(b) for b in response[4:20])}]")
-
             if not response or len(response) < (5 + TOGGLE_MULTI_EXTRA_KEYS * 2):
-                print(f"Toggle GET_MULTI slot={slot_num}: response too short or empty")
+                self._log(f"GET_MULTI slot={slot_num}: response too short ({len(response) if response else 0} bytes)", "ERROR")
                 return
 
+            self._log(f"GET_MULTI slot={slot_num}: raw response[4:20]=[{self._hex_bytes(response[4:20])}]", "HID_RX")
+
             if response[4] != 0:
-                print(f"Toggle GET_MULTI slot={slot_num}: error status {response[4]}")
+                self._log(f"GET_MULTI slot={slot_num}: error status {response[4]}", "ERROR")
                 return
 
             for j in range(TOGGLE_MULTI_EXTRA_KEYS):
                 slot.multi_keycodes[j] = struct.unpack_from('<H', response, 5 + j * 2)[0]
 
-            print(f"Toggle GET_MULTI slot={slot_num}: loaded keycodes {['0x{:04X}'.format(slot.multi_keycodes[j]) for j in range(TOGGLE_MULTI_EXTRA_KEYS)]}")
+            self._log(f"GET_MULTI slot={slot_num}: parsed keycodes=[{self._hex_keycodes(slot.multi_keycodes)}]", "DATA")
 
         except Exception as e:
-            print(f"Toggle: Error getting multi keycodes for slot {slot_num}: {e}")
+            self._log(f"GET_MULTI slot={slot_num}: exception: {e}", "ERROR")
 
     def set_slot(self, slot_num: int, slot: ToggleSlot) -> bool:
         """Set toggle slot configuration"""
@@ -241,13 +261,14 @@ class ProtocolToggle:
             # Packet: [slot_num, target_kc_lo, target_kc_hi, flags, num_keys]
             data = bytearray([slot_num]) + bytearray(slot.to_bytes())
 
-            print(f"Toggle SET_SLOT slot={slot_num}: target=0x{slot.target_keycode:04X} flags=0x{slot.flags:02X} num_keys={slot.num_keys} is_multi={slot.is_multi_key}")
+            self._log(f"SET_SLOT slot={slot_num}: target=0x{slot.target_keycode:04X} flags=0x{slot.flags:02X} num_keys={slot.num_keys} is_multi={slot.is_multi_key}", "HID_TX")
+            self._log(f"SET_SLOT raw data=[{self._hex_bytes(data)}]", "DATA")
 
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SET_SLOT, 0, data)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             success = response and len(response) > 4 and response[4] == 0
-            print(f"Toggle SET_SLOT response: success={success}")
+            self._log(f"SET_SLOT response: {'OK' if success else 'FAIL'}", "HID_RX")
 
             # If multi-key mode, also send the extra keycodes
             if success and slot.is_multi_key:
@@ -259,7 +280,7 @@ class ProtocolToggle:
             return success
 
         except Exception as e:
-            print(f"Toggle: Error setting slot {slot_num}: {e}")
+            self._log(f"SET_SLOT slot={slot_num}: exception: {e}", "ERROR")
             return False
 
     def _send_multi_keycodes(self, slot_num: int, slot: ToggleSlot) -> bool:
@@ -272,60 +293,67 @@ class ProtocolToggle:
                 data.append(kc & 0xFF)
                 data.append((kc >> 8) & 0xFF)
 
-            print(f"Toggle SET_MULTI slot={slot_num}: sending keycodes {['0x{:04X}'.format(slot.multi_keycodes[j]) for j in range(TOGGLE_MULTI_EXTRA_KEYS)]}")
-            print(f"Toggle SET_MULTI raw data: [{', '.join('0x{:02X}'.format(b) for b in data)}]")
+            self._log(f"SET_MULTI slot={slot_num}: keycodes=[{self._hex_keycodes(slot.multi_keycodes)}]", "HID_TX")
+            self._log(f"SET_MULTI raw data=[{self._hex_bytes(data)}]", "DATA")
 
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SET_MULTI, 0, data)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             success = response and len(response) > 4 and response[4] == 0
-            print(f"Toggle SET_MULTI response: success={success}, response[4]={response[4] if response and len(response) > 4 else 'N/A'}")
+            self._log(f"SET_MULTI response: {'OK' if success else 'FAIL'} (response[4]={response[4] if response and len(response) > 4 else 'N/A'})", "HID_RX")
             return success
 
         except Exception as e:
-            print(f"Toggle: Error setting multi keycodes for slot {slot_num}: {e}")
+            self._log(f"SET_MULTI slot={slot_num}: exception: {e}", "ERROR")
             return False
 
     def save_to_eeprom(self) -> bool:
         """Save all toggle configurations to EEPROM"""
         try:
+            self._log("SAVE_EEPROM", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SAVE_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
-            return response and len(response) > 4 and response[4] == 0
+            success = response and len(response) > 4 and response[4] == 0
+            self._log(f"SAVE_EEPROM response: {'OK' if success else 'FAIL'}", "HID_RX")
+            return success
         except Exception as e:
-            print(f"Toggle: Error saving to EEPROM: {e}")
+            self._log(f"SAVE_EEPROM exception: {e}", "ERROR")
             return False
 
     def load_from_eeprom(self) -> bool:
         """Load all toggle configurations from EEPROM"""
         try:
+            self._log("LOAD_EEPROM", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_LOAD_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             success = response and len(response) > 4 and response[4] == 0
+            self._log(f"LOAD_EEPROM response: {'OK' if success else 'FAIL'}", "HID_RX")
 
             if success:
                 self.slots_cache.clear()
 
             return success
         except Exception as e:
-            print(f"Toggle: Error loading from EEPROM: {e}")
+            self._log(f"LOAD_EEPROM exception: {e}", "ERROR")
             return False
 
     def reset_all_slots(self) -> bool:
         """Reset all toggle slots to defaults"""
         try:
+            self._log("RESET_ALL", "HID_TX")
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_RESET_ALL, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
 
             success = response and len(response) > 4 and response[4] == 0
+            self._log(f"RESET_ALL response: {'OK' if success else 'FAIL'}", "HID_RX")
 
             if success:
                 self.slots_cache.clear()
 
             return success
         except Exception as e:
-            print(f"Toggle: Error resetting slots: {e}")
+            self._log(f"RESET_ALL exception: {e}", "ERROR")
             return False
 
     def clear_cache(self):

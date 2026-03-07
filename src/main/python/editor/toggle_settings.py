@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBut
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from editor.basic_editor import BasicEditor
+from editor.arpeggiator import DebugConsole
 from protocol.toggle_protocol import (ProtocolToggle, ToggleSlot,
                                        TOGGLE_NUM_SLOTS, TOGGLE_KEY_BASE,
                                        TOGGLE_MULTI_MAX_KEYS, TOGGLE_MULTI_COLORS,
@@ -443,14 +444,19 @@ class ToggleEntryUI(QWidget):
             QMessageBox.warning(self, "Error", "Not connected to keyboard")
             return
 
+        self.toggle_protocol._log(f"--- Save TGL_{self.slot_num:02d} started ---", "DEBUG")
+
         if self.toggle_protocol.set_slot(self.slot_num, self.slot):
             if self.toggle_protocol.save_to_eeprom():
+                self.toggle_protocol._log(f"--- Save TGL_{self.slot_num:02d} completed OK ---", "DEBUG")
                 QMessageBox.information(self, "Success", f"TGL_{self.slot_num:02d} saved to keyboard")
                 self.pending_changes = False
                 self.save_btn.setEnabled(False)
             else:
+                self.toggle_protocol._log(f"--- Save TGL_{self.slot_num:02d} FAILED (EEPROM) ---", "ERROR")
                 QMessageBox.warning(self, "Error", "Failed to save to EEPROM")
         else:
+            self.toggle_protocol._log(f"--- Save TGL_{self.slot_num:02d} FAILED (set_slot) ---", "ERROR")
             QMessageBox.warning(self, "Error", "Failed to send configuration to keyboard")
 
     def _on_load(self, silent=False):
@@ -460,12 +466,15 @@ class ToggleEntryUI(QWidget):
                 QMessageBox.warning(self, "Error", "Not connected to keyboard")
             return
 
+        self.toggle_protocol._log(f"--- Load TGL_{self.slot_num:02d} started ---", "DEBUG")
+
         slot = self.toggle_protocol.get_slot(self.slot_num)
         if slot:
             self.slot = slot
             self._update_display()
             self.pending_changes = False
             self.save_btn.setEnabled(False)
+            self.toggle_protocol._log(f"--- Load TGL_{self.slot_num:02d} completed OK ---", "DEBUG")
         else:
             if not silent:
                 QMessageBox.warning(self, "Error", "Failed to load configuration from keyboard")
@@ -506,6 +515,10 @@ class ToggleSettingsTab(BasicEditor):
 
         # Connect tab changes for lazy loading and "+" tab handling
         self.tabs.currentChanged.connect(self._on_tab_changed)
+
+        # Debug console
+        self.debug_console = DebugConsole("Toggle Keys Debug Console")
+        self.addWidget(self.debug_console)
 
         # Bottom action buttons
         button_layout = QHBoxLayout()
@@ -594,6 +607,7 @@ class ToggleSettingsTab(BasicEditor):
         if self.valid():
             self.keyboard = device.keyboard
             self.toggle_protocol = ProtocolToggle(self.keyboard)
+            self.toggle_protocol.set_debug_console(self.debug_console)
 
             # Set protocol on all entries
             for entry in self.toggle_entries:
