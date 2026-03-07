@@ -5472,37 +5472,46 @@ class GamingConfigurator(BasicEditor):
 
         controls_layout.addWidget(curve_group, alignment=QtCore.Qt.AlignTop)
 
-        # Map control IDs to positions and names (matching the original control IDs)
+        # Map control IDs to positions and names
+        # Control IDs 0-9: axes/triggers (handled by firmware switch statement)
+        #   0=LS Up, 1=LS Down, 2=LS Left, 3=LS Right
+        #   4=RS Up, 5=RS Down, 6=RS Left, 7=RS Right
+        #   8=LT, 9=RT
+        # Control IDs 10+: buttons[control_id - 10] → joystick button (control_id - 10)
+        # Must match keycode button IDs: A=0, B=1, X=2, Y=3, LB=4, RB=5,
+        # Back=6, Start=7, L3=8, R3=9, DPad=12-15
         control_mapping = {
-            # D-pad
-            10: ("D-pad Up", "dpad_up", 180, 105, 56, 58, "↑"),
-            11: ("D-pad Down", "dpad_down", 180, 163, 56, 58, "↓"),
-            12: ("D-pad Left", "dpad_left", 150, 135, 58, 56, "←"),
-            13: ("D-pad Right", "dpad_right", 208, 135, 58, 56, "→"),
-            # Face buttons
-            14: ("Button 1", "btn1", 517, 178, 50, 50, "1"),  # A
-            15: ("Button 2", "btn2", 553, 139, 50, 50, "2"),  # B
-            16: ("Button 3", "btn3", 481, 139, 50, 50, "3"),  # X
-            17: ("Button 4", "btn4", 517, 103, 50, 50, "4"),  # Y
-            # Sticks
+            # Face buttons (buttons 0-3, control_ids 10-13)
+            10: ("Button 1", "btn1", 517, 178, 50, 50, "1"),  # A = joystick button 0
+            11: ("Button 2", "btn2", 553, 139, 50, 50, "2"),  # B = joystick button 1
+            12: ("Button 3", "btn3", 481, 139, 50, 50, "3"),  # X = joystick button 2
+            13: ("Button 4", "btn4", 517, 103, 50, 50, "4"),  # Y = joystick button 3
+            # Bumpers (buttons 4-5, control_ids 14-15)
+            14: ("LB", "lb", 177, 65, 60, 30, "LB"),
+            15: ("RB", "rb", 503, 65, 60, 30, "RB"),
+            # Center buttons (buttons 6-7, control_ids 16-17)
+            16: ("Back", "back", 320, 170, 50, 30, "Back"),
+            17: ("Start", "start", 380, 170, 50, 30, "Start"),
+            # Stick clicks (buttons 8-9, control_ids 18-19)
+            18: ("LS Click", "l3", 275, 223, 38, 38, "L3"),
+            19: ("RS Click", "r3", 439, 223, 38, 38, "R3"),
+            # D-pad (buttons 12-15, control_ids 22-25)
+            22: ("D-pad Up", "dpad_up", 180, 105, 56, 58, "↑"),
+            23: ("D-pad Down", "dpad_down", 180, 163, 56, 58, "↓"),
+            24: ("D-pad Left", "dpad_left", 150, 135, 58, 56, "←"),
+            25: ("D-pad Right", "dpad_right", 208, 135, 58, 56, "→"),
+            # Sticks (axes, control_ids 0-7)
             0: ("LS Up", "ls_up", 275, 185, 38, 38, "↑"),
             1: ("LS Down", "ls_down", 275, 261, 38, 38, "↓"),
             2: ("LS Left", "ls_left", 237, 223, 38, 38, "←"),
             3: ("LS Right", "ls_right", 313, 223, 38, 38, "→"),
-            22: ("LS Click", "l3", 275, 223, 38, 38, "L3"),
             4: ("RS Up", "rs_up", 439, 185, 38, 38, "↑"),
             5: ("RS Down", "rs_down", 439, 261, 38, 38, "↓"),
             6: ("RS Left", "rs_left", 401, 223, 38, 38, "←"),
             7: ("RS Right", "rs_right", 477, 223, 38, 38, "→"),
-            23: ("RS Click", "r3", 439, 223, 38, 38, "R3"),
-            # Bumpers and triggers
-            18: ("LB", "lb", 177, 65, 60, 30, "LB"),
-            19: ("RB", "rb", 503, 65, 60, 30, "RB"),
+            # Triggers (axes, control_ids 8-9)
             8: ("LT", "lt", 177, 25, 60, 35, "LT"),
             9: ("RT", "rt", 503, 25, 60, 35, "RT"),
-            # Center buttons
-            20: ("Back", "back", 320, 170, 50, 30, "Back"),
-            21: ("Start", "start", 380, 170, 50, 30, "Start"),
         }
 
         # Create buttons positioned over gamepad

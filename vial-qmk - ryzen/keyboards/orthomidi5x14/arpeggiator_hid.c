@@ -8,6 +8,7 @@
 #include "process_dynamic_macro.h"
 #include "midi_delay.h"
 #include <string.h>
+#include <stdio.h>
 
 // =============================================================================
 // ARPEGGIATOR RAW HID HANDLERS
@@ -792,9 +793,23 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 #ifdef JOYSTICK_ENABLE
                 gaming_mode_active = data[6] != 0;
                 gaming_settings.gaming_mode_enabled = gaming_mode_active;
+                // Re-scan keymap for gaming axis keycodes when enabling
+                // This picks up keycodes assigned via the GUI without requiring a reboot
+                if (gaming_mode_active) {
+                    gaming_scan_keymap_for_axes();
+                }
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
                 dprintf("Gaming mode set to: %s\n", gaming_mode_active ? "ON" : "OFF");
+                // Update OLED keylog with gaming mode status
+                {
+                    extern char keylog_str[];
+                    const char *msg = gaming_mode_active ? "Gaming Mode: On" : "Gaming Mode: Off";
+                    int len = strlen(msg);
+                    int pad = 21 - len;
+                    int lpad = pad / 2;
+                    snprintf(keylog_str, 44, "%*s%s%*s", lpad, "", msg, pad - lpad, "");
+                }
                 #else
                 response[5] = 0x01;  // Error - joystick not enabled
                 #endif
