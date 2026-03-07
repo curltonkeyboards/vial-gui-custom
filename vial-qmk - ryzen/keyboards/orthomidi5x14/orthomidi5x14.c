@@ -4344,6 +4344,7 @@ toggle_entry_t* toggle_find(uint8_t slot_num) {
 }
 
 // Add a new entry to the pool. Returns pointer to it, or NULL if pool full.
+// When creating a new entry, loads multi-key data from EEPROM if available.
 toggle_entry_t* toggle_add(uint8_t slot_num) {
     // Check if already exists
     toggle_entry_t* existing = toggle_find(slot_num);
@@ -4357,6 +4358,16 @@ toggle_entry_t* toggle_add(uint8_t slot_num) {
     memset(entry, 0, sizeof(toggle_entry_t));
     entry->slot_num = slot_num;
     toggle_pool_count++;
+
+    // Pre-load multi-key data from EEPROM if magic is valid
+    uint16_t magic = eeprom_read_word((uint16_t*)(TOGGLE_MULTI_EEPROM_ADDR));
+    if (magic == TOGGLE_MULTI_MAGIC) {
+        uint32_t addr = TOGGLE_MULTI_EEPROM_ADDR + 2 + (slot_num * TOGGLE_MULTI_EXTRA_KEYS * 2);
+        for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
+            entry->multi_keycodes[j] = eeprom_read_word((uint16_t*)(addr + j * 2));
+        }
+    }
+
     return entry;
 }
 
@@ -4365,8 +4376,13 @@ void toggle_remove(uint8_t slot_num) {
     for (uint8_t i = 0; i < toggle_pool_count; i++) {
         if (toggle_pool[i].slot_num == slot_num) {
             // Release held key before removing
-            if (toggle_pool[i].is_held && toggle_pool[i].target_keycode != 0) {
-                vial_keycode_up(toggle_pool[i].target_keycode);
+            if (toggle_pool[i].is_held) {
+                if (toggle_pool[i].flags & TOGGLE_FLAG_MULTI_KEY) {
+                    uint16_t held_kc = toggle_get_multi_keycode(&toggle_pool[i], toggle_pool[i].cycle_index);
+                    if (held_kc != 0) vial_keycode_up(held_kc);
+                } else if (toggle_pool[i].target_keycode != 0) {
+                    vial_keycode_up(toggle_pool[i].target_keycode);
+                }
             }
             // Swap with last entry to fill gap
             if (i < toggle_pool_count - 1) {
@@ -4382,8 +4398,13 @@ void toggle_remove(uint8_t slot_num) {
 void toggle_init(void) {
     // Release any held keys first
     for (uint8_t i = 0; i < toggle_pool_count; i++) {
-        if (toggle_pool[i].is_held && toggle_pool[i].target_keycode != 0) {
-            vial_keycode_up(toggle_pool[i].target_keycode);
+        if (toggle_pool[i].is_held) {
+            if (toggle_pool[i].flags & TOGGLE_FLAG_MULTI_KEY) {
+                uint16_t held_kc = toggle_get_multi_keycode(&toggle_pool[i], toggle_pool[i].cycle_index);
+                if (held_kc != 0) vial_keycode_up(held_kc);
+            } else if (toggle_pool[i].target_keycode != 0) {
+                vial_keycode_up(toggle_pool[i].target_keycode);
+            }
         }
     }
     memset(toggle_pool, 0, sizeof(toggle_pool));
@@ -4506,20 +4527,29 @@ void toggle_process_key(uint16_t keycode, bool pressed) {
     toggle_entry_t* entry = toggle_find(slot_num);
     if (!entry || entry->target_keycode == 0) return;
 
-    // Multi-key toggle mode: tap current keycode, advance to next
+    // Multi-key toggle mode: release current held keycode, hold next one
     if (entry->flags & TOGGLE_FLAG_MULTI_KEY) {
         uint8_t num_keys = entry->num_keys;
         if (num_keys < 2) num_keys = 2;
         if (num_keys > TOGGLE_MULTI_MAX_KEYS) num_keys = TOGGLE_MULTI_MAX_KEYS;
 
-        uint16_t current_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
-
-        if (current_kc != 0) {
-            vial_keycode_down(current_kc);
-            vial_keycode_up(current_kc);
+        // Release the currently held keycode (from previous cycle step)
+        uint16_t prev_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
+        if (prev_kc != 0 && entry->is_held) {
+            vial_keycode_up(prev_kc);
         }
 
+        // Advance to next step
         entry->cycle_index = (entry->cycle_index + 1) % num_keys;
+
+        // Hold the new keycode
+        uint16_t next_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
+        if (next_kc != 0) {
+            vial_keycode_down(next_kc);
+            entry->is_held = true;
+        } else {
+            entry->is_held = false;
+        }
         return;
     }
 
@@ -4536,8 +4566,19 @@ void toggle_process_key(uint16_t keycode, bool pressed) {
 // Release all held toggle keys (call on layer change, etc.)
 void toggle_release_all(void) {
     for (uint8_t i = 0; i < toggle_pool_count; i++) {
-        if (toggle_pool[i].is_held && toggle_pool[i].target_keycode != 0) {
-            vial_keycode_up(toggle_pool[i].target_keycode);
+        if (toggle_pool[i].is_held) {
+            if (toggle_pool[i].flags & TOGGLE_FLAG_MULTI_KEY) {
+                // Multi-key: release the currently held cycle keycode
+                uint16_t held_kc = toggle_get_multi_keycode(&toggle_pool[i], toggle_pool[i].cycle_index);
+                if (held_kc != 0) {
+                    vial_keycode_up(held_kc);
+                }
+            } else {
+                // Standard toggle: release target keycode
+                if (toggle_pool[i].target_keycode != 0) {
+                    vial_keycode_up(toggle_pool[i].target_keycode);
+                }
+            }
             toggle_pool[i].is_held = false;
         }
         toggle_pool[i].cycle_index = 0;
@@ -4586,7 +4627,12 @@ void handle_toggle_set_slot(const uint8_t* data) {
 
         // Release old key if held
         if (entry->is_held) {
-            vial_keycode_up(entry->target_keycode);
+            if (entry->flags & TOGGLE_FLAG_MULTI_KEY) {
+                uint16_t held_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
+                if (held_kc != 0) vial_keycode_up(held_kc);
+            } else if (entry->target_keycode != 0) {
+                vial_keycode_up(entry->target_keycode);
+            }
             entry->is_held = false;
         }
 
@@ -8247,7 +8293,9 @@ bool rgb_matrix_indicators_kb(void) {
                             0);  // Green when smartchord is latched
     }
 
-    // Toggle key LEDs (green when latched on, multi-key uses cycle colour)
+    // Toggle key LEDs
+    // Standard toggle: red when idle, green when held
+    // Multi-key toggle: always shows the current cycle step colour
     {
         uint8_t current_layer = get_highest_layer(layer_state | default_layer_state);
         if (current_layer < NUM_LAYERS) {
@@ -8259,7 +8307,7 @@ bool rgb_matrix_indicators_kb(void) {
                     toggle_entry_t* entry = toggle_find(slot_num);
                     if (entry) {
                         if (entry->flags & TOGGLE_FLAG_MULTI_KEY) {
-                            // Multi-key mode: show colour for current cycle step
+                            // Multi-key mode: always show colour for current cycle step
                             uint8_t cidx = entry->cycle_index;
                             if (cidx >= TOGGLE_MULTI_COLOR_COUNT) cidx = 0;
                             rgb_matrix_set_color(led,
@@ -8272,7 +8320,19 @@ bool rgb_matrix_indicators_kb(void) {
                                                 0,
                                                 (uint8_t)(200 * brightness_factor),
                                                 0);
+                        } else {
+                            // Standard toggle: red when idle (not held)
+                            rgb_matrix_set_color(led,
+                                                (uint8_t)(200 * brightness_factor),
+                                                0,
+                                                0);
                         }
+                    } else {
+                        // Toggle key in keymap but slot not configured: dim red
+                        rgb_matrix_set_color(led,
+                                            (uint8_t)(80 * brightness_factor),
+                                            0,
+                                            0);
                     }
                 }
             }
