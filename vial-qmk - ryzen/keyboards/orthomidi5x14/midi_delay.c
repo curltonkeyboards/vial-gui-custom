@@ -281,6 +281,21 @@ void midi_delay_schedule_note_on(uint8_t channel, uint8_t note, uint8_t velocity
         if (!delay_system.runtime[s].active) continue;
 
         delay_slot_config_t *cfg = &delay_system.configs[s];
+
+        // Solo mode: cancel all pending events from this slot for other notes
+        if (cfg->solo_mode) {
+            for (int8_t i = delay_system.queue_count - 1; i >= 0; i--) {
+                delay_event_t *evt = &delay_system.queue[i];
+                if (evt->slot_id == s && evt->original_note != note) {
+                    // Send immediate note-off for any note-on that already fired
+                    if (!evt->is_note_off && evt->note_on_sent) {
+                        midi_send_noteoff_delay(evt->channel, evt->note, 0);
+                    }
+                    queue_remove(i);
+                }
+            }
+        }
+
         uint32_t interval = compute_delay_interval(cfg);
 
         if (interval == 0) continue;  // Safety

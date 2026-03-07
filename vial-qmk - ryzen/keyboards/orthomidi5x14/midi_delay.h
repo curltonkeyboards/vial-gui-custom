@@ -28,7 +28,7 @@
 // Per-slot configuration (16 bytes each, stored in EEPROM)
 typedef struct {
     uint8_t  rate_mode;        // 0=BPM-synced, 1=fixed ms
-    uint8_t  note_value;       // NOTE_VALUE_QUARTER/EIGHTH/SIXTEENTH (when BPM-synced)
+    uint8_t  note_value;       // 0=1/1, 1=1/2, 2=1/4, 3=1/8, 4=1/16
     uint8_t  timing_mode;      // TIMING_MODE_STRAIGHT/TRIPLET/DOTTED (when BPM-synced)
     uint8_t  decay_percent;    // 0-100: velocity reduction per repeat (from original)
     uint16_t fixed_delay_ms;   // 10-5000ms (when fixed ms mode)
@@ -36,7 +36,8 @@ typedef struct {
     uint8_t  channel;          // 0=same as original, 1-16=specific MIDI channel
     int8_t   transpose_semi;   // -48 to +48 semitones offset per repeat
     uint8_t  transpose_mode;   // 0=fixed (all repeats same offset), 1=cumulative
-    uint8_t  reserved[6];      // Future use, padding to 16 bytes
+    uint8_t  solo_mode;        // 0=polyphonic, 1=solo (new note kills old delays)
+    uint8_t  reserved[5];      // Future use, padding to 16 bytes
 } delay_slot_config_t;
 
 // Runtime toggle state per slot (not persisted - all off at boot)

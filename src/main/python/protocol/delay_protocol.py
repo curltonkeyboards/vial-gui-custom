@@ -58,6 +58,7 @@ class DelaySlot:
         self.channel = 0                      # 0=same, 1-16=specific
         self.transpose_semi = 0               # -48 to +48
         self.transpose_mode = TRANSPOSE_FIXED # 0=fixed, 1=cumulative
+        self.solo_mode = False                # True=solo (new note kills old delays)
 
     def to_bytes(self):
         """Pack slot into firmware format (16 bytes)"""
@@ -71,7 +72,8 @@ class DelaySlot:
         data[7] = self.channel & 0xFF
         data[8] = self.transpose_semi & 0xFF  # int8_t stored as uint8_t
         data[9] = self.transpose_mode & 0xFF
-        # bytes 10-15 reserved
+        data[10] = 1 if self.solo_mode else 0
+        # bytes 11-15 reserved
         return bytes(data)
 
     @staticmethod
@@ -92,6 +94,7 @@ class DelaySlot:
         raw = data[8]
         slot.transpose_semi = raw if raw < 128 else raw - 256
         slot.transpose_mode = data[9]
+        slot.solo_mode = data[10] != 0
         return slot
 
     def is_default(self):
@@ -104,7 +107,8 @@ class DelaySlot:
                 self.max_repeats == 3 and
                 self.channel == 0 and
                 self.transpose_semi == 0 and
-                self.transpose_mode == TRANSPOSE_FIXED)
+                self.transpose_mode == TRANSPOSE_FIXED and
+                not self.solo_mode)
 
 
 class ProtocolDelay:

@@ -582,8 +582,9 @@ void midi_send_noteoff_smartchord(uint8_t channel, uint8_t note, uint8_t velocit
 
 
 void midi_send_noteon_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
-    // Like smartchord: sends MIDI, records to loops/macros, tracks live notes
-    // Unlike smartchord: does NOT update OLED display (no noteondisplayupdates)
+    // Like smartchord: sends MIDI, records to loops/macros, does lighting
+    // Unlike smartchord: does NOT add to live_notes (delay notes are not "held")
+    // and does NOT update OLED display
     uint8_t final_velocity = velocity;
     if (final_velocity < 1) final_velocity = 1;
     if (final_velocity > 127) final_velocity = 127;
@@ -600,7 +601,7 @@ void midi_send_noteon_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
 
     midi_send_noteon(&midi_device, channel, note, final_velocity);
     // Skip noteondisplayupdates() - delay notes don't show on OLED
-    add_live_note(channel, note, final_velocity);
+    // Skip add_live_note() - delay notes are not "held keys"
     add_lighting_live_note(channel, note, final_velocity);
 
     if (collecting_preroll) {
@@ -615,13 +616,12 @@ void midi_send_noteon_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
 }
 
 void midi_send_noteoff_delay(uint8_t channel, uint8_t note, uint8_t velocity) {
-    // Don't send note-off if the note is currently held live (physically pressed)
-    // This prevents delay note-offs from cutting off notes the user is holding
+    // Don't send note-off if the note is currently held live (physically pressed key)
+    // Since delay note-ons don't add to live_notes, this only matches real key presses
     if (is_live_note_active(channel, note)) {
         return;
     }
 
-    // Same as smartchord note-off minus display updates
     uint8_t raw_travel_scaled = (velocity > 0) ? (uint8_t)((uint16_t)velocity * 255 / 127) : 0;
 
     if (collecting_preroll) {

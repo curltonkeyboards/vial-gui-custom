@@ -8,7 +8,7 @@ with configurable timing, decay, channel routing, and transposition.
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                               QComboBox, QGroupBox, QMessageBox, QSpinBox, QSlider,
-                              QSizePolicy, QScrollArea, QTabWidget)
+                              QCheckBox, QSizePolicy, QScrollArea, QTabWidget)
 from PyQt5.QtCore import Qt
 
 from editor.basic_editor import BasicEditor
@@ -44,29 +44,31 @@ def slider_to_repeats(pos):
 
 
 class DelaySlotEditor(QWidget):
-    """Compact editor widget for a single delay slot's settings"""
+    """Editor widget for a single delay slot's settings"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.slot = DelaySlot()
         self._building = False
-        self.setMaximumWidth(480)
+
+        outer = QHBoxLayout()
+        outer.addStretch()
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
 
         # ---- Rate & Decay (combined box) ----
         rate_group = QGroupBox("Rate && Decay")
         rate_layout = QVBoxLayout()
-        rate_layout.setSpacing(4)
+        rate_layout.setSpacing(6)
 
         # Row 1: Mode + Note Value + Timing (BPM) or Mode + Delay ms (Fixed)
         row = QHBoxLayout()
         row.addWidget(QLabel("Mode:"))
         self.rate_mode_combo = QComboBox()
         self.rate_mode_combo.addItems(["BPM Synced", "Fixed ms"])
-        self.rate_mode_combo.setMaximumWidth(100)
+        self.rate_mode_combo.setMinimumWidth(110)
         self.rate_mode_combo.currentIndexChanged.connect(self._on_rate_mode_changed)
         row.addWidget(self.rate_mode_combo)
 
@@ -75,14 +77,14 @@ class DelaySlotEditor(QWidget):
         row.addWidget(self.note_value_label)
         self.note_value_combo = QComboBox()
         self.note_value_combo.addItems(["1/1", "1/2", "1/4", "1/8", "1/16"])
-        self.note_value_combo.setMaximumWidth(65)
+        self.note_value_combo.setMinimumWidth(70)
         row.addWidget(self.note_value_combo)
 
         self.timing_label = QLabel("  Timing:")
         row.addWidget(self.timing_label)
         self.timing_combo = QComboBox()
         self.timing_combo.addItems(["Note", "Triplet", "Dotted"])
-        self.timing_combo.setMaximumWidth(80)
+        self.timing_combo.setMinimumWidth(90)
         row.addWidget(self.timing_combo)
 
         # Fixed ms control (inline, hidden by default)
@@ -93,41 +95,40 @@ class DelaySlotEditor(QWidget):
         self.fixed_ms_spin.setRange(10, 5000)
         self.fixed_ms_spin.setSuffix(" ms")
         self.fixed_ms_spin.setSingleStep(10)
-        self.fixed_ms_spin.setMaximumWidth(100)
+        self.fixed_ms_spin.setMinimumWidth(110)
         self.fixed_ms_spin.setVisible(False)
         row.addWidget(self.fixed_ms_spin)
 
         row.addStretch()
         rate_layout.addLayout(row)
 
-        # Row 2: Decay + Max Repeats (same row)
+        # Row 2: Decay slider
         row = QHBoxLayout()
         row.addWidget(QLabel("Decay:"))
         self.decay_slider = QSlider(Qt.Horizontal)
         self.decay_slider.setRange(0, 100)
         self.decay_slider.setTickInterval(25)
         self.decay_slider.setTickPosition(QSlider.TicksBelow)
-        self.decay_slider.setMaximumWidth(150)
         row.addWidget(self.decay_slider)
         self.decay_label = QLabel("50%")
-        self.decay_label.setMinimumWidth(32)
+        self.decay_label.setMinimumWidth(36)
         row.addWidget(self.decay_label)
         self.decay_slider.valueChanged.connect(
             lambda v: self.decay_label.setText(f"{v}%"))
+        rate_layout.addLayout(row)
 
-        row.addWidget(QLabel("  Repeats:"))
+        # Row 3: Max Repeats slider
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Repeats:"))
         self.repeats_slider = QSlider(Qt.Horizontal)
         self.repeats_slider.setRange(0, 9)
         self.repeats_slider.setTickInterval(1)
         self.repeats_slider.setTickPosition(QSlider.TicksBelow)
-        self.repeats_slider.setMaximumWidth(150)
         row.addWidget(self.repeats_slider)
         self.repeats_label = QLabel("3")
         self.repeats_label.setMinimumWidth(20)
         row.addWidget(self.repeats_label)
         self.repeats_slider.valueChanged.connect(self._on_repeats_changed)
-
-        row.addStretch()
         rate_layout.addLayout(row)
 
         rate_group.setLayout(rate_layout)
@@ -135,63 +136,91 @@ class DelaySlotEditor(QWidget):
 
         # ---- Channel Delay ----
         channel_group = QGroupBox("Channel Delay")
-        channel_layout = QHBoxLayout()
-        channel_layout.addWidget(QLabel("Output Channel:"))
+        channel_layout = QVBoxLayout()
+        channel_layout.setSpacing(4)
+
+        self.channel_check = QCheckBox("Send delay to different channel")
+        self.channel_check.stateChanged.connect(self._on_channel_check_changed)
+        channel_layout.addWidget(self.channel_check)
+
+        self.channel_row = QHBoxLayout()
+        self.channel_row_label = QLabel("Output Channel:")
+        self.channel_row.addWidget(self.channel_row_label)
         self.channel_combo = QComboBox()
-        self.channel_combo.addItem("Same as Original")
         for i in range(1, 17):
             self.channel_combo.addItem(f"Channel {i}")
-        self.channel_combo.setMaximumWidth(160)
-        channel_layout.addWidget(self.channel_combo)
-        channel_layout.addStretch()
+        self.channel_combo.setMinimumWidth(140)
+        self.channel_row.addWidget(self.channel_combo)
+        self.channel_row.addStretch()
+        channel_layout.addLayout(self.channel_row)
+
+        # Initially hidden
+        self.channel_row_label.setVisible(False)
+        self.channel_combo.setVisible(False)
+
         channel_group.setLayout(channel_layout)
         layout.addWidget(channel_group)
 
         # ---- Pitch Delay ----
         pitch_group = QGroupBox("Pitch Delay")
         pitch_layout = QVBoxLayout()
-        pitch_layout.setSpacing(4)
+        pitch_layout.setSpacing(6)
 
-        # Transpose slider + mode (same row)
+        # Transpose slider
         row = QHBoxLayout()
         row.addWidget(QLabel("Semitones:"))
         self.transpose_slider = QSlider(Qt.Horizontal)
         self.transpose_slider.setRange(-24, 24)
         self.transpose_slider.setTickInterval(12)
         self.transpose_slider.setTickPosition(QSlider.TicksBelow)
-        self.transpose_slider.setMaximumWidth(200)
         row.addWidget(self.transpose_slider)
         self.transpose_label = QLabel("0")
-        self.transpose_label.setMinimumWidth(28)
+        self.transpose_label.setMinimumWidth(32)
         row.addWidget(self.transpose_label)
         self.transpose_slider.valueChanged.connect(self._on_transpose_changed)
-
-        row.addWidget(QLabel("  Mode:"))
-        self.transpose_mode_combo = QComboBox()
-        self.transpose_mode_combo.addItems(["Fixed", "Cumulative"])
-        self.transpose_mode_combo.setMaximumWidth(110)
-        row.addWidget(self.transpose_mode_combo)
-
-        row.addStretch()
         pitch_layout.addLayout(row)
 
         # Tick labels for -24, -12, 0, +12, +24
         tick_row = QHBoxLayout()
-        tick_row.addSpacing(68)  # Align with slider start
+        tick_row.addSpacing(72)
         for lbl in ["-24", "-12", "0", "+12", "+24"]:
             t = QLabel(lbl)
             t.setStyleSheet("font-size: 9px; color: gray;")
             tick_row.addWidget(t)
             if lbl != "+24":
                 tick_row.addStretch()
-        tick_row.addSpacing(160)  # Right padding past slider
+        tick_row.addSpacing(40)
         pitch_layout.addLayout(tick_row)
+
+        # Transpose mode
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Mode:"))
+        self.transpose_mode_combo = QComboBox()
+        self.transpose_mode_combo.addItems(["Fixed", "Cumulative"])
+        self.transpose_mode_combo.setMinimumWidth(120)
+        row.addWidget(self.transpose_mode_combo)
+        row.addStretch()
+        pitch_layout.addLayout(row)
 
         pitch_group.setLayout(pitch_layout)
         layout.addWidget(pitch_group)
 
+        # ---- Options ----
+        options_group = QGroupBox("Options")
+        options_layout = QVBoxLayout()
+        self.solo_check = QCheckBox("Solo mode (new note cancels pending delays)")
+        options_layout.addWidget(self.solo_check)
+        options_group.setLayout(options_layout)
+        layout.addWidget(options_group)
+
         layout.addStretch()
-        self.setLayout(layout)
+
+        center_widget = QWidget()
+        center_widget.setMaximumWidth(640)
+        center_widget.setLayout(layout)
+        outer.addWidget(center_widget)
+        outer.addStretch()
+        self.setLayout(outer)
 
         # Initial visibility
         self._on_rate_mode_changed(0)
@@ -205,6 +234,12 @@ class DelaySlotEditor(QWidget):
         self.timing_combo.setVisible(is_bpm)
         self.fixed_ms_label.setVisible(not is_bpm)
         self.fixed_ms_spin.setVisible(not is_bpm)
+
+    def _on_channel_check_changed(self, state):
+        """Show/hide channel dropdown based on checkbox"""
+        checked = (state == Qt.Checked)
+        self.channel_row_label.setVisible(checked)
+        self.channel_combo.setVisible(checked)
 
     def _on_repeats_changed(self, pos):
         """Update repeats label from slider position"""
@@ -227,10 +262,19 @@ class DelaySlotEditor(QWidget):
         self.decay_label.setText(f"{slot.decay_percent}%")
         self.repeats_slider.setValue(repeats_to_slider(slot.max_repeats))
         self._on_repeats_changed(repeats_to_slider(slot.max_repeats))
-        self.channel_combo.setCurrentIndex(slot.channel)
+
+        # Channel: 0=same (unchecked), 1-16=different channel (checked)
+        if slot.channel == 0:
+            self.channel_check.setChecked(False)
+            self.channel_combo.setCurrentIndex(0)
+        else:
+            self.channel_check.setChecked(True)
+            self.channel_combo.setCurrentIndex(slot.channel - 1)
+
         self.transpose_slider.setValue(slot.transpose_semi)
         self._on_transpose_changed(slot.transpose_semi)
         self.transpose_mode_combo.setCurrentIndex(slot.transpose_mode)
+        self.solo_check.setChecked(slot.solo_mode)
 
         self._on_rate_mode_changed(slot.rate_mode)
         self._building = False
@@ -244,9 +288,16 @@ class DelaySlotEditor(QWidget):
         slot.fixed_delay_ms = self.fixed_ms_spin.value()
         slot.decay_percent = self.decay_slider.value()
         slot.max_repeats = slider_to_repeats(self.repeats_slider.value())
-        slot.channel = self.channel_combo.currentIndex()
+
+        # Channel: unchecked=0 (same), checked=1-16
+        if self.channel_check.isChecked():
+            slot.channel = self.channel_combo.currentIndex() + 1
+        else:
+            slot.channel = 0
+
         slot.transpose_semi = self.transpose_slider.value()
         slot.transpose_mode = self.transpose_mode_combo.currentIndex()
+        slot.solo_mode = self.solo_check.isChecked()
         return slot
 
 
