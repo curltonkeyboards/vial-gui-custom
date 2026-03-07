@@ -5464,29 +5464,36 @@ void gaming_load_settings(void) {
 // This allows users to just assign gaming keycodes in the keymap editor
 // without having to separately configure the Gaming Configurator
 void gaming_scan_keymap_for_axes(void) {
-    // Scan layer 0 for gaming axis and trigger keycodes
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        for (uint8_t col = 0; col < MATRIX_COLS; col++) {
-            uint16_t kc = dynamic_keymap_get_keycode(0, row, col);
+    // Scan ALL layers for gaming axis and trigger keycodes
+    uint8_t layer_count = dynamic_keymap_get_layer_count();
+    for (uint8_t layer = 0; layer < layer_count; layer++) {
+        for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+                uint16_t kc = dynamic_keymap_get_keycode(layer, row, col);
+                gaming_key_map_t mapping = {.row = row, .col = col, .enabled = 1};
 
-            gaming_key_map_t mapping = {.row = row, .col = col, .enabled = 1};
-
-            switch (kc) {
-                case 0xCC6B: gaming_settings.ls_up = mapping; break;
-                case 0xCC6C: gaming_settings.ls_down = mapping; break;
-                case 0xCC6D: gaming_settings.ls_left = mapping; break;
-                case 0xCC6E: gaming_settings.ls_right = mapping; break;
-                case 0xCC6F: gaming_settings.rs_up = mapping; break;
-                case 0xCC70: gaming_settings.rs_down = mapping; break;
-                case 0xCC71: gaming_settings.rs_left = mapping; break;
-                case 0xCC72: gaming_settings.rs_right = mapping; break;
-                case 0xCC73: gaming_settings.lt = mapping; break;
-                case 0xCC74: gaming_settings.rt = mapping; break;
-                default: break;
+                switch (kc) {
+                    case 0xCC6B: gaming_settings.ls_up = mapping; break;
+                    case 0xCC6C: gaming_settings.ls_down = mapping; break;
+                    case 0xCC6D: gaming_settings.ls_left = mapping; break;
+                    case 0xCC6E: gaming_settings.ls_right = mapping; break;
+                    case 0xCC6F: gaming_settings.rs_up = mapping; break;
+                    case 0xCC70: gaming_settings.rs_down = mapping; break;
+                    case 0xCC71: gaming_settings.rs_left = mapping; break;
+                    case 0xCC72: gaming_settings.rs_right = mapping; break;
+                    case 0xCC73: gaming_settings.lt = mapping; break;
+                    case 0xCC74: gaming_settings.rt = mapping; break;
+                    default: break;
+                }
             }
         }
     }
-    dprintf("Gaming: keymap scan complete for axis/trigger mappings\n");
+    dprintf("Gaming: keymap scan complete - LS: U=%d D=%d L=%d R=%d, RS: U=%d D=%d L=%d R=%d, LT=%d RT=%d\n",
+            gaming_settings.ls_up.enabled, gaming_settings.ls_down.enabled,
+            gaming_settings.ls_left.enabled, gaming_settings.ls_right.enabled,
+            gaming_settings.rs_up.enabled, gaming_settings.rs_down.enabled,
+            gaming_settings.rs_left.enabled, gaming_settings.rs_right.enabled,
+            gaming_settings.lt.enabled, gaming_settings.rt.enabled);
 }
 
 // Initialize gaming system
