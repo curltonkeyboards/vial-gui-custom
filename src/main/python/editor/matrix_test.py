@@ -6,8 +6,8 @@ import json
 from PyQt5.QtWidgets import (QVBoxLayout, QPushButton, QWidget, QHBoxLayout, QLabel,
                            QSizePolicy, QGroupBox, QGridLayout, QComboBox, QCheckBox,
                            QTableWidget, QHeaderView, QMessageBox, QFileDialog, QFrame,
-                           QScrollArea, QSlider, QMenu, QInputDialog, QTabWidget, QDialog)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+                           QScrollArea, QSlider, QMenu, QInputDialog, QTabWidget)
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPainterPath, QRegion, QPainter, QColor, QBrush, QPen, QFont, QLinearGradient
 
@@ -5226,97 +5226,6 @@ class LayerActuationConfigurator(BasicEditor):
 
 
 
-class KeyPressDetectDialog(QDialog):
-    """Modal dialog that detects which physical key is pressed using ADC polling"""
-
-    key_detected = pyqtSignal(int, int)  # row, col
-
-    def __init__(self, keyboard, control_name="", parent=None):
-        super().__init__(parent)
-        self.keyboard = keyboard
-        self.detected_row = None
-        self.detected_col = None
-        self.baseline = {}  # {(row, col): adc_value} baseline ADC values
-        self.baseline_ready = False
-        self.baseline_samples = 0
-
-        self.setWindowTitle("Assign Key")
-        self.setFixedSize(350, 180)
-        self.setModal(True)
-
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        self.setLayout(layout)
-
-        self.label = QLabel(f"Press a key on your keyboard\nto assign it to: {control_name}")
-        self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet("font-size: 12pt;")
-        layout.addWidget(self.label)
-
-        self.status_label = QLabel("Calibrating baseline...")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("color: gray; font-size: 9pt;")
-        layout.addWidget(self.status_label)
-
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
-        layout.addWidget(cancel_btn, alignment=Qt.AlignCenter)
-
-        # Timer for ADC polling
-        self.poll_timer = QTimer()
-        self.poll_timer.timeout.connect(self._poll_matrix)
-        self.poll_timer.start(100)
-
-    def _poll_matrix(self):
-        """Poll all matrix rows looking for a key press"""
-        if not self.keyboard:
-            return
-
-        try:
-            PRESS_THRESHOLD = 150  # ADC drop threshold to detect a press
-
-            for row in range(5):
-                adc_values = self.keyboard.get_adc_matrix_row(row)
-                if not adc_values:
-                    continue
-
-                cols = min(len(adc_values), 14)
-                for col in range(cols):
-                    adc = adc_values[col]
-                    key = (row, col)
-
-                    if not self.baseline_ready:
-                        # Collecting baseline
-                        if key not in self.baseline:
-                            self.baseline[key] = adc
-                        else:
-                            # Simple average
-                            self.baseline[key] = (self.baseline[key] + adc) // 2
-                    else:
-                        # Check for press (Hall effect: lower ADC = pressed)
-                        if key in self.baseline and adc > 500:
-                            drop = self.baseline[key] - adc
-                            if drop > PRESS_THRESHOLD:
-                                self.detected_row = row
-                                self.detected_col = col
-                                self.poll_timer.stop()
-                                self.accept()
-                                return
-
-            if not self.baseline_ready:
-                self.baseline_samples += 1
-                if self.baseline_samples >= 3:
-                    self.baseline_ready = True
-                    self.status_label.setText("Ready - press a key now")
-                    self.status_label.setStyleSheet("color: green; font-size: 9pt;")
-
-        except Exception as e:
-            pass
-
-    def closeEvent(self, event):
-        self.poll_timer.stop()
-        super().closeEvent(event)
-
 
 class GamingConfigurator(BasicEditor):
 
@@ -5723,11 +5632,11 @@ class GamingConfigurator(BasicEditor):
 
         main_layout.addLayout(buttons_layout)
 
-        # Instruction label at bottom
-        assign_hint = QLabel("Click a gamepad button above, then press a key on your keyboard to assign it.")
-        assign_hint.setStyleSheet("color: gray; font-size: 9pt; padding: 5px;")
-        assign_hint.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(assign_hint)
+        # Add TabbedKeycodes at the bottom like in Macros tab
+        from tabbed_keycodes import TabbedKeycodes
+        self.tabbed_keycodes = TabbedKeycodes()
+        self.tabbed_keycodes.keycode_changed.connect(self.on_keycode_selected)
+        self.addWidget(self.tabbed_keycodes)
 
         # Apply stylesheet
         main_widget.setStyleSheet("""
@@ -5767,40 +5676,69 @@ class GamingConfigurator(BasicEditor):
             return f"QPushButton {{ {base_style} }}"
 
     def on_assign_key(self, control_id):
-        """Handle key assignment - show dialog to detect physical key press"""
-        if not self.keyboard:
-            QMessageBox.warning(None, "No Keyboard", "No keyboard connected")
+        """Handle key assignment for a gaming control"""
+        self.active_control_id = control_id
+        # Highlight the button being assigned and unhighlight all others
+        for cid, data in self.gaming_controls.items():
+            button_type = data.get('button_type', 'regular')
+            if cid == control_id:
+                data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=True))
+            else:
+                # Always set style to clear any previous highlighting
+                data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=False))
+
+    def on_keycode_selected(self, keycode):
+        """Called when a keycode is selected from TabbedKeycodes"""
+        if self.active_control_id is None or not self.keyboard:
             return
 
-        # Get control name for the dialog
-        control_names = {
-            0: "Left Stick Up", 1: "Left Stick Down", 2: "Left Stick Left", 3: "Left Stick Right",
-            4: "Right Stick Up", 5: "Right Stick Down", 6: "Right Stick Left", 7: "Right Stick Right",
-            8: "Left Trigger", 9: "Right Trigger",
-            10: "Button 1", 11: "Button 2", 12: "Button 3", 13: "Button 4",
-            14: "LB", 15: "RB", 16: "Back", 17: "Start",
-            18: "L3", 19: "R3",
-            22: "D-pad Up", 23: "D-pad Down", 24: "D-pad Left", 25: "D-pad Right",
-        }
-        control_name = control_names.get(control_id, f"Control {control_id}")
+        # Find the physical position (row, col) of this keycode - search ALL layers
+        row, col = self.find_keycode_position(keycode)
 
-        dialog = KeyPressDetectDialog(self.keyboard, control_name)
-        result = dialog.exec_()
-
-        if result == QDialog.Accepted and dialog.detected_row is not None:
-            row = dialog.detected_row
-            col = dialog.detected_col
-
-            data = self.gaming_controls[control_id]
+        if row is not None and col is not None:
+            # Assign to the active control
+            data = self.gaming_controls[self.active_control_id]
+            data['keycode'] = keycode
             data['row'] = row
             data['col'] = col
             data['enabled'] = True
 
-            # Look up the key label from keymap
-            label = self._find_key_label(row, col)
-            if label and len(label) > 7:
+            # Update button text to show the keycode label
+            from keycodes.keycodes import Keycode
+            label = Keycode.label(keycode)
+            # Truncate label to fit in 50x50 button
+            if len(label) > 7:
                 label = label[:6] + ".."
-            data['button'].setText(label or f"R{row}C{col}")
+            data['button'].setText(label)
+
+            # Reset button style based on its type (clears highlighting)
+            button_type = data.get('button_type', 'regular')
+            data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=False))
+
+            # Clear active control
+            self.active_control_id = None
+        else:
+            # Keycode not found in any layer - show error
+            QMessageBox.warning(None, "Key Not Found",
+                              f"The selected keycode is not found in your keymap on any layer.\n"
+                              f"Please select a key that exists in your keymap.")
+            # Reset the button style (clears highlighting)
+            data = self.gaming_controls[self.active_control_id]
+            button_type = data.get('button_type', 'regular')
+            data['button'].setStyleSheet(self.get_button_style(button_type, highlighted=False))
+            self.active_control_id = None
+
+    def find_keycode_position(self, keycode):
+        """Find the matrix position (row, col) of a keycode - searches ALL layers"""
+        if not self.keyboard:
+            return None, None
+
+        # Search through ALL layers for this keycode (prefer layer 0 first)
+        for (layer, row, col), kc in sorted(self.keyboard.layout.items()):
+            if kc == keycode:
+                return row, col
+
+        return None, None
 
     def on_save(self):
         """Save gaming configuration to keyboard"""
@@ -6067,6 +6005,9 @@ class GamingConfigurator(BasicEditor):
         super().rebuild(device)
         if self.valid():
             self.keyboard = device.keyboard
+            # Set keyboard reference for tabbed keycodes (so GamingTab can access it)
+            self.tabbed_keycodes.set_keyboard(self.keyboard)
+            self.tabbed_keycodes.recreate_keycode_buttons()
             # Load gaming data immediately during device connection
             self._load_gaming_data()
 

@@ -15355,11 +15355,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (record->event.pressed) {
             gaming_mode_active = !gaming_mode_active;
             gaming_settings.gaming_mode_enabled = gaming_mode_active;
-            // Re-scan keymap for gaming axis keycodes when enabling
-            // This picks up keycodes assigned via the GUI without requiring a reboot
-            if (gaming_mode_active) {
-                gaming_scan_keymap_for_axes();
-            }
             gaming_save_settings();
             dprintf("Gaming Mode: %s\n", gaming_mode_active ? "ON" : "OFF");
             // Display gaming mode status on OLED keylog
@@ -18000,10 +17995,11 @@ void matrix_scan_user(void) {
     }
 
 #ifdef JOYSTICK_ENABLE
-    // Update joystick/gaming controller state every scan cycle
-    // Always active so hardcoded gaming keycodes (axis/trigger) work without Gaming Mode
-    // GUI-assigned mappings via gaming_settings also always process when configured
-    gaming_update_joystick();
+    // Update joystick/gaming controller state only when gaming mode is active
+    // Hardcoded keycodes (XBOX_A, LS_UP etc.) work independently via process_record
+    if (gaming_mode_active) {
+        gaming_update_joystick();
+    }
 #endif
 
 #ifdef MIDI_SERIAL_ENABLE
