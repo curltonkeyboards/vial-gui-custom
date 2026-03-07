@@ -14,7 +14,7 @@ from keycodes.keycodes import KEYCODES_BASIC, KEYCODES_ISO, KEYCODES_MACRO, KEYC
     KEYCODES_BACKLIGHT, KEYCODES_MEDIA, KEYCODES_SPECIAL, KEYCODES_SHIFTED, KEYCODES_USER, Keycode, KEYCODES_LAYERS_DF, KEYCODES_LAYERS_MO, KEYCODES_LAYERS_TG, KEYCODES_LAYERS_TT, KEYCODES_LAYERS_OSL, KEYCODES_LAYERS_TO, KEYCODES_LAYERS_LT, KEYCODES_VELOCITY_SHUFFLE, KEYCODES_CC_ENCODERVALUE, KEYCODES_LOOP_BUTTONS, KEYCODES_GAMING, \
     KEYCODES_DAW_ABLETON, KEYCODES_DAW_FL, KEYCODES_DAW_LOGIC, KEYCODES_DAW_PROTOOLS, KEYCODES_DAW_GARAGEBAND, \
     KEYCODES_TAP_DANCE, KEYCODES_MIDI, KEYCODES_MIDI_SPLIT, KEYCODES_MIDI_SPLIT2, KEYCODES_MIDI_CHANNEL_KEYSPLIT, KEYCODES_KEYSPLIT_BUTTONS, KEYCODES_MIDI_CHANNEL_KEYSPLIT2, KEYCODES_BASIC_NUMPAD, KEYCODES_BASIC_NAV, KEYCODES_ISO_KR, BASIC_KEYCODES, \
-    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, KEYCODES_TOGGLE, KEYCODES_DELAY, \
+    KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS, KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS, KEYCODES_DKS, KEYCODES_TOGGLE, KEYCODES_DELAY_CLEAR, KEYCODES_DELAY, \
     KEYCODES_MIDI_CC, KEYCODES_MIDI_BANK, KEYCODES_Program_Change, KEYCODES_CC_STEPSIZE, KEYCODES_MIDI_VELOCITY, KEYCODES_Program_Change_UPDOWN, KEYCODES_MIDI_BANK, KEYCODES_MIDI_BANK_LSB, KEYCODES_MIDI_BANK_MSB, KEYCODES_MIDI_CC_FIXED, KEYCODES_OLED, KEYCODES_EARTRAINER, KEYCODES_SAVE, KEYCODES_CHORDTRAINER, \
     KEYCODES_MIDI_OCTAVE2, KEYCODES_MIDI_OCTAVE3, KEYCODES_MIDI_KEY2, KEYCODES_MIDI_KEY3, KEYCODES_MIDI_VELOCITY2, KEYCODES_MIDI_VELOCITY3, KEYCODES_MIDI_ADVANCED, KEYCODES_MIDI_SMARTCHORDBUTTONS, KEYCODES_VELOCITY_STEPSIZE, KEYCODES_MIDI_CHANNEL_OS, KEYCODES_MIDI_CHANNEL_HOLD, \
     KEYCODES_HE_VELOCITY_CURVE, KEYCODES_HE_VELOCITY_RANGE, \
@@ -2719,12 +2719,13 @@ class MacroTab(QWidget):
         # Force refresh buttons with current filter
         self.refresh_buttons()
 
-    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None, delay_settings=None):
         """Set references to the editors to query their visible tab counts"""
         self.macro_recorder = macro_recorder
         self.tap_dance_editor = tap_dance_editor
         self.dks_settings = dks_settings
         self.toggle_settings = toggle_settings
+        self.delay_settings = delay_settings
         # Force refresh buttons with current filter
         self.refresh_buttons()
 
@@ -2771,6 +2772,12 @@ class MacroTab(QWidget):
             self.toggle_count = max(1, self.toggle_settings._visible_tab_count)
         else:
             self.toggle_count = 1
+
+        # Get Delay count from editor's visible tab count
+        if self.delay_settings is not None and hasattr(self.delay_settings, '_visible_tab_count'):
+            self.delay_count = max(1, self.delay_settings._visible_tab_count)
+        else:
+            self.delay_count = 100  # Show all by default
 
         # Update sub-tab counts
         self.macro_subtab.set_button_count(self.macro_count)
@@ -4997,10 +5004,12 @@ class DelayMusicTab(QScrollArea):
     """MIDI Delay slot toggle tab - shows delay keycodes for keymap assignment"""
     keycode_changed = pyqtSignal(str)
 
-    def __init__(self, parent, label, delay_keycodes):
+    def __init__(self, parent, label, delay_keycodes, delay_clear_keycodes=None):
         super().__init__(parent)
         self.label = label
         self.delay_keycodes = delay_keycodes
+        self.delay_clear_keycodes = delay_clear_keycodes or []
+        self.button_count = len(delay_keycodes)  # Show all by default
         self.current_keycode_filter = None
 
         self.scroll_content = QWidget()
@@ -5016,6 +5025,10 @@ class DelayMusicTab(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
+    def set_button_count(self, count):
+        """Set the number of delay slot buttons to display"""
+        self.button_count = count
+
     def recreate_buttons(self, keycode_filter):
         self.current_keycode_filter = keycode_filter
 
@@ -5025,10 +5038,28 @@ class DelayMusicTab(QScrollArea):
             if child.widget():
                 child.widget().deleteLater()
 
-        # Delay Slot Toggles
+        # Delay Clear button
+        if self.delay_clear_keycodes:
+            clear_group = QGroupBox("Delay Control")
+            clear_layout = FlowLayout()
+            for keycode in self.delay_clear_keycodes:
+                if keycode_filter(keycode):
+                    btn = SquareButton()
+                    btn.setRelSize(KEYCODE_BTN_RATIO)
+                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+                    btn.keycode = keycode
+                    btn.setText(keycode.label)
+                    btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                    clear_layout.addWidget(btn)
+            clear_group.setLayout(clear_layout)
+            self.main_layout.addWidget(clear_group)
+
+        # Delay Slot Toggles (limited by button_count)
         delay_group = QGroupBox("Delay Slot Toggles")
         delay_layout = FlowLayout()
-        for keycode in self.delay_keycodes:
+        for i, keycode in enumerate(self.delay_keycodes):
+            if i >= self.button_count:
+                break
             if keycode_filter(keycode):
                 btn = SquareButton()
                 btn.setRelSize(KEYCODE_BTN_RATIO)
@@ -5069,7 +5100,7 @@ class MusicTab(QWidget):
                                            KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_MIDI_INVERSION)
         self.arpeggiator_tab = ArpeggiatorTab(parent, "Arpeggiator", KEYCODES_ARPEGGIATOR, KEYCODES_ARPEGGIATOR_PRESETS)
         self.step_sequencer_tab = StepSequencerTab(parent, "Step Sequencer", KEYCODES_STEP_SEQUENCER, KEYCODES_STEP_SEQUENCER_PRESETS)
-        self.delay_tab = DelayMusicTab(parent, "Delay", KEYCODES_DELAY)
+        self.delay_tab = DelayMusicTab(parent, "Delay", KEYCODES_DELAY, KEYCODES_DELAY_CLEAR)
         self.ear_training_tab = EarTrainerTab(parent, "Ear Training", KEYCODES_EARTRAINER, KEYCODES_CHORDTRAINER)
         self.key_split_tab = KeySplitOnlyTab(parent, "KeySplit", KEYCODES_KEYSPLIT_BUTTONS)
         self.triple_split_tab = TripleSplitTab(parent, "TripleSplit", KEYCODES_KEYSPLIT_BUTTONS)
@@ -5179,6 +5210,11 @@ class MusicTab(QWidget):
 
         # Show first section by default
         self.show_section("MIDIswitch")
+
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None, delay_settings=None):
+        """Set editor references - used to get delay visible tab count"""
+        if delay_settings is not None and hasattr(delay_settings, '_visible_tab_count'):
+            self.delay_tab.set_button_count(max(1, delay_settings._visible_tab_count))
 
     def show_section(self, section_name):
         """Show the specified section and update tab button states"""
@@ -5581,11 +5617,11 @@ class FilteredTabbedKeycodes(QTabWidget):
             elif hasattr(tab, 'keyboard'):
                 tab.keyboard = keyboard
 
-    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None, delay_settings=None):
         """Set editor references for tabs that need them (e.g., MacroTab)"""
         for tab in self.tabs:
             if hasattr(tab, 'set_editors') and callable(tab.set_editors):
-                tab.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
+                tab.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings, delay_settings=delay_settings)
 
     def refresh_macro_buttons(self):
         """Force refresh the MacroTab buttons"""
@@ -5668,10 +5704,10 @@ class TabbedKeycodes(QWidget):
         for opt in [self.all_keycodes, self.basic_keycodes]:
             opt.set_keyboard(keyboard)
 
-    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None):
+    def set_editors(self, macro_recorder=None, tap_dance_editor=None, dks_settings=None, toggle_settings=None, delay_settings=None):
         """Set editor references for all tab widgets"""
         for opt in [self.all_keycodes, self.basic_keycodes]:
-            opt.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings)
+            opt.set_editors(macro_recorder, tap_dance_editor, dks_settings, toggle_settings, delay_settings=delay_settings)
 
     def refresh_macro_buttons(self):
         """Force refresh the macro tab buttons in all keycodes widgets"""

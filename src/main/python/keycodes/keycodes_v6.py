@@ -2587,6 +2587,9 @@ class keycodes_v6:
         # NOTE: Moved from 0xEE00-0xEE63 to avoid conflict with Arpeggiator keycodes
         "TGL_00": 0xEF10,  # Base for Toggle slot selection
 
+        # MIDI Delay Clear (0xEF8F)
+        "DELAY_CLEAR": 0xEF8F,  # Clear all active delays and stop queue
+
         # MIDI Delay Slots (0xEF90-0xEFF3) - 100 slots
         "DELAY_01": 0xEF90,  # Base for Delay slot toggle
 

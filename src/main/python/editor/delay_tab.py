@@ -64,16 +64,31 @@ def slider_to_max_active(pos):
 
 
 def _make_help_label(tooltip_text):
-    """Create a small clickable question mark label with tooltip"""
-    lbl = QLabel(" ?")
-    lbl.setStyleSheet(
-        "color: #888; font-weight: bold; font-size: 11px; "
-        "border: 1px solid #888; border-radius: 7px; "
-        "min-width: 14px; max-width: 14px; min-height: 14px; max-height: 14px; "
-        "padding: 0px; text-align: center;"
-    )
-    lbl.setToolTip(tooltip_text)
-    return lbl
+    """Create a small question mark button with tooltip for help"""
+    help_btn = QPushButton("?")
+    help_btn.setStyleSheet("""
+        QPushButton {
+            color: #888;
+            font-weight: bold;
+            font-size: 9pt;
+            border: 1px solid #888;
+            border-radius: 9px;
+            min-width: 16px;
+            max-width: 16px;
+            min-height: 16px;
+            max-height: 16px;
+            padding: 0px;
+            margin: 0px;
+            background: transparent;
+        }
+        QPushButton:hover {
+            color: #fff;
+            background-color: #555;
+        }
+    """)
+    help_btn.setToolTip(tooltip_text)
+    help_btn.setCursor(Qt.WhatsThisCursor)
+    return help_btn
 
 
 class DelaySlotEditor(QWidget):
@@ -227,23 +242,42 @@ class DelaySlotEditor(QWidget):
         channel_controls_layout.addWidget(self.multi_channel_check)
 
         # Extra channel rows (hidden until multi-channel ticked)
+        # Each channel row + add button is shown incrementally
         self.multi_channel_widget = QWidget()
         multi_layout = QVBoxLayout()
         multi_layout.setContentsMargins(0, 2, 0, 0)
         multi_layout.setSpacing(4)
 
         self.channel_combos_extra = []
+        self.channel_rows = []  # Widgets for each extra channel row
+        self.add_channel_buttons = []  # "+ Add Channel" buttons
+
         for idx in range(2, 5):
-            row = QHBoxLayout()
-            row.addWidget(QLabel(f"Channel {idx}:"))
+            # Channel row widget
+            row_widget = QWidget()
+            row_layout = QHBoxLayout()
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.addWidget(QLabel(f"Channel {idx}:"))
             combo = QComboBox()
             for i in range(1, 17):
                 combo.addItem(f"Channel {i}")
             combo.setMinimumWidth(140)
-            row.addWidget(combo)
-            row.addStretch()
-            multi_layout.addLayout(row)
+            row_layout.addWidget(combo)
+            row_layout.addStretch()
+            row_widget.setLayout(row_layout)
+            row_widget.setVisible(False)
+            multi_layout.addWidget(row_widget)
             self.channel_combos_extra.append(combo)
+            self.channel_rows.append(row_widget)
+
+            # "+ Add Channel" button (not needed after channel 4)
+            if idx < 4:
+                add_btn = QPushButton("+ Add Channel")
+                add_btn.setMaximumWidth(120)
+                add_btn.setVisible(False)
+                add_btn.clicked.connect(lambda _, i=idx: self._on_add_channel(i))
+                multi_layout.addWidget(add_btn)
+                self.add_channel_buttons.append(add_btn)
 
         self.multi_channel_widget.setLayout(multi_layout)
         self.multi_channel_widget.setVisible(False)
@@ -348,8 +382,37 @@ class DelaySlotEditor(QWidget):
         self.channel_controls.setVisible(state == Qt.Checked)
 
     def _on_multi_channel_check_changed(self, state):
-        """Show/hide extra channel dropdowns"""
-        self.multi_channel_widget.setVisible(state == Qt.Checked)
+        """Show/hide extra channel dropdowns with incremental add"""
+        checked = (state == Qt.Checked)
+        self.multi_channel_widget.setVisible(checked)
+        if checked:
+            # Show channel 2 and first add button
+            self.channel_rows[0].setVisible(True)
+            if self.add_channel_buttons:
+                self.add_channel_buttons[0].setVisible(True)
+            # Hide channels 3 and 4
+            self.channel_rows[1].setVisible(False)
+            self.channel_rows[2].setVisible(False)
+            if len(self.add_channel_buttons) > 1:
+                self.add_channel_buttons[1].setVisible(False)
+
+    def _on_add_channel(self, channel_idx):
+        """Show the next channel row and update add buttons"""
+        # channel_idx is 2 or 3 (the channel being added is channel_idx+1)
+        # channel_rows: [ch2, ch3, ch4] = indices [0, 1, 2]
+        # add_channel_buttons: [add_ch3, add_ch4] = indices [0, 1]
+        row_idx = channel_idx - 1  # 1 for ch3, 2 for ch4
+        self.channel_rows[row_idx].setVisible(True)
+
+        # Hide the button that was clicked
+        btn_idx = channel_idx - 2  # 0 for add_ch3, 1 for add_ch4
+        if btn_idx < len(self.add_channel_buttons):
+            self.add_channel_buttons[btn_idx].setVisible(False)
+
+        # Show next add button if not at max
+        next_btn_idx = btn_idx + 1
+        if next_btn_idx < len(self.add_channel_buttons):
+            self.add_channel_buttons[next_btn_idx].setVisible(True)
 
     def _on_pitch_check_changed(self, state):
         """Show/hide pitch controls based on checkbox"""
@@ -397,12 +460,24 @@ class DelaySlotEditor(QWidget):
             # Multi-channel
             if slot.channel_count >= 2:
                 self.multi_channel_check.setChecked(True)
+                # Set combo values
                 if slot.channel2 > 0:
                     self.channel_combos_extra[0].setCurrentIndex(slot.channel2 - 1)
-                if slot.channel3 > 0 and len(self.channel_combos_extra) > 1:
+                if slot.channel3 > 0:
                     self.channel_combos_extra[1].setCurrentIndex(slot.channel3 - 1)
-                if slot.channel4 > 0 and len(self.channel_combos_extra) > 2:
+                if slot.channel4 > 0:
                     self.channel_combos_extra[2].setCurrentIndex(slot.channel4 - 1)
+                # Show correct number of channel rows
+                self.channel_rows[0].setVisible(True)  # Ch2 always visible
+                self.channel_rows[1].setVisible(slot.channel_count >= 3)
+                self.channel_rows[2].setVisible(slot.channel_count >= 4)
+                # Show correct add button
+                for btn in self.add_channel_buttons:
+                    btn.setVisible(False)
+                if slot.channel_count == 2 and self.add_channel_buttons:
+                    self.add_channel_buttons[0].setVisible(True)
+                elif slot.channel_count == 3 and len(self.add_channel_buttons) > 1:
+                    self.add_channel_buttons[1].setVisible(True)
             else:
                 self.multi_channel_check.setChecked(False)
 
@@ -432,12 +507,13 @@ class DelaySlotEditor(QWidget):
         # Channel: unchecked=0 (same), checked=1-16
         if self.channel_check.isChecked():
             slot.channel = self.channel_combo.currentIndex() + 1
-            # Multi-channel
+            # Multi-channel - count visible channel rows
             if self.multi_channel_check.isChecked():
-                slot.channel_count = 1 + len(self.channel_combos_extra)  # 4 total
-                slot.channel2 = self.channel_combos_extra[0].currentIndex() + 1
-                slot.channel3 = self.channel_combos_extra[1].currentIndex() + 1
-                slot.channel4 = self.channel_combos_extra[2].currentIndex() + 1
+                visible_count = sum(1 for row in self.channel_rows if row.isVisible())
+                slot.channel_count = 1 + visible_count  # 1 (base) + visible extras
+                slot.channel2 = self.channel_combos_extra[0].currentIndex() + 1 if visible_count >= 1 else 0
+                slot.channel3 = self.channel_combos_extra[1].currentIndex() + 1 if visible_count >= 2 else 0
+                slot.channel4 = self.channel_combos_extra[2].currentIndex() + 1 if visible_count >= 3 else 0
             else:
                 slot.channel_count = 1
         else:

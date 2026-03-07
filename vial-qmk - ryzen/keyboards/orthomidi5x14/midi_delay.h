@@ -12,7 +12,8 @@
 // =============================================================================
 
 #define DELAY_SLOT_COUNT        100     // Number of independent delay slots
-#define DELAY_MAX_PENDING       256     // Maximum pending delay events in queue
+#define DELAY_FACTORY_COUNT     48      // Factory preset slots (0-47)
+#define DELAY_MAX_PENDING       255     // Maximum pending delay events in queue (uint8_t max)
 #define DELAY_CONFIG_SIZE       16      // Bytes per slot config (for EEPROM alignment)
 #define DELAY_EEPROM_ADDR       43000   // EEPROM base address
 #define DELAY_EEPROM_MAGIC      0xDE01  // Validation magic

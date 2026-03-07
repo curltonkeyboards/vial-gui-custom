@@ -400,9 +400,10 @@ uint8_t get_he_velocity_from_position(uint8_t row, uint8_t col);
 #define CLEAR_HOLD              0xEF88  // Hold: OLED shows "Press Loop/Seq to Clear", then press to clear
 
 // =============================================================================
-// MIDI DELAY SYSTEM KEYCODES (0xEF90-0xEFF3) - 100 delay slot toggles
+// MIDI DELAY SYSTEM KEYCODES
 // =============================================================================
-#define DELAY_SLOT_BASE         0xEF90  // Base keycode for delay slot toggles
+#define DELAY_CLEAR             0xEF8F  // Clear all active delays and stop queue
+#define DELAY_SLOT_BASE         0xEF90  // Base keycode for delay slot toggles (0xEF90-0xEFF3)
 #define DELAY_SLOT_1            0xEF90
 #define DELAY_SLOT_2            0xEF91
 #define DELAY_SLOT_3            0xEF92

@@ -15400,6 +15400,22 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 
     // =============================================================================
+    // MIDI DELAY CLEAR (0xEF8F)
+    // =============================================================================
+    if (keycode == DELAY_CLEAR) {
+        if (record->event.pressed) {
+            midi_delay_clear_queue();
+            // Deactivate all delay slots
+            for (uint8_t i = 0; i < DELAY_SLOT_COUNT; i++) {
+                delay_system.runtime[i].active = false;
+            }
+            dprintf("DELAY_CLEAR: queue cleared, all slots deactivated\n");
+            set_keylog(keycode, record);
+        }
+        return false;
+    }
+
+    // =============================================================================
     // MIDI DELAY SLOT TOGGLES (0xEF90-0xEFF3)
     // =============================================================================
     if (keycode >= DELAY_SLOT_BASE && keycode < DELAY_SLOT_BASE + DELAY_SLOT_KC_COUNT) {

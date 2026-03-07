@@ -215,7 +215,8 @@ class MainWindow(QMainWindow):
             macro_recorder=self.macro_recorder,
             tap_dance_editor=self.tap_dance,
             dks_settings=self.dks_settings,
-            toggle_settings=self.toggle_settings
+            toggle_settings=self.toggle_settings,
+            delay_settings=self.delay_tab
         )
 
         # Prevent the layout from resizing the window
@@ -478,7 +479,8 @@ class MainWindow(QMainWindow):
                     macro_recorder=self.macro_recorder,
                     tap_dance_editor=self.tap_dance,
                     dks_settings=self.dks_settings,
-                    toggle_settings=self.toggle_settings
+                    toggle_settings=self.toggle_settings,
+                    delay_settings=self.delay_tab
                 )
 
         # Also update the tray keycodes

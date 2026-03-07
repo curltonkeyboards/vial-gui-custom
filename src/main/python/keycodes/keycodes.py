@@ -3478,9 +3478,43 @@ for x in range(100):
         K("TGL_{:02d}".format(x), "Toggle\n{}".format(x), "Toggle key slot {} - toggle keycode held/released".format(x))
     )
 
+# MIDI Delay Clear keycode
+KEYCODES_DELAY_CLEAR = [
+    K("DELAY_CLEAR", "Delay\nClear", "Clear all active delays and stop queue"),
+]
+
 # MIDI Delay slot keycodes (100 slots)
+# Factory presets (0-47): 5 rates x 3 timings x 3 decays + 3 pitch delays
+# User slots (48-99): generic labels
 KEYCODES_DELAY = []
-for x in range(100):
+
+# Factory preset labels: rate x timing x decay
+_delay_rates = ["1/1", "1/2", "1/4", "1/8", "1/16"]
+_delay_timings = ["Note", "Dot.", "Trip"]  # Straight, Dotted, Triplet (matches firmware order)
+_delay_decays = ["Short", "Med", "Long"]   # 38%, 20%, 11%
+
+for r in range(5):
+    for t in range(3):
+        for d in range(3):
+            idx = r * 9 + t * 3 + d
+            label = "{} {}\nDecay\n{}".format(_delay_rates[r], _delay_timings[t], _delay_decays[d])
+            tooltip = "Delay {}: {} {} decay {}".format(idx + 1, _delay_rates[r], _delay_timings[t], _delay_decays[d])
+            KEYCODES_DELAY.append(
+                K("DELAY_{:02d}".format(idx + 1), label, tooltip)
+            )
+
+# Pitch delay presets (slots 45-47)
+_pitch_rates = ["1/4", "1/8", "1/16"]
+for p in range(3):
+    idx = 45 + p
+    label = "{} Note\nPitch\nDelay".format(_pitch_rates[p])
+    tooltip = "Delay {}: {} pitch delay (+12 semi cumulative)".format(idx + 1, _pitch_rates[p])
+    KEYCODES_DELAY.append(
+        K("DELAY_{:02d}".format(idx + 1), label, tooltip)
+    )
+
+# User slots (49-100)
+for x in range(48, 100):
     KEYCODES_DELAY.append(
         K("DELAY_{:02d}".format(x + 1), "Delay\n{}".format(x + 1), "MIDI Delay slot {} - toggle delay effect on/off".format(x + 1))
     )
@@ -3972,7 +4006,7 @@ def recreate_keycodes():
                     KEYCODES_MIDI_CC_FIXED+KEYCODES_MIDI_CC+KEYCODES_MIDI_CC_DOWN+KEYCODES_MIDI_CC_UP+KEYCODES_MIDI_BANK+KEYCODES_Program_Change+KEYCODES_MIDI_SMARTCHORDBUTTONS+KEYCODES_VELOCITY_STEPSIZE+KEYCODES_VELOCITY_SHUFFLE + KEYCODES_CC_ENCODERVALUE+ KEYCODES_EXWHEEL +
                     KEYCODES_MIDI_VELOCITY+KEYCODES_CC_STEPSIZE+KEYCODES_MIDI_CHANNEL+KEYCODES_MIDI_UPDOWN+KEYCODES_MIDI_CHORD_0+KEYCODES_MIDI_CHORD_1+KEYCODES_MIDI_CHORD_2+KEYCODES_MIDI_CHORD_3+KEYCODES_MIDI_CHORD_4+KEYCODES_MIDI_CHORD_5+KEYCODES_MIDI_SPLIT+KEYCODES_MIDI_SPLIT2+
                     KEYCODES_HE_VELOCITY_CURVE+KEYCODES_HE_MACRO_CURVE+KEYCODES_HE_VELOCITY_RANGE+
-                    KEYCODES_ARPEGGIATOR+KEYCODES_ARPEGGIATOR_PRESETS+KEYCODES_STEP_SEQUENCER+KEYCODES_STEP_SEQUENCER_PRESETS+KEYCODES_OCTAVE_DOUBLER+KEYCODES_DKS+KEYCODES_TOGGLE+KEYCODES_DELAY+
+                    KEYCODES_ARPEGGIATOR+KEYCODES_ARPEGGIATOR_PRESETS+KEYCODES_STEP_SEQUENCER+KEYCODES_STEP_SEQUENCER_PRESETS+KEYCODES_OCTAVE_DOUBLER+KEYCODES_DKS+KEYCODES_TOGGLE+KEYCODES_DELAY_CLEAR+KEYCODES_DELAY+
                     KEYCODES_C_CHORDPROG_BASIC_MINOR + KEYCODES_C_CHORDPROG_BASIC_MAJOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_CHORDPROG_EXPERT_MINOR + KEYCODES_C_CHORDPROG_EXPERT_MAJOR +
                     KEYCODES_C_SHARP_CHORDPROG_BASIC_MINOR + KEYCODES_C_SHARP_CHORDPROG_BASIC_MAJOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_C_SHARP_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MINOR + KEYCODES_C_SHARP_CHORDPROG_EXPERT_MAJOR +
                     KEYCODES_D_CHORDPROG_BASIC_MINOR + KEYCODES_D_CHORDPROG_BASIC_MAJOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MINOR + KEYCODES_D_CHORDPROG_INTERMEDIATE_MAJOR + KEYCODES_D_CHORDPROG_EXPERT_MINOR + KEYCODES_D_CHORDPROG_EXPERT_MAJOR +

@@ -145,30 +145,91 @@ static void queue_remove(uint8_t index) {
 // INITIALIZATION & PERSISTENCE
 // =============================================================================
 
+// Factory delay preset definitions
+// Layout: 5 rates x (3 timings x 3 decays) = 45 + 3 pitch variants = 48
+#define DELAY_FACTORY_COUNT  48
+#define DECAY_SHORT  38
+#define DECAY_MED    20
+#define DECAY_LONG   11
+
+static void midi_delay_load_factory_defaults(void) {
+    // Rate note_values: 0=1/1, 1=1/2, 2=1/4, 3=1/8, 4=1/16
+    // Timings: 0=Note, 1=Triplet, 2=Dotted
+    // Decays: Short(38%), Med(20%), Long(11%)
+    static const uint8_t rates[] = {0, 1, 2, 3, 4};
+    static const uint8_t timings[] = {0, 2, 1};  // Note, Dotted, Triplet
+    static const uint8_t decays[] = {DECAY_SHORT, DECAY_MED, DECAY_LONG};
+
+    uint8_t idx = 0;
+    for (uint8_t r = 0; r < 5; r++) {
+        for (uint8_t t = 0; t < 3; t++) {
+            for (uint8_t d = 0; d < 3; d++) {
+                delay_slot_config_t *cfg = &delay_system.configs[idx];
+                cfg->rate_mode = 0;
+                cfg->note_value = rates[r];
+                cfg->timing_mode = timings[t];
+                cfg->decay_percent = decays[d];
+                cfg->fixed_delay_ms = 500;
+                cfg->max_repeats = 0;  // Unlimited (decay kills it)
+                cfg->channel = 0;
+                cfg->transpose_semi = 0;
+                cfg->transpose_mode = 0;
+                cfg->max_active_notes = 0;
+                cfg->channel_count = 1;
+                idx++;
+            }
+        }
+    }
+
+    // Pitch delay variants: +12 cumulative, max_repeats=2, decay=21%
+    // Slot 45: 1/4 Note Pitch Delay
+    // Slot 46: 1/8 Note Pitch Delay
+    // Slot 47: 1/16 Note Pitch Delay
+    static const uint8_t pitch_rates[] = {2, 3, 4};  // 1/4, 1/8, 1/16
+    for (uint8_t p = 0; p < 3; p++) {
+        delay_slot_config_t *cfg = &delay_system.configs[idx];
+        cfg->rate_mode = 0;
+        cfg->note_value = pitch_rates[p];
+        cfg->timing_mode = 0;  // Note (straight)
+        cfg->decay_percent = 21;
+        cfg->fixed_delay_ms = 500;
+        cfg->max_repeats = 2;
+        cfg->channel = 0;
+        cfg->transpose_semi = 12;
+        cfg->transpose_mode = 1;  // Cumulative
+        cfg->max_active_notes = 0;
+        cfg->channel_count = 1;
+        idx++;
+    }
+}
+
 void midi_delay_init(void) {
     memset(&delay_system, 0, sizeof(delay_system_t));
 
-    // Set sensible defaults for all slots
+    // Set defaults for all slots
     for (uint8_t i = 0; i < DELAY_SLOT_COUNT; i++) {
-        delay_system.configs[i].rate_mode = 0;          // BPM-synced
-        delay_system.configs[i].note_value = 3;          // 1/8 Eighth note
-        delay_system.configs[i].timing_mode = 0;         // Straight
-        delay_system.configs[i].decay_percent = 50;      // 50% decay
-        delay_system.configs[i].fixed_delay_ms = 500;    // 500ms default
-        delay_system.configs[i].max_repeats = 3;         // 3 repeats
-        delay_system.configs[i].channel = 0;             // Same channel
-        delay_system.configs[i].transpose_semi = 0;      // No transpose
-        delay_system.configs[i].transpose_mode = 0;      // Fixed
-        delay_system.configs[i].max_active_notes = 0;    // No limit
-        delay_system.configs[i].channel_count = 1;       // Single channel
+        delay_system.configs[i].rate_mode = 0;
+        delay_system.configs[i].note_value = 3;
+        delay_system.configs[i].timing_mode = 0;
+        delay_system.configs[i].decay_percent = 50;
+        delay_system.configs[i].fixed_delay_ms = 500;
+        delay_system.configs[i].max_repeats = 3;
+        delay_system.configs[i].channel = 0;
+        delay_system.configs[i].transpose_semi = 0;
+        delay_system.configs[i].transpose_mode = 0;
+        delay_system.configs[i].max_active_notes = 0;
+        delay_system.configs[i].channel_count = 1;
         delay_system.configs[i].channel2 = 0;
         delay_system.configs[i].channel3 = 0;
         delay_system.configs[i].channel4 = 0;
     }
 
+    // Load factory presets into slots 0-47
+    midi_delay_load_factory_defaults();
+
     memset(note_on_times, 0, sizeof(note_on_times));
 
-    // Try to load from EEPROM
+    // Try to load from EEPROM (overrides factory defaults if saved)
     midi_delay_load();
 }
 
