@@ -1823,12 +1823,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
+    // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFD)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] >= 0xF0 && data[3] <= 0xFB) {
+        data[3] >= 0xF0 && data[3] <= 0xFD) {
 
         dprintf("raw_hid_receive_kb: Command detected (0x%02X)\n", data[3]);
 
@@ -1901,6 +1901,17 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             case HID_CMD_EEPROM_DIAG_GET:  // 0xFB
                 handle_eeprom_diag_get(response);
+                break;
+
+            case HID_CMD_TOGGLE_GET_MULTI:  // 0xFC
+                // Format: [slot_num] at data[6]
+                handle_toggle_get_multi(data[6], &response[4]);
+                break;
+
+            case HID_CMD_TOGGLE_SET_MULTI:  // 0xFD
+                // Format: [slot_num, kc2_lo, kc2_hi, ...] at data[6]
+                // Response: [status, sizeof, readback_kc0..kc6, flags, num_keys] at response[4]
+                handle_toggle_set_multi(&data[6], &response[4]);
                 break;
 
             default:

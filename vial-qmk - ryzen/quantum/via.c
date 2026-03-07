@@ -242,10 +242,10 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         // Gaming response (0xDD-0xDE), ADC Matrix Tester (0xDF)
         // Per-key actuation (0xE0-0xE6), Distance (0xE7), SET_KEYBOARD_PARAM_SINGLE (0xE8)
         // Curve Tuning (0xE9), EQ Curve Save (0xEA), Layer Actuation (0xEB-0xEE), EQ Get (0xEF)
-        // Null bind, Toggle, EEPROM diag commands (0xF0-0xFB)
+        // Null bind, Toggle, EEPROM diag commands (0xF0-0xFD)
         else if ((cmd >= 0xC0 && cmd <= 0xDF) ||
                  (cmd >= 0xE0 && cmd <= 0xEF) ||
-                 (cmd >= 0xF0 && cmd <= 0xFB)) {
+                 (cmd >= 0xF0 && cmd <= 0xFD)) {
             // Forward to keyboard-level handler, which sends its own response
             raw_hid_receive_kb(data, length);
             return; // Don't let VIA send duplicate response
@@ -274,10 +274,10 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         // User curves (0xD9-0xDC), Gaming response (0xDD-0xDE), ADC Matrix (0xDF),
         // Per-key actuation (0xE0-0xE6), Distance (0xE7), SET_KEYBOARD_PARAM_SINGLE (0xE8),
         // Curve Tune (0xE9), EQ Save (0xEA), Layer Actuation (0xEB-0xEE), EQ Get (0xEF),
-        // Null bind/Toggle/EEPROM (0xF0-0xFB)
+        // Null bind/Toggle/EEPROM (0xF0-0xFD)
         if ((cmd >= 0xC0 && cmd <= 0xDF) ||
             (cmd >= 0xE0 && cmd <= 0xEF) ||
-            (cmd >= 0xF0 && cmd <= 0xFB)) {
+            (cmd >= 0xF0 && cmd <= 0xFD)) {
             raw_hid_receive_kb(data, length);
             return; // Handler sends its own response
         }
