@@ -8,32 +8,63 @@ holding and releasing a target keycode. This is implemented as keybinds
 
 Each toggle slot contains:
 - target_keycode: The keycode to toggle (held until toggled again)
+- flags: Bit 0 = multi-key toggle mode
+- num_keys: Number of keycodes in multi-key mode (2-8)
 - state: Current state (0 = released, 1 = held) - runtime only
+
+Multi-key toggle mode:
+- Each press sends a tap (press+release) of the current keycode in the cycle
+- Advances to the next keycode, wrapping around after the last
+- Up to 8 keycodes per slot
+- KC_NO (0) in a step skips without sending a keycode
 
 Usage:
 1. Configure a toggle slot with a target keycode via GUI
-2. Assign TGL_XX keycode to a physical key in keymap
-3. Pressing the key toggles the target keycode held/released state
+2. Optionally enable multi-key mode and configure up to 8 keycodes
+3. Assign TGL_XX keycode to a physical key in keymap
+4. Pressing the key toggles (standard) or cycles (multi-key) keycodes
 """
 
 import struct
 from typing import Optional, List
 
-# Toggle HID Command Codes (0xF5-0xF9)
+# Toggle HID Command Codes
 HID_CMD_TOGGLE_GET_SLOT = 0xF5        # Get toggle slot configuration
 HID_CMD_TOGGLE_SET_SLOT = 0xF6        # Set toggle slot configuration
 HID_CMD_TOGGLE_SAVE_EEPROM = 0xF7     # Save all slots to EEPROM
 HID_CMD_TOGGLE_LOAD_EEPROM = 0xF8     # Load all slots from EEPROM
 HID_CMD_TOGGLE_RESET_ALL = 0xF9       # Reset all slots to defaults
+HID_CMD_TOGGLE_GET_MULTI = 0xFC       # Get multi-key keycodes for a slot
+HID_CMD_TOGGLE_SET_MULTI = 0xFD       # Set multi-key keycodes for a slot
 
 # Toggle Constants
 TOGGLE_NUM_SLOTS = 100                 # Number of toggle slots (TGL_00 - TGL_99)
 TOGGLE_SLOT_SIZE = 4                   # Bytes per slot in firmware
+TOGGLE_MULTI_MAX_KEYS = 8             # Max keycodes per multi-key slot
+TOGGLE_MULTI_EXTRA_KEYS = 7           # Extra keycodes stored separately (keycodes 2-8)
+
+# Toggle slot flags
+TOGGLE_FLAG_MULTI_KEY = 0x01          # Bit 0: Multi-key toggle mode enabled
 
 # Toggle Keycode Range
-# NOTE: Moved from 0xEE00-0xEE63 to avoid conflict with Arpeggiator keycodes
 TOGGLE_KEY_BASE = 0xEF10               # TGL_00
 TOGGLE_KEY_MAX = 0xEF73                # TGL_99 (0xEF10 + 99)
+
+# Fixed LED colours for multi-key cycle steps (matches firmware)
+TOGGLE_MULTI_COLORS = [
+    (0, 200, 0),       # Step 0: Green
+    (0, 0, 200),       # Step 1: Blue
+    (200, 0, 0),       # Step 2: Red
+    (200, 200, 0),     # Step 3: Yellow
+    (0, 200, 200),     # Step 4: Cyan
+    (200, 0, 200),     # Step 5: Magenta
+    (200, 200, 200),   # Step 6: White
+    (200, 100, 0),     # Step 7: Orange
+]
+
+TOGGLE_MULTI_COLOR_NAMES = [
+    "Green", "Blue", "Red", "Yellow", "Cyan", "Magenta", "White", "Orange"
+]
 
 
 def is_toggle_keycode(keycode: int) -> bool:
@@ -54,13 +85,37 @@ def slot_to_toggle_keycode(slot: int) -> int:
 class ToggleSlot:
     """Represents a toggle slot configuration"""
 
-    def __init__(self, target_keycode: int = 0):
-        """Initialize a toggle slot
-
-        Args:
-            target_keycode: The keycode to toggle (0 = disabled/empty)
-        """
+    def __init__(self, target_keycode: int = 0, flags: int = 0, num_keys: int = 0):
         self.target_keycode = target_keycode
+        self.flags = flags
+        self.num_keys = num_keys
+        self.multi_keycodes = [0] * TOGGLE_MULTI_EXTRA_KEYS  # Keycodes 2-8
+
+    @property
+    def is_multi_key(self) -> bool:
+        return bool(self.flags & TOGGLE_FLAG_MULTI_KEY)
+
+    @is_multi_key.setter
+    def is_multi_key(self, value: bool):
+        if value:
+            self.flags |= TOGGLE_FLAG_MULTI_KEY
+        else:
+            self.flags &= ~TOGGLE_FLAG_MULTI_KEY
+
+    def get_keycode(self, index: int) -> int:
+        """Get keycode at index (0-7)"""
+        if index == 0:
+            return self.target_keycode
+        if 0 < index < TOGGLE_MULTI_MAX_KEYS:
+            return self.multi_keycodes[index - 1]
+        return 0
+
+    def set_keycode(self, index: int, keycode: int):
+        """Set keycode at index (0-7)"""
+        if index == 0:
+            self.target_keycode = keycode
+        elif 0 < index < TOGGLE_MULTI_MAX_KEYS:
+            self.multi_keycodes[index - 1] = keycode
 
     def is_enabled(self) -> bool:
         """Check if this slot is configured (has a target keycode)"""
@@ -71,11 +126,13 @@ class ToggleSlot:
 
         Format:
         - bytes 0-1: target_keycode (uint16_t)
-        - bytes 2-3: reserved (for future use, e.g., options/flags)
+        - byte 2: flags
+        - byte 3: num_keys
         """
         data = bytearray(TOGGLE_SLOT_SIZE)
         struct.pack_into('<H', data, 0, self.target_keycode)
-        # bytes 2-3 reserved, already 0
+        data[2] = self.flags
+        data[3] = self.num_keys
         return bytes(data)
 
     @staticmethod
@@ -86,43 +143,42 @@ class ToggleSlot:
 
         slot = ToggleSlot()
         slot.target_keycode = struct.unpack_from('<H', data, 0)[0]
+        slot.flags = data[2]
+        slot.num_keys = data[3]
         return slot
 
     def to_dict(self) -> dict:
         """Convert to dictionary for GUI"""
         return {
-            'target_keycode': self.target_keycode
+            'target_keycode': self.target_keycode,
+            'flags': self.flags,
+            'num_keys': self.num_keys,
+            'multi_keycodes': list(self.multi_keycodes),
         }
 
     @staticmethod
     def from_dict(data: dict) -> 'ToggleSlot':
         """Create from dictionary"""
-        return ToggleSlot(
-            target_keycode=data.get('target_keycode', 0)
+        slot = ToggleSlot(
+            target_keycode=data.get('target_keycode', 0),
+            flags=data.get('flags', 0),
+            num_keys=data.get('num_keys', 0),
         )
+        multi = data.get('multi_keycodes', [])
+        for i in range(min(len(multi), TOGGLE_MULTI_EXTRA_KEYS)):
+            slot.multi_keycodes[i] = multi[i]
+        return slot
 
 
 class ProtocolToggle:
     """Toggle protocol handler - manages communication with firmware"""
 
     def __init__(self, keyboard):
-        """Initialize Toggle protocol
-
-        Args:
-            keyboard: Keyboard communication object
-        """
         self.keyboard = keyboard
-        self.slots_cache = {}  # Cache of loaded slots
+        self.slots_cache = {}
 
     def get_slot(self, slot_num: int) -> Optional[ToggleSlot]:
-        """Get toggle slot configuration from keyboard
-
-        Args:
-            slot_num: Slot number (0-99)
-
-        Returns:
-            ToggleSlot object or None on error
-        """
+        """Get toggle slot configuration from keyboard"""
         if slot_num < 0 or slot_num >= TOGGLE_NUM_SLOTS:
             return None
 
@@ -133,38 +189,48 @@ class ProtocolToggle:
             if not response or len(response) < (5 + TOGGLE_SLOT_SIZE):
                 return None
 
-            # Check status byte (firmware puts it at index 4)
             if response[4] != 0:
                 return None
 
-            # Extract slot data (firmware puts it at index 5)
             slot_data = response[5:5 + TOGGLE_SLOT_SIZE]
             slot = ToggleSlot.from_bytes(slot_data)
 
-            # Cache it
-            self.slots_cache[slot_num] = slot
+            # If multi-key mode, also load the extra keycodes
+            if slot.is_multi_key:
+                self._load_multi_keycodes(slot_num, slot)
 
+            self.slots_cache[slot_num] = slot
             return slot
 
         except Exception as e:
             print(f"Toggle: Error getting slot {slot_num}: {e}")
             return None
 
+    def _load_multi_keycodes(self, slot_num: int, slot: ToggleSlot):
+        """Load multi-key extra keycodes from firmware"""
+        try:
+            packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_GET_MULTI, 0, [slot_num])
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
+
+            if not response or len(response) < (5 + TOGGLE_MULTI_EXTRA_KEYS * 2):
+                return
+
+            if response[4] != 0:
+                return
+
+            for j in range(TOGGLE_MULTI_EXTRA_KEYS):
+                slot.multi_keycodes[j] = struct.unpack_from('<H', response, 5 + j * 2)[0]
+
+        except Exception as e:
+            print(f"Toggle: Error getting multi keycodes for slot {slot_num}: {e}")
+
     def set_slot(self, slot_num: int, slot: ToggleSlot) -> bool:
-        """Set toggle slot configuration
-
-        Args:
-            slot_num: Slot number (0-99)
-            slot: ToggleSlot configuration
-
-        Returns:
-            True if successful
-        """
+        """Set toggle slot configuration"""
         if slot_num < 0 or slot_num >= TOGGLE_NUM_SLOTS:
             return False
 
         try:
-            # Packet: [slot_num] + slot_data (4 bytes)
+            # Packet: [slot_num, target_kc_lo, target_kc_hi, flags, num_keys]
             data = bytearray([slot_num]) + bytearray(slot.to_bytes())
 
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SET_SLOT, 0, data)
@@ -172,7 +238,10 @@ class ProtocolToggle:
 
             success = response and len(response) > 4 and response[4] == 0
 
-            # Update cache
+            # If multi-key mode, also send the extra keycodes
+            if success and slot.is_multi_key:
+                success = self._send_multi_keycodes(slot_num, slot)
+
             if success:
                 self.slots_cache[slot_num] = slot
 
@@ -182,12 +251,27 @@ class ProtocolToggle:
             print(f"Toggle: Error setting slot {slot_num}: {e}")
             return False
 
-    def save_to_eeprom(self) -> bool:
-        """Save all toggle configurations to EEPROM
+    def _send_multi_keycodes(self, slot_num: int, slot: ToggleSlot) -> bool:
+        """Send multi-key extra keycodes to firmware"""
+        try:
+            # Packet: [slot_num, kc2_lo, kc2_hi, kc3_lo, kc3_hi, ...]
+            data = bytearray([slot_num])
+            for j in range(TOGGLE_MULTI_EXTRA_KEYS):
+                kc = slot.multi_keycodes[j]
+                data.append(kc & 0xFF)
+                data.append((kc >> 8) & 0xFF)
 
-        Returns:
-            True if successful
-        """
+            packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SET_MULTI, 0, data)
+            response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
+
+            return response and len(response) > 4 and response[4] == 0
+
+        except Exception as e:
+            print(f"Toggle: Error setting multi keycodes for slot {slot_num}: {e}")
+            return False
+
+    def save_to_eeprom(self) -> bool:
+        """Save all toggle configurations to EEPROM"""
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_SAVE_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
@@ -197,11 +281,7 @@ class ProtocolToggle:
             return False
 
     def load_from_eeprom(self) -> bool:
-        """Load all toggle configurations from EEPROM
-
-        Returns:
-            True if successful
-        """
+        """Load all toggle configurations from EEPROM"""
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_LOAD_EEPROM, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
@@ -217,11 +297,7 @@ class ProtocolToggle:
             return False
 
     def reset_all_slots(self) -> bool:
-        """Reset all toggle slots to defaults
-
-        Returns:
-            True if successful
-        """
+        """Reset all toggle slots to defaults"""
         try:
             packet = self.keyboard._create_hid_packet(HID_CMD_TOGGLE_RESET_ALL, 0, None)
             response = self.keyboard.usb_send(self.keyboard.dev, packet, retries=3)
@@ -241,26 +317,18 @@ class ProtocolToggle:
         self.slots_cache.clear()
 
     def get_all_slots(self) -> List[ToggleSlot]:
-        """Load all slots from keyboard
-
-        Returns:
-            List of all ToggleSlot objects
-        """
+        """Load all slots from keyboard"""
         slots = []
         for i in range(TOGGLE_NUM_SLOTS):
             slot = self.get_slot(i)
             if slot:
                 slots.append(slot)
             else:
-                slots.append(ToggleSlot())  # Default empty slot
+                slots.append(ToggleSlot())
         return slots
 
     def get_configured_slots(self) -> List[tuple]:
-        """Get list of configured (non-empty) slots
-
-        Returns:
-            List of (slot_num, ToggleSlot) tuples for enabled slots
-        """
+        """Get list of configured (non-empty) slots"""
         configured = []
         for slot_num, slot in self.slots_cache.items():
             if slot.is_enabled():

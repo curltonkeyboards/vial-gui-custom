@@ -1791,6 +1791,17 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 handle_eeprom_diag_get(response);
                 break;
 
+            case HID_CMD_TOGGLE_GET_MULTI:  // 0xFC
+                // Format: [slot_num] at data[6]
+                handle_toggle_get_multi(data[6], &response[4]);
+                break;
+
+            case HID_CMD_TOGGLE_SET_MULTI:  // 0xFD
+                // Format: [slot_num, kc2_lo, kc2_hi, ...] at data[6]
+                handle_toggle_set_multi(&data[6]);
+                response[4] = 0;  // Success status
+                break;
+
             default:
                 response[4] = 1;  // Error - unknown command
                 break;

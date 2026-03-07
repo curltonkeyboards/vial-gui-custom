@@ -247,7 +247,8 @@ void set_custom_animations_eeprom_initialized(void);
 //   43,000-43,887: Per-Key RGB (888 bytes)
 //   45,000-51,719: Per-Key Actuation (6720 bytes)
 //   52,000-53,603: DKS Configurations (1604 bytes: 4 header + 50 × 32)
-//   54,000-65,535: Available for future use (~11KB)
+//   54,000-55,401: Toggle Multi-Key Keycodes (1402 bytes: 2 magic + 100 × 14)
+//   55,402-65,535: Available for future use (~10KB)
 // =============================================================================
 
 #define EECONFIG_CUSTOM_ANIMATIONS 36000  // Custom animations (750 bytes: 15 bytes * 50 slots)
@@ -307,7 +308,7 @@ bool layer_use_fixed_velocity(uint8_t layer);
 #define HID_CMD_GAMING_RESET 0xD2              // Reset gaming settings to defaults
 
 // =============================================================================
-// EEPROM ADDRESSES SUMMARY (UPDATED 2026-03-05 - ALL WITHIN 64KB):
+// EEPROM ADDRESSES SUMMARY (UPDATED 2026-03-07 - ALL WITHIN 64KB):
 // VIA Text Macros:     4509-20999                    (DYNAMIC_KEYMAP_EEPROM_MAX_ADDR)
 // Null Bind:           NULLBIND_EEPROM_ADDR          = 21000 (orthomidi5x14.h)
 // Toggle Keys:         TOGGLE_EEPROM_ADDR            = 22000 (orthomidi5x14.h)
@@ -325,7 +326,8 @@ bool layer_use_fixed_velocity(uint8_t layer);
 // Per-Key RGB:         PER_KEY_RGB_EEPROM_ADDR       = 43000 (per_key_rgb.h, 888 bytes)
 // Per-Key Actuation:   PER_KEY_ACTUATION_EEPROM_ADDR = 45000 (6720 bytes, ends 51719)
 // DKS:                 EEPROM_DKS_BASE               = 52000 (process_dks.h, 1604 bytes)
-// Available:           54000-65535                   (~11KB for future use)
+// Toggle Multi-Key:    TOGGLE_MULTI_EEPROM_ADDR      = 54000 (process_midi.h, 1402 bytes)
+// Available:           55402-65535                   (~10KB for future use)
 // =============================================================================
 
 // Function declarations for layer settings

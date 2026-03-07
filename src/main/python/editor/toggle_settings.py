@@ -4,16 +4,22 @@ Toggle Keys Settings Editor
 
 Allows configuration of toggle key slots (TGL_00 - TGL_99).
 Users configure slots with target keycodes and then assign TGL_XX keycodes to keys via the keymap editor.
+
+Supports two modes:
+- Standard toggle: Press to hold keycode, press again to release
+- Multi-key toggle: Each press taps (press+release) a different keycode, cycling through up to 8
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-                              QComboBox, QGroupBox, QMessageBox, QFrame,
-                              QSizePolicy, QScrollArea, QTabWidget)
+                              QComboBox, QGroupBox, QMessageBox, QFrame, QCheckBox,
+                              QSizePolicy, QScrollArea, QTabWidget, QGridLayout)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from editor.basic_editor import BasicEditor
 from protocol.toggle_protocol import (ProtocolToggle, ToggleSlot,
                                        TOGGLE_NUM_SLOTS, TOGGLE_KEY_BASE,
+                                       TOGGLE_MULTI_MAX_KEYS, TOGGLE_MULTI_COLORS,
+                                       TOGGLE_MULTI_COLOR_NAMES, TOGGLE_FLAG_MULTI_KEY,
                                        slot_to_toggle_keycode)
 from keycodes.keycodes import Keycode
 from widgets.key_widget import KeyWidget
@@ -201,6 +207,7 @@ class ToggleEntryUI(QWidget):
         self.toggle_protocol = toggle_protocol
         self.slot = ToggleSlot()
         self.pending_changes = False
+        self.selected_key_index = -1  # Which key widget is selected for keycode assignment
 
         self._build_ui()
 
@@ -235,21 +242,65 @@ class ToggleEntryUI(QWidget):
         desc.setStyleSheet("color: gray; font-size: 9pt;")
         layout.addWidget(desc)
 
-        # Target keycode section
-        target_group = QGroupBox("Target Keycode")
-        target_layout = QHBoxLayout()
+        # Multi-key toggle checkbox
+        self.multi_key_checkbox = QCheckBox("Multi Key Toggle")
+        self.multi_key_checkbox.setToolTip(
+            "When enabled, each press taps a different keycode in sequence.\n"
+            "Configure up to 8 keycodes to cycle through.\n"
+            "KC_NO in a step will skip without sending a keycode.")
+        self.multi_key_checkbox.toggled.connect(self._on_multi_key_toggled)
+        layout.addWidget(self.multi_key_checkbox)
 
-        target_layout.addWidget(QLabel("Target:"))
+        # Standard toggle: single target keycode
+        self.standard_group = QGroupBox("Target Keycode")
+        standard_layout = QHBoxLayout()
+
+        standard_layout.addWidget(QLabel("Target:"))
 
         self.target_key = ToggleKeyWidget()
-        self.target_key.selected.connect(self._on_target_selected)
-        target_layout.addWidget(self.target_key)
+        self.target_key.selected.connect(lambda w: self._on_key_selected(0))
+        standard_layout.addWidget(self.target_key)
 
-        target_layout.addWidget(QLabel("← Click to select, then choose from keycodes below"))
-        target_layout.addStretch()
+        standard_layout.addWidget(QLabel("<- Click to select, then choose from keycodes below"))
+        standard_layout.addStretch()
 
-        target_group.setLayout(target_layout)
-        layout.addWidget(target_group)
+        self.standard_group.setLayout(standard_layout)
+        layout.addWidget(self.standard_group)
+
+        # Multi-key toggle: 8 keycode slots with colour indicators
+        self.multi_group = QGroupBox("Multi-Key Cycle (up to 8 keycodes)")
+        multi_layout = QGridLayout()
+        multi_layout.setSpacing(8)
+
+        self.multi_key_widgets = []
+        self.multi_color_labels = []
+
+        for i in range(TOGGLE_MULTI_MAX_KEYS):
+            row = i // 4
+            col_base = (i % 4) * 3
+
+            # Colour indicator
+            r, g, b = TOGGLE_MULTI_COLORS[i]
+            color_label = QLabel(f"  {i+1}  ")
+            color_label.setAlignment(Qt.AlignCenter)
+            color_label.setStyleSheet(
+                f"background-color: rgb({r},{g},{b}); "
+                f"color: {'black' if (r + g + b) > 300 else 'white'}; "
+                f"border-radius: 3px; font-weight: bold; padding: 2px 4px;")
+            color_label.setToolTip(f"Step {i+1}: {TOGGLE_MULTI_COLOR_NAMES[i]}")
+            self.multi_color_labels.append(color_label)
+            multi_layout.addWidget(color_label, row, col_base)
+
+            # Key widget
+            key_widget = ToggleKeyWidget()
+            key_idx = i  # Capture for lambda
+            key_widget.selected.connect(lambda w, idx=key_idx: self._on_key_selected(idx))
+            self.multi_key_widgets.append(key_widget)
+            multi_layout.addWidget(key_widget, row, col_base + 1)
+
+        self.multi_group.setLayout(multi_layout)
+        self.multi_group.setVisible(False)
+        layout.addWidget(self.multi_group)
 
         # Action buttons
         btn_layout = QHBoxLayout()
@@ -278,43 +329,109 @@ class ToggleEntryUI(QWidget):
         """Set the toggle protocol for communication"""
         self.toggle_protocol = protocol
 
-    def _on_target_selected(self, widget):
-        """Handle target key widget selection"""
-        # Mark this widget as selected for keycode assignment
-        self.target_key.set_selected(True)
+    def _on_multi_key_toggled(self, checked):
+        """Handle multi-key checkbox toggle"""
+        self.standard_group.setVisible(not checked)
+        self.multi_group.setVisible(checked)
+
+        self.slot.is_multi_key = checked
+        if checked and self.slot.num_keys < 2:
+            self.slot.num_keys = 2
+
+        self.pending_changes = True
+        self.save_btn.setEnabled(True)
+        self._deselect_all_keys()
+        self._update_display()
+        self.changed.emit()
+
+    def _on_key_selected(self, index):
+        """Handle key widget selection"""
+        self._deselect_all_keys()
+        self.selected_key_index = index
+
+        if self.slot.is_multi_key:
+            if 0 <= index < len(self.multi_key_widgets):
+                self.multi_key_widgets[index].set_selected(True)
+        else:
+            if index == 0:
+                self.target_key.set_selected(True)
+
+    def _deselect_all_keys(self):
+        """Deselect all key widgets"""
+        self.selected_key_index = -1
+        self.target_key.set_selected(False)
+        for w in self.multi_key_widgets:
+            w.set_selected(False)
 
     def on_keycode_selected(self, keycode):
         """Called when a keycode is selected from TabbedKeycodes"""
-        if self.target_key.is_selected:
-            # Convert qmk_id string to integer keycode for firmware
-            try:
-                keycode_value = Keycode.deserialize(keycode)
-            except Exception:
-                keycode_value = 0
+        if self.selected_key_index < 0:
+            return
 
+        try:
+            keycode_value = Keycode.deserialize(keycode)
+        except Exception:
+            keycode_value = 0
+
+        if self.slot.is_multi_key:
+            self.slot.set_keycode(self.selected_key_index, keycode_value)
+            # Update num_keys to be the highest non-zero index + 1, minimum 2
+            max_idx = 0
+            for i in range(TOGGLE_MULTI_MAX_KEYS):
+                if self.slot.get_keycode(i) != 0:
+                    max_idx = i
+            self.slot.num_keys = max(2, max_idx + 1)
+        else:
             self.slot.target_keycode = keycode_value
-            self._update_display()
-            self.pending_changes = True
-            self.save_btn.setEnabled(True)
-            self.changed.emit()
-            self.target_key.set_selected(False)
+
+        self._update_display()
+        self.pending_changes = True
+        self.save_btn.setEnabled(True)
+        self.changed.emit()
+        self._deselect_all_keys()
 
     def _update_display(self):
         """Update the UI to reflect current slot state"""
+        # Update standard target key display
         if self.slot.target_keycode != 0:
-            # Convert integer keycode to qmk_id string for display
             qmk_id = Keycode.serialize(self.slot.target_keycode)
             self.target_key.set_keycode(qmk_id)
+        else:
+            self.target_key.set_keycode("KC_NO")
+
+        # Update multi-key displays
+        for i in range(TOGGLE_MULTI_MAX_KEYS):
+            kc = self.slot.get_keycode(i)
+            if kc != 0:
+                qmk_id = Keycode.serialize(kc)
+                self.multi_key_widgets[i].set_keycode(qmk_id)
+            else:
+                self.multi_key_widgets[i].set_keycode("KC_NO")
+
+        # Update multi-key checkbox without triggering signal
+        self.multi_key_checkbox.blockSignals(True)
+        self.multi_key_checkbox.setChecked(self.slot.is_multi_key)
+        self.multi_key_checkbox.blockSignals(False)
+
+        # Show/hide groups based on mode
+        self.standard_group.setVisible(not self.slot.is_multi_key)
+        self.multi_group.setVisible(self.slot.is_multi_key)
+
+        # Update status
+        if self.slot.is_multi_key:
+            active_count = sum(1 for i in range(TOGGLE_MULTI_MAX_KEYS) if self.slot.get_keycode(i) != 0)
+            self.status_label.setText(f"Multi-Key ({active_count} keycodes)")
+            self.status_label.setStyleSheet("color: #0088cc;")
+        elif self.slot.target_keycode != 0:
             self.status_label.setText("Configured")
             self.status_label.setStyleSheet("color: green;")
         else:
-            self.target_key.set_keycode("KC_NO")
             self.status_label.setText("(Not configured)")
             self.status_label.setStyleSheet("color: gray;")
 
     def _on_clear(self):
         """Clear this slot"""
-        self.slot.target_keycode = 0
+        self.slot = ToggleSlot()
         self._update_display()
         self.pending_changes = True
         self.save_btn.setEnabled(True)
@@ -337,11 +454,7 @@ class ToggleEntryUI(QWidget):
             QMessageBox.warning(self, "Error", "Failed to send configuration to keyboard")
 
     def _on_load(self, silent=False):
-        """Load slot from keyboard
-
-        Args:
-            silent: If True, don't show error messages (used for automatic loading)
-        """
+        """Load slot from keyboard"""
         if not self.toggle_protocol:
             if not silent:
                 QMessageBox.warning(self, "Error", "Not connected to keyboard")
