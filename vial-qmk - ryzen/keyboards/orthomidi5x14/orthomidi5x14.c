@@ -2498,11 +2498,11 @@ bool nullbind_enabled = true;  // Global enable flag
 uint8_t nullbind_key_travel[70];  // Current travel value for each key (0-255)
 
 // =============================================================================
-// TOGGLE KEYS GLOBAL VARIABLES
+// TOGGLE KEYS GLOBAL VARIABLES (Sparse Pool)
 // =============================================================================
-toggle_slot_t toggle_slots[TOGGLE_NUM_SLOTS];
-toggle_runtime_t toggle_runtime[TOGGLE_NUM_SLOTS];
-uint16_t toggle_multi_keycodes[TOGGLE_NUM_SLOTS][TOGGLE_MULTI_EXTRA_KEYS];  // Extra keycodes 2-8 for multi-key mode
+// Only configured slots live in RAM. Max 32 active at once.
+toggle_entry_t toggle_pool[TOGGLE_MAX_ACTIVE];
+uint8_t toggle_pool_count = 0;
 bool toggle_enabled = true;  // Global enable flag
 
 // Fixed LED colours for multi-key toggle cycle steps: Green, Blue, Red, Yellow, Cyan, Magenta, White, Orange
@@ -4330,32 +4330,94 @@ void handle_nullbind_reset_all(void) {
 }
 
 // =============================================================================
-// TOGGLE KEYS IMPLEMENTATION
+// TOGGLE KEYS IMPLEMENTATION (Sparse Pool)
 // =============================================================================
+
+// Find a pool entry by slot_num. Returns NULL if not in pool.
+toggle_entry_t* toggle_find(uint8_t slot_num) {
+    for (uint8_t i = 0; i < toggle_pool_count; i++) {
+        if (toggle_pool[i].slot_num == slot_num) {
+            return &toggle_pool[i];
+        }
+    }
+    return NULL;
+}
+
+// Add a new entry to the pool. Returns pointer to it, or NULL if pool full.
+toggle_entry_t* toggle_add(uint8_t slot_num) {
+    // Check if already exists
+    toggle_entry_t* existing = toggle_find(slot_num);
+    if (existing) return existing;
+
+    // Check pool capacity
+    if (toggle_pool_count >= TOGGLE_MAX_ACTIVE) return NULL;
+
+    // Add at end
+    toggle_entry_t* entry = &toggle_pool[toggle_pool_count];
+    memset(entry, 0, sizeof(toggle_entry_t));
+    entry->slot_num = slot_num;
+    toggle_pool_count++;
+    return entry;
+}
+
+// Remove an entry from the pool by slot_num
+void toggle_remove(uint8_t slot_num) {
+    for (uint8_t i = 0; i < toggle_pool_count; i++) {
+        if (toggle_pool[i].slot_num == slot_num) {
+            // Release held key before removing
+            if (toggle_pool[i].is_held && toggle_pool[i].target_keycode != 0) {
+                vial_keycode_up(toggle_pool[i].target_keycode);
+            }
+            // Swap with last entry to fill gap
+            if (i < toggle_pool_count - 1) {
+                toggle_pool[i] = toggle_pool[toggle_pool_count - 1];
+            }
+            toggle_pool_count--;
+            return;
+        }
+    }
+}
 
 // Initialize toggle system
 void toggle_init(void) {
-    memset(toggle_slots, 0, sizeof(toggle_slots));
-    memset(toggle_runtime, 0, sizeof(toggle_runtime));
-    memset(toggle_multi_keycodes, 0, sizeof(toggle_multi_keycodes));
+    // Release any held keys first
+    for (uint8_t i = 0; i < toggle_pool_count; i++) {
+        if (toggle_pool[i].is_held && toggle_pool[i].target_keycode != 0) {
+            vial_keycode_up(toggle_pool[i].target_keycode);
+        }
+    }
+    memset(toggle_pool, 0, sizeof(toggle_pool));
+    toggle_pool_count = 0;
     toggle_enabled = true;
 }
 
 // Save toggle slots to EEPROM
+// Writes all 100 EEPROM slots - unconfigured slots written as zeros
 void toggle_save_to_eeprom(void) {
     // Write magic number first
     uint16_t magic = TOGGLE_MAGIC;
     eeprom_update_word((uint16_t*)(TOGGLE_EEPROM_ADDR), magic);
 
-    // Write slot data (4 bytes each: target_keycode, flags, num_keys)
+    // Write all 100 EEPROM slots (4 bytes each)
+    // For each slot, look up in pool; write zeros if not in pool
     uint32_t addr = TOGGLE_EEPROM_ADDR + 2;
     for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
-        eeprom_update_word((uint16_t*)addr, toggle_slots[i].target_keycode);
-        addr += 2;
-        eeprom_update_byte((uint8_t*)addr, toggle_slots[i].flags);
-        addr++;
-        eeprom_update_byte((uint8_t*)addr, toggle_slots[i].num_keys);
-        addr++;
+        toggle_entry_t* entry = toggle_find(i);
+        if (entry) {
+            eeprom_update_word((uint16_t*)addr, entry->target_keycode);
+            addr += 2;
+            eeprom_update_byte((uint8_t*)addr, entry->flags);
+            addr++;
+            eeprom_update_byte((uint8_t*)addr, entry->num_keys);
+            addr++;
+        } else {
+            eeprom_update_word((uint16_t*)addr, 0);
+            addr += 2;
+            eeprom_update_byte((uint8_t*)addr, 0);
+            addr++;
+            eeprom_update_byte((uint8_t*)addr, 0);
+            addr++;
+        }
     }
 
     // Save multi-key extra keycodes to separate EEPROM area
@@ -4364,50 +4426,66 @@ void toggle_save_to_eeprom(void) {
 
     addr = TOGGLE_MULTI_EEPROM_ADDR + 2;
     for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
+        toggle_entry_t* entry = toggle_find(i);
         for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
-            eeprom_update_word((uint16_t*)addr, toggle_multi_keycodes[i][j]);
+            uint16_t kc = entry ? entry->multi_keycodes[j] : 0;
+            eeprom_update_word((uint16_t*)addr, kc);
             addr += 2;
         }
     }
 }
 
-// Load toggle slots from EEPROM
+// Load toggle slots from EEPROM into sparse pool
 void toggle_load_from_eeprom(void) {
     // Check magic number
     uint16_t magic = eeprom_read_word((uint16_t*)(TOGGLE_EEPROM_ADDR));
     if (magic != TOGGLE_MAGIC) {
-        // Not initialized, reset to defaults
         toggle_init();
         return;
     }
 
-    // Read slot data
+    // Clear pool
+    toggle_init();
+
+    // Read all 100 EEPROM slots, only add configured ones to pool
     uint32_t addr = TOGGLE_EEPROM_ADDR + 2;
+    // Temporary storage for EEPROM read before pool insertion
+    uint16_t tmp_keycode;
+    uint8_t tmp_flags, tmp_num_keys;
+
     for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
-        toggle_slots[i].target_keycode = eeprom_read_word((uint16_t*)addr);
+        tmp_keycode = eeprom_read_word((uint16_t*)addr);
         addr += 2;
-        toggle_slots[i].flags = eeprom_read_byte((uint8_t*)addr);
+        tmp_flags = eeprom_read_byte((uint8_t*)addr);
         addr++;
-        toggle_slots[i].num_keys = eeprom_read_byte((uint8_t*)addr);
+        tmp_num_keys = eeprom_read_byte((uint8_t*)addr);
         addr++;
+
+        if (tmp_keycode != 0) {
+            toggle_entry_t* entry = toggle_add(i);
+            if (entry) {
+                entry->target_keycode = tmp_keycode;
+                entry->flags = tmp_flags;
+                entry->num_keys = tmp_num_keys;
+            }
+        }
     }
 
-    // Load multi-key extra keycodes
+    // Load multi-key extra keycodes for entries in pool
     magic = eeprom_read_word((uint16_t*)(TOGGLE_MULTI_EEPROM_ADDR));
     if (magic == TOGGLE_MULTI_MAGIC) {
         addr = TOGGLE_MULTI_EEPROM_ADDR + 2;
         for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
+            toggle_entry_t* entry = toggle_find(i);
             for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
-                toggle_multi_keycodes[i][j] = eeprom_read_word((uint16_t*)addr);
+                uint16_t kc = eeprom_read_word((uint16_t*)addr);
                 addr += 2;
+                if (entry) {
+                    entry->multi_keycodes[j] = kc;
+                }
             }
         }
-    } else {
-        memset(toggle_multi_keycodes, 0, sizeof(toggle_multi_keycodes));
     }
-
-    // Reset runtime state
-    memset(toggle_runtime, 0, sizeof(toggle_runtime));
 }
 
 // Reset all toggle slots to defaults
@@ -4419,126 +4497,151 @@ void toggle_reset_all(void) {
 void toggle_process_key(uint16_t keycode, bool pressed) {
     if (!toggle_enabled) return;
     if (!is_toggle_keycode(keycode)) return;
-
-    // Only process on key press, not release
     if (!pressed) return;
 
     uint8_t slot_num = toggle_keycode_to_slot(keycode);
     if (slot_num >= TOGGLE_NUM_SLOTS) return;
 
-    toggle_slot_t* slot = &toggle_slots[slot_num];
-    toggle_runtime_t* runtime = &toggle_runtime[slot_num];
-
-    // Skip if no target keycode configured
-    if (slot->target_keycode == 0) return;
+    // Look up in pool
+    toggle_entry_t* entry = toggle_find(slot_num);
+    if (!entry || entry->target_keycode == 0) return;
 
     // Multi-key toggle mode: tap current keycode, advance to next
-    if (slot->flags & TOGGLE_FLAG_MULTI_KEY) {
-        uint8_t num_keys = slot->num_keys;
-        if (num_keys < 2) num_keys = 2;  // Minimum 2 keys for multi-key mode
+    if (entry->flags & TOGGLE_FLAG_MULTI_KEY) {
+        uint8_t num_keys = entry->num_keys;
+        if (num_keys < 2) num_keys = 2;
         if (num_keys > TOGGLE_MULTI_MAX_KEYS) num_keys = TOGGLE_MULTI_MAX_KEYS;
 
-        // Get the current keycode in the cycle
-        uint16_t current_kc = toggle_get_multi_keycode(slot_num, runtime->cycle_index);
+        uint16_t current_kc = toggle_get_multi_keycode(entry, entry->cycle_index);
 
-        // Tap the keycode (press + release) if it's not KC_NO (0)
         if (current_kc != 0) {
             vial_keycode_down(current_kc);
             vial_keycode_up(current_kc);
         }
 
-        // Advance to next step, wrapping around
-        runtime->cycle_index = (runtime->cycle_index + 1) % num_keys;
+        entry->cycle_index = (entry->cycle_index + 1) % num_keys;
         return;
     }
 
     // Standard toggle mode: hold/release on alternating presses
-    if (runtime->is_held) {
-        vial_keycode_up(slot->target_keycode);
-        runtime->is_held = false;
+    if (entry->is_held) {
+        vial_keycode_up(entry->target_keycode);
+        entry->is_held = false;
     } else {
-        vial_keycode_down(slot->target_keycode);
-        runtime->is_held = true;
+        vial_keycode_down(entry->target_keycode);
+        entry->is_held = true;
     }
 }
 
 // Release all held toggle keys (call on layer change, etc.)
 void toggle_release_all(void) {
-    for (uint8_t i = 0; i < TOGGLE_NUM_SLOTS; i++) {
-        if (toggle_runtime[i].is_held && toggle_slots[i].target_keycode != 0) {
-            vial_keycode_up(toggle_slots[i].target_keycode);
-            toggle_runtime[i].is_held = false;
+    for (uint8_t i = 0; i < toggle_pool_count; i++) {
+        if (toggle_pool[i].is_held && toggle_pool[i].target_keycode != 0) {
+            vial_keycode_up(toggle_pool[i].target_keycode);
+            toggle_pool[i].is_held = false;
         }
-        // Reset multi-key cycle index
-        toggle_runtime[i].cycle_index = 0;
+        toggle_pool[i].cycle_index = 0;
     }
 }
 
 // HID handler: Get toggle slot configuration
+// Reads from pool if entry exists, otherwise reads directly from EEPROM
 void handle_toggle_get_slot(uint8_t slot_num, uint8_t* response) {
-    // Response format: [status, target_keycode_low, target_keycode_high, flags, num_keys]
     if (slot_num >= TOGGLE_NUM_SLOTS) {
         response[0] = 1;  // Error
         return;
     }
 
     response[0] = 0;  // Success
-    toggle_slot_t* slot = &toggle_slots[slot_num];
-    response[1] = slot->target_keycode & 0xFF;
-    response[2] = (slot->target_keycode >> 8) & 0xFF;
-    response[3] = slot->flags;
-    response[4] = slot->num_keys;
+    toggle_entry_t* entry = toggle_find(slot_num);
+    if (entry) {
+        response[1] = entry->target_keycode & 0xFF;
+        response[2] = (entry->target_keycode >> 8) & 0xFF;
+        response[3] = entry->flags;
+        response[4] = entry->num_keys;
+    } else {
+        // Not in pool - read from EEPROM directly
+        uint32_t addr = TOGGLE_EEPROM_ADDR + 2 + (slot_num * TOGGLE_SLOT_SIZE);
+        uint16_t kc = eeprom_read_word((uint16_t*)addr);
+        response[1] = kc & 0xFF;
+        response[2] = (kc >> 8) & 0xFF;
+        response[3] = eeprom_read_byte((uint8_t*)(addr + 2));
+        response[4] = eeprom_read_byte((uint8_t*)(addr + 3));
+    }
 }
 
 // HID handler: Set toggle slot configuration
 void handle_toggle_set_slot(const uint8_t* data) {
-    // Data format: [slot_num, target_keycode_low, target_keycode_high, flags, num_keys]
     uint8_t slot_num = data[0];
     if (slot_num >= TOGGLE_NUM_SLOTS) return;
 
-    toggle_slot_t* slot = &toggle_slots[slot_num];
-    slot->target_keycode = data[1] | (data[2] << 8);
-    slot->flags = data[3];
-    slot->num_keys = data[4];
+    uint16_t new_keycode = data[1] | (data[2] << 8);
+    uint8_t new_flags = data[3];
+    uint8_t new_num_keys = data[4];
 
-    // If target keycode changed and the slot was held, release it
-    if (toggle_runtime[slot_num].is_held) {
-        unregister_code16(toggle_slots[slot_num].target_keycode);
-        toggle_runtime[slot_num].is_held = false;
+    if (new_keycode != 0) {
+        // Add or update in pool
+        toggle_entry_t* entry = toggle_add(slot_num);
+        if (!entry) return;  // Pool full
+
+        // Release old key if held
+        if (entry->is_held) {
+            vial_keycode_up(entry->target_keycode);
+            entry->is_held = false;
+        }
+
+        entry->target_keycode = new_keycode;
+        entry->flags = new_flags;
+        entry->num_keys = new_num_keys;
+        entry->cycle_index = 0;
+    } else {
+        // Clearing the slot - remove from pool
+        toggle_remove(slot_num);
     }
-    // Reset cycle index when slot is reconfigured
-    toggle_runtime[slot_num].cycle_index = 0;
 }
 
 // HID handler: Get multi-key keycodes for a slot
 void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response) {
-    // Response format: [status, kc2_lo, kc2_hi, kc3_lo, kc3_hi, kc4_lo, kc4_hi, kc5_lo, kc5_hi,
-    //                   kc6_lo, kc6_hi, kc7_lo, kc7_hi, kc8_lo, kc8_hi]
     if (slot_num >= TOGGLE_NUM_SLOTS) {
         response[0] = 1;  // Error
         return;
     }
 
     response[0] = 0;  // Success
-    for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
-        response[1 + j * 2] = toggle_multi_keycodes[slot_num][j] & 0xFF;
-        response[2 + j * 2] = (toggle_multi_keycodes[slot_num][j] >> 8) & 0xFF;
+    toggle_entry_t* entry = toggle_find(slot_num);
+    if (entry) {
+        for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
+            response[1 + j * 2] = entry->multi_keycodes[j] & 0xFF;
+            response[2 + j * 2] = (entry->multi_keycodes[j] >> 8) & 0xFF;
+        }
+    } else {
+        // Not in pool - read from EEPROM
+        uint16_t magic = eeprom_read_word((uint16_t*)(TOGGLE_MULTI_EEPROM_ADDR));
+        uint32_t addr = TOGGLE_MULTI_EEPROM_ADDR + 2 + (slot_num * TOGGLE_MULTI_EXTRA_KEYS * 2);
+        for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
+            uint16_t kc = (magic == TOGGLE_MULTI_MAGIC) ? eeprom_read_word((uint16_t*)(addr + j * 2)) : 0;
+            response[1 + j * 2] = kc & 0xFF;
+            response[2 + j * 2] = (kc >> 8) & 0xFF;
+        }
     }
 }
 
 // HID handler: Set multi-key keycodes for a slot
 void handle_toggle_set_multi(const uint8_t* data) {
-    // Data format: [slot_num, kc2_lo, kc2_hi, kc3_lo, kc3_hi, kc4_lo, kc4_hi, kc5_lo, kc5_hi,
-    //               kc6_lo, kc6_hi, kc7_lo, kc7_hi, kc8_lo, kc8_hi]
     uint8_t slot_num = data[0];
     if (slot_num >= TOGGLE_NUM_SLOTS) return;
 
-    for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
-        toggle_multi_keycodes[slot_num][j] = data[1 + j * 2] | (data[2 + j * 2] << 8);
+    toggle_entry_t* entry = toggle_find(slot_num);
+    if (!entry) {
+        // Slot not in pool yet - add it if we have multi-key data
+        entry = toggle_add(slot_num);
+        if (!entry) return;  // Pool full
     }
 
-    // Reset cycle index when multi-key config changes
-    toggle_runtime[slot_num].cycle_index = 0;
+    for (uint8_t j = 0; j < TOGGLE_MULTI_EXTRA_KEYS; j++) {
+        entry->multi_keycodes[j] = data[1 + j * 2] | (data[2 + j * 2] << 8);
+    }
+    entry->cycle_index = 0;
 }
 
 // HID handler: Save toggle slots to EEPROM
@@ -8151,22 +8254,25 @@ bool rgb_matrix_indicators_kb(void) {
             layer_toggle_cache_t *tcache = &toggle_led_caches[current_layer];
             for (uint8_t i = 0; i < tcache->count; i++) {
                 uint8_t led = tcache->entries[i].led_index;
-                uint8_t slot = tcache->entries[i].slot_num;
-                if (slot < TOGGLE_NUM_SLOTS && led < RGB_MATRIX_LED_COUNT) {
-                    if (toggle_slots[slot].flags & TOGGLE_FLAG_MULTI_KEY) {
-                        // Multi-key mode: show colour for current cycle step
-                        uint8_t cidx = toggle_runtime[slot].cycle_index;
-                        if (cidx >= TOGGLE_MULTI_COLOR_COUNT) cidx = 0;
-                        rgb_matrix_set_color(led,
-                                            (uint8_t)(toggle_multi_colors[cidx][0] * brightness_factor),
-                                            (uint8_t)(toggle_multi_colors[cidx][1] * brightness_factor),
-                                            (uint8_t)(toggle_multi_colors[cidx][2] * brightness_factor));
-                    } else if (toggle_runtime[slot].is_held) {
-                        // Standard toggle: green when latched on
-                        rgb_matrix_set_color(led,
-                                            0,
-                                            (uint8_t)(200 * brightness_factor),
-                                            0);
+                uint8_t slot_num = tcache->entries[i].slot_num;
+                if (slot_num < TOGGLE_NUM_SLOTS && led < RGB_MATRIX_LED_COUNT) {
+                    toggle_entry_t* entry = toggle_find(slot_num);
+                    if (entry) {
+                        if (entry->flags & TOGGLE_FLAG_MULTI_KEY) {
+                            // Multi-key mode: show colour for current cycle step
+                            uint8_t cidx = entry->cycle_index;
+                            if (cidx >= TOGGLE_MULTI_COLOR_COUNT) cidx = 0;
+                            rgb_matrix_set_color(led,
+                                                (uint8_t)(toggle_multi_colors[cidx][0] * brightness_factor),
+                                                (uint8_t)(toggle_multi_colors[cidx][1] * brightness_factor),
+                                                (uint8_t)(toggle_multi_colors[cidx][2] * brightness_factor));
+                        } else if (entry->is_held) {
+                            // Standard toggle: green when latched on
+                            rgb_matrix_set_color(led,
+                                                0,
+                                                (uint8_t)(200 * brightness_factor),
+                                                0);
+                        }
                     }
                 }
             }
