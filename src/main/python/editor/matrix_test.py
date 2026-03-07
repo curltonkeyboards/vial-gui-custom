@@ -5365,6 +5365,18 @@ class GamingConfigurator(BasicEditor):
         snappy_row.addStretch()
         response_layout.addLayout(snappy_row)
 
+        # Suppress Keystrokes
+        suppress_row = QHBoxLayout()
+        suppress_row.addWidget(self.create_help_label(
+            "When enabled, keys mapped as gaming controls will not send\n"
+            "their normal keystrokes (e.g. 'E') while Gaming Mode is active.\n"
+            "Only the joystick button/axis output will be sent."))
+        self.suppress_keystrokes_checkbox = QCheckBox(tr("GamingConfigurator", "Suppress keystrokes"))
+        self.suppress_keystrokes_checkbox.setChecked(True)  # Default ON
+        suppress_row.addWidget(self.suppress_keystrokes_checkbox)
+        suppress_row.addStretch()
+        response_layout.addLayout(suppress_row)
+
         response_calibration_layout.addWidget(response_group, alignment=QtCore.Qt.AlignTop)
 
         # Analog Calibration Group
@@ -5392,7 +5404,7 @@ class GamingConfigurator(BasicEditor):
 
             min_slider = QSlider(Qt.Horizontal)
             min_slider.setMinimum(0)
-            min_slider.setMaximum(250)  # 0.00 to 2.50mm in 0.01mm increments
+            min_slider.setMaximum(400)  # 0.00 to 4.00mm in 0.01mm increments
             min_slider.setValue(default_min)
             min_slider.valueChanged.connect(
                 lambda val, lbl=min_label: lbl.setText(f"Min: {val/100:.2f}mm")
@@ -5406,7 +5418,7 @@ class GamingConfigurator(BasicEditor):
 
             max_slider = QSlider(Qt.Horizontal)
             max_slider.setMinimum(0)
-            max_slider.setMaximum(250)  # 0.00 to 2.50mm in 0.01mm increments
+            max_slider.setMaximum(400)  # 0.00 to 4.00mm in 0.01mm increments
             max_slider.setValue(default_max)
             max_slider.valueChanged.connect(
                 lambda val, lbl=max_label: lbl.setText(f"Max: {val/100:.2f}mm")
@@ -5460,37 +5472,46 @@ class GamingConfigurator(BasicEditor):
 
         controls_layout.addWidget(curve_group, alignment=QtCore.Qt.AlignTop)
 
-        # Map control IDs to positions and names (matching the original control IDs)
+        # Map control IDs to positions and names
+        # Control IDs 0-9: axes/triggers (handled by firmware switch statement)
+        #   0=LS Up, 1=LS Down, 2=LS Left, 3=LS Right
+        #   4=RS Up, 5=RS Down, 6=RS Left, 7=RS Right
+        #   8=LT, 9=RT
+        # Control IDs 10+: buttons[control_id - 10] → joystick button (control_id - 10)
+        # Must match keycode button IDs: A=0, B=1, X=2, Y=3, LB=4, RB=5,
+        # Back=6, Start=7, L3=8, R3=9, DPad=12-15
         control_mapping = {
-            # D-pad
-            10: ("D-pad Up", "dpad_up", 180, 105, 56, 58, "↑"),
-            11: ("D-pad Down", "dpad_down", 180, 163, 56, 58, "↓"),
-            12: ("D-pad Left", "dpad_left", 150, 135, 58, 56, "←"),
-            13: ("D-pad Right", "dpad_right", 208, 135, 58, 56, "→"),
-            # Face buttons
-            14: ("Button 1", "btn1", 517, 178, 50, 50, "1"),  # A
-            15: ("Button 2", "btn2", 553, 139, 50, 50, "2"),  # B
-            16: ("Button 3", "btn3", 481, 139, 50, 50, "3"),  # X
-            17: ("Button 4", "btn4", 517, 103, 50, 50, "4"),  # Y
-            # Sticks
+            # Face buttons (buttons 0-3, control_ids 10-13)
+            10: ("Button 1", "btn1", 517, 178, 50, 50, "1"),  # A = joystick button 0
+            11: ("Button 2", "btn2", 553, 139, 50, 50, "2"),  # B = joystick button 1
+            12: ("Button 3", "btn3", 481, 139, 50, 50, "3"),  # X = joystick button 2
+            13: ("Button 4", "btn4", 517, 103, 50, 50, "4"),  # Y = joystick button 3
+            # Bumpers (buttons 4-5, control_ids 14-15)
+            14: ("LB", "lb", 177, 65, 60, 30, "LB"),
+            15: ("RB", "rb", 503, 65, 60, 30, "RB"),
+            # Center buttons (buttons 6-7, control_ids 16-17)
+            16: ("Back", "back", 320, 170, 50, 30, "Back"),
+            17: ("Start", "start", 380, 170, 50, 30, "Start"),
+            # Stick clicks (buttons 8-9, control_ids 18-19)
+            18: ("LS Click", "l3", 275, 223, 38, 38, "L3"),
+            19: ("RS Click", "r3", 439, 223, 38, 38, "R3"),
+            # D-pad (buttons 12-15, control_ids 22-25)
+            22: ("D-pad Up", "dpad_up", 180, 105, 56, 58, "↑"),
+            23: ("D-pad Down", "dpad_down", 180, 163, 56, 58, "↓"),
+            24: ("D-pad Left", "dpad_left", 150, 135, 58, 56, "←"),
+            25: ("D-pad Right", "dpad_right", 208, 135, 58, 56, "→"),
+            # Sticks (axes, control_ids 0-7)
             0: ("LS Up", "ls_up", 275, 185, 38, 38, "↑"),
             1: ("LS Down", "ls_down", 275, 261, 38, 38, "↓"),
             2: ("LS Left", "ls_left", 237, 223, 38, 38, "←"),
             3: ("LS Right", "ls_right", 313, 223, 38, 38, "→"),
-            22: ("LS Click", "l3", 275, 223, 38, 38, "L3"),
             4: ("RS Up", "rs_up", 439, 185, 38, 38, "↑"),
             5: ("RS Down", "rs_down", 439, 261, 38, 38, "↓"),
             6: ("RS Left", "rs_left", 401, 223, 38, 38, "←"),
             7: ("RS Right", "rs_right", 477, 223, 38, 38, "→"),
-            23: ("RS Click", "r3", 439, 223, 38, 38, "R3"),
-            # Bumpers and triggers
-            18: ("LB", "lb", 177, 65, 60, 30, "LB"),
-            19: ("RB", "rb", 503, 65, 60, 30, "RB"),
+            # Triggers (axes, control_ids 8-9)
             8: ("LT", "lt", 177, 25, 60, 35, "LT"),
             9: ("RT", "rt", 503, 25, 60, 35, "RT"),
-            # Center buttons
-            20: ("Back", "back", 320, 170, 50, 30, "Back"),
-            21: ("Start", "start", 380, 170, 50, 30, "Start"),
         }
 
         # Create buttons positioned over gamepad
@@ -5744,7 +5765,12 @@ class GamingConfigurator(BasicEditor):
                 QMessageBox.warning(None, "Invalid Range", "Trigger Min travel must be less than Trigger Max travel")
                 return
 
-            success = self.keyboard.set_gaming_analog_config(ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max)
+            suppress_keystrokes = self.suppress_keystrokes_checkbox.isChecked()
+            # Convert slider values from 0.01mm to 0.1mm (firmware units)
+            success = self.keyboard.set_gaming_analog_config(
+                ls_min // 10, ls_max // 10, rs_min // 10, rs_max // 10,
+                trigger_min // 10, trigger_max // 10, suppress_keystrokes
+            )
 
             # Save key mappings
             for control_id, data in self.gaming_controls.items():
@@ -5792,13 +5818,13 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_slider.blockSignals(True)
                 self.trigger_max_travel_slider.blockSignals(True)
 
-                # Set values for LS/RS/Triggers
-                self.ls_min_travel_slider.setValue(settings.get('ls_min_travel_mm_x10', 10))
-                self.ls_max_travel_slider.setValue(settings.get('ls_max_travel_mm_x10', 20))
-                self.rs_min_travel_slider.setValue(settings.get('rs_min_travel_mm_x10', 10))
-                self.rs_max_travel_slider.setValue(settings.get('rs_max_travel_mm_x10', 20))
-                self.trigger_min_travel_slider.setValue(settings.get('trigger_min_travel_mm_x10', 10))
-                self.trigger_max_travel_slider.setValue(settings.get('trigger_max_travel_mm_x10', 20))
+                # Set values for LS/RS/Triggers (convert from 0.1mm firmware units to 0.01mm slider units)
+                self.ls_min_travel_slider.setValue(settings.get('ls_min_travel', 10) * 10)
+                self.ls_max_travel_slider.setValue(settings.get('ls_max_travel', 20) * 10)
+                self.rs_min_travel_slider.setValue(settings.get('rs_min_travel', 10) * 10)
+                self.rs_max_travel_slider.setValue(settings.get('rs_max_travel', 20) * 10)
+                self.trigger_min_travel_slider.setValue(settings.get('trigger_min_travel', 10) * 10)
+                self.trigger_max_travel_slider.setValue(settings.get('trigger_max_travel', 20) * 10)
 
                 self.ls_min_travel_slider.blockSignals(False)
                 self.ls_max_travel_slider.blockSignals(False)
@@ -5807,13 +5833,18 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_slider.blockSignals(False)
                 self.trigger_max_travel_slider.blockSignals(False)
 
-                # Update labels (with inline format)
-                self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                # Update labels (firmware values in 0.1mm, display in mm)
+                self.ls_min_travel_label.setText(f"Min: {settings.get('ls_min_travel', 10)/10:.1f}mm")
+                self.ls_max_travel_label.setText(f"Max: {settings.get('ls_max_travel', 20)/10:.1f}mm")
+                self.rs_min_travel_label.setText(f"Min: {settings.get('rs_min_travel', 10)/10:.1f}mm")
+                self.rs_max_travel_label.setText(f"Max: {settings.get('rs_max_travel', 20)/10:.1f}mm")
+                self.trigger_min_travel_label.setText(f"Min: {settings.get('trigger_min_travel', 10)/10:.1f}mm")
+                self.trigger_max_travel_label.setText(f"Max: {settings.get('trigger_max_travel', 20)/10:.1f}mm")
+
+                # Update suppress keystrokes checkbox
+                self.suppress_keystrokes_checkbox.blockSignals(True)
+                self.suppress_keystrokes_checkbox.setChecked(settings.get('suppress_keystrokes', True))
+                self.suppress_keystrokes_checkbox.blockSignals(False)
 
                 # Load user curve names first (so dropdown is populated)
                 user_curve_names = self.keyboard.get_all_user_curve_names()
@@ -5995,12 +6026,13 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_slider.blockSignals(True)
                 self.trigger_max_travel_slider.blockSignals(True)
 
-                self.ls_min_travel_slider.setValue(settings.get('ls_min_travel_mm_x10', 10))
-                self.ls_max_travel_slider.setValue(settings.get('ls_max_travel_mm_x10', 20))
-                self.rs_min_travel_slider.setValue(settings.get('rs_min_travel_mm_x10', 10))
-                self.rs_max_travel_slider.setValue(settings.get('rs_max_travel_mm_x10', 20))
-                self.trigger_min_travel_slider.setValue(settings.get('trigger_min_travel_mm_x10', 10))
-                self.trigger_max_travel_slider.setValue(settings.get('trigger_max_travel_mm_x10', 20))
+                # Convert from 0.1mm (firmware) to 0.01mm (slider units)
+                self.ls_min_travel_slider.setValue(settings.get('ls_min_travel', 10) * 10)
+                self.ls_max_travel_slider.setValue(settings.get('ls_max_travel', 20) * 10)
+                self.rs_min_travel_slider.setValue(settings.get('rs_min_travel', 10) * 10)
+                self.rs_max_travel_slider.setValue(settings.get('rs_max_travel', 20) * 10)
+                self.trigger_min_travel_slider.setValue(settings.get('trigger_min_travel', 10) * 10)
+                self.trigger_max_travel_slider.setValue(settings.get('trigger_max_travel', 20) * 10)
 
                 self.ls_min_travel_slider.blockSignals(False)
                 self.ls_max_travel_slider.blockSignals(False)
@@ -6009,13 +6041,18 @@ class GamingConfigurator(BasicEditor):
                 self.trigger_min_travel_slider.blockSignals(False)
                 self.trigger_max_travel_slider.blockSignals(False)
 
-                # Update labels (with inline format)
-                self.ls_min_travel_label.setText(f"Min Travel (mm): {settings.get('ls_min_travel_mm_x10', 10)/10:.1f}")
-                self.ls_max_travel_label.setText(f"Max Travel (mm): {settings.get('ls_max_travel_mm_x10', 20)/10:.1f}")
-                self.rs_min_travel_label.setText(f"Min Travel (mm): {settings.get('rs_min_travel_mm_x10', 10)/10:.1f}")
-                self.rs_max_travel_label.setText(f"Max Travel (mm): {settings.get('rs_max_travel_mm_x10', 20)/10:.1f}")
-                self.trigger_min_travel_label.setText(f"Min Travel (mm): {settings.get('trigger_min_travel_mm_x10', 10)/10:.1f}")
-                self.trigger_max_travel_label.setText(f"Max Travel (mm): {settings.get('trigger_max_travel_mm_x10', 20)/10:.1f}")
+                # Update labels (firmware values in 0.1mm, display in mm)
+                self.ls_min_travel_label.setText(f"Min: {settings.get('ls_min_travel', 10)/10:.1f}mm")
+                self.ls_max_travel_label.setText(f"Max: {settings.get('ls_max_travel', 20)/10:.1f}mm")
+                self.rs_min_travel_label.setText(f"Min: {settings.get('rs_min_travel', 10)/10:.1f}mm")
+                self.rs_max_travel_label.setText(f"Max: {settings.get('rs_max_travel', 20)/10:.1f}mm")
+                self.trigger_min_travel_label.setText(f"Min: {settings.get('trigger_min_travel', 10)/10:.1f}mm")
+                self.trigger_max_travel_label.setText(f"Max: {settings.get('trigger_max_travel', 20)/10:.1f}mm")
+
+                # Update suppress keystrokes checkbox
+                self.suppress_keystrokes_checkbox.blockSignals(True)
+                self.suppress_keystrokes_checkbox.setChecked(settings.get('suppress_keystrokes', True))
+                self.suppress_keystrokes_checkbox.blockSignals(False)
 
             # Load user curve names (so dropdown is populated)
             user_curve_names = self.keyboard.get_all_user_curve_names()

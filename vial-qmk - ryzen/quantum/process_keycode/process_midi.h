@@ -1170,42 +1170,73 @@ void handle_nullbind_reset_all(void);
 
 // Constants
 #define TOGGLE_NUM_SLOTS            100     // Number of toggle slots (TGL_00 - TGL_99)
-#define TOGGLE_SLOT_SIZE            4       // Bytes per slot in EEPROM/RAM
+#define TOGGLE_SLOT_SIZE            4       // Bytes per slot in EEPROM
 #define TOGGLE_EEPROM_SIZE          (TOGGLE_NUM_SLOTS * TOGGLE_SLOT_SIZE)  // 400 bytes total
+
+// Sparse pool: only configured slots live in RAM
+#define TOGGLE_MAX_ACTIVE           32      // Max simultaneously configured toggle slots in RAM
+
+// Multi-key toggle constants
+#define TOGGLE_MULTI_MAX_KEYS       8       // Max keycodes per multi-key slot
+#define TOGGLE_MULTI_EXTRA_KEYS     7       // Extra keycodes stored separately (keycodes 2-8)
+#define TOGGLE_MULTI_EEPROM_ADDR    54000   // EEPROM address for multi-key data
+#define TOGGLE_MULTI_MAGIC          0x544D  // "TM" for Toggle Multi
+#define TOGGLE_MULTI_EEPROM_SIZE    (2 + TOGGLE_NUM_SLOTS * TOGGLE_MULTI_EXTRA_KEYS * 2)  // 2 magic + 100*14 = 1402 bytes
+
+// Toggle slot flags
+#define TOGGLE_FLAG_MULTI_KEY       0x01    // Bit 0: Multi-key toggle mode enabled
 
 // Toggle keycode range (100 keycodes: TGL_00 through TGL_99)
 // NOTE: Moved from 0xEE00-0xEE63 to avoid conflict with Arpeggiator keycodes
 #define TOGGLE_KEY_BASE             0xEF10
 #define TOGGLE_KEY_MAX              (TOGGLE_KEY_BASE + TOGGLE_NUM_SLOTS - 1)  // 0xEF73
 
-// Toggle slot structure (4 bytes per slot)
+// Unified sparse pool entry: config + runtime + multi-key data in one struct
+// Only allocated for slots that have target_keycode != 0
 typedef struct {
-    uint16_t target_keycode;            // Keycode to toggle (0 = disabled)
-    uint8_t  reserved[2];               // Reserved for future use (e.g., options/flags)
-} toggle_slot_t;
-
-// Runtime state for toggle key processing
-typedef struct {
-    bool is_held;                       // Current state: true = target is held, false = released
-} toggle_runtime_t;
+    // Identity
+    uint8_t  slot_num;                      // Which slot (0-99), 0xFF = unused pool entry
+    // Config (persisted to EEPROM)
+    uint16_t target_keycode;                // Keycode to toggle (0 = disabled), also multi-key keycode 1
+    uint8_t  flags;                         // Bit 0: multi-key mode enabled
+    uint8_t  num_keys;                      // Number of keycodes in multi-key mode (2-8, 0=unused)
+    uint16_t multi_keycodes[TOGGLE_MULTI_EXTRA_KEYS];  // Extra keycodes 2-8
+    // Runtime (not persisted)
+    bool     is_held;                       // Current state: true = target is held, false = released
+    uint8_t  cycle_index;                   // Current position in multi-key cycle (0-7)
+} toggle_entry_t;  // ~22 bytes per entry
 
 // External declarations
-extern toggle_slot_t toggle_slots[TOGGLE_NUM_SLOTS];
-extern toggle_runtime_t toggle_runtime[TOGGLE_NUM_SLOTS];
-extern bool toggle_enabled;  // Global enable flag
+extern toggle_entry_t toggle_pool[TOGGLE_MAX_ACTIVE];
+extern uint8_t toggle_pool_count;           // Number of active entries in pool
+extern bool toggle_enabled;                 // Global enable flag
 
-// HID Command IDs (0xF5-0xF9)
+// Fixed LED colours for multi-key cycle steps (RGB values)
+// Green, Blue, Red, Yellow, Cyan, Magenta, White, Orange
+#define TOGGLE_MULTI_COLOR_COUNT 8
+extern const uint8_t toggle_multi_colors[TOGGLE_MULTI_COLOR_COUNT][3];
+
+// HID Command IDs
 #define HID_CMD_TOGGLE_GET_SLOT         0xF5    // Get toggle slot configuration
 #define HID_CMD_TOGGLE_SET_SLOT         0xF6    // Set toggle slot configuration
 #define HID_CMD_TOGGLE_SAVE_EEPROM      0xF7    // Save all slots to EEPROM
 #define HID_CMD_TOGGLE_LOAD_EEPROM      0xF8    // Load all slots from EEPROM
 #define HID_CMD_TOGGLE_RESET_ALL        0xF9    // Reset all slots to defaults
+#define HID_CMD_TOGGLE_GET_MULTI        0xFC    // Get multi-key keycodes for a slot
+#define HID_CMD_TOGGLE_SET_MULTI        0xFD    // Set multi-key keycodes for a slot
 
 // Initialization and EEPROM functions
 void toggle_init(void);
 void toggle_save_to_eeprom(void);
 void toggle_load_from_eeprom(void);
 void toggle_reset_all(void);
+
+// Pool lookup: find entry by slot_num, returns NULL if not in pool
+toggle_entry_t* toggle_find(uint8_t slot_num);
+
+// Pool management: add/remove entries
+toggle_entry_t* toggle_add(uint8_t slot_num);
+void toggle_remove(uint8_t slot_num);
 
 // Helper functions
 static inline bool is_toggle_keycode(uint16_t keycode) {
@@ -1214,6 +1245,14 @@ static inline bool is_toggle_keycode(uint16_t keycode) {
 
 static inline uint8_t toggle_keycode_to_slot(uint16_t keycode) {
     return (uint8_t)(keycode - TOGGLE_KEY_BASE);
+}
+
+// Get the keycode at a specific index (0-7) for a multi-key entry
+static inline uint16_t toggle_get_multi_keycode(toggle_entry_t* entry, uint8_t index) {
+    if (!entry) return 0;
+    if (index == 0) return entry->target_keycode;
+    if (index < TOGGLE_MULTI_MAX_KEYS) return entry->multi_keycodes[index - 1];
+    return 0;
 }
 
 // Key processing functions (called when TGL_XX key is pressed)
@@ -1226,3 +1265,5 @@ void handle_toggle_set_slot(const uint8_t* data);
 void handle_toggle_save_eeprom(void);
 void handle_toggle_load_eeprom(void);
 void handle_toggle_reset_all(void);
+void handle_toggle_get_multi(uint8_t slot_num, uint8_t* response);
+void handle_toggle_set_multi(const uint8_t* data, uint8_t* response);

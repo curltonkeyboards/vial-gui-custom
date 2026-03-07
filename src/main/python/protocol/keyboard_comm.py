@@ -1985,7 +1985,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_MODE, 0, [1 if enabled else 0])
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2005,11 +2005,11 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             data = [control_id, row, col, 1 if enabled else 0]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_KEY_MAP, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
-    def set_gaming_analog_config(self, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max):
+    def set_gaming_analog_config(self, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, suppress_keystrokes=True):
         """Set analog calibration configuration for LS, RS, and Triggers
 
         Args:
@@ -2019,15 +2019,17 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
             rs_max: Right Stick maximum travel in 0.1mm units
             trigger_min: Trigger minimum travel in 0.1mm units
             trigger_max: Trigger maximum travel in 0.1mm units
+            suppress_keystrokes: Suppress normal keycodes for mapped gaming keys
 
         Returns:
             bool: True if successful, False otherwise
         """
         try:
-            data = [ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
+            # Values should be in 0.1mm units (firmware native), e.g. 10 = 1.0mm
+            data = [ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, 1 if suppress_keystrokes else 0]
             packet = self._create_hid_packet(HID_CMD_GAMING_SET_ANALOG_CONFIG, 0, data)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 
@@ -2045,15 +2047,17 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
                 return None
 
             # Parse gaming settings from response
-            # Response format: [status, enabled, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, ...]
+            # Response format: [status, enabled, ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, suppress_keystrokes, ...]
+            # Values are in 0.1mm units (firmware native), e.g. 10 = 1.0mm
             return {
                 'enabled': response[6] != 0,
-                'ls_min_travel_mm_x10': response[7],
-                'ls_max_travel_mm_x10': response[8],
-                'rs_min_travel_mm_x10': response[9],
-                'rs_max_travel_mm_x10': response[10],
-                'trigger_min_travel_mm_x10': response[11],
-                'trigger_max_travel_mm_x10': response[12]
+                'ls_min_travel': response[7],
+                'ls_max_travel': response[8],
+                'rs_min_travel': response[9],
+                'rs_max_travel': response[10],
+                'trigger_min_travel': response[11],
+                'trigger_max_travel': response[12],
+                'suppress_keystrokes': response[13] != 0 if len(response) > 13 else True
             }
         except Exception as e:
             return None
@@ -2067,7 +2071,7 @@ class Keyboard(ProtocolMacro, ProtocolDynamic, ProtocolTapDance, ProtocolCombo, 
         try:
             packet = self._create_hid_packet(HID_CMD_GAMING_RESET, 0, None)
             response = self.usb_send(self.dev, packet, retries=20)
-            return response and len(response) > 0 and response[0] == 0x01
+            return response and len(response) > 5 and response[5] == 0x00
         except Exception as e:
             return False
 

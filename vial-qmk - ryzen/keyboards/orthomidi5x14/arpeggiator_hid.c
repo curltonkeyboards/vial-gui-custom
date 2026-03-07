@@ -8,6 +8,7 @@
 #include "process_dynamic_macro.h"
 #include "midi_delay.h"
 #include <string.h>
+#include <stdio.h>
 
 // =============================================================================
 // ARPEGGIATOR RAW HID HANDLERS
@@ -792,9 +793,23 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 #ifdef JOYSTICK_ENABLE
                 gaming_mode_active = data[6] != 0;
                 gaming_settings.gaming_mode_enabled = gaming_mode_active;
+                // Re-scan keymap for gaming axis keycodes when enabling
+                // This picks up keycodes assigned via the GUI without requiring a reboot
+                if (gaming_mode_active) {
+                    gaming_scan_keymap_for_axes();
+                }
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
                 dprintf("Gaming mode set to: %s\n", gaming_mode_active ? "ON" : "OFF");
+                // Update OLED keylog with gaming mode status
+                {
+                    extern char keylog_str[];
+                    const char *msg = gaming_mode_active ? "Gaming Mode: On" : "Gaming Mode: Off";
+                    int len = strlen(msg);
+                    int pad = 21 - len;
+                    int lpad = pad / 2;
+                    snprintf(keylog_str, 44, "%*s%s%*s", lpad, "", msg, pad - lpad, "");
+                }
                 #else
                 response[5] = 0x01;  // Error - joystick not enabled
                 #endif
@@ -847,13 +862,14 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             case 0xD0: {  // HID_CMD_GAMING_SET_ANALOG_CONFIG
                 #ifdef JOYSTICK_ENABLE
-                // Format: [header(6), ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max]
+                // Format: [header(6), ls_min, ls_max, rs_min, rs_max, trigger_min, trigger_max, suppress_keystrokes]
                 gaming_settings.ls_config.min_travel_mm_x10 = data[6];
                 gaming_settings.ls_config.max_travel_mm_x10 = data[7];
                 gaming_settings.rs_config.min_travel_mm_x10 = data[8];
                 gaming_settings.rs_config.max_travel_mm_x10 = data[9];
                 gaming_settings.trigger_config.min_travel_mm_x10 = data[10];
                 gaming_settings.trigger_config.max_travel_mm_x10 = data[11];
+                gaming_settings.suppress_keystrokes = data[12] != 0;
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
                 #else
@@ -872,6 +888,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 response[10] = gaming_settings.rs_config.max_travel_mm_x10;
                 response[11] = gaming_settings.trigger_config.min_travel_mm_x10;
                 response[12] = gaming_settings.trigger_config.max_travel_mm_x10;
+                response[13] = gaming_settings.suppress_keystrokes ? 1 : 0;
                 #else
                 response[5] = 0x01;  // Error - joystick not enabled
                 #endif
@@ -902,6 +919,7 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 memset(&gaming_settings.lt, 0, sizeof(gaming_key_map_t));
                 memset(&gaming_settings.rt, 0, sizeof(gaming_key_map_t));
                 memset(gaming_settings.buttons, 0, sizeof(gaming_settings.buttons));
+                gaming_settings.suppress_keystrokes = true;  // Default ON
 
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
@@ -1110,21 +1128,73 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 break;
             }
 
-            case 0xDD: {  // HID_CMD_VELOCITY_PRESET_DEBUG_TOGGLE
-                // Toggle velocity preset debug display on OLED
-                extern bool velocity_preset_debug_mode;
-                velocity_preset_debug_mode = !velocity_preset_debug_mode;
-                dprintf("VELOCITY_PRESET_DEBUG: %s\n", velocity_preset_debug_mode ? "ON" : "OFF");
+            default:
+                response[4] = 0x00;
+                response[5] = 0x00;  // Error - unknown command
+                break;
+        }
 
-                response[4] = 0x00;  // Reserved
+        raw_hid_send(response, 32);
+        return;
+    }
+
+    // =========================================================================
+    // GAMING RESPONSE COMMANDS (0xDD-0xDE)
+    // Set/get gamepad response transformation settings (angle, curve, etc.)
+    // =========================================================================
+
+    if (length >= 32 &&
+        data[0] == HID_MANUFACTURER_ID &&
+        data[1] == HID_SUB_ID &&
+        data[2] == HID_DEVICE_ID &&
+        data[3] >= 0xDD && data[3] <= 0xDE) {
+
+        uint8_t cmd = data[3];
+        uint8_t response[32] = {0};
+
+        // Copy header to response
+        response[0] = HID_MANUFACTURER_ID;
+        response[1] = HID_SUB_ID;
+        response[2] = HID_DEVICE_ID;
+        response[3] = cmd;
+
+        switch (cmd) {
+            case 0xDD: {  // HID_CMD_GAMING_SET_RESPONSE
+                #ifdef JOYSTICK_ENABLE
+                // Format: [header(6), angle_adj_enabled, diagonal_angle, square_output, snappy_joystick, curve_index]
+                gaming_settings.angle_adjustment_enabled = data[6] != 0;
+                gaming_settings.diagonal_angle = data[7];
+                gaming_settings.use_square_output = data[8] != 0;
+                gaming_settings.snappy_joystick_enabled = data[9] != 0;
+                gaming_settings.analog_curve_index = data[10];
+                gaming_save_settings();
+                response[4] = 0x00;
                 response[5] = 0x01;  // Success
-                response[6] = velocity_preset_debug_mode ? 0x01 : 0x00;  // Current state
+                dprintf("Gaming response set: angle_adj=%d, angle=%d, square=%d, snappy=%d, curve=%d\n",
+                        data[6], data[7], data[8], data[9], data[10]);
+                #else
+                response[5] = 0x00;  // Error - joystick not enabled
+                #endif
+                break;
+            }
+
+            case 0xDE: {  // HID_CMD_GAMING_GET_RESPONSE
+                #ifdef JOYSTICK_ENABLE
+                response[4] = 0x00;
+                response[5] = 0x01;  // Success
+                response[6] = gaming_settings.angle_adjustment_enabled ? 1 : 0;
+                response[7] = gaming_settings.diagonal_angle;
+                response[8] = gaming_settings.use_square_output ? 1 : 0;
+                response[9] = gaming_settings.snappy_joystick_enabled ? 1 : 0;
+                response[10] = gaming_settings.analog_curve_index;
+                #else
+                response[5] = 0x00;  // Error - joystick not enabled
+                #endif
                 break;
             }
 
             default:
-                response[4] = 0x00;
-                response[5] = 0x00;  // Error - unknown command
+                response[5] = 0x00;  // Error
                 break;
         }
 
@@ -1768,12 +1838,12 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         return;
     }
 
-    // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFB)
+    // Check if this is a null bind, toggle, or EEPROM diag command (0xF0-0xFD)
     if (length >= 32 &&
         data[0] == HID_MANUFACTURER_ID &&
         data[1] == HID_SUB_ID &&
         data[2] == HID_DEVICE_ID &&
-        data[3] >= 0xF0 && data[3] <= 0xFB) {
+        data[3] >= 0xF0 && data[3] <= 0xFD) {
 
         dprintf("raw_hid_receive_kb: Command detected (0x%02X)\n", data[3]);
 
@@ -1846,6 +1916,17 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
 
             case HID_CMD_EEPROM_DIAG_GET:  // 0xFB
                 handle_eeprom_diag_get(response);
+                break;
+
+            case HID_CMD_TOGGLE_GET_MULTI:  // 0xFC
+                // Format: [slot_num] at data[6]
+                handle_toggle_get_multi(data[6], &response[4]);
+                break;
+
+            case HID_CMD_TOGGLE_SET_MULTI:  // 0xFD
+                // Format: [slot_num, kc2_lo, kc2_hi, ...] at data[6]
+                // Response: [status, sizeof, readback_kc0..kc6, flags, num_keys] at response[4]
+                handle_toggle_set_multi(&data[6], &response[4]);
                 break;
 
             default:
