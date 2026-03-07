@@ -5642,8 +5642,7 @@ bool gaming_analog_to_trigger(uint8_t row, uint8_t col, int16_t* value) {
 }
 
 // Update joystick state based on current key states
-// Axes and triggers are always updated if mappings exist (from keymap scan or GUI config)
-// Buttons via gaming_settings are only updated when gaming_mode_active
+// Axes, triggers, and buttons are always updated if mappings exist (from keymap scan or GUI config)
 void gaming_update_joystick(void) {
 
     // Left stick X axis (left/right) - use LS config
@@ -5750,22 +5749,21 @@ void gaming_update_joystick(void) {
     }
     joystick_set_axis(5, rt_val);  // Axis 5 = Right Trigger
 
-    // Buttons from Gaming Configurator mappings (only when gaming_mode_active)
-    // Note: buttons assigned via gaming keycodes (0xCC61-0xCC6A, 0xCC75-0xCC78)
-    // are handled directly in process_record_user and work without gaming_mode_active
-    if (gaming_mode_active) {
-        for (uint8_t i = 0; i < 16; i++) {
-            if (gaming_settings.buttons[i].enabled) {
-                bool pressed = analog_matrix_get_key_state(
-                    gaming_settings.buttons[i].row,
-                    gaming_settings.buttons[i].col
-                );
+    // Buttons from Gaming Configurator mappings
+    // Always updated if mappings exist (matching axes/triggers behavior)
+    // Buttons assigned via gaming keycodes (0xCC61-0xCC6A, 0xCC75-0xCC78)
+    // are handled directly in process_record_user
+    for (uint8_t i = 0; i < 16; i++) {
+        if (gaming_settings.buttons[i].enabled) {
+            bool pressed = analog_matrix_get_key_state(
+                gaming_settings.buttons[i].row,
+                gaming_settings.buttons[i].col
+            );
 
-                if (pressed) {
-                    register_joystick_button(i);
-                } else {
-                    unregister_joystick_button(i);
-                }
+            if (pressed) {
+                register_joystick_button(i);
+            } else {
+                unregister_joystick_button(i);
             }
         }
     }
