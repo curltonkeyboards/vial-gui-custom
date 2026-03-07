@@ -794,6 +794,15 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
                 gaming_save_settings();
                 response[5] = 0x00;  // Success
                 dprintf("Gaming mode set to: %s\n", gaming_mode_active ? "ON" : "OFF");
+                // Update OLED keylog with gaming mode status
+                {
+                    extern char keylog_str[];
+                    const char *msg = gaming_mode_active ? "Gaming Mode: On" : "Gaming Mode: Off";
+                    int len = strlen(msg);
+                    int pad = 21 - len;
+                    int lpad = pad / 2;
+                    snprintf(keylog_str, 44, "%*s%s%*s", lpad, "", msg, pad - lpad, "");
+                }
                 #else
                 response[5] = 0x01;  // Error - joystick not enabled
                 #endif

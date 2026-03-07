@@ -3203,7 +3203,10 @@ void scan_keycode_categories(void) {
 					else if (keycode >= SEQ_PRESET_BASE && keycode < (SEQ_PRESET_BASE + 68)) { // Seq direct presets
 					category = 47;
 					}
-					
+					else if (keycode == 0xCC60) { // Gaming Mode Toggle
+					category = 51;
+					}
+
 					//else { // REST OF EVERYTHING
                     //    category = 28;  // THE REST
                     //}
@@ -8149,6 +8152,22 @@ bool rgb_matrix_indicators_kb(void) {
             }
         }
     }
+
+#ifdef JOYSTICK_ENABLE
+    // Gaming Mode LED (purple when active, off when inactive)
+    {
+        uint8_t gaming_led = get_special_key_led_index(51);  // Category 51 for gaming mode toggle
+        if (gaming_led != 99 && gaming_led < RGB_MATRIX_LED_COUNT) {
+            if (gaming_mode_active) {
+                rgb_matrix_set_color(gaming_led,
+                                    (uint8_t)(150 * brightness_factor),
+                                    0,
+                                    (uint8_t)(200 * brightness_factor));  // Purple when gaming mode ON
+            }
+            // When gaming mode is OFF, don't set any color (let the normal animation handle it)
+        }
+    }
+#endif
 
     // Quick Build key LEDs
     // Colors: white=empty/no build, red=has build (idle), green=playing, orange=building
@@ -15338,32 +15357,42 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             gaming_settings.gaming_mode_enabled = gaming_mode_active;
             gaming_save_settings();
             dprintf("Gaming Mode: %s\n", gaming_mode_active ? "ON" : "OFF");
-            set_keylog(keycode, record);
+            // Display gaming mode status on OLED keylog
+            const char *msg = gaming_mode_active ? "Gaming Mode: On" : "Gaming Mode: Off";
+            int len = strlen(msg);
+            int pad = 21 - len;
+            int lpad = pad / 2;
+            snprintf(keylog_str, sizeof(keylog_str), "%*s%s%*s", lpad, "", msg, pad - lpad, "");
         }
         return false;
     }
 
     // Gaming button keycodes (0xCC61-0xCC6A, 0xCC75-0xCC78) - direct joystick button registration
     // These keycodes directly register/unregister joystick buttons on press/release
+    // Only send joystick buttons when gaming mode is active
     if (keycode >= 0xCC61 && keycode <= 0xCC6A) {
-        // Face buttons, bumpers, back/start, stick clicks (buttons 0-9)
-        uint8_t button_id = keycode - 0xCC61;
-        if (record->event.pressed) {
-            register_joystick_button(button_id);
-        } else {
-            unregister_joystick_button(button_id);
+        if (gaming_mode_active) {
+            // Face buttons, bumpers, back/start, stick clicks (buttons 0-9)
+            uint8_t button_id = keycode - 0xCC61;
+            if (record->event.pressed) {
+                register_joystick_button(button_id);
+            } else {
+                unregister_joystick_button(button_id);
+            }
         }
         set_keylog(keycode, record);
         return false;
     }
 
     if (keycode >= 0xCC75 && keycode <= 0xCC78) {
-        // D-pad buttons (buttons 12-15)
-        uint8_t button_id = 12 + (keycode - 0xCC75);
-        if (record->event.pressed) {
-            register_joystick_button(button_id);
-        } else {
-            unregister_joystick_button(button_id);
+        if (gaming_mode_active) {
+            // D-pad buttons (buttons 12-15)
+            uint8_t button_id = 12 + (keycode - 0xCC75);
+            if (record->event.pressed) {
+                register_joystick_button(button_id);
+            } else {
+                unregister_joystick_button(button_id);
+            }
         }
         set_keylog(keycode, record);
         return false;
@@ -17970,8 +17999,10 @@ void matrix_scan_user(void) {
     }
 
 #ifdef JOYSTICK_ENABLE
-    // Update joystick/gaming controller state
-    gaming_update_joystick();
+    // Update joystick/gaming controller state only when gaming mode is active
+    if (gaming_mode_active) {
+        gaming_update_joystick();
+    }
 #endif
 
 #ifdef MIDI_SERIAL_ENABLE
