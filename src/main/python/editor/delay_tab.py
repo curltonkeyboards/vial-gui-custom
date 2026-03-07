@@ -13,7 +13,8 @@ from PyQt5.QtCore import Qt
 
 from editor.basic_editor import BasicEditor
 from protocol.delay_protocol import (ProtocolDelay, DelaySlot,
-                                      DELAY_NUM_SLOTS, RATE_MODE_BPM, RATE_MODE_FIXED_MS,
+                                      DELAY_NUM_SLOTS, DELAY_FACTORY_COUNT,
+                                      RATE_MODE_BPM, RATE_MODE_FIXED_MS,
                                       TRANSPOSE_FIXED, TRANSPOSE_CUMULATIVE)
 from vial_device import VialKeyboard
 
@@ -612,13 +613,16 @@ class DelayTab(BasicEditor):
         if not self.delay_protocol:
             return
 
-        last_used = -1
+        # Factory presets (0-47) are always visible
+        # Only check user slots (48-99) for is_default()
+        last_used = DELAY_FACTORY_COUNT - 1  # Factory presets always count as "used"
         for i in range(DELAY_NUM_SLOTS):
             slot = self.delay_protocol.get_slot(i)
             if slot:
                 self.loaded_slots[i] = slot
                 self.slot_editors[i].load_from_slot(slot)
-                if not slot.is_default():
+                # Only check user slots for non-default
+                if i >= DELAY_FACTORY_COUNT and not slot.is_default():
                     last_used = i
 
         self._update_visible_tabs_with_last_used(last_used)
@@ -634,7 +638,10 @@ class DelayTab(BasicEditor):
 
         # Add visible delay tabs
         for x in range(self._visible_tab_count):
-            self.tabs.addTab(self.slot_scroll_widgets[x], f"Delay {x + 1}")
+            if x < DELAY_FACTORY_COUNT:
+                self.tabs.addTab(self.slot_scroll_widgets[x], f"F{x + 1}")
+            else:
+                self.tabs.addTab(self.slot_scroll_widgets[x], f"U{x + 1 - DELAY_FACTORY_COUNT}")
 
         # Add "+" tab if not all tabs are visible
         if self._visible_tab_count < DELAY_NUM_SLOTS:
@@ -659,11 +666,13 @@ class DelayTab(BasicEditor):
                     self.slot_editors[index].load_from_slot(slot)
 
     def _find_last_used_index(self):
-        """Find the index of the last delay slot that has non-default config"""
-        for idx in range(DELAY_NUM_SLOTS - 1, -1, -1):
+        """Find the index of the last delay slot that has non-default config.
+        Factory presets (0-47) always count as used."""
+        last = DELAY_FACTORY_COUNT - 1  # Factory presets always visible
+        for idx in range(DELAY_NUM_SLOTS - 1, DELAY_FACTORY_COUNT - 1, -1):
             if idx in self.loaded_slots and not self.loaded_slots[idx].is_default():
                 return idx
-        return -1
+        return last
 
     def _update_visible_tabs(self):
         """Update which tabs are visible based on content and manual expansion"""
@@ -677,6 +686,11 @@ class DelayTab(BasicEditor):
 
         index = self.tabs.currentIndex()
         if index < 0 or index >= DELAY_NUM_SLOTS:
+            return
+
+        if index < DELAY_FACTORY_COUNT:
+            QMessageBox.information(None, "Factory Preset",
+                                   f"Delay slot {index + 1} is a factory preset and cannot be modified.")
             return
 
         slot = self.slot_editors[index].save_to_slot()

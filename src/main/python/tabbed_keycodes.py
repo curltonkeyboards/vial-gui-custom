@@ -5002,6 +5002,8 @@ class StepSequencerTab(QScrollArea):
         pass  # Implement if needed
 
 
+DELAY_FACTORY_COUNT = 48  # First 48 slots are factory presets (always visible)
+
 class DelayMusicTab(QScrollArea):
     """MIDI Delay slot toggle tab - shows delay keycodes for keymap assignment"""
     keycode_changed = pyqtSignal(str)
@@ -5011,7 +5013,8 @@ class DelayMusicTab(QScrollArea):
         self.label = label
         self.delay_keycodes = delay_keycodes
         self.delay_clear_keycodes = delay_clear_keycodes or []
-        self.button_count = len(delay_keycodes)  # Show all by default
+        # user_button_count controls how many USER slots (48-99) are shown
+        self.user_button_count = len(delay_keycodes)  # Show all by default
         self.current_keycode_filter = None
 
         self.scroll_content = QWidget()
@@ -5028,8 +5031,20 @@ class DelayMusicTab(QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
     def set_button_count(self, count):
-        """Set the number of delay slot buttons to display"""
-        self.button_count = count
+        """Set the number of USER delay slot buttons to display (factory always shown)"""
+        self.user_button_count = count
+
+    def _make_btn(self, keycode, keycode_filter):
+        """Helper to create a keycode button"""
+        if not keycode_filter(keycode):
+            return None
+        btn = SquareButton()
+        btn.setRelSize(KEYCODE_BTN_RATIO)
+        btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
+        btn.keycode = keycode
+        btn.setText(keycode.label)
+        btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+        return btn
 
     def recreate_buttons(self, keycode_filter):
         self.current_keycode_filter = keycode_filter
@@ -5045,33 +5060,40 @@ class DelayMusicTab(QScrollArea):
             clear_group = QGroupBox("Delay Control")
             clear_layout = FlowLayout()
             for keycode in self.delay_clear_keycodes:
-                if keycode_filter(keycode):
-                    btn = SquareButton()
-                    btn.setRelSize(KEYCODE_BTN_RATIO)
-                    btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                    btn.keycode = keycode
-                    btn.setText(keycode.label)
-                    btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
+                btn = self._make_btn(keycode, keycode_filter)
+                if btn:
                     clear_layout.addWidget(btn)
             clear_group.setLayout(clear_layout)
             self.main_layout.addWidget(clear_group)
 
-        # Delay Slot Toggles (limited by button_count)
-        delay_group = QGroupBox("Delay Slot Toggles")
-        delay_layout = FlowLayout()
-        for i, keycode in enumerate(self.delay_keycodes):
-            if i >= self.button_count:
-                break
-            if keycode_filter(keycode):
-                btn = SquareButton()
-                btn.setRelSize(KEYCODE_BTN_RATIO)
-                btn.clicked.connect(lambda _, k=keycode.qmk_id: self.keycode_changed.emit(k))
-                btn.keycode = keycode
-                btn.setText(keycode.label)
-                btn.setToolTip(keycode.tooltip if keycode.tooltip else keycode.label)
-                delay_layout.addWidget(btn)
-        delay_group.setLayout(delay_layout)
-        self.main_layout.addWidget(delay_group)
+        # Factory Presets (first 48) - ALWAYS visible
+        factory_keycodes = self.delay_keycodes[:DELAY_FACTORY_COUNT]
+        if factory_keycodes:
+            factory_group = QGroupBox("Factory Delay Presets")
+            factory_layout = FlowLayout()
+            for keycode in factory_keycodes:
+                btn = self._make_btn(keycode, keycode_filter)
+                if btn:
+                    factory_layout.addWidget(btn)
+            factory_group.setLayout(factory_layout)
+            self.main_layout.addWidget(factory_group)
+
+        # User Delay Slots (49-100) - limited by user_button_count
+        user_keycodes = self.delay_keycodes[DELAY_FACTORY_COUNT:]
+        if user_keycodes:
+            user_group = QGroupBox("User Delay Slots")
+            user_layout = FlowLayout()
+            # user_button_count is the total visible count from delay_tab
+            # Subtract factory count to get how many user slots to show
+            user_visible = max(0, self.user_button_count - DELAY_FACTORY_COUNT)
+            for i, keycode in enumerate(user_keycodes):
+                if i >= user_visible:
+                    break
+                btn = self._make_btn(keycode, keycode_filter)
+                if btn:
+                    user_layout.addWidget(btn)
+            user_group.setLayout(user_layout)
+            self.main_layout.addWidget(user_group)
 
         self.main_layout.addStretch(1)
 

@@ -15,6 +15,7 @@ HID_CMD_DELAY_GET_BULK = 0xD8     # Get multiple slots (chunked)
 
 # Delay Constants
 DELAY_NUM_SLOTS = 100
+DELAY_FACTORY_COUNT = 48  # First 48 slots are read-only factory presets
 DELAY_CONFIG_SIZE = 16
 
 # Delay Keycode Range

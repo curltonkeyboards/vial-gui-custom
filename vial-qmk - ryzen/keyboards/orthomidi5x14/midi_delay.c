@@ -229,7 +229,8 @@ void midi_delay_init(void) {
 
     memset(note_on_times, 0, sizeof(note_on_times));
 
-    // Try to load from EEPROM (overrides factory defaults if saved)
+    // Try to load USER slots (48-99) from EEPROM
+    // Factory presets (0-47) are always loaded from code above, never from EEPROM
     midi_delay_load();
 }
 
@@ -256,21 +257,29 @@ void midi_delay_load(void) {
         return;
     }
 
-    // Read all configs
-    eeprom_read_block(delay_system.configs,
-                      (void *)(DELAY_EEPROM_ADDR + 2),
-                      sizeof(delay_slot_config_t) * DELAY_SLOT_COUNT);
+    // Only load USER slots (48-99) from EEPROM - factory presets (0-47) are always from code
+    eeprom_read_block(&delay_system.configs[DELAY_FACTORY_COUNT],
+                      (void *)(DELAY_EEPROM_ADDR + 2 + sizeof(delay_slot_config_t) * DELAY_FACTORY_COUNT),
+                      sizeof(delay_slot_config_t) * (DELAY_SLOT_COUNT - DELAY_FACTORY_COUNT));
 
-    dprintf("midi_delay: loaded %d slots from EEPROM\n", DELAY_SLOT_COUNT);
+    dprintf("midi_delay: loaded user slots %d-%d from EEPROM\n", DELAY_FACTORY_COUNT, DELAY_SLOT_COUNT - 1);
 }
 
 void midi_delay_reset(void) {
     midi_delay_clear_queue();
 
-    // Reset all configs to defaults
+    // Deactivate all slots
     for (uint8_t i = 0; i < DELAY_SLOT_COUNT; i++) {
+        delay_system.runtime[i].active = false;
+    }
+
+    // Re-apply factory presets (0-47)
+    midi_delay_load_factory_defaults();
+
+    // Reset user slots (48-99) to defaults
+    for (uint8_t i = DELAY_FACTORY_COUNT; i < DELAY_SLOT_COUNT; i++) {
         delay_system.configs[i].rate_mode = 0;
-        delay_system.configs[i].note_value = 1;
+        delay_system.configs[i].note_value = 3;
         delay_system.configs[i].timing_mode = 0;
         delay_system.configs[i].decay_percent = 50;
         delay_system.configs[i].fixed_delay_ms = 500;
@@ -279,7 +288,6 @@ void midi_delay_reset(void) {
         delay_system.configs[i].transpose_semi = 0;
         delay_system.configs[i].transpose_mode = 0;
         memset(delay_system.configs[i].reserved, 0, sizeof(delay_system.configs[i].reserved));
-        delay_system.runtime[i].active = false;
     }
 
     midi_delay_save();
@@ -630,6 +638,11 @@ void midi_delay_hid_get_slot(uint8_t slot_id, uint8_t *response) {
 
 void midi_delay_hid_set_slot(uint8_t slot_id, const uint8_t *data) {
     if (slot_id >= DELAY_SLOT_COUNT) return;
+    // Factory presets (0-47) are read-only - ignore HID writes to them
+    if (slot_id < DELAY_FACTORY_COUNT) {
+        dprintf("midi_delay: slot %d is a factory preset, ignoring HID write\n", slot_id + 1);
+        return;
+    }
     memcpy(&delay_system.configs[slot_id], data, DELAY_CONFIG_SIZE);
     dprintf("midi_delay: slot %d config updated via HID\n", slot_id + 1);
 }
